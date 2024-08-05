@@ -14,6 +14,7 @@
             <th>Name</th>
             <th>Telegram</th>
             <th>Description</th>
+            <th>Cкока должен</th>
             <th>Actions</th>
         </tr>
         </thead>
@@ -23,6 +24,7 @@
                 <td>{{ $user->name }}</td>
                 <td>{{ $user->telegram }}</td>
                 <td>{{ $user->description }}</td>
+                <td>{{ max(0, $fullSum - $user->transactions_sum_amount) }}</td>
                 <td>
                     <a href="{{ route('users.edit', $user->id) }}" class="btn btn-warning btn-sm">Edit</a>
                     <form action="{{ route('users.destroy', $user->id) }}" method="POST" style="display:inline-block;">

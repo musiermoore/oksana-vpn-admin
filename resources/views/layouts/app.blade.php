@@ -15,6 +15,7 @@
             <li class="nav-item"><a class="nav-link" href="{{ url('/users') }}">Users</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url('/configs') }}">Configs</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url('/transactions') }}">Transactions</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url('/current-payments') }}">Сколько платить</a></li>
         </ul>
     </div>
 </nav>

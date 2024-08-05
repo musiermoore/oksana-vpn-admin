@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CurrentPayment;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -9,8 +10,13 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::all();
-        return view('users.index', compact('users'));
+        $fullSum = CurrentPayment::getHostingPriceForAllMonths();
+
+        $users = User::query()
+            ->withSum('transactions', 'amount')
+            ->get();
+
+        return view('users.index', compact('users', 'fullSum'));
     }
 
     public function create()

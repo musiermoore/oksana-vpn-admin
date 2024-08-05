@@ -3,63 +3,46 @@
 namespace App\Http\Controllers;
 
 use App\Models\Config;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ConfigController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $configs = Config::all();
+        return view('configs.index', compact('configs'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        $users = User::orderBy('name')->get();
+
+        return view('configs.create', compact('users'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        Config::create($request->all());
+        return redirect()->route('configs.index');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Config $config)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Config $config)
     {
-        //
+        $users = User::orderBy('name')->get();
+
+        return view('configs.edit', compact('config', 'users'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Config $config)
     {
-        //
+        $config->update($request->all());
+        return redirect()->route('configs.index');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Config $config)
     {
-        //
+        $config->delete();
+        return redirect()->route('configs.index');
     }
 }

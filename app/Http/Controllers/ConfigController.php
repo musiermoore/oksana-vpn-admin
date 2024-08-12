@@ -23,7 +23,10 @@ class ConfigController extends Controller
 
     public function store(Request $request)
     {
-        Config::create($request->all());
+        $user = User::find($request->user_id);
+
+        $user->configs()->createMany($request->post('configs', []));
+
         return redirect()->route('configs.index');
     }
 
@@ -36,6 +39,8 @@ class ConfigController extends Controller
 
     public function update(Request $request, Config $config)
     {
+        $user = User::find($request->user_id);
+
         $config->update($request->all());
         return redirect()->route('configs.index');
     }

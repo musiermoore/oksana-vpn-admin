@@ -21,7 +21,7 @@
         </div>
         <div class="form-group">
             <label for="join_at">Join At</label>
-            <input type="text" name="join_at" id="join_at" class="form-control" value="{{ old('join_at') }}" required>
+            <input type="date" name="join_at" id="join_at" class="form-control" value="{{ old('join_at') }}" required>
         </div>
         <button type="submit" class="btn btn-primary">Save</button>
     </form>

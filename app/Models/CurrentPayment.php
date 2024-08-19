@@ -18,6 +18,16 @@ class CurrentPayment extends Model
 
     public const HOSTING_PRICE = 660;
 
+    public function getFormattedStartDateAttribute()
+    {
+        return Carbon::parse($this->attributes['start_date'])->format('d.m.Y');
+    }
+
+    public function getFormattedEndDateAttribute()
+    {
+        return Carbon::parse($this->attributes['end_date'])->format('d.m.Y');
+    }
+
     public static function getHostingPrice(): int
     {
         return ceil(self::HOSTING_PRICE / User::count());

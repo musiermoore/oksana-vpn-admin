@@ -30,7 +30,8 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('users.create');
+        $payments = CurrentPayment::select(['start_date', 'amount'])->get();
+        return view('users.create', compact('payments'));
     }
 
     public function store(Request $request)
@@ -41,7 +42,8 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        return view('users.edit', compact('user'));
+        $payments = CurrentPayment::select(['start_date', 'amount'])->get();
+        return view('users.edit', compact('user', 'payments'));
     }
 
     public function update(Request $request, User $user)

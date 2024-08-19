@@ -19,8 +19,12 @@ class UserController extends Controller
             ->withSum('transactions', 'amount')
             ->leftJoin('current_payments', function ($join) {
                 $join
-                    ->where('start_date', '>=', DB::raw('users.join_at'))
-                    ->orWhereNull('join_at');
+                    ->where(function ($query) {
+                        $query
+                            ->where('start_date', '>=', DB::raw('users.join_at'))
+                            ->orWhereNull('join_at');
+                    })
+                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
             })
             ->groupBy('users.id')
             ->get();

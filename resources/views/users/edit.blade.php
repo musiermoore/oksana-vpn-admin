@@ -10,15 +10,19 @@
         @method('PUT')
         <div class="form-group">
             <label for="name">Name</label>
-            <input type="text" name="name" id="name" class="form-control" value="{{ $user->name }}" required>
+            <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $user->name) }}" required>
         </div>
         <div class="form-group">
             <label for="telegram">Telegram</label>
-            <input type="text" name="telegram" id="telegram" class="form-control" value="{{ $user->telegram }}" required>
+            <input type="text" name="telegram" id="telegram" class="form-control" value="{{ old('telegram', $user->telegram) }}" required>
         </div>
         <div class="form-group">
             <label for="description">Description</label>
-            <textarea name="description" id="description" class="form-control">{{ $user->description }}</textarea>
+            <textarea name="description" id="description" class="form-control">{{ old('description', $user->description) }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="join_at">Join At</label>
+            <input type="text" name="join_at" id="join_at" class="form-control" value="{{ old('join_at', $user->join_at) }}" required>
         </div>
         <button type="submit" class="btn btn-primary">Save</button>
     </form>

@@ -30,7 +30,7 @@ class BasicAuth
     private function isUnauthorized(): bool
     {
         $AUTH_USER = 'latvia';
-        $AUTH_PASS = 'ponos';
+        $AUTH_PASS = 'ponosio';
 
         return empty($_SERVER['PHP_AUTH_USER'])
             || empty($_SERVER['PHP_AUTH_PW'])

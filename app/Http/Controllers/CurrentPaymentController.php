@@ -20,7 +20,7 @@ class CurrentPaymentController extends Controller
 
     public function store(Request $request)
     {
-        CurrentPayment::create($request->all());
+        CurrentPayment::create($request->post());
         return redirect()->route('current-payments.index');
     }
 
@@ -31,7 +31,7 @@ class CurrentPaymentController extends Controller
 
     public function update(Request $request, CurrentPayment $currentPayment)
     {
-        $currentPayment->update($request->all());
+        $currentPayment->update($request->post());
         return redirect()->route('current-payments.index');
     }
 

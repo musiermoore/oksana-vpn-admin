@@ -23,7 +23,7 @@ class TransactionController extends Controller
 
     public function store(Request $request)
     {
-        Transaction::create($request->all());
+        Transaction::create($request->post());
         return redirect()->route('transactions.index');
     }
 
@@ -36,7 +36,7 @@ class TransactionController extends Controller
 
     public function update(Request $request, Transaction $transaction)
     {
-        $transaction->update($request->all());
+        $transaction->update($request->post());
         return redirect()->route('transactions.index');
     }
 

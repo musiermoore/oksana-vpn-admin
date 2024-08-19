@@ -41,7 +41,7 @@ class ConfigController extends Controller
     {
         $user = User::find($request->user_id);
 
-        $config->update($request->all());
+        $config->update($request->post());
         return redirect()->route('configs.index');
     }
 

@@ -25,7 +25,7 @@
                 @foreach ($payments as $payment)
                     <option
                         value="{{ $payment->start_date }}"
-                        @selected(old('join_at', $user->join_at) === $payment->start_date)
+                        @selected(old('join_at') === $payment->start_date)
                     >
                         {{ $payment->formatted_start_date }} ({{ $payment->amount }}₽)
                     </option>

@@ -5,7 +5,7 @@
 
 @section('content')
     <h1>Edit Payment</h1>
-    <form action="{{ route('current_payments.update', $currentPayment->id) }}" method="POST">
+    <form action="{{ route('current-payments.update', $currentPayment->id) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="form-group">

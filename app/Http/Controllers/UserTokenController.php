@@ -14,6 +14,7 @@ class UserTokenController extends Controller
     {
         $userTokens = UserToken::query()
             ->where('expires_at', '>', now())
+            ->orWhereNull('expires_at')
             ->get();
 
         return view('user-tokens.index', compact('userTokens'));

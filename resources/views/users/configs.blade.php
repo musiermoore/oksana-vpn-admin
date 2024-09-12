@@ -8,6 +8,12 @@
         Конфиг
     </h1>
     <div>
+        @if ($isPasswordCorrect)
+            <div class="alert alert-danger">
+                Ссылка станет недоступна через {{ now()->diffInMinutes(\Carbon\Carbon::parse($userToken->expires_at)) }} минут
+            </div>
+        @endif
+
         @csrf
         @method('PUT')
         <div class="form-group">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CurrentPayment;
 use App\Models\User;
+use App\Models\UserToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -60,5 +61,18 @@ class UserController extends Controller
     {
         $user->delete();
         return redirect()->route('users.index');
+    }
+
+    public function configs(Request $request, UserToken $userToken)
+    {
+        $isPasswordCorrect = $userToken->validateToken($request->password);
+
+        if ($isPasswordCorrect && empty($userToken->expires_at)) {
+            $userToken->update([
+                'expires_at' => now()->addMinutes(10)
+            ]);
+        }
+
+        return view('users.configs', compact('userToken', 'isPasswordCorrect'));
     }
 }

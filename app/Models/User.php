@@ -52,6 +52,11 @@ class User extends Authenticatable
         return $this->hasMany(Config::class);
     }
 
+    public function tokens()
+    {
+        return $this->hasMany(UserToken::class);
+    }
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class);

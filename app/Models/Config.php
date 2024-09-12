@@ -20,4 +20,8 @@ class Config extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function getPathAttribute()
+    {
+        return storage_path('configs/' . $this->name . '.conf');
+    }
 }

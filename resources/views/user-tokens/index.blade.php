@@ -22,7 +22,7 @@
                 <td>{{ $token->user->name }}</td>
                 <td>{{ $token->expires_at }}</td>
                 <td>
-                    <a href="{{ route('user-tokens.show', $token->token) }}" class="btn btn-warning btn-sm">Show</a>
+                    <a href="{{ route('user-tokens.show', $token->id) }}" class="btn btn-warning btn-sm">Show</a>
                     <form action="{{ route('user-tokens.destroy', $token->id) }}" method="POST" style="display:inline-block;">
                         @csrf
                         @method('DELETE')

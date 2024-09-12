@@ -20,19 +20,10 @@
             >
         </div>
         @if ($isPasswordCorrect)
-            @foreach ($userToken->user->configs as $key => $config)
-                <h4>
-                    Конфиг <b>{{ $config->name }}</b>
-                </h4>
-                <div>
-                    @php
-                    $params = ['userToken' => $userToken->token, 'config' => $config->id, 'password' => request()->password]
-                    @endphp
-
-                    <a href="{{ route('users.configs.qr-code', $params) }}" target="_blank">QR-Code</a>
-                    <a href="{{ route('users.configs.download', $params) }}">Скачать</a>
-                </div>
-            @endforeach
+            <x-configs.user-token-configs
+                :$userToken
+                password="{{ request()->password }}"
+            />
         @else
             <form action="{{ route('users.configs', $userToken->token) }}">
                 <div class="form-group">

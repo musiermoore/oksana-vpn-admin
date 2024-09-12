@@ -35,5 +35,19 @@
                 readonly
             >
         </div>
+
+        <div class="mb-2">
+            @php
+                $link = route('users.configs', ['userToken' => $userToken->token]);
+            @endphp
+            Link: <a href="{{ $link }}">{{ $link }}</a>
+        </div>
+
+        <div>
+            <x-configs.user-token-configs
+                :$userToken
+                password="{{ $userToken->password }}"
+            />
+        </div>
     </div>
 @endsection

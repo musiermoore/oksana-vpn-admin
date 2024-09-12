@@ -22,6 +22,6 @@ class Config extends Model
 
     public function getPathAttribute()
     {
-        return storage_path('configs/' . $this->name . '.conf');
+        return storage_path('app/configs/' . $this->name . '.conf');
     }
 }

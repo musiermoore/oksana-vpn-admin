@@ -10,15 +10,18 @@
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" href="{{ url('/') }}">****ing БУХГАЛТЕРИЯ</a>
-    <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-            <li class="nav-item"><a class="nav-link" href="{{ url('/users') }}">Users</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/configs') }}">Configs</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/transactions') }}">Transactions</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/current-payments') }}">Сколько платить</a></li>
-        </ul>
-    </div>
+    <a class="navbar-brand" href="{{ url('/') }}">Latvia VPN</a>
+    @if (!empty($isAuthorized))
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link" href="{{ url('/users') }}">Users</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url('/configs') }}">Configs</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url('/user-tokens') }}">Tokens</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url('/transactions') }}">Transactions</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url('/current-payments') }}">Сколько платить</a></li>
+            </ul>
+        </div>
+    @endif
 </nav>
 <div class="container mt-4">
     @yield('content')

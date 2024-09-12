@@ -24,6 +24,8 @@ class BasicAuth
             exit;
         }
 
+        view()->share('isAuthorized', true);
+
         return $next($request);
     }
 

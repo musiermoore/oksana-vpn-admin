@@ -16,6 +16,7 @@
             </select>
         </div>
         <x-configs.config-items
+            :files="$fileNames"
             :configs="old('configs', [[]])"
         />
 

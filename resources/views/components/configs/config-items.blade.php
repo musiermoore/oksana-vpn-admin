@@ -1,4 +1,4 @@
-@props(['configs'])
+@props(['configs', 'files'])
 
 <div x-data="{ configs: @json($configs ?: [[]]) }">
     <template x-for="(config, index) in configs" :key="index">
@@ -14,7 +14,12 @@
             </h4>
             <div class="form-group">
                 <label :for="'name' + index">Name *</label>
-                <input type="text" :name="`configs[${index}][name]`" :id="'name' + index" class="form-control" x-model="config.name" required>
+                <select :name="`configs[${index}][name]`" :id="'name' + index" x-model="config.name" class="form-control" required>
+                    @foreach ($files as $file)
+                        <option value="{{ $file }}">{{ $file }}</option>
+                    @endforeach
+                </select>
+{{--                <input type="text" :name="`configs[${index}][name]`" :id="'name' + index" class="form-control" x-model="config.name" required>--}}
             </div>
             <div class="form-group">
                 <label :for="'description' + index">Description</label>

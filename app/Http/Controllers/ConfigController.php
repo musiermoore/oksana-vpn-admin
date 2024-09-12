@@ -6,6 +6,7 @@ use App\Models\Config;
 use App\Models\User;
 use App\Models\UserToken;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ConfigController extends Controller
@@ -20,7 +21,23 @@ class ConfigController extends Controller
     {
         $users = User::orderBy('name')->get();
 
-        return view('configs.create', compact('users'));
+        $fileNames = Storage::disk('local')->files('configs');
+
+        $existingConfigNames = Config::pluck('name');
+
+        $fileNames = collect($fileNames)
+            ->map(function ($fileName) {
+                $fileName = str_replace('configs/', '', $fileName);
+
+                return str_replace('.conf', '', $fileName);
+            })
+            ->filter(function ($fileName) use ($existingConfigNames) {
+                return $existingConfigNames->doesntContain($fileName);
+            })
+            ->sort()
+            ->values();
+
+        return view('configs.create', compact('users', 'fileNames'));
     }
 
     public function store(Request $request)

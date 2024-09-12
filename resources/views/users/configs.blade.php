@@ -11,8 +11,7 @@
         @if ($isPasswordCorrect)
             <div class="alert alert-danger">
                 Ссылка станет недоступна через
-                {{ (int) now()->diffInMinutes(\Carbon\Carbon::parse($userToken->expires_at), true) }}
-                минут
+                {{ (int) now()->diffInMinutes(\Carbon\Carbon::parse($userToken->expires_at), true) }} мин.
             </div>
         @endif
 

@@ -19,3 +19,4 @@ yarn-error.log
 /.idea
 /.vscode
 /configs
+/storage/create-wg-config.sh

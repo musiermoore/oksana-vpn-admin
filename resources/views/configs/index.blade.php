@@ -6,7 +6,10 @@
 @section('content')
     <div class="d-flex justify-content-between mb-3">
         <h1>Configs</h1>
-        <a href="{{ route('configs.create') }}" class="btn btn-primary">Create Config</a>
+        <div>
+            <a href="{{ route('configs-wg.create') }}" class="btn btn-primary">Create WG Config</a>
+            <a href="{{ route('configs.create') }}" class="btn btn-primary">Create Config</a>
+        </div>
     </div>
     <table class="table">
         <thead>

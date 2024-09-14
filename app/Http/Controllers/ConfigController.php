@@ -8,6 +8,7 @@ use App\Models\UserToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Symfony\Component\Process\Process;
 
 class ConfigController extends Controller
 {
@@ -45,6 +46,28 @@ class ConfigController extends Controller
         $user = User::find($request->user_id);
 
         $user->configs()->createMany($request->post('configs', []));
+
+        return redirect()->route('configs.index');
+    }
+
+    public function createWg()
+    {
+        return view('configs.create-wg');
+    }
+
+    public function storeWg(Request $request)
+    {
+        $name = $request->name;
+
+        $path = storage_path('create-wg-config.sh');
+        $process = new Process([
+            'bash',
+            $path,
+            $name
+        ]);
+        $process->run();
+
+        dd($process->getOutput(), $process->getErrorOutput());
 
         return redirect()->route('configs.index');
     }

@@ -19,7 +19,6 @@
                         <option value="{{ $file }}">{{ $file }}</option>
                     @endforeach
                 </select>
-{{--                <input type="text" :name="`configs[${index}][name]`" :id="'name' + index" class="form-control" x-model="config.name" required>--}}
             </div>
             <div class="form-group">
                 <label :for="'description' + index">Description</label>

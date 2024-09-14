@@ -27,3 +27,8 @@ Route::get('configs/{userToken:token}/{config}/download', [ConfigController::cla
     ->name('users.configs.download');
 Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::class, 'qrCode'])
     ->name('users.configs.qr-code');
+
+Route::get('configs-wg/create', [ConfigController::class, 'createWg'])
+    ->name('configs-wg.create');
+Route::post('configs-wg', [ConfigController::class, 'storeWg'])
+    ->name('configs-wg.store');

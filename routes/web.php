@@ -18,6 +18,11 @@ Route::middleware(BasicAuth::class)->group(function () {
     Route::resource('configs', ConfigController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class);
     Route::resource('current-payments', CurrentPaymentController::class);
+
+    Route::get('configs-wg/create', [ConfigController::class, 'createWg'])
+        ->name('configs-wg.create');
+    Route::post('configs-wg', [ConfigController::class, 'storeWg'])
+        ->name('configs-wg.store');
 });
 
 Route::get('configs/{userToken:token}', [UserController::class, 'configs'])
@@ -27,8 +32,3 @@ Route::get('configs/{userToken:token}/{config}/download', [ConfigController::cla
     ->name('users.configs.download');
 Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::class, 'qrCode'])
     ->name('users.configs.qr-code');
-
-Route::get('configs-wg/create', [ConfigController::class, 'createWg'])
-    ->name('configs-wg.create');
-Route::post('configs-wg', [ConfigController::class, 'storeWg'])
-    ->name('configs-wg.store');

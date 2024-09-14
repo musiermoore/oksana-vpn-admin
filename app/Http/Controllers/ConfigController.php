@@ -67,9 +67,7 @@ class ConfigController extends Controller
         ]);
         $process->run();
 
-        dd($process->getOutput(), $process->getErrorOutput());
-
-        return redirect()->route('configs.index');
+        return redirect()->route('configs.create');
     }
 
     public function edit(Config $config)

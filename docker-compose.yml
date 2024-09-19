@@ -22,6 +22,7 @@ services:
             - '${CONFIGS_PATH:-./configs}:/var/www/html/storage/app/configs'
         networks:
             - sail
+            - oksana-vpn
         depends_on:
             - mysql
     mysql:
@@ -52,6 +53,8 @@ services:
 networks:
     sail:
         driver: bridge
+    oksana-vpn:
+        external: true
 volumes:
     sail-mysql:
         driver: local

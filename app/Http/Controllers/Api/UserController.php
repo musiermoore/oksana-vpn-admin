@@ -42,7 +42,7 @@ class UserController extends Controller
         }
 
         return response()->json([
-            'balance' => $user,
+            'user' => $user,
         ]);
     }
 

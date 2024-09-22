@@ -5,11 +5,29 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Exception;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class UserController extends Controller
 {
+    public function balance($telegram)
+    {
+        $user = $this->getUser($telegram);
+
+        if (empty($user)) {
+            return response()->json([
+                'message' =>
+                    "Я не вижу тебя в списках 😢\n\n"
+                    . "Сообщи свой никнем @musiermoore"
+            ], 404);
+        }
+
+        return response()->json([
+            'balance' => max(0, $user->transactions_sum_amount - $user->payment_amount),
+            'debt' => max(0, $user->payment_amount - $user->transactions_sum_amount)
+        ]);
+    }
+
     public function getUserConfigs($telegram)
     {
         $user = $this->getUser($telegram);
@@ -24,7 +42,7 @@ class UserController extends Controller
         }
 
         return response()->json([
-            'user' => $user,
+            'balance' => $user,
         ]);
     }
 
@@ -86,9 +104,10 @@ class UserController extends Controller
             $configBody = file_get_contents($config->path);
 
             $png = QrCode::format('png')->margin(5)->size(512)->generate($configBody);
+
             return response($png)
                 ->header('Content-Type', 'image/png')
-                ->header('Content-Disposition', 'attachment; filename="qrcode.png"');;
+                ->header('Content-Disposition', 'attachment; filename="qrcode.png"');
         } catch (Exception $exception) {
             return response()->json([
                 'message' => "Что-то пошло не так 🤯️\n\n"
@@ -108,9 +127,21 @@ class UserController extends Controller
                 }
             ])
             ->select([
-                'id', 'telegram'
+                'users.id', 'users.telegram',
+                DB::raw('SUM(current_payments.amount) AS payment_amount')
             ])
+            ->withSum('transactions', 'amount')
+            ->leftJoin('current_payments', function ($join) {
+                $join
+                    ->where(function ($query) {
+                        $query
+                            ->where('start_date', '>=', DB::raw('users.join_at'))
+                            ->orWhereNull('join_at');
+                    })
+                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
+            })
             ->whereTelegram('@' . $telegram)
+            ->groupBy('users.id')
             ->first();
     }
 }

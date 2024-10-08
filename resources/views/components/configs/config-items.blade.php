@@ -2,7 +2,7 @@
 
 <div x-data="{ configs: @json($configs ?: [[]]), existing: false }">
     <label>
-        <input type="checkbox" x-model="exiting"> Показать существующие конфиги
+        <input type="checkbox" x-model="existing"> Показать существующие конфиги
     </label>
 
     <template x-for="(config, index) in configs" :key="index">

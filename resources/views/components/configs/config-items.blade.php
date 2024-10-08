@@ -21,7 +21,7 @@
                         @endforeach
                     </select>
                 </template>
-                <template x-else>
+                <template x-if="!existing">
                     <input :name="`configs[${index}][name]`" :id="'name' + index" x-model="config.name" class="form-control" required>
                 </template>
             </div>

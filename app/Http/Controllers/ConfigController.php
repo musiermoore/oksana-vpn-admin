@@ -14,7 +14,7 @@ class ConfigController extends Controller
 {
     public function index()
     {
-        $configs = Config::all();
+        $configs = Config::has('user')->get();
         return view('configs.index', compact('configs'));
     }
 

@@ -45,7 +45,19 @@ class ConfigController extends Controller
     {
         $user = User::find($request->user_id);
 
-        $user->configs()->createMany($request->post('configs', []));
+        $configs = $request->post('configs', []);
+
+        foreach ($configs as $config) {
+            $user->configs()->create($config);
+
+            $path = storage_path('create-wg-config.sh');
+            $process = new Process([
+                'bash',
+                $path,
+                $config['name']
+            ]);
+            $process->run();
+        }
 
         return redirect()->route('configs.index');
     }

@@ -20,7 +20,7 @@ class ConfigController extends Controller
 
     public function create()
     {
-        $users = User::orderBy('name')->get();
+        $users = User::get();
 
         $fileNames = Storage::disk('local')->files('configs');
 

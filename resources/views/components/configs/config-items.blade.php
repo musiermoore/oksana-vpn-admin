@@ -1,6 +1,6 @@
 @props(['configs', 'files'])
 
-<div x-data="{ configs: @json($configs ?: [[]]) }">
+<div x-data="{ configs: @json($configs ?: [[]]), existing: false }">
     <template x-for="(config, index) in configs" :key="index">
         <div class="config-item mb-1">
             <h4 class="d-flex justify-content-between">
@@ -14,11 +14,16 @@
             </h4>
             <div class="form-group">
                 <label :for="'name' + index">Name *</label>
-                <select :name="`configs[${index}][name]`" :id="'name' + index" x-model="config.name" class="form-control" required>
-                    @foreach ($files as $file)
-                        <option value="{{ $file }}">{{ $file }}</option>
-                    @endforeach
-                </select>
+                <template x-if="existing">
+                    <select :name="`configs[${index}][name]`" :id="'name' + index" x-model="config.name" class="form-control" required>
+                        @foreach ($files as $file)
+                            <option value="{{ $file }}">{{ $file }}</option>
+                        @endforeach
+                    </select>
+                </template>
+                <template x-else>
+                    <input :name="`configs[${index}][name]`" :id="'name' + index" x-model="config.name" class="form-control" required>
+                </template>
             </div>
             <div class="form-group">
                 <label :for="'description' + index">Description</label>

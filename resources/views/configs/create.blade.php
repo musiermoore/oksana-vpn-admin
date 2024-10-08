@@ -9,16 +9,11 @@
         @csrf
         <div x-data="{ existing: false }" class="form-group">
             <label for="user_id">User</label>
-            <template x-if="existing">
-                <select name="user_id" id="user_id" class="form-control" required>
-                    @foreach ($users as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }}</option>
-                    @endforeach
-                </select>
-            </template>
-            <template x-else>
-                <input name="name" id="name" class="form-control" value="{{ old('name') }}" required>
-            </template>
+            <select name="user_id" id="user_id" class="form-control" required>
+                @foreach ($users as $user)
+                    <option value="{{ $user->id }}">{{ $user->name }}</option>
+                @endforeach
+            </select>
         </div>
         <x-configs.config-items
             :files="$fileNames"

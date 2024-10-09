@@ -5,7 +5,7 @@
 
 @section('content')
     <div class="d-flex justify-content-between mb-3">
-        <h1>Users</h1>
+        <h1>Users ({{ $users->count() }})</h1>
         <a href="{{ route('users.create') }}" class="btn btn-primary">Create User</a>
     </div>
     <table class="table">

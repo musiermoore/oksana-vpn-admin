@@ -32,11 +32,4 @@ class CurrentPayment extends Model
     {
         return ceil(self::HOSTING_PRICE / User::count());
     }
-
-    public static function getHostingPriceForAllMonths(): ?int
-    {
-        return self::query()
-            ->where('start_date', '<=', Carbon::now())
-            ->sum('amount');
-    }
 }

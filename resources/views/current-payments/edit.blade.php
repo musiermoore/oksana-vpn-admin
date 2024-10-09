@@ -10,11 +10,11 @@
         @method('PUT')
         <div class="form-group">
             <label for="start_date">Start Date</label>
-            <input type="date" id="start_date" name="start_date" value="{{ $currentPayment->start_date }}" />
+            <input type="date" id="start_date" name="start_date" class="form-control" value="{{ $currentPayment->start_date }}" />
         </div>
         <div class="form-group">
             <label for="end_date">End Date</label>
-            <input type="date" id="end_date" name="end_date" value="{{ $currentPayment->end_date }}" />
+            <input type="date" id="end_date" name="end_date" class="form-control" value="{{ $currentPayment->end_date }}" />
         </div>
         <div class="form-group">
             <label for="amount">Amount</label>

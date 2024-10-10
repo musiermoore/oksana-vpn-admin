@@ -20,7 +20,7 @@
                 <li class="nav-item"><a class="nav-link" href="{{ route('users.index') }}">Участники</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('configs.index') }}">Конфиги</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('transactions.index') }}">Транзакции</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('current-payments.index') }}">Оплата</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ route('current-payments.index') }}">Периоды оплаты</a></li>
             </ul>
         </div>
     @endif

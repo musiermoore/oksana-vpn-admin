@@ -20,3 +20,5 @@ yarn-error.log
 /.vscode
 /configs
 /storage/create-wg-config.sh
+/storage/app/wireguard
+

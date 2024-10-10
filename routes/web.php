@@ -5,12 +5,11 @@ use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserTokenController;
+use App\Http\Controllers\WireGuardController;
 use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [WireGuardController::class, 'activePeers']);
 
 Route::middleware(BasicAuth::class)->group(function () {
     Route::resource('users', UserController::class);

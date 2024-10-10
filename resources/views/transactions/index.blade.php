@@ -21,7 +21,13 @@
         <tbody>
         @foreach ($transactions as $transaction)
             <tr>
-                <td><a href="{{ route('users.edit', $transaction->user_id) }}">{{ $transaction->user->full_name }}</a></td>
+                <td>
+                    @if ($transaction->user->is_active)
+                        <a href="{{ route('users.edit', $transaction->user->id) }}">{{ $transaction->user->full_name }}</a>
+                    @else
+                        {{ $transaction->user->full_name }}
+                    @endif
+                </td>
                 <td>{{ $transaction->amount }}</td>
                 <td>
                     <a href="{{ route('transactions.edit', $transaction->id) }}" class="btn btn-warning btn-sm"><i class="fa-solid fa-pen-to-square"></i></a>

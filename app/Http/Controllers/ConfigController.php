@@ -14,8 +14,11 @@ class ConfigController extends Controller
 {
     public function index()
     {
-        $configs = Config::has('user')->get();
-        return view('configs.index', compact('configs'));
+        $users = User::with('configs')
+            ->orderByDesc('deleted_at')
+            ->orderBy('created_at')
+            ->get();
+        return view('configs.index', compact('users'));
     }
 
     public function create()

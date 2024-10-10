@@ -65,6 +65,6 @@ class User extends Authenticatable
     public function getFullNameAttribute(): string
     {
         return $this->attributes['telegram']
-            . '(' . $this->attributes['name'] . ')';
+            . ' (' . $this->attributes['name'] . ')';
     }
 }

@@ -1,14 +1,14 @@
 <!-- resources/views/configs/create.blade.php -->
 @extends('layouts.app')
 
-@section('title', 'Create Config')
+@section('title', 'Создать конфиг')
 
 @section('content')
-    <h1>Create Config</h1>
+    <h1>Создать конфиг</h1>
     <form action="{{ route('configs.store') }}" method="POST">
         @csrf
         <div x-data="{ existing: false }" class="form-group">
-            <label for="user_id">User</label>
+            <label for="user_id">Участник</label>
             <select name="user_id" id="user_id" class="form-control" required>
                 @foreach ($users as $user)
                     <option value="{{ $user->id }}">{{ $user->full_name }}</option>
@@ -20,6 +20,6 @@
             :configs="old('configs', [[]])"
         />
 
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
 @endsection

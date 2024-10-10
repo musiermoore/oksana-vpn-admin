@@ -1,15 +1,15 @@
 <!-- resources/views/users/edit.blade.php -->
 @extends('layouts.app')
 
-@section('title', 'Edit User')
+@section('title', 'Редактирование участника')
 
 @section('content')
-    <h1>Edit User</h1>
+    <h1>Редактирование участника</h1>
     <form action="{{ route('users.update', $user->id) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="form-group">
-            <label for="name">Name</label>
+            <label for="name">Имя</label>
             <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $user->name) }}" required>
         </div>
         <div class="form-group">
@@ -17,11 +17,11 @@
             <input type="text" name="telegram" id="telegram" class="form-control" value="{{ old('telegram', $user->telegram) }}" required>
         </div>
         <div class="form-group">
-            <label for="description">Description</label>
+            <label for="description">Описание</label>
             <textarea name="description" id="description" class="form-control">{{ old('description', $user->description) }}</textarea>
         </div>
         <div class="form-group">
-            <label for="join_at">Join At</label>
+            <label for="join_at">Дата присоединения</label>
             <select name="join_at" id="join_at" class="form-control">
                 @foreach ($payments as $payment)
                     <option
@@ -33,6 +33,6 @@
                 @endforeach
             </select>
         </div>
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
 @endsection

@@ -22,7 +22,7 @@ class UserTokenController extends Controller
 
     public function create()
     {
-        $users = User::orderBy('name')->get();
+        $users = User::get();
 
         return view('user-tokens.create', compact('users'));
     }

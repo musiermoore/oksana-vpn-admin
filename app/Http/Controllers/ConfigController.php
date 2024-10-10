@@ -62,37 +62,15 @@ class ConfigController extends Controller
         return redirect()->route('configs.index');
     }
 
-    public function createWg()
-    {
-        return view('configs.create-wg');
-    }
-
-    public function storeWg(Request $request)
-    {
-        $name = $request->name;
-
-        $path = storage_path('create-wg-config.sh');
-        $process = new Process([
-            'bash',
-            $path,
-            $name
-        ]);
-        $process->run();
-
-        return redirect()->route('configs.create');
-    }
-
     public function edit(Config $config)
     {
-        $users = User::orderBy('name')->get();
+        $users = User::get();
 
         return view('configs.edit', compact('config', 'users'));
     }
 
     public function update(Request $request, Config $config)
     {
-        $user = User::find($request->user_id);
-
         $config->update($request->post());
         return redirect()->route('configs.index');
     }

@@ -19,7 +19,7 @@
         <tbody>
         @foreach ($transactions as $transaction)
             <tr>
-                <td>{{ $transaction->user->name }}</td>
+                <td><a href="{{ route('users.edit', $transaction->user_id) }}">{{ $transaction->user->full_name }}</a></td>
                 <td>{{ $transaction->amount }}</td>
                 <td>
                     <a href="{{ route('transactions.edit', $transaction->id) }}" class="btn btn-warning btn-sm">Edit</a>

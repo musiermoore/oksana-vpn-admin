@@ -12,7 +12,7 @@
             <label for="user_id">User</label>
             <select name="user_id" id="user_id" class="form-control" required>
                 @foreach ($users as $user)
-                    <option value="{{ $user->id }}" {{ $transaction->user_id == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
+                    <option value="{{ $user->id }}" {{ $transaction->user_id == $user->id ? 'selected' : '' }}>{{ $user->full_name }}</option>
                 @endforeach
             </select>
         </div>

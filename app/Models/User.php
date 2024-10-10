@@ -61,4 +61,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Transaction::class);
     }
+
+    public function getFullNameAttribute(): string
+    {
+        return $this->attributes['telegram']
+            . '(' . $this->attributes['name'] . ')';
+    }
 }

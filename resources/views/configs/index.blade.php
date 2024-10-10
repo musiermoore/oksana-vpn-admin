@@ -22,7 +22,7 @@
         <tbody>
         @foreach ($configs as $config)
             <tr>
-                <td>{{ $config->user->name }}</td>
+                <td><a href="{{ route('users.edit', $config->user_id) }}">{{ $config->user->full_name }}</a></td>
                 <td>{{ $config->name }}</td>
                 <td>{{ $config->description }}</td>
                 <td>

@@ -10,13 +10,13 @@ class TransactionController extends Controller
 {
     public function index()
     {
-        $transactions = Transaction::all();
+        $transactions = Transaction::with('user')->get();
         return view('transactions.index', compact('transactions'));
     }
 
     public function create()
     {
-        $users = User::orderBy('name')->get();
+        $users = User::get();
 
         return view('transactions.create', compact('users'));
     }
@@ -29,7 +29,7 @@ class TransactionController extends Controller
 
     public function edit(Transaction $transaction)
     {
-        $users = User::orderBy('name')->get();
+        $users = User::get();
 
         return view('transactions.edit', compact('transaction', 'users'));
     }

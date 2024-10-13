@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Config extends Model
 {
@@ -15,10 +17,15 @@ class Config extends Model
         'description',
     ];
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)
             ->withTrashed();
+    }
+
+    public function traffics(): HasMany
+    {
+        return $this->hasMany(Traffic::class);
     }
 
     public function getPathAttribute()

@@ -122,6 +122,7 @@ class WireGuardService
                 if ($index !== -1) {
                     $clientPeers[$index]['name'] = $clientName;
                     $clientPeers[$index]['telegram'] = $config->user->telegram ?? ($clientName . ' (?)');
+                    $clientPeers[$index]['config'] = $config;
                 }
             }
         }

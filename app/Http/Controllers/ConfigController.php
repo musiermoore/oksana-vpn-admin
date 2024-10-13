@@ -74,7 +74,11 @@ class ConfigController extends Controller
 
     public function update(Request $request, Config $config)
     {
-        $config->update($request->post());
+        $config->update([
+            'user_id' => $request->user_id,
+            'description' => $request->description
+        ]);
+
         return redirect()->route('configs.index');
     }
 

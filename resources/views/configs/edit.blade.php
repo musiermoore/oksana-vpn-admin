@@ -18,12 +18,18 @@
         </div>
         <div class="form-group">
             <label for="name">Название</label>
-            <input type="text" name="name" id="name" class="form-control" value="{{ $config->name }}" required>
+            <input type="text" name="name" id="name" class="form-control" value="{{ $config->name }}" disabled>
         </div>
         <div class="form-group">
             <label for="description">Описание</label>
             <textarea name="description" id="description" class="form-control">{{ $config->description }}</textarea>
         </div>
+
+        <div class="form-group">
+            <label>Адрес</label>
+            <input class="form-control" value="{{ $config->address }}" readonly>
+        </div>
+
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
 @endsection

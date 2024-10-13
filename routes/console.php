@@ -2,4 +2,4 @@
 
 use App\Console\Commands\CalculatePeersTraffic;
 
-Schedule::command(CalculatePeersTraffic::class)->everyFiveMinutes();
+Schedule::command(CalculatePeersTraffic::class)->everyMinute();

@@ -1,8 +1,5 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Console\Commands\CalculatePeersTraffic;
 
-Artisan::command('wireguard:calculate-peers-traffic', function () {
-    $this->comment(Inspiring::quote());
-})->everyFiveMinutes();
+Schedule::command(CalculatePeersTraffic::class)->everyFiveMinutes();

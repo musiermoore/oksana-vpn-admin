@@ -16,7 +16,10 @@ class WireGuardTrafficService
 
     private Config $config;
     private string $transfer;
-    private array $traffic;
+    private array $traffic = [
+        self::SENT_TYPE => 0,
+        self::RECEIVED_TYPE => 0,
+    ];
 
     public function __construct(Config $config, $transfer)
     {

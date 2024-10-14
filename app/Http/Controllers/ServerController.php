@@ -52,7 +52,7 @@ class ServerController extends Controller
         $server->update($request->post());
 
         return redirect()->back()
-            ->with('success', 'Сервер успешно создан.');
+            ->with('success', 'Сервер успешно обновлён.');
 
     }
 
@@ -61,7 +61,7 @@ class ServerController extends Controller
      */
     public function destroy(Server $server)
     {
-        if ($server->has('configs')) {
+        if ($server->configs()->exists()) {
             return redirect()->back()
                 ->with('error', 'К серверу привязаны конфиги.');
         }

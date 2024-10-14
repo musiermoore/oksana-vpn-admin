@@ -11,6 +11,7 @@ class Server extends Model
 
     protected $fillable = [
         'name',
+        'code',
         'ip',
     ];
 

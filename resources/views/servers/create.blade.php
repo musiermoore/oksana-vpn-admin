@@ -1,8 +1,7 @@
 <x-layout title="Создание сервера">
     <h1>Создание сервера</h1>
-    <form action="{{ route('servers.update', $server->id) }}" method="POST">
+    <form action="{{ route('servers.store') }}" method="POST">
         @csrf
-        @method('PATCH')
 
         <div class="form-group">
             <label for="name">Имя</label>

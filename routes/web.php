@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
+use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserTokenController;
@@ -19,6 +20,7 @@ Route::middleware(BasicAuth::class)->group(function () {
     Route::resource('configs', ConfigController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class);
     Route::resource('current-payments', CurrentPaymentController::class);
+    Route::resource('servers', ServerController::class);
 
     Route::get('configs-wg/create', [ConfigController::class, 'createWg'])
         ->name('configs-wg.create');

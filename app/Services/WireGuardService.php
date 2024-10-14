@@ -4,12 +4,52 @@ namespace App\Services;
 
 use App\Models\Config;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class WireGuardService
 {
+    private Carbon $startDate;
+    private Carbon $endDate;
+    private bool $filter = false;
+    private string|int|null $userId = null;
+
+    public function __construct()
+    {
+        $this->startDate = now()->subMinutes(10);
+        $this->endDate = now();
+    }
+
+    public function setStartDate(Carbon $startDate): WireGuardService
+    {
+        $this->startDate = $startDate;
+
+        return $this;
+    }
+
+    public function setEndDate(Carbon $endDate): WireGuardService
+    {
+        $this->endDate = $endDate;
+
+        return $this;
+    }
+
+    public function setFilter(bool $value): WireGuardService
+    {
+        $this->filter = $value;
+
+        return $this;
+    }
+
+    public function setUserId(int|string|null $userId): WireGuardService
+    {
+        $this->userId = $userId;
+
+        return $this;
+    }
+
     public function getContacts()
     {
         return Config::with('user')->get()->keyBy('name');
@@ -120,9 +160,11 @@ class WireGuardService
                 $config = $contacts[$clientName] ?? null;
                 $config?->load([
                     'traffic' => function ($query) {
-                        $query->where('created_at', '>=', now()->subMinutes(10));
+                        $query
+                            ->where('created_at', '>=', $this->startDate)
+                            ->where('created_at', '<=', $this->endDate);
                     }
-                ]);
+                ])->append(['sent_traffic', 'received_traffic']);
 
                 if ($index !== -1) {
                     $clientPeers[$index]['name'] = $clientName;
@@ -134,6 +176,25 @@ class WireGuardService
 
         return collect($clientPeers)
             ->sortByDesc('latest_handshake')
+            ->filter(function ($item) {
+                $config = $item['config'] ?? null;
+                $trafficTypes = $config->last_traffic ?? [];
+
+                return !$this->filter
+                    || (
+                        (
+                            !$this->userId
+                            || $this->userId == $config?->user_id
+                        )
+                        && (
+                            !empty($trafficTypes['sent'])
+                            || !empty($trafficTypes['received'])
+                        )
+                    );
+            })
+            ->sortByDesc(function ($item) {
+                return $item['config']->sent_traffic ?? 0;
+            })
             ->map(function ($peer) {
                 return [
                     'is_active' => $this->isActive($peer),

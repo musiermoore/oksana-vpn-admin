@@ -65,6 +65,10 @@ class Config extends Model
             $receivedUnit++;
         }
 
+        if (empty($sent) && empty($received)) {
+            return [];
+        }
+
         return [
             'sent' => round($sent, 2) . ' ' . $units[$sentUnit],
             'received' => round($received, 2) . ' ' . $units[$receivedUnit]

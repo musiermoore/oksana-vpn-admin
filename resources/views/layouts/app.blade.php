@@ -16,6 +16,12 @@
 <body>
 @include('layouts.app.header')
 <div class="container mt-4">
+    @if (session()->has('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @elseif (session()->has('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
+    @endif
+
     @yield('content')
 </div>
 </body>

@@ -4,10 +4,22 @@
         @csrf
         @method('PUT')
         <div class="form-group">
+            <label for="server_id">Cервер</label>
+            <select name="server_id" id="server_id" class="form-control" required>
+                @foreach ($servers as $server)
+                    <option value="{{ $server->id }}" @selected($config->server_id == $server->id)>
+                        {{ $server->name }} ({{ $server->ip }})
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="form-group">
             <label for="user_id">Участник</label>
             <select name="user_id" id="user_id" class="form-control" required>
                 @foreach ($users as $user)
-                    <option value="{{ $user->id }}" {{ $config->user_id == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
+                    <option value="{{ $user->id }}" @selected($config->user_id == $user->id)>
+                        {{ $user->name }}
+                    </option>
                 @endforeach
             </select>
         </div>

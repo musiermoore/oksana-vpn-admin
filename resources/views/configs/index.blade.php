@@ -27,7 +27,7 @@
                         @foreach ($user->configs as $config)
                             <div class="d-flex align-items-center justify-content-between" style="gap: 10px">
                                 <a href="{{ route('configs.edit', $config->id) }}">
-                                    {{ $config->name }}
+                                    {{ $config->server->code }}: {{ $config->name }}
                                 </a>
                                 <div>
                                     <form action="{{ route('configs.destroy', $config->id) }}" method="POST" style="display:inline-block;">

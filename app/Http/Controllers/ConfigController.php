@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Config;
+use App\Models\Server;
 use App\Models\User;
 use App\Models\UserToken;
 use Illuminate\Http\Request;
@@ -14,16 +15,24 @@ class ConfigController extends Controller
 {
     public function index()
     {
-        $users = User::with('configs')
+        $users = User::query()
+            ->with('configs.user')
+            ->withWhereHas('configs', function ($query) {
+                $query
+                    ->orderBy('server_id')
+                    ->orderBy('name');
+            })
             ->orderByDesc('deleted_at')
             ->orderBy('created_at')
             ->get();
+
         return view('configs.index', compact('users'));
     }
 
     public function create()
     {
         $users = User::get();
+        $servers = Server::get();
 
         $fileNames = Storage::disk('local')->files('configs');
 
@@ -41,7 +50,7 @@ class ConfigController extends Controller
             ->sort()
             ->values();
 
-        return view('configs.create', compact('users', 'fileNames'));
+        return view('configs.create', compact('users', 'servers', 'fileNames'));
     }
 
     public function store(Request $request)
@@ -62,14 +71,16 @@ class ConfigController extends Controller
             $process->run();
         }
 
-        return redirect()->route('configs.index');
+        return redirect()->route('configs.index')
+            ->with('success', 'Конфиг успешно создан');
     }
 
     public function edit(Config $config)
     {
         $users = User::get();
+        $servers = Server::get();
 
-        return view('configs.edit', compact('config', 'users'));
+        return view('configs.edit', compact('config', 'users', 'servers'));
     }
 
     public function update(Request $request, Config $config)
@@ -79,13 +90,15 @@ class ConfigController extends Controller
             'description' => $request->description
         ]);
 
-        return redirect()->route('configs.index');
+        return redirect()->route('configs.index')
+            ->with('success', 'Конфиг успешно обновлён');
     }
 
     public function destroy(Config $config)
     {
         $config->delete();
-        return redirect()->route('configs.index');
+        return redirect()->route('configs.index')
+            ->with('success', 'Конфиг успешно удалён');
     }
 
     public function qrCode(Request $request, UserToken $userToken, Config $config)

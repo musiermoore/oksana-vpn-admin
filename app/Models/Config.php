@@ -23,6 +23,11 @@ class Config extends Model
             ->withTrashed();
     }
 
+    public function server(): BelongsTo
+    {
+        return $this->belongsTo(Server::class);
+    }
+
     public function traffic(): HasMany
     {
         return $this->hasMany(Traffic::class);

@@ -26,7 +26,8 @@
 
                                     @foreach($peer['config']->formatted_last_traffic ?? [] as $type => $amount)
                                         <div>
-                                            {{ $type === 'sent' ? 'Отправлено' : 'Получено' }} {{ $amount }}
+                                            <b>{{ $type === 'sent' ? 'Отправлено' : 'Получено' }}:</b>
+                                            {{ $amount }}
                                         </div>
                                     @endforeach
                                 </p>

@@ -28,8 +28,8 @@ class WireGuardController extends Controller
         $service
             ->setFilter(true)
             ->setUserId($request->user_id)
-            ->setStartDate(Carbon::parse($request->start_date))
-            ->setEndDate(Carbon::parse($request->end_date));
+            ->setStartDate(Carbon::parse($request->query('start_date', now()->subMinutes()->format('Y-m-d H:i:s'))))
+            ->setEndDate(Carbon::parse($request->query('end_date', now()->format('Y-m-d H:i:s'))));
 
         $peers = $service->getClientPeers();
 

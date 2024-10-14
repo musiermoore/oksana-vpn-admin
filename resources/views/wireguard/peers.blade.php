@@ -17,9 +17,20 @@
                                 {{ $peer['latest_handshake'] }}
                             </p>
                             <p class="card-text">
-                                <strong>Трафика использовано:</strong> <br />
+                                <strong>Трафика использовано (Всего):</strong> <br />
                                 {{ $peer['transfer'] }}
                             </p>
+                            @if (!empty($peer['config']->last_traffic))
+                                <p class="card-text">
+                                    <strong>Трафика использовано (За 10 мин):</strong> <br />
+
+                                    @foreach($peer['config']->last_traffic ?? [] as $type => $amount)
+                                        <div>
+                                            {{ $type === 'sent' ? 'Отправлено' : 'Получено' }} {{ $amount }}
+                                        </div>
+                                    @endforeach
+                                </p>
+                            @endif
                         </div>
                     </div>
                 </div>

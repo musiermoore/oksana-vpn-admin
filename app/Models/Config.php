@@ -23,7 +23,7 @@ class Config extends Model
             ->withTrashed();
     }
 
-    public function traffics(): HasMany
+    public function traffic(): HasMany
     {
         return $this->hasMany(Traffic::class);
     }
@@ -31,6 +31,44 @@ class Config extends Model
     public function getPathAttribute()
     {
         return storage_path('app/configs/' . $this->name . '.conf');
+    }
+
+    public function getLastTrafficAttribute()
+    {
+        if ($this->traffic->count() <= 1) {
+            return [];
+        }
+
+        $startIntervalTraffic = $this->traffic->first();
+        $endIntervalTraffic = $this->traffic->last();
+
+        $sent = $endIntervalTraffic->sent - $startIntervalTraffic->sent;
+        $received = $endIntervalTraffic->received - $startIntervalTraffic->received;
+
+        $units = [
+            'bytes',
+            'KB',
+            'MB',
+            'GB',
+            'TB'
+        ];
+
+        $sentUnit = 0;
+        while ($sent > 1024) {
+            $sent /= 1024;
+            $sentUnit++;
+        }
+
+        $receivedUnit = 0;
+        while ($received > 1024) {
+            $received /= 1024;
+            $receivedUnit++;
+        }
+
+        return [
+            'sent' => round($sent, 2) . ' ' . $units[$sentUnit],
+            'received' => round($received, 2) . ' ' . $units[$receivedUnit]
+        ];
     }
 
     public function getAddressAttribute()

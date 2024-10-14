@@ -118,6 +118,11 @@ class WireGuardService
                 $index = $this->findIndexByColumn($clientPeers, 'allowed_ips', str_replace('/24', '/32', $address));
 
                 $config = $contacts[$clientName] ?? null;
+                $config?->load([
+                    'traffic' => function ($query) {
+                        $query->where('created_at', '>=', now()->subMinutes(10));
+                    }
+                ]);
 
                 if ($index !== -1) {
                     $clientPeers[$index]['name'] = $clientName;

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Config;
+use App\Models\Traffic;
 use App\Services\WireGuardService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class WireGuardController extends Controller
 {

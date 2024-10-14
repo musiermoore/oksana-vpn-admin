@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Трафик')
+@section('title', 'Активные подключения')
 
 @section('content')
 
@@ -24,7 +24,7 @@
                                 <p class="card-text">
                                     <strong>Трафика использовано (За 10 мин):</strong> <br />
 
-                                    @foreach($peer['config']->last_traffic ?? [] as $type => $amount)
+                                    @foreach($peer['config']->formatted_last_traffic ?? [] as $type => $amount)
                                         <div>
                                             {{ $type === 'sent' ? 'Отправлено' : 'Получено' }} {{ $amount }}
                                         </div>

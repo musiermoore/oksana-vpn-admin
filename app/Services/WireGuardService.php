@@ -155,7 +155,7 @@ class WireGuardService
 
     public function isActive($peer): bool
     {
-        preg_match('/^([1-5] minutes?)|(\d{1,2} seconds?)/', $peer['latest_handshake'], $matches);
+        preg_match('/^(([1-5] minutes?)|(\d{1,2} seconds?))/', $peer['latest_handshake'], $matches);
 
         return (bool) $matches;
     }

@@ -1,9 +1,4 @@
-<!-- resources/views/users/create.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Создание участника')
-
-@section('content')
+<x-layout title="Создание участника">
     <h1>Создание участника</h1>
     <form action="{{ route('users.store') }}" method="POST">
         @csrf
@@ -34,4 +29,4 @@
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

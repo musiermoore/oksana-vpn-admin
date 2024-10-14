@@ -1,9 +1,4 @@
-<!-- resources/views/users/index.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Участники')
-
-@section('content')
+<x-layout title="Участники">
     <div class="d-flex justify-content-between mb-3">
         <h1>Участники ({{ $users->count() }})</h1>
         <div>
@@ -43,4 +38,4 @@
         @endforeach
         </tbody>
     </table>
-@endsection
+</x-layout>

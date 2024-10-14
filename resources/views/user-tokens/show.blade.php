@@ -1,9 +1,4 @@
-<!-- resources/views/configs/show.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Edit Token')
-
-@section('content')
+<x-layout title="Edit Token">
     <h1>Show Token</h1>
     <div>
         @csrf
@@ -50,4 +45,4 @@
             />
         </div>
     </div>
-@endsection
+</x-layout>

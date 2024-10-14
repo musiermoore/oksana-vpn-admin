@@ -1,9 +1,4 @@
-<!-- resources/views/current_payments/edit.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Редактирование периода')
-
-@section('content')
+<x-layout title="Редактирование периода">
     <h1>Редактирование периода</h1>
     <form action="{{ route('current-payments.update', $currentPayment->id) }}" method="POST">
         @csrf
@@ -22,4 +17,4 @@
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

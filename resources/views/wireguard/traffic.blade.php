@@ -1,9 +1,4 @@
-@extends('layouts.app')
-
-@section('title', 'Трафик')
-
-@section('content')
-
+<x-layout title="Трафик">
     <form action="{{ route('wireguard.traffic') }}">
         <div class="form-group">
             <label>Время сервера (UTC)</label>
@@ -85,4 +80,4 @@
             </div>
         @endforeach
     </div>
-@endsection
+</x-layout>

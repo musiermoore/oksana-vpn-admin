@@ -1,9 +1,4 @@
-<!-- resources/views/configs/create.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Create Token')
-
-@section('content')
+<x-layout title="Create Token">
     <h1>Create Token</h1>
     <form action="{{ route('user-tokens.store') }}" method="POST">
         @csrf
@@ -18,4 +13,4 @@
 
         <button type="submit" class="btn btn-primary">Save</button>
     </form>
-@endsection
+</x-layout>

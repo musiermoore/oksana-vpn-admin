@@ -1,9 +1,4 @@
-<!-- resources/views/configs/show.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Конфиг')
-
-@section('content')
+<x-layout title="Конфиг">
     <h1>
         Конфиг
     </h1>
@@ -48,4 +43,4 @@
             </form>
         @endif
     </div>
-@endsection
+</x-layout>

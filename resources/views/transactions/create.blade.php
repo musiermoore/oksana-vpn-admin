@@ -1,9 +1,4 @@
-<!-- resources/views/transactions/create.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Создание транзакции')
-
-@section('content')
+<x-layout title="Создание транзакции">
     <h1>Создание транзакции</h1>
     <form action="{{ route('transactions.store') }}" method="POST">
         @csrf
@@ -21,4 +16,4 @@
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

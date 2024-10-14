@@ -1,9 +1,4 @@
-<!-- resources/views/configs/edit.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Редактирование конфига')
-
-@section('content')
+<x-layout title="Редактирование конфига">
     <h1>Редактирование конфига</h1>
     <form action="{{ route('configs.update', $config->id) }}" method="POST">
         @csrf
@@ -32,4 +27,4 @@
 
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

@@ -1,9 +1,4 @@
-<!-- resources/views/configs/index.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Конфиги')
-
-@section('content')
+<x-layout title="Конфиги">
     <div class="d-flex justify-content-between mb-3">
         <h1>Конфиги</h1>
         <div>
@@ -51,4 +46,4 @@
         @endforeach
         </tbody>
     </table>
-@endsection
+</x-layout>

@@ -1,9 +1,4 @@
-<!-- resources/views/users/edit.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Редактирование участника')
-
-@section('content')
+<x-layout title="Редактирование участника">
     <h1>Редактирование участника</h1>
     <form action="{{ route('users.update', $user->id) }}" method="POST">
         @csrf
@@ -35,4 +30,4 @@
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

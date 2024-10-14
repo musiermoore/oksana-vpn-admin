@@ -1,9 +1,4 @@
-<!-- resources/views/transactions/index.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Транзакции')
-
-@section('content')
+<x-layout title="Транзакции">
     <div class="d-flex justify-content-between mb-3">
         <h1>Транзакции</h1>
         <div>
@@ -43,4 +38,4 @@
         @endforeach
         </tbody>
     </table>
-@endsection
+</x-layout>

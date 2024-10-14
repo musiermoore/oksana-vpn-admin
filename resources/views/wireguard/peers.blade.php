@@ -1,9 +1,4 @@
-@extends('layouts.app')
-
-@section('title', 'Активные подключения')
-
-@section('content')
-
+<x-layout title="Активные подключения">
     @foreach($peers as $key => $peerType)
         <h1 class="mb-4">{{ $key === 'active' ? 'Активные' : 'Оффлайн' }} ({{ count($peerType) }})</h1>
         <div class="row">
@@ -38,4 +33,4 @@
             @endforeach
         </div>
     @endforeach
-@endsection
+</x-layout>

@@ -1,9 +1,4 @@
-<!-- resources/views/current-payments/create.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Создание периода оплаты')
-
-@section('content')
+<x-layout title="Создание периода оплаты">
     <h1>Создание периода оплаты</h1>
     <form action="{{ route('current-payments.store') }}" method="POST">
         @csrf
@@ -24,4 +19,4 @@
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

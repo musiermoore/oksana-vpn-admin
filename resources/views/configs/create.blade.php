@@ -1,9 +1,4 @@
-<!-- resources/views/configs/create.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Создать конфиг')
-
-@section('content')
+<x-layout title="Создать конфиг">
     <h1>Создать конфиг</h1>
     <form action="{{ route('configs.store') }}" method="POST">
         @csrf
@@ -22,4 +17,4 @@
 
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

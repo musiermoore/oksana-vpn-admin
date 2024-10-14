@@ -1,9 +1,4 @@
-<!-- resources/views/configs/index.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Configs')
-
-@section('content')
+<x-layout title="Configs">
     <div class="d-flex justify-content-between mb-3">
         <h1>Tokens</h1>
         <a href="{{ route('user-tokens.create') }}" class="btn btn-primary">Create Token</a>
@@ -33,4 +28,4 @@
         @endforeach
         </tbody>
     </table>
-@endsection
+</x-layout>

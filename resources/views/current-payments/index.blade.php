@@ -1,9 +1,4 @@
-<!-- resources/views/current-payments/index.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Периоды оплаты')
-
-@section('content')
+<x-layout title="Периоды оплаты">
     <div class="d-flex justify-content-between mb-3">
         <h1>Периоды оплаты</h1>
         <div>
@@ -39,4 +34,4 @@
         @endforeach
         </tbody>
     </table>
-@endsection
+</x-layout>

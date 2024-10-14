@@ -1,9 +1,4 @@
-<!-- resources/views/transactions/edit.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Редактирование транзакции')
-
-@section('content')
+<x-layout title="Редактирование транзакции">
     <h1>Редактирование транзакции</h1>
     <form action="{{ route('transactions.update', $transaction->id) }}" method="POST">
         @csrf
@@ -22,4 +17,4 @@
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
-@endsection
+</x-layout>

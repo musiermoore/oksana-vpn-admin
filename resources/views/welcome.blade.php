@@ -1,8 +1,3 @@
-<!-- resources/views/users/create.blade.php -->
-@extends('layouts.app')
-
-@section('title', 'Create User')
-
-@section('content')
+<x-layout title="Create User">
     PRIVET
-@endsection
+</x-layout>

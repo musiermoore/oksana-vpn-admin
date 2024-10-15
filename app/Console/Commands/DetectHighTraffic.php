@@ -46,7 +46,7 @@ class DetectHighTraffic extends Command
             ->groupBy('configs.id')
             ->having(WireGuardTrafficService::SENT_TYPE . '_traffic_usage', '>=', $highLimit)
             ->orHaving(WireGuardTrafficService::RECEIVED_TYPE . '_traffic_usage', '>=', $highLimit)
-            ->toRawSql();
+            ->get();
 
         $devChatId = "-4543488848";
 
@@ -74,7 +74,7 @@ class DetectHighTraffic extends Command
 
     private function getTrafficColumn($type): string
     {
-        $startDate = now()->subMinutes(3);
+        $startDate = now()->subMinutes(30);
         $endDate = now();
 
         $trafficQuery = Traffic::query()

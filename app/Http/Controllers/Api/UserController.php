@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -143,5 +144,14 @@ class UserController extends Controller
             ->whereTelegram('@' . $telegram)
             ->groupBy('users.id')
             ->first();
+    }
+
+    public function saveTelegramId(Request $request, $telegram)
+    {
+        User::whereTelegram('@' . $telegram)->update([
+            'telegram_id' => $request->telegram_id
+        ]);
+
+        return response(200);
     }
 }

@@ -33,8 +33,6 @@ class DetectHighTraffic extends Command
      */
     public function handle()
     {
-        Log::error('hello?');
-
         $highLimitInMb = 500;
         $highLimit = $highLimitInMb * 1024 * 1024;
 
@@ -64,8 +62,6 @@ class DetectHighTraffic extends Command
             $size = $size / 1024 / 1024;
 
             $user = $config->user;
-
-            Log::error("Test: " . $user->full_name . " даёт джаззу больше >$highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт");
 
             Telegram::sendMessage([
                 'chat_id' => $devChatId,

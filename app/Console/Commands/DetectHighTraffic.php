@@ -69,7 +69,7 @@ class DetectHighTraffic extends Command
 
             Telegram::sendMessage([
                 'chat_id' => $devChatId,
-                'text' => $user->full_name . " даёт джаззу больше >$highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
+                'text' => $user->full_name . " даёт джаззу больше $highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
             ]);
         }
     }

@@ -6,6 +6,7 @@ use App\Services\WireGuardService;
 use App\Services\WireGuardTrafficService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class DetectHighTraffic extends Command
@@ -53,6 +54,8 @@ class DetectHighTraffic extends Command
 
             $config = $peer->config;
             $user = $config->user;
+
+            Log::error("Test: " . $user->full_name . " даёт джаззу больше >$highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт");
 
             Telegram::sendMessage([
                 'chat_id' => $devChatId,

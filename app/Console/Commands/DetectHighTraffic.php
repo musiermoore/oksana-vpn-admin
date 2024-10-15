@@ -59,7 +59,7 @@ class DetectHighTraffic extends Command
                 continue;
             }
 
-            $size = $size / 1024 / 1024;
+            $size = round($size / 1024 / 1024, 2);
 
             $user = $config->user;
 

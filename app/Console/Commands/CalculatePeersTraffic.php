@@ -28,26 +28,7 @@ class CalculatePeersTraffic extends Command
      */
     public function handle(): void
     {
-        $service = new WireGuardService();
-        $peers = $service->getClientPeers();
-
-        $traffics = [];
-
-        foreach ($peers as $peer) {
-            if (empty($peer['transfer']) || empty($peer['config'])) {
-                continue;
-            }
-
-            $trafficService = new WireGuardTrafficService($peer['config'], $peer['transfer']);
-
-            $traffic = $trafficService->calculate();
-
-            if (empty($traffic)) {
-                continue;
-            }
-
-            $traffics[] = $traffic;
-        }
+        $traffics = WireGuardTrafficService::getTraffic();
 
         Traffic::insert($traffics);
     }

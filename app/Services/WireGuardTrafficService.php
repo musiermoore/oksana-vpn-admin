@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Config;
+use Carbon\Carbon;
 use Exception;
 
 class WireGuardTrafficService
@@ -92,5 +93,38 @@ class WireGuardTrafficService
         ];
 
         return $units[$unit] ?? 1;
+    }
+
+    public static function getTraffic(?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $service = new WireGuardService();
+
+        if ($startDate && $endDate) {
+            $service
+                ->setStartDate($startDate)
+                ->setEndDate($endDate);
+        }
+
+        $peers = $service->getClientPeers();
+
+        $traffics = [];
+
+        foreach ($peers as $peer) {
+            if (empty($peer['transfer']) || empty($peer['config'])) {
+                continue;
+            }
+
+            $trafficService = new self($peer['config'], $peer['transfer']);
+
+            $traffic = $trafficService->calculate();
+
+            if (empty($traffic)) {
+                continue;
+            }
+
+            $traffics[] = $traffic;
+        }
+
+        return $traffics;
     }
 }

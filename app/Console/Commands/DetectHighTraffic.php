@@ -31,8 +31,8 @@ class DetectHighTraffic extends Command
     public function handle()
     {
         $traffic = WireGuardTrafficService::getTraffic(
-            now()->subHour()->subMinutes(10),
-            now()->subHour()
+            now()->subMinutes(10),
+            now()
         );
 
         $highLimitInMb = 300;

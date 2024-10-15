@@ -46,7 +46,7 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Отфильтировать</button>
-        <a href="{{ route('wireguard.active-peers', ['admin' => 1]) }}" class="btn btn-primary">Сбросить</a>
+        <a href="{{ route('wireguard.traffic') }}" class="btn btn-primary">Сбросить</a>
     </form>
 
     <h1 class="mb-4">Конфиги ({{ count($peers) }})</h1>

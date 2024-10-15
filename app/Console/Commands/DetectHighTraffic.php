@@ -74,7 +74,7 @@ class DetectHighTraffic extends Command
 
     private function getTrafficColumn($type): string
     {
-        $startDate = now()->subMinutes(30);
+        $startDate = now()->subMinutes(3);
         $endDate = now();
 
         $trafficQuery = Traffic::query()

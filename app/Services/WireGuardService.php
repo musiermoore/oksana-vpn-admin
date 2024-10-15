@@ -24,14 +24,14 @@ class WireGuardService
 
     public function setStartDate(Carbon $startDate): WireGuardService
     {
-        $this->startDate = $startDate;
+        $this->startDate = $startDate->setSeconds(0);
 
         return $this;
     }
 
     public function setEndDate(Carbon $endDate): WireGuardService
     {
-        $this->endDate = $endDate;
+        $this->endDate = $endDate->setSeconds(59);
 
         return $this;
     }

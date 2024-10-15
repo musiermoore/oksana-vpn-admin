@@ -2,10 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Config;
+use App\Models\Traffic;
 use App\Services\WireGuardService;
 use App\Services\WireGuardTrafficService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
@@ -30,29 +33,34 @@ class DetectHighTraffic extends Command
      */
     public function handle()
     {
-        $traffic = WireGuardTrafficService::getTraffic(
-            now()->subMinutes(10),
-            now()
-        );
-
-        $highLimitInMb = 300;
+        $highLimitInMb = 500;
         $highLimit = $highLimitInMb * 1024 * 1024;
+
+        $configs = Config::query()
+            ->with(['user'])
+            ->select([
+                'configs.*',
+                DB::raw($this->getTrafficColumn(WireGuardTrafficService::SENT_TYPE)),
+                DB::raw($this->getTrafficColumn(WireGuardTrafficService::RECEIVED_TYPE)),
+            ])
+            ->groupBy('configs.id')
+            ->having(WireGuardTrafficService::SENT_TYPE . '_traffic_usage', '>=', $highLimit)
+            ->orHaving(WireGuardTrafficService::RECEIVED_TYPE . '_traffic_usage', '>=', $highLimit)
+            ->toRawSql();
+
         $devChatId = "-4543488848";
 
-        foreach ($traffic as $peer) {
-            $size = 0;
-
-            if ($peer['sent'] > $highLimit) {
-                $size = $peer['sent'];
-            } elseif ($peer['received'] > $highLimit) {
-                $size = $peer['received'];
+        foreach ($configs as $config) {
+            if ($config['sent_traffic_usage'] > $highLimit) {
+                $size = $config['sent_traffic_usage'];
+            } elseif ($config['received_traffic_usage'] > $highLimit) {
+                $size = $config['received_traffic_usage'];
             } else {
                 continue;
             }
 
-            $size /= 1024 / 1024;
+            $size = $size / 1024 / 1024;
 
-            $config = $peer->config;
             $user = $config->user;
 
             Log::error("Test: " . $user->full_name . " даёт джаззу больше >$highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт");
@@ -62,5 +70,22 @@ class DetectHighTraffic extends Command
                 'text' => $user->full_name . " даёт джаззу больше >$highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
             ]);
         }
+    }
+
+    private function getTrafficColumn($type): string
+    {
+        $startDate = now()->subMinutes(3);
+        $endDate = now();
+
+        $trafficQuery = Traffic::query()
+            ->select(['traffic.' . $type])
+            ->whereColumn('configs.id', '=', 'traffic.config_id')
+            ->whereBetween('traffic.created_at', [$startDate, $endDate])
+            ->limit(1);
+
+        $startDateQuery = $trafficQuery->clone()->orderBy('traffic.created_at')->toRawSql();
+        $endDateQuery = $trafficQuery->clone()->orderByDesc('traffic.created_at')->toRawSql();
+
+        return "($endDateQuery) - ($startDateQuery) AS {$type}_traffic_usage";
     }
 }

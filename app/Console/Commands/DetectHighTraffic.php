@@ -33,6 +33,8 @@ class DetectHighTraffic extends Command
      */
     public function handle()
     {
+        Log::error('hello?');
+
         $highLimitInMb = 500;
         $highLimit = $highLimitInMb * 1024 * 1024;
 

@@ -24,7 +24,7 @@ class Server extends Model
 
     public function getSshCommandAttribute(): string
     {
-        $sshKeyPath = '/var/www/html/storage/ssh_key.pub';
+        $sshKeyPath = '/var/www/html/storage/ssh_key';
 
         return "$(which ssh) -i $sshKeyPath -o BatchMode=yes -o StrictHostKeyChecking=no root@{$this->ip}";
     }

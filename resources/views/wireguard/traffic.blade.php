@@ -6,7 +6,7 @@
                 @foreach ($servers as $server)
                     <option
                         value="{{ $server->id }}"
-                        @selected(!request()->server_id || $server->id == request()->server_id)
+                        @selected($server->id === $selectedServerId)
                     >{{ $server->name }}</option>
                 @endforeach
             </select>

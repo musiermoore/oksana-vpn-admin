@@ -22,7 +22,11 @@ class WireGuardController extends Controller
         $service = new WireGuardService();
         $peers = $service->sortByActive($selectedServerId);
 
-        return view('wireguard.peers', compact('peers', 'servers'));
+        return view('wireguard.peers', compact(
+            'peers',
+            'servers',
+            'selectedServerId'
+        ));
     }
 
     public function traffic(Request $request)
@@ -40,6 +44,11 @@ class WireGuardController extends Controller
 
         $peers = $service->getClientPeers($selectedServerId);
 
-        return view('wireguard.traffic', compact('peers', 'users', 'servers'));
+        return view('wireguard.traffic', compact(
+            'peers',
+            'users',
+            'servers',
+            'selectedServerId'
+        ));
     }
 }

@@ -58,7 +58,7 @@ class UserController extends Controller
             ], 404);
         }
 
-        $config = $user->configs
+        $config = $user->configs()
             ->where('name', $config)
             ->first();
 

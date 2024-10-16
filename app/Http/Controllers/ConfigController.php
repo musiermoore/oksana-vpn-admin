@@ -60,20 +60,19 @@ class ConfigController extends Controller
 
         $configs = $request->post('configs', []);
 
-        $type = 'success';
-        $message = 'Конфиги успешно созданы';
+        $success = true;
 
         foreach ($configs as $config) {
-            $result = $user->createConfig($config);
+            $success = $user->createConfig($config);
+        }
 
-            if (!$result) {
-                $type = 'error';
-                $message = 'Некоторые из конфигов не были созданы';
-            }
+        if (!$success) {
+            return redirect()->back()
+                ->with('error', 'Некоторые из конфигов не были созданы');
         }
 
         return redirect()->route('configs.index')
-            ->with($type, $message);
+            ->with('success', 'Конфиги успешно созданы');
     }
 
     public function edit(Config $config)

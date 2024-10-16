@@ -22,6 +22,11 @@ class Server extends Model
         return $this->hasMany(Config::class);
     }
 
+    public function getSlugCodeAttribute(): string
+    {
+        return str($this->code)->slug()->lower();
+    }
+
     public function getSshCommandAttribute(): string
     {
         $sshKeyPath = '/var/www/html/storage/ssh_key';

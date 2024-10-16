@@ -61,7 +61,7 @@ class WireGuardService
 
     public function getWireguardHandshakes(Server $server)
     {
-        $serverCode = str($server->code)->lower();
+        $serverCode = $server->slug_code;
 
         // Execute the wg command and capture the output
         $output = file_get_contents(storage_path("app/wireguard/wg-show_$serverCode.txt"));
@@ -138,7 +138,7 @@ class WireGuardService
 
         $clientPeers = [];
 
-        $configPath = storage_path('app/wireguard/clients-' . str($server->code)->lower());
+        $configPath = storage_path('app/wireguard/clients-' . $server->slug_code);
 
         $clientPeers = array_merge($clientPeers, $this->getWireguardHandshakes($server));
 

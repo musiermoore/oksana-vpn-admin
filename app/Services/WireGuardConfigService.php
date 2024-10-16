@@ -51,10 +51,10 @@ class WireGuardConfigService
 
     private function runFile($file): void
     {
-        $process = new Process([
-            "{$this->server->ssh_command} {$this->server->app_path}/$file $this->name",
-        ]);
-        $process->setWorkingDirectory('/');
-        $process->run();
+        $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $this->name";
+
+        exec($command, $output, $result);
+
+        dd($output, $result);
     }
 }

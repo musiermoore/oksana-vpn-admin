@@ -93,6 +93,7 @@ class User extends Authenticatable
             return $isCreated;
         } catch (Exception $exception) {
             DB::rollBack();
+            dd($exception->getMessage());
 
             return false;
         }

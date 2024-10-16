@@ -32,6 +32,7 @@ class WireGuardConfigService
 
             return true;
         } catch (Exception $exception) {
+            dd($exception->getMessage());
             return false;
         }
     }
@@ -43,6 +44,7 @@ class WireGuardConfigService
 
             return true;
         } catch (Exception $exception) {
+            dd($exception->getMessage());
             return false;
         }
     }

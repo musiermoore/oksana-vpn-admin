@@ -28,11 +28,8 @@ class WireGuardConfigService
     public function create(): bool
     {
         try {
-            $this->runFile(self::WG_CREATE_CONFIG_FILE);
-
-            return true;
+            return $this->runFile(self::WG_CREATE_CONFIG_FILE);
         } catch (Exception $exception) {
-            dd($exception->getMessage());
             return false;
         }
     }
@@ -40,21 +37,18 @@ class WireGuardConfigService
     public function delete(): bool
     {
         try {
-            $this->runFile(self::WG_DELETE_CONFIG_FILE);
-
-            return true;
+            return $this->runFile(self::WG_DELETE_CONFIG_FILE);
         } catch (Exception $exception) {
-            dd($exception->getMessage());
             return false;
         }
     }
 
-    private function runFile($file): void
+    private function runFile($file): bool
     {
         $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $this->name";
 
         exec($command, $output, $result);
 
-        dd($output, $result);
+        return $result === 0;
     }
 }

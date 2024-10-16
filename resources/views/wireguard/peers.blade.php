@@ -1,4 +1,20 @@
 <x-layout title="Активные подключения">
+    <form action="{{ route('wireguard.traffic') }}">
+        <div class="form-group">
+            <label for="server_id">Сервер</label>
+            <select name="server_id" id="server_id" class="form-control">
+                @foreach ($servers as $server)
+                    <option
+                        value="{{ $server->id }}"
+                        @selected(!request()->server_id || $server->id == request()->server_id)
+                    >{{ $server->name }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Отфильтировать</button>
+    </form>
+
     @foreach($peers as $key => $peerType)
         <h1 class="mb-4">{{ $key === 'active' ? 'Активные' : 'Оффлайн' }} ({{ count($peerType) }})</h1>
         <div class="row">

@@ -1,6 +1,18 @@
 <x-layout title="Трафик">
     <form action="{{ route('wireguard.traffic') }}">
         <div class="form-group">
+            <label for="server_id">Сервер</label>
+            <select name="server_id" id="server_id" class="form-control">
+                @foreach ($servers as $server)
+                    <option
+                        value="{{ $server->id }}"
+                        @selected(!request()->server_id || $server->id == request()->server_id)
+                    >{{ $server->name }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="form-group">
             <label>Время сервера (UTC)</label>
             <input type="datetime-local" class="form-control" value="{{ now()->format('Y-m-d H:i') }}" readonly />
             <small>

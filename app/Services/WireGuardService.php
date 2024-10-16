@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Config;
+use App\Models\Server;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -55,10 +56,12 @@ class WireGuardService
         return Config::with('user')->get()->keyBy('name');
     }
 
-    public function getWireguardHandshakes($interface = 'wg0')
+    public function getWireguardHandshakes(Server $server)
     {
+        $serverCode = str($server->code)->lower();
+
         // Execute the wg command and capture the output
-        $output = file_get_contents(storage_path('app/wireguard/wg-show.txt'));
+        $output = file_get_contents(storage_path("app/wireguard/wg-show_$serverCode.txt"));
 
         $peerPattern = '/peer: (.*)/';
         $handshakePattern = '/latest handshake: (.*)/';
@@ -82,7 +85,8 @@ class WireGuardService
                     'allowed_ips' => null,
                     'latest_handshake' => null,
                     'transfer' => null,
-                    'telegram' => null
+                    'telegram' => null,
+                    'server' => $server
                 ];
             } elseif (preg_match($handshakePattern, $line, $matches) && $currentPeer) {
                 $currentPeer['latest_handshake'] = $matches[1];
@@ -125,11 +129,18 @@ class WireGuardService
         return $fileList;
     }
 
-    public function getClientPeers(): Collection
+    public function getClientPeers($serverId): Collection
     {
         $configPath = storage_path('app/configs/');
 
-        $clientPeers = $this->getWireguardHandshakes();
+        $servers = Server::all();
+
+        $clientPeers = [];
+
+        foreach ($servers as $server) {
+            $clientPeers = array_merge($clientPeers, $this->getWireguardHandshakes($server));
+        }
+
         $contacts = $this->getContacts();
         $files = $this->listFilesInDirectory(storage_path('app/configs'));
 
@@ -204,9 +215,9 @@ class WireGuardService
             ->values();
     }
 
-    public function sortByActive(): array
+    public function sortByActive($serverId): array
     {
-        $peers = $this->getClientPeers();
+        $peers = $this->getClientPeers($serverId);
 
         return [
             'active' => $peers->where('is_active', '=', true),

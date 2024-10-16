@@ -1,5 +1,5 @@
 <x-layout title="Активные подключения">
-    <form action="{{ route('wireguard.traffic') }}">
+    <form action="{{ route('wireguard.active-peers') }}">
         <div class="form-group">
             <label for="server_id">Сервер</label>
             <select name="server_id" id="server_id" class="form-control">

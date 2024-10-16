@@ -63,6 +63,7 @@ class ConfigController extends Controller
         $success = true;
 
         foreach ($configs as $config) {
+            $config['server_id'] = $request->server_id;
             $success = $user->createConfig($config);
         }
 

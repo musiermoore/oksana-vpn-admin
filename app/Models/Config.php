@@ -13,6 +13,7 @@ class Config extends Model
     use HasFactory;
 
     protected $fillable = [
+        'server_id',
         'user_id',
         'name',
         'description',

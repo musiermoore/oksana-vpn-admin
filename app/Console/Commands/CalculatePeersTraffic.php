@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Server;
 use App\Models\Traffic;
 use App\Services\WireGuardService;
 use App\Services\WireGuardTrafficService;
@@ -28,8 +29,12 @@ class CalculatePeersTraffic extends Command
      */
     public function handle(): void
     {
-        $traffics = WireGuardTrafficService::getTraffic();
+        $servers = Server::all();
 
-        Traffic::insert($traffics);
+        foreach ($servers as $server) {
+            $traffics = WireGuardTrafficService::getTraffic($server->id);
+
+            Traffic::insert($traffics);
+        }
     }
 }

@@ -95,7 +95,7 @@ class WireGuardTrafficService
         return $units[$unit] ?? 1;
     }
 
-    public static function getTraffic(?Carbon $startDate = null, ?Carbon $endDate = null): array
+    public static function getTraffic(int $serverId, ?Carbon $startDate = null, ?Carbon $endDate = null): array
     {
         $service = new WireGuardService();
 
@@ -105,7 +105,7 @@ class WireGuardTrafficService
                 ->setEndDate($endDate);
         }
 
-        $peers = $service->getClientPeers();
+        $peers = $service->getClientPeers($serverId);
 
         $traffics = [];
 

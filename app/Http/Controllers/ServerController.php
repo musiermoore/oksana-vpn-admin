@@ -53,7 +53,6 @@ class ServerController extends Controller
 
         return redirect()->back()
             ->with('success', 'Сервер успешно обновлён.');
-
     }
 
     /**

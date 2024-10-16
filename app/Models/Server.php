@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Server extends Model
 {
@@ -13,9 +14,10 @@ class Server extends Model
         'name',
         'code',
         'ip',
+        'app_path'
     ];
 
-    public function configs()
+    public function configs(): HasMany
     {
         return $this->hasMany(Config::class);
     }

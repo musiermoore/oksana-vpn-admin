@@ -15,6 +15,10 @@
             <label for="ip">IP</label>
             <input name="ip" id="ip" class="form-control" required value="{{ old('ip') }}">
         </div>
+        <div class="form-group">
+            <label for="app_path">Путь до приложения</label>
+            <input name="app_path" id="app_path" class="form-control" required value="{{ old('app_path') }}">
+        </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
 </x-layout>

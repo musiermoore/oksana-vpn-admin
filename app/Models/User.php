@@ -89,12 +89,12 @@ class User extends Authenticatable
             } else {
                 DB::rollBack();
             }
+
+            return $isCreated;
         } catch (Exception $exception) {
             DB::rollBack();
 
             return false;
         }
-
-        return true;
     }
 }

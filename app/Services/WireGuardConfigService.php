@@ -32,7 +32,6 @@ class WireGuardConfigService
 
             return true;
         } catch (Exception $exception) {
-            dd($exception->getMessage());
             return false;
         }
     }
@@ -44,7 +43,6 @@ class WireGuardConfigService
 
             return true;
         } catch (Exception $exception) {
-            dd($exception->getMessage());
             return false;
         }
     }
@@ -52,9 +50,7 @@ class WireGuardConfigService
     private function runFile($file): void
     {
         $process = new Process([
-            $this->server->ssh_command,
-            "{$this->server->app_path}/$file",
-            $this->name
+            "{$this->server->ssh_command} {$this->server->app_path}/$file $this->name",
         ]);
         $process->run();
     }

@@ -38,8 +38,10 @@ class WireGuardConfigService
 
     public function delete(): bool
     {
+        $this->runFile(self::WG_DELETE_CONFIG_FILE);
+
         try {
-            $this->runFile(self::WG_DELETE_CONFIG_FILE);
+
 
             return true;
         } catch (Exception $exception) {
@@ -55,5 +57,6 @@ class WireGuardConfigService
             $this->name
         ]);
         $process->run();
+        dd($process->getErrorOutput());
     }
 }

@@ -52,6 +52,7 @@ class WireGuardConfigService
         $process = new Process([
             "{$this->server->ssh_command} {$this->server->app_path}/$file $this->name",
         ]);
+        $process->setWorkingDirectory('/');
         $process->run();
     }
 }

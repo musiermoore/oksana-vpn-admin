@@ -42,7 +42,7 @@ class Config extends Model
 
     public function getPathAttribute()
     {
-        return storage_path("app/wireguard/clients-{$this->server->slug_code}/'$this->name.conf'");
+        return storage_path("app/wireguard/clients-{$this->server->slug_code}/$this->name.conf");
     }
 
     public function getLastTrafficAttribute()

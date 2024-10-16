@@ -51,9 +51,12 @@ class WireGuardService
         return $this;
     }
 
-    public function getContacts()
+    public function getContacts(int $serverId)
     {
-        return Config::with('user')->get()->keyBy('name');
+        return Config::with('user')
+            ->whereServerId($serverId)
+            ->get()
+            ->keyBy('name');
     }
 
     public function getWireguardHandshakes(Server $server)
@@ -129,24 +132,22 @@ class WireGuardService
         return $fileList;
     }
 
-    public function getClientPeers($serverId): Collection
+    public function getClientPeers(int $serverId): Collection
     {
-        $configPath = storage_path('app/configs/');
-
-        $servers = Server::all();
+        $server = Server::find($serverId);
 
         $clientPeers = [];
 
-        foreach ($servers as $server) {
-            $clientPeers = array_merge($clientPeers, $this->getWireguardHandshakes($server));
-        }
+        $configPath = storage_path('app/wireguard/clients-' . str($server->code)->lower());
 
-        $contacts = $this->getContacts();
-        $files = $this->listFilesInDirectory(storage_path('app/configs'));
+        $clientPeers = array_merge($clientPeers, $this->getWireguardHandshakes($server));
+
+        $contacts = $this->getContacts($serverId);
+        $files = $this->listFilesInDirectory($configPath);
 
         foreach ($files as $file) {
             try {
-                $fileContent = File::get($configPath . $file);
+                $fileContent = File::get($configPath . '/' . $file);
             } catch (\Exception $e) {
                 continue;
             }
@@ -191,8 +192,7 @@ class WireGuardService
                 $config = $item['config'] ?? null;
                 $trafficTypes = $config->last_traffic ?? [];
 
-                return $item['server']->id === $serverId && (
-                    !$this->filter
+                return !$this->filter
                     || (
                         (
                             !$this->userId
@@ -202,8 +202,7 @@ class WireGuardService
                             !empty($trafficTypes['sent'])
                             || !empty($trafficTypes['received'])
                         )
-                    )
-                );
+                    );
             })
             ->sortByDesc(function ($item) {
                 return $item['config']->sent_traffic ?? 0;

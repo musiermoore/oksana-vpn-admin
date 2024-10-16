@@ -25,11 +25,11 @@
                             <h5 class="card-title">{{ $peer['telegram'] }}</h5>
                             <p class="card-text">
                                 <strong>Последняя активность:</strong> <br />
-                                {{ $peer['latest_handshake'] }}
+                                {{ $peer['latest_handshake'] ?: '-' }}
                             </p>
                             <p class="card-text">
                                 <strong>Трафика использовано (Всего):</strong> <br />
-                                {{ $peer['transfer'] }}
+                                {{ $peer['transfer'] ?: '-' }}
                             </p>
                             @if (!empty($peer['config']->last_traffic))
                                 <p class="card-text">

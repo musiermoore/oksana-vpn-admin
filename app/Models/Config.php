@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WireGuardConfigService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -119,5 +120,15 @@ class Config extends Model
             'sent' => round($sent, 2) . ($formatted ? ' ' . $units[$sentUnit] : ''),
             'received' => round($received, 2) . ($formatted ? ' ' . $units[$receivedUnit] : '')
         ];
+    }
+
+    public function createWgConfig(): bool
+    {
+        return WireGuardConfigService::instance($this->server, $this->name)->create();
+    }
+
+    public function deleteWgConfig(): bool
+    {
+        return WireGuardConfigService::instance($this->server, $this->name)->delete();
     }
 }

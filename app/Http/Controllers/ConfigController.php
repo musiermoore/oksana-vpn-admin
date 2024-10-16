@@ -6,10 +6,11 @@ use App\Models\Config;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\UserToken;
+use DB;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Symfony\Component\Process\Process;
 
 class ConfigController extends Controller
 {
@@ -59,20 +60,20 @@ class ConfigController extends Controller
 
         $configs = $request->post('configs', []);
 
-        foreach ($configs as $config) {
-            $user->configs()->create($config);
+        $type = 'success';
+        $message = 'Конфиги успешно созданы';
 
-            $path = storage_path('create-wg-config.sh');
-            $process = new Process([
-                'bash',
-                $path,
-                $config['name']
-            ]);
-            $process->run();
+        foreach ($configs as $config) {
+            $result = $user->createConfig($config);
+
+            if (!$result) {
+                $type = 'error';
+                $message = 'Некоторые из конфигов не были созданы';
+            }
         }
 
         return redirect()->route('configs.index')
-            ->with('success', 'Конфиг успешно создан');
+            ->with($type, $message);
     }
 
     public function edit(Config $config)
@@ -96,7 +97,20 @@ class ConfigController extends Controller
 
     public function destroy(Config $config)
     {
-        $config->delete();
+        DB::beginTransaction();
+
+        try {
+            $config->deleteWgConfig();
+            $config->delete();
+
+            DB::commit();
+        } catch (Exception) {
+            DB::rollBack();
+
+            return redirect()->route('configs.index')
+                ->with('success', 'Ошибка при удалении конфига');
+        }
+
         return redirect()->route('configs.index')
             ->with('success', 'Конфиг успешно удалён');
     }
@@ -111,7 +125,7 @@ class ConfigController extends Controller
             $configBody = file_get_contents($config->path);
 
             return QrCode::size(600)->generate($configBody);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             abort(500);
         }
     }
@@ -124,7 +138,7 @@ class ConfigController extends Controller
 
         try {
             return response()->download($config->path, $config->name . '.conf');
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             abort(500);
         }
     }

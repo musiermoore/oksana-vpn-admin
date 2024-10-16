@@ -21,4 +21,9 @@ class Server extends Model
     {
         return $this->hasMany(Config::class);
     }
+
+    public function getSshCommandAttribute(): string
+    {
+        return "ssh root@{$this->ip}";
+    }
 }

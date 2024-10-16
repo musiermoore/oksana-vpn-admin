@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -73,5 +74,27 @@ class User extends Authenticatable
     public function getIsActiveAttribute(): bool
     {
         return empty($this->attributes['deleted_at']);
+    }
+
+    public function createConfig(array $config): bool
+    {
+        DB::beginTransaction();
+
+        try {
+            $config = $this->configs()->create($config);
+            $isCreated = $config->createWgConfig();
+
+            if ($isCreated) {
+                DB::commit();
+            } else {
+                DB::rollBack();
+            }
+        } catch (Exception) {
+            DB::rollBack();
+
+            return false;
+        }
+
+        return true;
     }
 }

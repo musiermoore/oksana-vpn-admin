@@ -4,12 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\Config;
 use App\Models\Traffic;
-use App\Services\WireGuardService;
 use App\Services\WireGuardTrafficService;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class DetectHighTraffic extends Command
@@ -43,6 +40,10 @@ class DetectHighTraffic extends Command
                 DB::raw($this->getTrafficColumn(WireGuardTrafficService::SENT_TYPE)),
                 DB::raw($this->getTrafficColumn(WireGuardTrafficService::RECEIVED_TYPE)),
             ])
+            ->leftJoin('high_traffic_logs', 'high_traffic_logs.config_id', '=', 'configs.id')
+            ->whereDoesntHave('highTrafficLogs', function ($query) {
+                $query->where('created_at', '>', now()->subMinutes(5));
+            })
             ->groupBy('configs.id')
             ->having(WireGuardTrafficService::SENT_TYPE . '_traffic_usage', '>=', $highLimit)
             ->orHaving(WireGuardTrafficService::RECEIVED_TYPE . '_traffic_usage', '>=', $highLimit)
@@ -53,11 +54,18 @@ class DetectHighTraffic extends Command
         foreach ($configs as $config) {
             if ($config['sent_traffic_usage'] > $highLimit) {
                 $size = $config['sent_traffic_usage'];
+                $type = WireGuardTrafficService::SENT_TYPE;
             } elseif ($config['received_traffic_usage'] > $highLimit) {
                 $size = $config['received_traffic_usage'];
+                $type = WireGuardTrafficService::RECEIVED_TYPE;
             } else {
                 continue;
             }
+
+            $config->highTrafficLogs()->create([
+                'type' => $type,
+                'amount' => $size
+            ]);
 
             $size = round($size / 1024 / 1024, 2);
 

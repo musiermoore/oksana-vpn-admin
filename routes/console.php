@@ -2,6 +2,8 @@
 
 use App\Console\Commands\CalculatePeersTraffic;
 use App\Console\Commands\DetectHighTraffic;
+use App\Console\Commands\RemoveOldTrafficLogs;
 
 Schedule::command(CalculatePeersTraffic::class)->everyMinute();
-Schedule::command(DetectHighTraffic::class)->everyThreeMinutes();
+Schedule::command(DetectHighTraffic::class)->everyMinute();
+Schedule::command(RemoveOldTrafficLogs::class)->everyMinute();

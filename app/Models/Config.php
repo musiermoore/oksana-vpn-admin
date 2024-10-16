@@ -33,6 +33,11 @@ class Config extends Model
         return $this->hasMany(Traffic::class);
     }
 
+    public function highTrafficLogs(): HasMany
+    {
+        return $this->hasMany(HighTrafficLog::class);
+    }
+
     public function getPathAttribute()
     {
         return storage_path('app/configs/' . $this->name . '.conf');

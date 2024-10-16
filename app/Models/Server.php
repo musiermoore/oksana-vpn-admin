@@ -24,6 +24,6 @@ class Server extends Model
 
     public function getSshCommandAttribute(): string
     {
-        return "ssh -o BatchMode=yes -o StrictHostKeyChecking=no root@{$this->ip}";
+        return "$(which ssh) -o BatchMode=yes -o StrictHostKeyChecking=no root@{$this->ip}";
     }
 }

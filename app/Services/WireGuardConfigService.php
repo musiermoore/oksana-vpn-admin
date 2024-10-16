@@ -31,7 +31,7 @@ class WireGuardConfigService
             $this->runFile(self::WG_CREATE_CONFIG_FILE);
 
             return true;
-        } catch (Exception) {
+        } catch (Exception $exception) {
             return false;
         }
     }
@@ -42,7 +42,7 @@ class WireGuardConfigService
             $this->runFile(self::WG_DELETE_CONFIG_FILE);
 
             return true;
-        } catch (Exception) {
+        } catch (Exception $exception) {
             return false;
         }
     }

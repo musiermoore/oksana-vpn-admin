@@ -187,11 +187,12 @@ class WireGuardService
 
         return collect($clientPeers)
             ->sortByDesc('latest_handshake')
-            ->filter(function ($item) {
+            ->filter(function ($item) use ($serverId) {
                 $config = $item['config'] ?? null;
                 $trafficTypes = $config->last_traffic ?? [];
 
-                return !$this->filter
+                return $item['server']->id === $serverId && (
+                    !$this->filter
                     || (
                         (
                             !$this->userId
@@ -201,7 +202,8 @@ class WireGuardService
                             !empty($trafficTypes['sent'])
                             || !empty($trafficTypes['received'])
                         )
-                    );
+                    )
+                );
             })
             ->sortByDesc(function ($item) {
                 return $item['config']->sent_traffic ?? 0;

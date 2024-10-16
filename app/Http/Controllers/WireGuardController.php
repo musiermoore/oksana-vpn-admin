@@ -17,7 +17,7 @@ class WireGuardController extends Controller
     {
         $servers = Server::get();
 
-        $selectedServerId = (int) $request->all('server_id', $servers->value('id'));
+        $selectedServerId = (int) $request->query('server_id', $servers->value('id'));
 
         $service = new WireGuardService();
         $peers = $service->sortByActive($selectedServerId);
@@ -33,7 +33,7 @@ class WireGuardController extends Controller
     {
         $users = User::get();
         $servers = Server::get();
-        $selectedServerId = (int) $request->all('server_id', $servers->value('id'));
+        $selectedServerId = (int) $request->query('server_id', $servers->value('id'));
 
         $service = new WireGuardService();
         $service

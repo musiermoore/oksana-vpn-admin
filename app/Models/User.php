@@ -101,6 +101,10 @@ class User extends Authenticatable
     public function hasDebt()
     {
         $user = self::query()
+            ->select([
+                'users.id', 'users.telegram',
+                DB::raw('SUM(current_payments.amount) AS payment_amount')
+            ])
             ->withSum('transactions', 'amount')
             ->leftJoin('current_payments', function ($join) {
                 $join
@@ -114,6 +118,6 @@ class User extends Authenticatable
             ->groupBy('users.id')
             ->find($this->id);
 
-        return max(0, $user->payment_amount - $user->transactions_sum_amount);
+        return max(0, $user->payment_amount - $user->transactions_sum_amount) > 0;
     }
 }

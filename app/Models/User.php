@@ -97,4 +97,23 @@ class User extends Authenticatable
             return false;
         }
     }
+
+    public function hasDebt()
+    {
+        $user = self::query()
+            ->withSum('transactions', 'amount')
+            ->leftJoin('current_payments', function ($join) {
+                $join
+                    ->where(function ($query) {
+                        $query
+                            ->where('start_date', '>=', DB::raw('users.join_at'))
+                            ->orWhereNull('join_at');
+                    })
+                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
+            })
+            ->groupBy('users.id')
+            ->find($this->id);
+
+        return max(0, $user->payment_amount - $user->transactions_sum_amount);
+    }
 }

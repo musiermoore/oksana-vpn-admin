@@ -42,6 +42,14 @@ class UserController extends Controller
             ], 404);
         }
 
+        if ($user->hasDebt()) {
+            return response()->json([
+                'user' => $user,
+                'type' => 'debt',
+                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+            ], 403);
+        }
+
         return response()->json([
             'user' => $user,
         ]);
@@ -56,6 +64,14 @@ class UserController extends Controller
                 'message' => "Я не вижу тебя в списках 😢\n\n"
                     . "Сообщи свой никнем @musiermoore"
             ], 404);
+        }
+
+        if ($user->hasDebt()) {
+            return response()->json([
+                'user' => $user,
+                'type' => 'debt',
+                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+            ], 403);
         }
 
         $config = $user->configs()
@@ -90,6 +106,14 @@ class UserController extends Controller
             ], 404);
         }
 
+        if ($user->hasDebt()) {
+            return response()->json([
+                'user' => $user,
+                'type' => 'debt',
+                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+            ], 403);
+        }
+
         $config = $user->configs()
             ->where('name', $config)
             ->first();
@@ -117,7 +141,7 @@ class UserController extends Controller
         }
     }
 
-    private function getUser($telegram)
+    private function getUser($telegram): ?User
     {
         return User::query()
             ->with([

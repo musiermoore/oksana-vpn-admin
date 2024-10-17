@@ -19,7 +19,7 @@ class UserController extends Controller
             return response()->json([
                 'message' =>
                     "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @musiermoore"
+                    . "Сообщи свой никнем @soussangler или @musiermoore"
             ], 404);
         }
 
@@ -38,7 +38,7 @@ class UserController extends Controller
                 'user' => null,
                 'message' =>
                     "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @musiermoore"
+                    . "Сообщи свой никнем @soussangler или @musiermoore"
             ], 404);
         }
 
@@ -62,7 +62,7 @@ class UserController extends Controller
         if (empty($user)) {
             return response()->json([
                 'message' => "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @musiermoore"
+                    . "Сообщи свой никнем @soussangler или @soussangler или @musiermoore"
             ], 404);
         }
 
@@ -81,7 +81,7 @@ class UserController extends Controller
         if (empty($config)) {
             return response()->json([
                 'message' => "Я не смогла найти такой конфиг ☹️\n\n"
-                    . "Сообщи об этом @musiermoore"
+                    . "Сообщи об этом @soussangler или @musiermoore"
             ], 404);
         }
 
@@ -90,7 +90,7 @@ class UserController extends Controller
         } catch (Exception $exception) {
             return response()->json([
                 'message' => "Что-то пошло не так 🤯️\n\n"
-                    . "Сообщи об этом @musiermoore"
+                    . "Сообщи об этом @soussangler или @musiermoore"
             ], 500);
         }
     }
@@ -102,7 +102,7 @@ class UserController extends Controller
         if (empty($user)) {
             return response()->json([
                 'message' => "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @musiermoore"
+                    . "Сообщи свой никнем @soussangler или @musiermoore"
             ], 404);
         }
 
@@ -121,7 +121,7 @@ class UserController extends Controller
         if (empty($config)) {
             return response()->json([
                 'message' => "Я не смогла найти такой конфиг ☹️\n\n"
-                    . "Сообщи об этом @musiermoore"
+                    . "Сообщи об этом @soussangler или @musiermoore"
             ], 404);
         }
 
@@ -136,7 +136,7 @@ class UserController extends Controller
         } catch (Exception $exception) {
             return response()->json([
                 'message' => "Что-то пошло не так 🤯️\n\n"
-                    . "Сообщи об этом @musiermoore"
+                    . "Сообщи об этом @soussangler или @musiermoore"
             ], 500);
         }
     }

@@ -10,6 +10,7 @@
         <tr>
             <th>Участник</th>
             <th>Конфиг</th>
+            <th>Адрес</th>
             <th>Ограничения</th>
         </tr>
         </thead>
@@ -18,6 +19,7 @@
             <tr>
                 <td>{{ $config->user->full_name }}</td>
                 <td>{{ $config->name }}</td>
+                <td>{{ str_replace('/24', '', $config->address) }}</td>
                 <td>
                     <div class="d-flex flex-column" style="gap: 5px">
                         @foreach ($config->limits as $limit)

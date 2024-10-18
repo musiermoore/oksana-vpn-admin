@@ -16,8 +16,8 @@
         <tbody>
         @foreach ($configs as $config)
             <tr>
-                <td>{{ $config->config->user->full_name }}</td>
-                <td>{{ $config->config->name }}</td>
+                <td>{{ $config->user->full_name }}</td>
+                <td>{{ $config->name }}</td>
                 <div class="d-flex flex-column" style="gap: 5px">
                     @foreach ($config->limits as $limit)
                         <div class="d-flex align-items-center justify-content-between" style="gap: 10px">

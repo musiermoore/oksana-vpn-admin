@@ -49,7 +49,7 @@ class WireGuardConfigService
     public function setLimit(int|string $limit): bool
     {
         try {
-            return $this->runFile(self::WG_SET_LIMIT_FILE, [str_replace('/24', '/32', $this->config->address), $limit]);
+            return $this->runFile(self::WG_SET_LIMIT_FILE, [str_replace('/24', '', $this->config->address), $limit]);
         } catch (Exception $exception) {
             return false;
         }
@@ -58,7 +58,7 @@ class WireGuardConfigService
     public function removeLimit(int|string $limit): bool
     {
         try {
-            return $this->runFile(self::WG_REMOVE_LIMIT_FILE, [str_replace('/24', '/32', $this->config->address), $limit]);
+            return $this->runFile(self::WG_REMOVE_LIMIT_FILE, [str_replace('/24', '', $this->config->address), $limit]);
         } catch (Exception $exception) {
             return false;
         }

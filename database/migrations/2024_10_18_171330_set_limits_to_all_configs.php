@@ -30,7 +30,7 @@ return new class extends Migration
                     ];
                 }
             } catch (Exception $exception) {
-
+                dump($exception->getMessage());
             }
         }
 

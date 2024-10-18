@@ -18,24 +18,26 @@
             <tr>
                 <td>{{ $config->user->full_name }}</td>
                 <td>{{ $config->name }}</td>
-                <div class="d-flex flex-column" style="gap: 5px">
-                    @foreach ($config->limits as $limit)
-                        <div class="d-flex align-items-center justify-content-between" style="gap: 10px">
-                            <div>
-                                {{ $limit->amount }} Мбит/с
+                <td>
+                    <div class="d-flex flex-column" style="gap: 5px">
+                        @foreach ($config->limits as $limit)
+                            <div class="d-flex align-items-center justify-content-between" style="gap: 10px">
+                                <div>
+                                    {{ $limit->amount }} Мбит/с
+                                </div>
+                                <div>
+                                    <form action="{{ route('limits.destroy', $limit->id) }}" method="POST" style="display:inline-block;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm js-remove_confirmation">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-                            <div>
-                                <form action="{{ route('limits.destroy', $limit->id) }}" method="POST" style="display:inline-block;">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger btn-sm js-remove_confirmation">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
+                        @endforeach
+                    </div>
+                </td>
             </tr>
         @endforeach
         </tbody>

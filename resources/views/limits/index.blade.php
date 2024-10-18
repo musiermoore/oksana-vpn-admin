@@ -9,6 +9,7 @@
         <thead>
         <tr>
             <th>Участник</th>
+            <th>Сервер</th>
             <th>Конфиг</th>
             <th>Адрес</th>
             <th>Ограничения</th>
@@ -18,6 +19,7 @@
         @foreach ($configs as $config)
             <tr>
                 <td>{{ $config->user->full_name }}</td>
+                <td>{{ $config->server->name }}</td>
                 <td>{{ $config->name }}</td>
                 <td>{{ str_replace('/24', '', $config->address) }}</td>
                 <td>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
+use App\Http\Controllers\LimitController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -21,6 +22,7 @@ Route::middleware(BasicAuth::class)->group(function () {
     Route::resource('transactions', TransactionController::class);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
+    Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
 
     Route::get('configs-wg/create', [ConfigController::class, 'createWg'])
         ->name('configs-wg.create');

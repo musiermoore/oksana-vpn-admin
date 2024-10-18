@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Config extends Model
 {
@@ -38,6 +39,11 @@ class Config extends Model
     public function highTrafficLogs(): HasMany
     {
         return $this->hasMany(HighTrafficLog::class);
+    }
+
+    public function limits(): HasMany
+    {
+        return $this->hasMany(Limit::class);
     }
 
     public function getPathAttribute()
@@ -125,11 +131,21 @@ class Config extends Model
 
     public function createWgConfig(): bool
     {
-        return WireGuardConfigService::instance($this->server, $this->name)->create();
+        return WireGuardConfigService::instance($this)->create();
     }
 
     public function deleteWgConfig(): bool
     {
-        return WireGuardConfigService::instance($this->server, $this->name)->delete();
+        return WireGuardConfigService::instance($this)->delete();
+    }
+
+    public function setSpeedLimit(int|string $limit): bool
+    {
+        return WireGuardConfigService::instance($this)->setLimit($limit);
+    }
+
+    public function removeSpeedLimit(int|string $limit): bool
+    {
+        return WireGuardConfigService::instance($this)->removeLimit($limit);
     }
 }

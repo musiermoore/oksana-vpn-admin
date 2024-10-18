@@ -2,33 +2,36 @@
 
 namespace App\Services;
 
+use App\Models\Config;
 use App\Models\Server;
 use Exception;
-use Symfony\Component\Process\Process;
 
 class WireGuardConfigService
 {
     public const WG_CREATE_CONFIG_FILE = 'create-wg-config.sh';
     public const WG_DELETE_CONFIG_FILE = 'delete-wg-config.sh';
 
-    private Server $server;
-    private string $name;
+    public const WG_SET_LIMIT_FILE = 'set-wg-limit.sh';
+    public const WG_REMOVE_LIMIT_FILE = 'remove-wg-limit.sh';
 
-    public function __construct(Server $server, string $name)
+    private Server $server;
+    private Config $config;
+
+    public function __construct(Config $config)
     {
-        $this->server = $server;
-        $this->name = $name;
+        $this->config = $config;
+        $this->server = $config->server;
     }
 
-    public static function instance(Server $server, string $name): WireGuardConfigService
+    public static function instance(Config $config): WireGuardConfigService
     {
-        return new self($server, $name);
+        return new self($config);
     }
 
     public function create(): bool
     {
         try {
-            return $this->runFile(self::WG_CREATE_CONFIG_FILE);
+            return $this->runFile(self::WG_CREATE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
             return false;
         }
@@ -37,15 +40,35 @@ class WireGuardConfigService
     public function delete(): bool
     {
         try {
-            return $this->runFile(self::WG_DELETE_CONFIG_FILE);
+            return $this->runFile(self::WG_DELETE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
             return false;
         }
     }
 
-    private function runFile($file): bool
+    public function setLimit(int|string $limit): bool
     {
-        $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $this->name";
+        try {
+            return $this->runFile(self::WG_SET_LIMIT_FILE, [$this->address, $limit]);
+        } catch (Exception $exception) {
+            return false;
+        }
+    }
+
+    public function removeLimit(int|string $limit): bool
+    {
+        try {
+            return $this->runFile(self::WG_REMOVE_LIMIT_FILE, [$this->address, $limit]);
+        } catch (Exception $exception) {
+            return false;
+        }
+    }
+
+    private function runFile($file, array $params = []): bool
+    {
+        $inlineParams = implode(' ', $params);
+
+        $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $inlineParams";
 
         exec($command, $output, $result);
 

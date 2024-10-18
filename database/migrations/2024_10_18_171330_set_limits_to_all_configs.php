@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Limit;
+use App\Models\Config;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -22,7 +23,7 @@ return new class extends Migration
             try {
                 $result = $config->setSpeedLimit(30);
 
-                if ($result === 0) {
+                if ($result) {
                     $limits[] = [
                         'config_id' => $config->id,
                         'amount' => 30

@@ -16,6 +16,8 @@ class LimitController extends Controller
         $configs = Config::query()
             ->withWhereHas('limits')
             ->with(['user', 'server'])
+            ->orderBy('user_id')
+            ->orderBy('server_id')
             ->get();
 
         return view('limits.index', compact('configs'));

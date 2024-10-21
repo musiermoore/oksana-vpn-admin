@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Config;
 use App\Models\Server;
 use Exception;
+use File;
+use Illuminate\Support\Facades\Storage;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class WireGuardConfigService
@@ -40,6 +42,10 @@ class WireGuardConfigService
 
     public function delete(): bool
     {
+        if (! File::exists($this->config->path)) {
+            return true;
+        }
+
         try {
             return $this->runFile(self::WG_DELETE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
@@ -76,6 +82,7 @@ class WireGuardConfigService
         $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $inlineParams";
 
         exec($command, $output, $result);
+        dd($command, $output, $result);
 
         return $result === 0;
     }

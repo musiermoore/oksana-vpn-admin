@@ -100,13 +100,13 @@ class ConfigController extends Controller
         try {
             if (! $config->deleteWgConfig()) {
                 return redirect()->route('configs.index')
-                    ->with('success', 'Ошибка при удалении конфига');
+                    ->with('error', 'Ошибка при удалении конфига');
             }
 
             $config->delete();
         } catch (Exception) {
             return redirect()->route('configs.index')
-                ->with('success', 'Ошибка при удалении конфига');
+                ->with('error', 'Ошибка при удалении конфига');
         }
 
         return redirect()->route('configs.index')

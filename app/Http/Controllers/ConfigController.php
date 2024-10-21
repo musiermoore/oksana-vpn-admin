@@ -100,7 +100,13 @@ class ConfigController extends Controller
         DB::beginTransaction();
 
         try {
-            $config->deleteWgConfig();
+            if ($config->deleteWgConfig()) {
+                DB::rollBack();
+
+                return redirect()->route('configs.index')
+                    ->with('success', 'Ошибка при удалении конфига');
+            }
+
             $config->delete();
 
             DB::commit();

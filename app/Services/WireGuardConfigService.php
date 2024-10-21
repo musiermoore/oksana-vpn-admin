@@ -43,6 +43,7 @@ class WireGuardConfigService
         try {
             return $this->runFile(self::WG_DELETE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
+            dd($exception);
             return false;
         }
     }
@@ -76,6 +77,7 @@ class WireGuardConfigService
         $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $inlineParams";
 
         exec($command, $output, $result);
+        dump($command, $output, $result);
 
         return $result === 0;
     }

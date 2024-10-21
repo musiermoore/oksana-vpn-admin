@@ -100,7 +100,7 @@ class ConfigController extends Controller
         DB::beginTransaction();
 
         try {
-            if ($config->deleteWgConfig()) {
+            if (! $config->deleteWgConfig()) {
                 DB::rollBack();
 
                 return redirect()->route('configs.index')

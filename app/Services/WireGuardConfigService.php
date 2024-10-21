@@ -55,8 +55,6 @@ class WireGuardConfigService
 
         exec($command, $output, $result);
 
-        dd($output);
-
         return $result === 0 && in_array('File exists', $output);
     }
 

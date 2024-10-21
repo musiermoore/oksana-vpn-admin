@@ -42,17 +42,22 @@ class WireGuardConfigService
 
     public function delete(): bool
     {
-        if (! File::exists($this->config->path)) {
-            return true;
-        }
-
-        dd(File::exists($this->config->path), $this->config->path);
-
         try {
-            return $this->runFile(self::WG_DELETE_CONFIG_FILE, [$this->config->name]);
+            return ! $this->fileExists($this->config->name) || $this->runFile(self::WG_DELETE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
             return false;
         }
+    }
+
+    public function fileExists($file): bool
+    {
+        $command = "{$this->server->ssh_command} '[ -f /opt/beget/wireguard/clients/$file.conf ] && echo \"File exists\" || echo \"false\"'";
+
+        exec($command, $output, $result);
+
+        dd($output);
+
+        return $result === 0 && in_array('File exists', $output);
     }
 
     public function setLimit(int|string $limit): bool

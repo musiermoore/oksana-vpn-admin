@@ -31,6 +31,6 @@ class Server extends Model
     {
         $sshKeyPath = '/var/www/html/storage/ssh_key';
 
-        return "timeout 30 $(which ssh) -i $sshKeyPath -o BatchMode=yes -o StrictHostKeyChecking=no root@{$this->ip} 2>&1";
+        return "timeout 15 $(which ssh) -i $sshKeyPath -o BatchMode=yes -o StrictHostKeyChecking=no root@{$this->ip} 2>&1";
     }
 }

@@ -77,7 +77,7 @@ class WireGuardConfigService
         $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $inlineParams";
 
         exec($command, $output, $result);
-        dump($command, $output, $result);
+        dd($command, $output, $result);
 
         return $result === 0;
     }

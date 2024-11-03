@@ -31,8 +31,12 @@ class BasicAuth
 
     private function isUnauthorized(): bool
     {
-        $AUTH_USER = 'latvia';
-        $AUTH_PASS = 'ponosio';
+        $AUTH_USER = config('auth.basic_auth.login');
+        $AUTH_PASS = config('auth.basic_auth.password');
+
+        if (empty($AUTH_USER) || empty($AUTH_PASS)) {
+            return true;
+        }
 
         return empty($_SERVER['PHP_AUTH_USER'])
             || empty($_SERVER['PHP_AUTH_PW'])

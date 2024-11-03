@@ -82,6 +82,10 @@ class WireGuardConfigService
 
     private function runFile($file, array $params = []): bool
     {
+        if (config('app.env') !== 'production') {
+            return true;
+        }
+
         $inlineParams = implode(' ', $params);
 
         $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $inlineParams";

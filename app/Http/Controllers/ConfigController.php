@@ -10,6 +10,7 @@ use DB;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Log;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ConfigController extends Controller
@@ -124,6 +125,7 @@ class ConfigController extends Controller
 
             return QrCode::size(600)->generate($configBody);
         } catch (Exception $exception) {
+            Log::error($exception->getMessage());
             abort(500);
         }
     }
@@ -137,6 +139,7 @@ class ConfigController extends Controller
         try {
             return response()->download($config->path, $config->name . '.conf');
         } catch (Exception $exception) {
+            Log::error($exception->getMessage());
             abort(500);
         }
     }

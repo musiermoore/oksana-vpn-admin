@@ -35,7 +35,7 @@ class BasicAuth
         $AUTH_PASS = config('auth.basic_auth.password');
 
         if (empty($AUTH_USER) || empty($AUTH_PASS)) {
-            return true;
+            return false;
         }
 
         return empty($_SERVER['PHP_AUTH_USER'])

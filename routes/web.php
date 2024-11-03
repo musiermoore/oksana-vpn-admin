@@ -24,10 +24,10 @@ Route::middleware(BasicAuth::class)->group(function () {
     Route::resource('servers', ServerController::class);
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
 
-    Route::get('configs-wg/create', [ConfigController::class, 'createWg'])
-        ->name('configs-wg.create');
-    Route::post('configs-wg', [ConfigController::class, 'storeWg'])
-        ->name('configs-wg.store');
+    Route::get('configs/create-bulk', [ConfigController::class, 'createBulk'])
+        ->name('configs.create-bulk');
+    Route::post('configs/bulk', [ConfigController::class, 'storeBulk'])
+        ->name('configs.store-bulk');
 });
 
 Route::get('configs/{userToken:token}', [UserController::class, 'configs'])

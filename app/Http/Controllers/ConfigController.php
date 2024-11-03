@@ -77,6 +77,50 @@ class ConfigController extends Controller
             ->with('success', 'Конфиги успешно созданы');
     }
 
+    public function createBulk()
+    {
+        $servers = Server::get();
+
+        return view('configs.create-bulk', compact('servers'));
+    }
+
+    public function storeBulk(Request $request)
+    {
+        $server = Server::find($request->server_id);
+
+        $users = User::query()
+            ->with('configs')
+            ->whereDoesntHave('configs', function ($query) use ($server) {
+                $query->where('server_id', '=', $server->id);
+            })
+            ->get();
+
+        $errorConfigs = [];
+
+        foreach ($users as $user) {
+            $telegram = str_replace('@', '', $user->telegram);
+
+            $config = [
+                'name' => $telegram . '_' . $server->code,
+                'server_id' => $server->id,
+            ];
+
+            $success = $user->createConfig($config);
+
+            if (!$success) {
+                $errorConfigs[] = $config['name'];
+            }
+        }
+
+        if ($errorConfigs) {
+            return redirect()->back()
+                ->with('error', 'Некоторые из конфигов не были созданы: ' . implode(', ', $errorConfigs));
+        }
+
+        return redirect()->route('configs.index')
+            ->with('success', 'Конфиги успешно созданы');
+    }
+
     public function edit(Config $config)
     {
         $users = User::get();

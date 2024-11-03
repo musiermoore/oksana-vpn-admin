@@ -2,6 +2,7 @@
     <div class="d-flex justify-content-between mb-3">
         <h1>Конфиги</h1>
         <div>
+            <a href="{{ route('configs.create-bulk') }}" class="btn btn-primary">Массовое создание</a>
             <a href="{{ route('configs.create') }}" class="btn btn-primary">Создать</a>
         </div>
     </div>

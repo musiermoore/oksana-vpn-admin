@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserTokenController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Middleware\BasicAuth;
+use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [WireGuardController::class, 'activePeers'])->name('wireguard.active-peers');
@@ -37,3 +38,11 @@ Route::get('configs/{userToken:token}/{config}/download', [ConfigController::cla
     ->name('users.configs.download');
 Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::class, 'qrCode'])
     ->name('users.configs.qr-code');
+
+
+// Inertia
+Route::middleware(HandleInertiaRequests::class)->prefix('vue')->name('vue.')->group(function () {
+    Route::middleware(BasicAuth::class)->group(function () {
+        Route::resource('users', \App\Http\Controllers\Inertia\UserController::class);
+    });
+});

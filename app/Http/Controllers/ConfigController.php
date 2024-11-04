@@ -181,7 +181,10 @@ class ConfigController extends Controller
         }
 
         try {
-            return response()->download($config->path, $config->name . '.conf');
+            return response()->download(
+                $config->path,
+                preg_replace('/[^a-zA-Z0-9]/', '', $config->name) . '.conf'
+            );
         } catch (Exception $exception) {
             Log::error($exception->getMessage());
             abort(500);

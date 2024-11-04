@@ -15,7 +15,7 @@ docker run -v ${PWD}:/dir -w /dir composer composer install --ignore-platform-re
 
 ### Отключение Basic Auth
 
-Необходимости убрать login и password
+При необходимости убрать login и password
 ```.dotenv
 BASIC_AUTH_LOGIN=login
 BASIC_AUTH_PASSWORD=password

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Telegram\Bot\Laravel\Facades\Telegram;
 
 class TransactionController extends Controller
 {
@@ -61,6 +62,23 @@ class TransactionController extends Controller
     public function approve(Transaction $transaction)
     {
         $transaction->update(['is_approved' => true]);
+
+        Telegram::sendMessage([
+            'chat_id' => $transaction->user->telegram_id,
+            'text' => "Баланс пополнен на $transaction->amount"
+        ]);
+
+        return redirect()->route('transactions.index');
+    }
+
+    public function decline(Transaction $transaction)
+    {
+        $transaction->delete();
+
+        Telegram::sendMessage([
+            'chat_id' => $transaction->user->telegram_id,
+            'text' => "Пополнение баланса на $transaction->amount отклонено"
+        ]);
 
         return redirect()->route('transactions.index');
     }

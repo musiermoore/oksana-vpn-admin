@@ -31,6 +31,8 @@ Route::middleware(BasicAuth::class)->group(function () {
 
     Route::post('transactions/{transaction}/approve', [TransactionController::class, 'approve'])
         ->name('transactions.approve');
+    Route::post('transactions/{transaction}/decline', [TransactionController::class, 'decline'])
+        ->name('transactions.decline');
 });
 
 Route::get('configs/{userToken:token}', [UserController::class, 'configs'])

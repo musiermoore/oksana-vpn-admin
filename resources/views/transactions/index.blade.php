@@ -43,7 +43,7 @@
                                     <i class="fa-solid fa-check"></i>
                                 </button>
                             </form>
-                            <form method="POST" action="{{ route('transactions.destroy', $transaction->id) }}" style="display:inline-block;">
+                            <form method="POST" action="{{ route('transactions.decline', $transaction->id) }}" style="display:inline-block;">
                                 @csrf
                                 @method('DELETE')
                                 <button

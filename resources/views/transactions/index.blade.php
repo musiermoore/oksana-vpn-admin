@@ -10,6 +10,7 @@
         <tr>
             <th>Участник</th>
             <th>Сумма</th>
+            <th>Сумма</th>
             <th>Действия</th>
         </tr>
         </thead>
@@ -24,6 +25,7 @@
                     @endif
                 </td>
                 <td>{{ $transaction->amount }}</td>
+                <td>{{ $transaction->formatted_created_at }}</td>
                 <td>
                     <a href="{{ route('transactions.edit', $transaction->id) }}" class="btn btn-warning btn-sm"><i class="fa-solid fa-pen-to-square"></i></a>
                     <form action="{{ route('transactions.destroy', $transaction->id) }}" method="POST" style="display:inline-block;">

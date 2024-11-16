@@ -13,6 +13,7 @@ class Transaction extends Model
     protected $fillable = [
         'user_id',
         'amount',
+        'is_approved'
     ];
 
     public function user()

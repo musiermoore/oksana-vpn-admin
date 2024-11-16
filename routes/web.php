@@ -28,6 +28,9 @@ Route::middleware(BasicAuth::class)->group(function () {
         ->name('configs.create-bulk');
     Route::post('configs/bulk', [ConfigController::class, 'storeBulk'])
         ->name('configs.store-bulk');
+
+    Route::post('transactions/{transaction}/approve', [TransactionController::class, 'approve'])
+        ->name('transactions.approve');
 });
 
 Route::get('configs/{userToken:token}', [UserController::class, 'configs'])

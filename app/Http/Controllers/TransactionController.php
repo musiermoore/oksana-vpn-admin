@@ -11,9 +11,19 @@ class TransactionController extends Controller
     public function index()
     {
         $transactions = Transaction::with('user')
+            ->whereIsApproved(true)
             ->latest()
             ->get();
-        return view('transactions.index', compact('transactions'));
+
+        $pendingTransactions = Transaction::with('user')
+            ->whereIsApproved(false)
+            ->latest()
+            ->get();
+
+        return view('transactions.index', compact(
+            'transactions',
+            'pendingTransactions'
+        ));
     }
 
     public function create()
@@ -45,6 +55,13 @@ class TransactionController extends Controller
     public function destroy(Transaction $transaction)
     {
         $transaction->delete();
+        return redirect()->route('transactions.index');
+    }
+
+    public function approve(Transaction $transaction)
+    {
+        $transaction->update(['is_approved' => true]);
+
         return redirect()->route('transactions.index');
     }
 }

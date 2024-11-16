@@ -37,7 +37,8 @@ class TransactionController
 
         Telegram::sendMessage([
             'chat_id' => $devChatId,
-            'text' => "$user->full_name пополнил баланс на $transaction->amount ($request->bank)"
+            'text' => "@musiermoore @soussangler\n\n"
+                . "$user->full_name пополнил баланс на $transaction->amount ($request->bank)."
         ]);
 
         return response()->json([

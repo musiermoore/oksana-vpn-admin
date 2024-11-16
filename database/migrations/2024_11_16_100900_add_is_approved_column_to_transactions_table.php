@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('transactions', function (Blueprint $table) {
-            $table->boolean('is_approved')->default(false);
+            $table->boolean('is_approved')->default(false)->after('amount');
         });
 
         DB::table('transactions')->update(['is_approved' => true]);

@@ -4,16 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\UserApiService;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class UserController extends Controller
 {
     public function balance($telegram)
     {
-        $user = $this->getUser($telegram);
+        $user = UserApiService::instance($telegram)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -31,7 +31,7 @@ class UserController extends Controller
 
     public function getUserConfigs($telegram)
     {
-        $user = $this->getUser($telegram);
+        $user = UserApiService::instance($telegram)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -57,7 +57,7 @@ class UserController extends Controller
 
     public function downloadConfig($telegram, $config)
     {
-        $user = $this->getUser($telegram);
+        $user = UserApiService::instance($telegram)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -97,7 +97,7 @@ class UserController extends Controller
 
     public function downloadQrCode($telegram, $config)
     {
-        $user = $this->getUser($telegram);
+        $user = UserApiService::instance($telegram)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -139,35 +139,6 @@ class UserController extends Controller
                     . "Сообщи об этом @soussangler или @musiermoore"
             ], 500);
         }
-    }
-
-    private function getUser($telegram): ?User
-    {
-        return User::query()
-            ->with([
-                'configs' => function ($query) {
-                    $query->select([
-                        'id', 'user_id', 'name'
-                    ]);
-                }
-            ])
-            ->select([
-                'users.id', 'users.telegram',
-                DB::raw('SUM(current_payments.amount) + users.extra_payment AS payment_amount')
-            ])
-            ->withSum('transactions', 'amount')
-            ->leftJoin('current_payments', function ($join) {
-                $join
-                    ->where(function ($query) {
-                        $query
-                            ->where('start_date', '>=', DB::raw('users.join_at'))
-                            ->orWhereNull('join_at');
-                    })
-                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
-            })
-            ->whereTelegram('@' . $telegram)
-            ->groupBy('users.id')
-            ->first();
     }
 
     public function saveTelegramId(Request $request, $telegram)

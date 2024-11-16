@@ -73,11 +73,14 @@ class TransactionController extends Controller
 
     public function decline(Transaction $transaction)
     {
+        $amount = $transaction->amount;
+        $telegramId = $transaction->user->telegram_id;
+
         $transaction->delete();
 
         Telegram::sendMessage([
-            'chat_id' => $transaction->user->telegram_id,
-            'text' => "Пополнение баланса на $transaction->amount отклонено"
+            'chat_id' => $telegramId,
+            'text' => "Пополнение баланса на $amount отклонено"
         ]);
 
         return redirect()->route('transactions.index');

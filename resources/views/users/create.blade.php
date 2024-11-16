@@ -11,6 +11,10 @@
             <input type="text" name="telegram" id="telegram" class="form-control" value="{{ old('telegram') }}" required>
         </div>
         <div class="form-group">
+            <label for="extra_payment">Доп. оплата</label>
+            <input type="number" name="extra_payment" id="extra_payment" class="form-control" value="{{ old('extra_payment') }}" required>
+        </div>
+        <div class="form-group">
             <label for="description">Описание</label>
             <textarea name="description" id="description" class="form-control">{{ old('description') }}</textarea>
         </div>

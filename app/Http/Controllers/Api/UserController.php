@@ -153,7 +153,7 @@ class UserController extends Controller
             ])
             ->select([
                 'users.id', 'users.telegram',
-                DB::raw('SUM(current_payments.amount) AS payment_amount')
+                DB::raw('SUM(current_payments.amount) + users.extra_payment AS payment_amount')
             ])
             ->withSum('transactions', 'amount')
             ->leftJoin('current_payments', function ($join) {

@@ -15,7 +15,7 @@ class UserController extends Controller
         $users = User::query()
             ->select([
                 'users.*',
-                DB::raw('SUM(amount) - users.extra_payment AS payment_amount')
+                DB::raw('SUM(amount) + users.extra_payment AS payment_amount')
             ])
             ->withSum('transactions', 'amount')
             ->leftJoin('current_payments', function ($join) {

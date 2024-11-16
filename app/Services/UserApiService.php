@@ -30,7 +30,7 @@ class UserApiService
                 }
             ])
             ->select([
-                'users.id', 'users.telegram',
+                'users.id', 'users.telegram', 'users.name',
                 DB::raw('SUM(current_payments.amount) + users.extra_payment AS payment_amount')
             ])
             ->withSum('transactions', 'amount')

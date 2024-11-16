@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Transaction;
+use App\Models\User;
 use App\Services\UserApiService;
 use Exception;
 use Illuminate\Http\Request;
@@ -33,13 +34,14 @@ class TransactionController
             ], 500);
         }
 
-        $devChatId = "-4543488848";
+        $adminUserIds = User::whereIsAdmin(true)->pluck('telegram_id');
 
-        Telegram::sendMessage([
-            'chat_id' => $devChatId,
-            'text' => "@musiermoore @soussangler\n\n"
-                . "$user->full_name пополнил баланс на $transaction->amount ($request->bank)."
-        ]);
+        foreach ($adminUserIds as $chatId) {
+            Telegram::sendMessage([
+                'chat_id' => $chatId,
+                'text' => "$user->full_name пополнил баланс на $transaction->amount ($request->bank)."
+            ]);
+        }
 
         return response()->json([
             'message' => "Запрос на пополнение $transaction->amount ($request->bank) отправлен."

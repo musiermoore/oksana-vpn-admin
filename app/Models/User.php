@@ -23,7 +23,9 @@ class User extends Authenticatable
         'telegram',
         'telegram_id',
         'description',
-        'join_at'
+        'join_at',
+        'extra_payment',
+        'is_admin'
     ];
 
     /**

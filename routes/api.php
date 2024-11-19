@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
@@ -15,4 +16,7 @@ Route::name('api.')->middleware(BasicAuth::class)->group(function () {
         ->name('users.balance');
     Route::post('users/{telegram}/save-id', [UserController::class, 'saveTelegramId'])
         ->name('users.save-telegram-id');
+
+    Route::post('users/{telegram}/transactions', [TransactionController::class, 'store'])
+        ->name('users.transactions.store');
 });

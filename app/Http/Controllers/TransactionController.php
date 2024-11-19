@@ -5,13 +5,26 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Telegram\Bot\Laravel\Facades\Telegram;
 
 class TransactionController extends Controller
 {
     public function index()
     {
-        $transactions = Transaction::with('user')->get();
-        return view('transactions.index', compact('transactions'));
+        $transactions = Transaction::with('user')
+            ->whereIsApproved(true)
+            ->latest()
+            ->get();
+
+        $pendingTransactions = Transaction::with('user')
+            ->whereIsApproved(false)
+            ->latest()
+            ->get();
+
+        return view('transactions.index', compact(
+            'transactions',
+            'pendingTransactions'
+        ));
     }
 
     public function create()
@@ -43,6 +56,33 @@ class TransactionController extends Controller
     public function destroy(Transaction $transaction)
     {
         $transaction->delete();
+        return redirect()->route('transactions.index');
+    }
+
+    public function approve(Transaction $transaction)
+    {
+        $transaction->update(['is_approved' => true]);
+
+        Telegram::sendMessage([
+            'chat_id' => $transaction->user->telegram_id,
+            'text' => "Баланс пополнен на $transaction->amount"
+        ]);
+
+        return redirect()->route('transactions.index');
+    }
+
+    public function decline(Transaction $transaction)
+    {
+        $amount = $transaction->amount;
+        $telegramId = $transaction->user->telegram_id;
+
+        $transaction->delete();
+
+        Telegram::sendMessage([
+            'chat_id' => $telegramId,
+            'text' => "Пополнение баланса на $amount отклонено"
+        ]);
+
         return redirect()->route('transactions.index');
     }
 }

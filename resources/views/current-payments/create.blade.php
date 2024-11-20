@@ -15,7 +15,7 @@
         </div>
         <div class="form-group">
             <label for="amount">Сумма</label>
-            <input type="number" step="0.01" name="amount" id="amount" class="form-control" value="{{ \App\Models\CurrentPayment::getHostingPrice() }}" required>
+            <input type="number" step="0.01" name="amount" id="amount" class="form-control" value="" required>
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>

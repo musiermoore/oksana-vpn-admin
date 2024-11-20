@@ -11,6 +11,16 @@ export default defineConfig({
         }),
         vue()
     ],
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        watch: {
+            ignored: [
+                '**/node_modules/**',
+                '**/vendor/**',
+            ],
+        },
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, 'resources/js'),

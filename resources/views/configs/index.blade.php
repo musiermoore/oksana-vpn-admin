@@ -31,7 +31,7 @@
                                     {{ $config->server->code }}: {{ $config->name }}
                                 </a>
 
-                                <div class="d-flex align-items-center">
+                                <div class="d-flex align-items-center" style="gap: 5px;">
                                     <form
                                         action="{{ route($config->is_active ? 'configs.disable' : 'configs.enable', $config->id) }}"
                                         method="POST"

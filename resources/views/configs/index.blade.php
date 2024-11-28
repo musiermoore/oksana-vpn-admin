@@ -30,7 +30,8 @@
                                 <a href="{{ route('configs.edit', $config->id) }}">
                                     {{ $config->server->code }}: {{ $config->name }}
                                 </a>
-                                <div>
+
+                                <div class="d-flex align-items-center">
                                     <form
                                         action="{{ route($config->is_active ? 'configs.disable' : 'configs.enable', $config->id) }}"
                                         method="POST"
@@ -47,8 +48,7 @@
                                             ></i>
                                         </button>
                                     </form>
-                                </div>
-                                <div>
+
                                     <form action="{{ route('configs.destroy', $config->id) }}" method="POST" style="display:inline-block;">
                                         @csrf
                                         @method('DELETE')

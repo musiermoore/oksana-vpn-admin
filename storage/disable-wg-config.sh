@@ -21,6 +21,6 @@ echo "Disabling peer: $peer_name"
 sed -i "/^# BEGIN_PEER $peer_name$/,/^# END_PEER $peer_name$/ s/^/#DISABLED /" "$config_file"
 
 # Remove the peer from the live WireGuard interface
-wg set wg0 peer "$(grep -A 1 "^#DISABLED # BEGIN_PEER $peer_name$" "$config_file" | grep PublicKey | cut -d ' ' -f 3)" remove
+wg set wg0 peer "$(grep -A 1 "^#DISABLED # BEGIN_PEER $peer_name$" "$config_file" | grep PublicKey | sed 's/^#DISABLED //' | cut -d ' ' -f 3)" remove
 
 echo "Peer $peer_name has been disabled."

@@ -5,14 +5,14 @@ namespace App\Services;
 use App\Models\Config;
 use App\Models\Server;
 use Exception;
-use File;
-use Illuminate\Support\Facades\Storage;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class WireGuardConfigService
 {
     public const WG_CREATE_CONFIG_FILE = 'create-wg-config.sh';
     public const WG_DELETE_CONFIG_FILE = 'delete-wg-config.sh';
+    public const WG_ENABLE_CONFIG_FILE = 'enable-wg-config.sh';
+    public const WG_DISABLE_CONFIG_FILE = 'disable-wg-config.sh';
 
     public const WG_SET_LIMIT_FILE = 'set-wg-limit.sh';
     public const WG_REMOVE_LIMIT_FILE = 'remove-wg-limit.sh';
@@ -44,6 +44,24 @@ class WireGuardConfigService
     {
         try {
             return ! $this->fileExists($this->config->name) || $this->runFile(self::WG_DELETE_CONFIG_FILE, [$this->config->name]);
+        } catch (Exception $exception) {
+            return false;
+        }
+    }
+
+    public function enable(): bool
+    {
+        try {
+            return ! $this->fileExists($this->config->name) || $this->runFile(self::WG_ENABLE_CONFIG_FILE, [$this->config->name]);
+        } catch (Exception $exception) {
+            return false;
+        }
+    }
+
+    public function disable(): bool
+    {
+        try {
+            return ! $this->fileExists($this->config->name) || $this->runFile(self::WG_DISABLE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
             return false;
         }

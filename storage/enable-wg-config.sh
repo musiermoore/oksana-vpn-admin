@@ -10,7 +10,7 @@ fi
 
 # Extract the public key for the given peer
 public_key=$(sed -n "/^#DISABLED # BEGIN_PEER $peer_name$/,/^#DISABLED # END_PEER $peer_name$/p" "$config_file" | grep PublicKey | sed -E 's/^#DISABLED[ ]*//' | sed -E 's/^[ ]*PublicKey = //')
-echo $public_key
+
 if [[ -z "$public_key" ]]; then
     echo "Error: Failed to find a valid public key for peer $peer_name in $config_file."
     exit 1

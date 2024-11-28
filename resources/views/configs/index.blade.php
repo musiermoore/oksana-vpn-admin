@@ -40,7 +40,7 @@
                                         @csrf
                                         <button
                                             type="submit"
-                                            class="btn btn-danger btn-sm"
+                                            @class(['btn btn-sm', $config->is_active ? 'btn-danger' : 'btn-success'])
                                             title="{{ $config->is_active ? 'Отключить' : 'Включить' }} конфиг"
                                         >
                                             <i

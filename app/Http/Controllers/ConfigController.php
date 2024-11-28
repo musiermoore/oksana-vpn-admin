@@ -179,7 +179,7 @@ class ConfigController extends Controller
     public function disable(Config $config)
     {
         try {
-            if (! $config->deleteWgConfig()) {
+            if (! $config->disableWgConfig()) {
                 return redirect()->route('configs.index')
                     ->with('error', 'Ошибка при включении конфига');
             }

@@ -18,6 +18,7 @@ class Config extends Model
         'user_id',
         'name',
         'description',
+        'is_active'
     ];
 
     public function user(): BelongsTo
@@ -137,6 +138,16 @@ class Config extends Model
     public function deleteWgConfig(): bool
     {
         return WireGuardConfigService::instance($this)->delete();
+    }
+
+    public function enableWgConfig(): bool
+    {
+        return WireGuardConfigService::instance($this)->enable();
+    }
+
+    public function disableWgConfig(): bool
+    {
+        return WireGuardConfigService::instance($this)->disable();
     }
 
     public function setSpeedLimit(int|string $limit): bool

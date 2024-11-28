@@ -31,6 +31,24 @@
                                     {{ $config->server->code }}: {{ $config->name }}
                                 </a>
                                 <div>
+                                    <form
+                                        action="{{ route($config->is_active ? 'configs.disable' : 'configs.enable', $config->id) }}"
+                                        method="POST"
+                                        style="display:inline-block;"
+                                    >
+                                        @csrf
+                                        <button
+                                            type="submit"
+                                            class="btn btn-danger btn-sm"
+                                            title="{{ $config->is_active ? 'Отключить' : 'Включить' }} конфиг"
+                                        >
+                                            <i
+                                                @class(['fa-solid', $config->is_active ? 'fa-ban' : 'fa-heart-pulse'])
+                                            ></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <div>
                                     <form action="{{ route('configs.destroy', $config->id) }}" method="POST" style="display:inline-block;">
                                         @csrf
                                         @method('DELETE')

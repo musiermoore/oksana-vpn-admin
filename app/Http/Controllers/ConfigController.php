@@ -158,6 +158,42 @@ class ConfigController extends Controller
             ->with('success', 'Конфиг успешно удалён');
     }
 
+    public function enable(Config $config)
+    {
+        try {
+            if (! $config->enableWgConfig()) {
+                return redirect()->route('configs.index')
+                    ->with('error', 'Ошибка при отключении конфига');
+            }
+
+            $config->update(['is_active' => true]);
+        } catch (Exception) {
+            return redirect()->route('configs.index')
+                ->with('error', 'Ошибка при отключении конфига');
+        }
+
+        return redirect()->route('configs.index')
+            ->with('success', 'Конфиг успешно отключён');
+    }
+
+    public function disable(Config $config)
+    {
+        try {
+            if (! $config->deleteWgConfig()) {
+                return redirect()->route('configs.index')
+                    ->with('error', 'Ошибка при включении конфига');
+            }
+
+            $config->update(['is_active' => false]);
+        } catch (Exception) {
+            return redirect()->route('configs.index')
+                ->with('error', 'Ошибка при включении конфига');
+        }
+
+        return redirect()->route('configs.index')
+            ->with('success', 'Конфиг успешно включён');
+    }
+
     public function qrCode(Request $request, UserToken $userToken, Config $config)
     {
         if (! $userToken->validateToken($request->password)) {

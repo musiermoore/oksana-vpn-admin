@@ -28,6 +28,10 @@ Route::middleware(BasicAuth::class)->group(function () {
         ->name('configs.create-bulk');
     Route::post('configs/bulk', [ConfigController::class, 'storeBulk'])
         ->name('configs.store-bulk');
+    Route::post('configs/{config}/enable', [ConfigController::class, 'enable'])
+        ->name('configs.enable');
+    Route::post('configs/{config}/disable', [ConfigController::class, 'disable'])
+        ->name('configs.disable');
 
     Route::post('transactions/{transaction}/approve', [TransactionController::class, 'approve'])
         ->name('transactions.approve');

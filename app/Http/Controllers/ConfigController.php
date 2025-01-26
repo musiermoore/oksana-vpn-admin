@@ -154,7 +154,7 @@ class ConfigController extends Controller
                 ->with('error', 'Ошибка при удалении конфига');
         }
 
-        return redirect()->route('configs.index')
+        return redirect()->back()
             ->with('success', 'Конфиг успешно удалён');
     }
 
@@ -172,7 +172,7 @@ class ConfigController extends Controller
                 ->with('error', 'Ошибка при включении конфига');
         }
 
-        return redirect()->route('configs.index')
+        return redirect()->back()
             ->with('success', 'Конфиг успешно включён');
     }
 
@@ -190,7 +190,7 @@ class ConfigController extends Controller
                 ->with('error', 'Ошибка при отключении конфига');
         }
 
-        return redirect()->route('configs.index')
+        return redirect()->back()
             ->with('success', 'Конфиг успешно отключён');
     }
 

@@ -56,7 +56,7 @@ class TransactionController extends Controller
     public function destroy(Transaction $transaction)
     {
         $transaction->delete();
-        return redirect()->route('transactions.index');
+        return redirect()->back();
     }
 
     public function approve(Transaction $transaction)
@@ -68,7 +68,7 @@ class TransactionController extends Controller
             'text' => "Баланс пополнен на $transaction->amount"
         ]);
 
-        return redirect()->route('transactions.index');
+        return redirect()->back();
     }
 
     public function decline(Transaction $transaction)
@@ -83,6 +83,6 @@ class TransactionController extends Controller
             'text' => "Пополнение баланса на $amount отклонено"
         ]);
 
-        return redirect()->route('transactions.index');
+        return redirect()->back();
     }
 }

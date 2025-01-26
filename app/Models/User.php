@@ -122,4 +122,24 @@ class User extends Authenticatable
 
         return max(0, $user->payment_amount - $user->transactions_sum_amount) > 0;
     }
+
+    public function createDefaultConfigs(): bool
+    {
+        $success = true;
+
+        $servers = Server::all();
+
+        $configs = $servers->map(fn($server) => [
+            'name' => str_replace('@', '', $this->telegram) . '_' . $server->code,
+            'server_id' => $server->id,
+            'user_id' => $this->id,
+            'is_active' => true,
+        ]);
+
+        foreach ($configs as $config) {
+            $success = $this->createConfig($config);
+        }
+
+        return $success;
+    }
 }

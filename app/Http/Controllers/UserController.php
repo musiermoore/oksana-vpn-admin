@@ -35,19 +35,37 @@ class UserController extends Controller
 
     public function create()
     {
-        $payments = CurrentPayment::select(['start_date', 'amount'])->get();
+        $payments = CurrentPayment::select(['start_date', 'amount'])
+            ->orderByDesc('start_date')
+            ->get();
+
         return view('users.create', compact('payments'));
     }
 
     public function store(Request $request)
     {
-        User::create($request->post());
+        $user = User::create($request->post());
+
+        if ($request->boolean('create_configs')) {
+            $user->createDefaultConfigs();
+        }
+
         return redirect()->route('users.index');
     }
 
     public function edit(User $user)
     {
-        $payments = CurrentPayment::select(['start_date', 'amount'])->get();
+        $payments = CurrentPayment::select(['start_date', 'amount'])
+            ->orderByDesc('start_date')
+            ->get();
+
+        $user->load([
+            'transactions' => function ($query) {
+                $query->latest();
+            },
+            'configs'
+        ]);
+
         return view('users.edit', compact('user', 'payments'));
     }
 

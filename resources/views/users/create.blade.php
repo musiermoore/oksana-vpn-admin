@@ -12,7 +12,7 @@
         </div>
         <div class="form-group">
             <label for="extra_payment">Доп. оплата</label>
-            <input type="number" name="extra_payment" id="extra_payment" class="form-control" value="{{ old('extra_payment') }}" required>
+            <input type="number" name="extra_payment" id="extra_payment" class="form-control" value="{{ old('extra_payment', 0) }}" required>
         </div>
         <div class="form-group">
             <label for="description">Описание</label>
@@ -31,6 +31,15 @@
                 @endforeach
             </select>
         </div>
+
+        <div class="form-group d-flex">
+            <label>
+                <input type="checkbox" name="create_configs" checked>
+                Создать дефолтные конфиги
+            </label>
+
+        </div>
+
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
 </x-layout>

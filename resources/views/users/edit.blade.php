@@ -32,6 +32,104 @@
                 @endforeach
             </select>
         </div>
+
         <button type="submit" class="btn btn-primary">Сохранить</button>
     </form>
+
+    <div>
+        <div class="d-flex justify-content-between">
+            <h2>Конфиги</h2>
+            <div>
+                <a href="{{ route('configs.create') }}" class="btn btn-primary">Создать</a>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column mb-3" style="gap: 5px;">
+            @foreach ($user->configs as $config)
+                <div class="d-flex align-items-center justify-content-between" style="gap: 10px">
+                    <a href="{{ route('configs.edit', $config->id) }}">
+                        {{ $config->server->code }}: {{ $config->name }}
+                    </a>
+
+                    <div class="d-flex align-items-center" style="gap: 5px;">
+                        <form
+                            action="{{ route($config->is_active ? 'configs.disable' : 'configs.enable', $config->id) }}"
+                            method="POST"
+                            style="display:inline-block;"
+                        >
+                            @csrf
+                            <button
+                                type="submit"
+                                @class(['btn btn-sm', $config->is_active ? 'btn-danger' : 'btn-success'])
+                                title="{{ $config->is_active ? 'Отключить' : 'Включить' }} конфиг"
+                                formmethod="POST"
+                                formaction="{{ route($config->is_active ? 'configs.disable' : 'configs.enable', $config->id) }}"
+                            >
+                                <i
+                                    @class(['fa-solid', $config->is_active ? 'fa-ban' : 'fa-heart-pulse'])
+                                ></i>
+                            </button>
+                        </form>
+
+                        <form action="{{ route('configs.destroy', $config->id) }}" method="POST" style="display:inline-block;">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-danger btn-sm js-remove_confirmation">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="d-flex justify-content-between mb-3">
+            <h2>Транзакции</h2>
+            <div>
+                <a href="{{ route('transactions.create') }}" class="btn btn-primary">Создать</a>
+            </div>
+        </div>
+
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Сумма</th>
+                <th>Дата</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach ($user->transactions as $transaction)
+                <tr>
+                    <td>{{ $transaction->amount }}</td>
+                    <td>{{ $transaction->formatted_created_at }}</td>
+                    <td>
+                        <form method="POST" action="{{ route('transactions.approve', $transaction->id) }}" style="display:inline-block;">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="btn btn-success btn-sm"
+                                formmethod="POST"
+                                formaction="{{ route('transactions.approve', $transaction->id) }}"
+                            >
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('transactions.decline', $transaction->id) }}" style="display:inline-block;">
+                            @csrf
+                            @method('DELETE')
+                            <button
+                                type="submit"
+                                class="btn btn-danger btn-sm js-remove_confirmation"
+                                formaction="{{ route('transactions.decline', $transaction->id) }}"
+                            >
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
+    </div>
 </x-layout>

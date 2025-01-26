@@ -63,7 +63,6 @@ class ConfigController extends Controller
 
         $success = true;
 
-        dd($configs);
         foreach ($configs as $config) {
             $success = $user->createConfig($config);
         }

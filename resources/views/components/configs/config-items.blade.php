@@ -1,4 +1,4 @@
-@props(['configs', 'files'])
+@props(['configs', 'files', 'servers'])
 
 <div x-data="{ configs: @json($configs ?: [[]]), existing: false }">
     <label>
@@ -16,6 +16,14 @@
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </h4>
+            <div class="form-group">
+                <label :for="'name' + index">Сервер *</label>
+                <select :name="`configs[${index}][server_id]`" :id="'server_id' + index" x-model="config.server_id" class="form-control" required>
+                    @foreach ($servers as $server)
+                        <option value="{{ $server->id }}">{{ $server->name }} ({{ $server->ip }})</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="form-group">
                 <label :for="'name' + index">Имя *</label>
                 <template x-if="existing">

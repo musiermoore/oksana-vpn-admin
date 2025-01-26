@@ -5,13 +5,7 @@
         @method('PUT')
         <div class="form-group">
             <label for="server_id">Cервер</label>
-            <select name="server_id" id="server_id" class="form-control" required>
-                @foreach ($servers as $server)
-                    <option value="{{ $server->id }}" @selected($config->server_id == $server->id)>
-                        {{ $server->name }} ({{ $server->ip }})
-                    </option>
-                @endforeach
-            </select>
+            <input type="text" disabled value="{{ $config->server->name }}">
         </div>
         <div class="form-group">
             <label for="user_id">Участник</label>

@@ -28,6 +28,8 @@ class UserController extends Controller
                     ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
             })
             ->groupBy('users.id')
+            ->orderByRaw('GREATEST(0, IFNULL(payment_amount, 0) - IFNULL(transactions_sum_amount, 0)) DESC')
+            ->orderBy('created_at')
             ->get();
 
         return view('users.index', compact('users'));

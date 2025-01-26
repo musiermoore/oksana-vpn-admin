@@ -1,9 +1,13 @@
 <x-layout title="Транзакции">
-    <div class="d-flex justify-content-between mb-3">
+    <div class="d-flex justify-content-between">
         <h1>Транзакции</h1>
         <div>
             <a href="{{ route('transactions.create') }}" class="btn btn-primary">Создать</a>
         </div>
+    </div>
+
+    <div class="mb-2">
+        Баланс: {{ $balance }}
     </div>
 
     @if ($pendingTransactions->isNotEmpty())

@@ -30,7 +30,7 @@ class DetectHighTraffic extends Command
      */
     public function handle()
     {
-        $highLimitInMb = 500;
+        $highLimitInMb = 750;
         $highLimit = $highLimitInMb * 1024 * 1024;
 
         $configs = Config::query()

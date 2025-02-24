@@ -73,14 +73,14 @@ class DetectHighTraffic extends Command
 
             Telegram::sendMessage([
                 'chat_id' => $devChatId,
-                'text' => $user->full_name . " даёт джаззу больше $highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
+                'text' => $user->full_name . " ($config->name) даёт джаззу больше $highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
             ]);
 
             if (!empty($user->telegram_id)) {
                 Telegram::sendMessage([
                     'chat_id' => $user->telegram_id,
                     'text' => "Привет! Ты используешь слишком много трафика. "
-                        . "Проверь, вдруг у тебя что-то качается"
+                        . "Проверь, вдруг у тебя что-то качается. Конфиг: $config->name"
                 ]);
             }
         }

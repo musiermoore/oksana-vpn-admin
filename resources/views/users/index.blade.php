@@ -27,8 +27,8 @@
                 <td>{{ $user->telegram }}</td>
                 <td>{{ $user->name }}</td>
                 <td>{{ $user->description }}</td>
-                <td>{{ max(0, $user->transactions_sum_amount - $user->payment_amount) }}</td>
-                <td>{{ max(0, $user->payment_amount - $user->transactions_sum_amount) }}</td>
+                <td>{{ max(0, $user->approved_transactions_sum_amount - $user->payment_amount) }}</td>
+                <td>{{ max(0, $user->payment_amount - $user->approved_transactions_sum_amount) }}</td>
                 <td>
                     <a href="{{ route('users.edit', $user->id) }}" class="btn btn-warning btn-sm"><i class="fa-solid fa-pen-to-square"></i></a>
                     <form action="{{ route('users.destroy', $user->id) }}" method="POST" style="display:inline-block;">

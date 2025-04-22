@@ -67,6 +67,12 @@ class User extends Authenticatable
         return $this->hasMany(Transaction::class);
     }
 
+    public function approvedTransactions()
+    {
+        return $this->transactions()
+            ->where('transactions.is_approved', '=', true);
+    }
+
     public function getFullNameAttribute(): string
     {
         return $this->attributes['telegram']

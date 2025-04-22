@@ -20,7 +20,7 @@ class UserController extends Controller
                 'users.*',
                 DB::raw('SUM(amount) + users.extra_payment AS payment_amount')
             ])
-            ->withSum('transactions', 'amount')
+            ->withSum('approvedTransactions', 'amount')
             ->leftJoin('current_payments', function ($join) {
                 $join
                     ->where(function ($query) {
@@ -33,7 +33,7 @@ class UserController extends Controller
             ->when(!$onlyInactive && ! $getAll, fn ($query) => $query->where('users.is_active', '=', true))
             ->when($onlyInactive, fn ($query) => $query->where('users.is_active', '=', false))
             ->groupBy('users.id')
-            ->orderByRaw('GREATEST(0, IFNULL(payment_amount, 0) - IFNULL(transactions_sum_amount, 0)) DESC')
+            ->orderByRaw('GREATEST(0, IFNULL(payment_amount, 0) - IFNULL(approved_transactions_sum_amount, 0)) DESC')
             ->orderBy('created_at')
             ->get();
 

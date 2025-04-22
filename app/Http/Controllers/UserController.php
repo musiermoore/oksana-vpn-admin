@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $getAll = $request->boolean('all');
+        $onlyInactive = $request->boolean('inactive');
+
         $users = User::query()
             ->select([
                 'users.*',
@@ -27,6 +30,8 @@ class UserController extends Controller
                     })
                     ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
             })
+            ->when(!$onlyInactive && ! $getAll, fn ($query) => $query->where('users.is_active', '=', true))
+            ->when($onlyInactive, fn ($query) => $query->where('users.is_active', '=', false))
             ->groupBy('users.id')
             ->orderByRaw('GREATEST(0, IFNULL(payment_amount, 0) - IFNULL(transactions_sum_amount, 0)) DESC')
             ->orderBy('created_at')

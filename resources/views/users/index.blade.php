@@ -5,6 +5,11 @@
             <a href="{{ route('users.create') }}" class="btn btn-primary">Добавить</a>
         </div>
     </div>
+    <div>
+        <a href="{{ route('users.index', ['all' => true]) }}">Все</a>
+        <a href="{{ route('users.index') }}">Активные</a>
+        <a href="{{ route('users.index', ['inactive' => true]) }}">Неактивные</a>
+    </div>
     <table class="table">
         <thead>
         <tr>

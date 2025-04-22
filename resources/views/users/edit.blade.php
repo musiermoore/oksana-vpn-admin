@@ -3,6 +3,12 @@
     <form action="{{ route('users.update', $user->id) }}" method="POST">
         @csrf
         @method('PUT')
+
+        <div class="form-group">
+            <input type="hidden" name="is_active" class="form-control" value="0">
+            <input type="checkbox" name="is_active" id="is_active" class="" value="1" @checked(old('is_active', $user->is_active))>
+            <label for="is_active">Активен</label>
+        </div>
         <div class="form-group">
             <label for="name">Имя</label>
             <input type="text" name="name" id="name" class="form-control" value="{{ old('name', $user->name) }}" required>

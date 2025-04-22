@@ -25,7 +25,8 @@ class User extends Authenticatable
         'description',
         'join_at',
         'extra_payment',
-        'is_admin'
+        'is_admin',
+        'is_active'
     ];
 
     /**

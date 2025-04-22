@@ -104,28 +104,39 @@
                     <td>{{ $transaction->amount }}</td>
                     <td>{{ $transaction->formatted_created_at }}</td>
                     <td>
-                        <form method="POST" action="{{ route('transactions.approve', $transaction->id) }}" style="display:inline-block;">
-                            @csrf
-                            <button
-                                type="submit"
-                                class="btn btn-success btn-sm"
-                                formmethod="POST"
-                                formaction="{{ route('transactions.approve', $transaction->id) }}"
-                            >
-                                <i class="fa-solid fa-check"></i>
-                            </button>
-                        </form>
-                        <form method="POST" action="{{ route('transactions.decline', $transaction->id) }}" style="display:inline-block;">
-                            @csrf
-                            @method('DELETE')
-                            <button
-                                type="submit"
-                                class="btn btn-danger btn-sm js-remove_confirmation"
-                                formaction="{{ route('transactions.decline', $transaction->id) }}"
-                            >
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </form>
+                        @if ($transaction->is_approved)
+                            <a href="{{ route('transactions.edit', $transaction->id) }}" class="btn btn-warning btn-sm" target="_blank"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <form action="{{ route('transactions.destroy', $transaction->id) }}" method="POST" style="display:inline-block;">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger btn-sm js-remove_confirmation">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('transactions.approve', $transaction->id) }}" style="display:inline-block;">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="btn btn-success btn-sm"
+                                    formmethod="POST"
+                                    formaction="{{ route('transactions.approve', $transaction->id) }}"
+                                >
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ route('transactions.decline', $transaction->id) }}" style="display:inline-block;">
+                                @csrf
+                                @method('DELETE')
+                                <button
+                                    type="submit"
+                                    class="btn btn-danger btn-sm js-remove_confirmation"
+                                    formaction="{{ route('transactions.decline', $transaction->id) }}"
+                                >
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </form>
+                        @endif
                     </td>
                 </tr>
             @endforeach

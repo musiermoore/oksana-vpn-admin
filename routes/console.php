@@ -8,4 +8,4 @@ use App\Console\Commands\RemoveOldTrafficLogs;
 Schedule::command(CalculatePeersTraffic::class)->everyMinute();
 Schedule::command(DetectHighTraffic::class)->everyMinute();
 Schedule::command(RemoveOldTrafficLogs::class)->everyMinute();
-Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->daily();
+Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyThirtyMinutes();

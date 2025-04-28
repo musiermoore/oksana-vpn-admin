@@ -147,6 +147,11 @@ class UserController extends Controller
             'telegram_id' => $request->telegram_id
         ]);
 
+        User::whereTelegramId($request->telegram_id)
+            ->update([
+                'telegram' => '@' . $telegram
+            ]);
+
         return response(200);
     }
 }

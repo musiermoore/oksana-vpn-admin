@@ -28,7 +28,7 @@ class WireGuardUserService
                 'user' => null,
                 'message' =>
                     "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler или @musiermoore"
+                    . "Сообщи свой никнем @soussangler"
             ], 404);
         }
 

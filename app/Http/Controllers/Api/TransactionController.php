@@ -18,7 +18,7 @@ class TransactionController
         if (empty($user)) {
             return response()->json([
                 'message' => "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler или @musiermoore"
+                    . "Сообщи свой никнем @soussangler"
             ], 404);
         }
 
@@ -30,7 +30,7 @@ class TransactionController
         } catch (Exception $exception) {
             return response()->json([
                 'message' => "Что-то пошло не так. "
-                    . "Сообщи свой никнем @soussangler или @musiermoore"
+                    . "Сообщи свой никнем @soussangler"
             ], 500);
         }
 

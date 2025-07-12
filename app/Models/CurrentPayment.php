@@ -28,8 +28,13 @@ class CurrentPayment extends Model
         return Carbon::parse($this->attributes['end_date'])->format('d.m.Y');
     }
 
+    public function getFullDateAttribute()
+    {
+        return $this->formatted_start_date . ' - ' . $this->formatted_end_date;
+    }
+
     public static function getHostingPrice(): int
     {
-        return ceil(self::HOSTING_PRICE / User::count());
+        return 50;
     }
 }

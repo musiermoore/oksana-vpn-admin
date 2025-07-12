@@ -25,7 +25,7 @@
                         {{ $payment->user->full_name }}
                     @endif
                 </td>
-                <td>{{ $payment->currentPayment->formatted_start_date }} - {{ $payment->currentPayment->formatted_end_date }}</td>
+                <td>{{ $payment->currentPayment->full_date }}</td>
                 <td>{{ $payment->amount }}</td>
                 <td>
                     <form action="{{ route('extra-payments.destroy', $payment->id) }}" method="POST" style="display:inline-block;">

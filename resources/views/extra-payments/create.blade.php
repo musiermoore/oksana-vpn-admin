@@ -16,7 +16,7 @@
             <select name="user_id" id="user_id" class="form-control" required>
                 @foreach ($currentPayments as $currentPayment)
                     <option value="{{ $currentPayment->id }}">
-                        {{ $currentPayment->formatted_start_date }} - {{ $currentPayment->formatted_end_date }}
+                        {{ $currentPayment->full_date }}
                         @if ($currentPayment->id === $activePeriodId)
                             (Активный)
                         @endif

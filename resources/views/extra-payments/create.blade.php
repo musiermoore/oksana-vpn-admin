@@ -12,8 +12,8 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="user_id">Период</label>
-            <select name="user_id" id="user_id" class="form-control" required>
+            <label for="current_payment_id">Период</label>
+            <select name="current_payment_id" id="current_payment_id" class="form-control" required>
                 @foreach ($currentPayments as $currentPayment)
                     <option value="{{ $currentPayment->id }}">
                         {{ $currentPayment->full_date }}

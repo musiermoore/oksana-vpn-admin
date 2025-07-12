@@ -7,6 +7,7 @@
                 <li class="nav-item"><a class="nav-link" href="{{ route('configs.index') }}">Конфиги</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('transactions.index') }}">Транзакции</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('current-payments.index') }}">Периоды оплаты</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ route('extra-payments.index') }}">Доп. оплаты</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('servers.index') }}">Серверы</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('wireguard.traffic') }}">Трафик</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ route('limits.index') }}">Ограничения</a></li>

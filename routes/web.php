@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
+use App\Http\Controllers\ExtraPaymentController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
@@ -23,6 +24,7 @@ Route::middleware(BasicAuth::class)->group(function () {
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
+    Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
 
     Route::get('configs/create-bulk', [ConfigController::class, 'createBulk'])
         ->name('configs.create-bulk');

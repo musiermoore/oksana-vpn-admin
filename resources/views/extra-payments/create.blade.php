@@ -1,10 +1,11 @@
 <x-layout title="Создание транзакции">
     <h1>Создание транзакции</h1>
-    <form action="{{ route('transactions.store') }}" method="POST">
+    <form action="{{ route('extra-payments.store') }}" method="POST">
         @csrf
         <div class="form-group">
             <label for="user_id">Участник</label>
             <select name="user_id" id="user_id" class="form-control" required>
+                <option value="">Участник не выбран</option>
                 @foreach ($users as $user)
                     <option value="{{ $user->id }}">{{ $user->full_name }}</option>
                 @endforeach

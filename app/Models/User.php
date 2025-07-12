@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -71,6 +72,11 @@ class User extends Authenticatable
     {
         return $this->transactions()
             ->where('transactions.is_approved', '=', true);
+    }
+
+    public function extraPayments(): HasMany
+    {
+        return $this->hasMany(UserExtraPayment::class);
     }
 
     public function getFullNameAttribute(): string

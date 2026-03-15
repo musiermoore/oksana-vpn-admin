@@ -6,11 +6,11 @@ use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
 
 Route::name('api.')->middleware(BasicAuth::class)->group(function () {
-    Route::get('users/{telegram}/configs', [UserController::class, 'getUserConfigs'])
+    Route::get('users/{telegram}/{type}/configs', [UserController::class, 'getUserConfigs'])
         ->name('users.configs');
-    Route::get('users/{telegram}/configs/{config}/download', [UserController::class, 'downloadConfig'])
+    Route::get('users/{telegram}/configs/{type}/{config}/download', [UserController::class, 'downloadConfig'])
         ->name('users.configs.download');
-    Route::get('users/{telegram}/configs/{config}/qr-code', [UserController::class, 'downloadQrCode'])
+    Route::get('users/{telegram}/configs/{type}/{config}/qr-code', [UserController::class, 'downloadQrCode'])
         ->name('users.configs.qr-code');
     Route::get('users/{telegram}/balance', [UserController::class, 'balance'])
         ->name('users.balance');

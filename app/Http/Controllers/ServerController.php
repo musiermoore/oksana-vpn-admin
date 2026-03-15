@@ -49,7 +49,13 @@ class ServerController extends Controller
      */
     public function update(Request $request, Server $server)
     {
-        $server->update($request->post());
+        $data = $request->post();
+
+        if (empty($data['ssh_private_key'])) {
+            unset($data['ssh_private_key']);
+        }
+
+        $server->update($data);
 
         return redirect()->back()
             ->with('success', 'Сервер успешно обновлён.');

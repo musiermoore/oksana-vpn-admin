@@ -14,7 +14,10 @@ class Server extends Model
         'name',
         'code',
         'ip',
-        'app_path'
+        'app_path',
+        'ssh_private_key',
+        'ssh_public_key',
+        'is_vless',
     ];
 
     public function configs(): HasMany

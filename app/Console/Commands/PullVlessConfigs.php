@@ -109,6 +109,8 @@ class PullVlessConfigs extends Command
                     'updated_at' => now()
                 ];
 
+                unset($vlessConfig['user_id']);
+
                 VlessConfigModel::query()->updateOrCreate([
                     'server_id' => $server->id,
                     'uuid' => $client['id'] ?? null,

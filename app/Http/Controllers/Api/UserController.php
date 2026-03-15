@@ -29,13 +29,13 @@ class UserController extends Controller
         ]);
     }
 
-    public function getUserConfigs($telegram)
+    public function getUserConfigs($telegram, $type)
     {
         $user = UserApiService::instance($telegram)->getUser();
 
         if (empty($user)) {
             return response()->json([
-                'user' => null,
+                'configs' => [],
                 'message' =>
                     "Я не вижу тебя в списках 😢\n\n"
                     . "Сообщи свой никнем @soussangler"
@@ -44,18 +44,22 @@ class UserController extends Controller
 
         if ($user->hasDebt()) {
             return response()->json([
-                'user' => $user,
+                'configs' => [],
                 'type' => 'debt',
                 'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
             ], 403);
         }
 
+        $configs = $type === 'vless'
+            ? $user->vlessConfigs
+            : $user->configs;
+
         return response()->json([
-            'user' => $user,
+            'configs' => $configs,
         ]);
     }
 
-    public function downloadConfig($telegram, $config)
+    public function downloadConfig($telegram, $type, $config)
     {
         $user = UserApiService::instance($telegram)->getUser();
 
@@ -68,13 +72,16 @@ class UserController extends Controller
 
         if ($user->hasDebt()) {
             return response()->json([
-                'user' => $user,
                 'type' => 'debt',
                 'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
             ], 403);
         }
 
-        $config = $user->configs()
+        $query = $type === 'vless'
+            ? $user->vlessConfigs()
+            : $user->configs();
+
+        $config = $query
             ->where('name', $config)
             ->first();
 
@@ -86,16 +93,18 @@ class UserController extends Controller
         }
 
         try {
-            return response()->download($config->path, $config->name . '.conf');
+            return $type === 'vless'
+                ? response($config->getLink())
+                : response()->download($config->path, $config->name . '.conf');
         } catch (Exception $exception) {
             return response()->json([
                 'message' => "Что-то пошло не так 🤯️\n\n"
-                    . "Сообщи об этом @soussangler"
+                    . "Сообщи об этом @soussangler" . $exception->getMessage()
             ], 500);
         }
     }
 
-    public function downloadQrCode($telegram, $config)
+    public function downloadQrCode($telegram, $type, $config)
     {
         $user = UserApiService::instance($telegram)->getUser();
 
@@ -114,19 +123,25 @@ class UserController extends Controller
             ], 403);
         }
 
-        $config = $user->configs()
+        $query = $type === 'vless'
+            ? $user->vlessConfigs()
+            : $user->configs();
+
+        $configN = $config;
+        $config = $query
             ->where('name', $config)
             ->first();
 
         if (empty($config)) {
             return response()->json([
-                'message' => "Я не смогла найти такой конфиг ☹️\n\n"
-                    . "Сообщи об этом @soussangler"
+//                'message' => "Я не смогла найти такой конфиг ☹️\n\n"
+//                    . "Сообщи об этом @soussangler"
+                'message' => $type . ' ' . $configN
             ], 404);
         }
 
         try {
-            $configBody = file_get_contents($config->path);
+            $configBody = $config->getQrCodeContent();
 
             $png = QrCode::format('png')->margin(5)->size(512)->generate($configBody);
 

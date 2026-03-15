@@ -58,6 +58,11 @@ class User extends Authenticatable
         return $this->hasMany(Config::class);
     }
 
+    public function vlessConfigs()
+    {
+        return $this->hasMany(VlessConfig::class);
+    }
+
     public function tokens()
     {
         return $this->hasMany(UserToken::class);

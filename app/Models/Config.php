@@ -159,4 +159,9 @@ class Config extends Model
     {
         return WireGuardConfigService::instance($this)->removeLimit($limit);
     }
+
+    public function getQrCodeContent(): string
+    {
+        return (string) file_get_contents($this->path);
+    }
 }

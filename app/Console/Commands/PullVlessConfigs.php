@@ -73,6 +73,8 @@ class PullVlessConfigs extends Command
             return;
         }
 
+        $uuids = [];
+
         foreach ($data as $row) {
             try {
                 $settings = json_decode($row['settings'], true);
@@ -85,6 +87,8 @@ class PullVlessConfigs extends Command
                 ->filter(fn($client) => !empty($client['enable']));
 
             foreach ($clients as $client) {
+                if ($client['email'] === 'musiermoore-mac') dd($client);
+
                 $config = new VlessConfig(
                     $server->id,
                     null,
@@ -96,6 +100,7 @@ class PullVlessConfigs extends Command
                     $streamSettings['network'],
                     'none',
                     $streamSettings['security'],
+                    $client['flow'],
                     $streamSettings['realitySettings']['settings']['publicKey'],
                     $streamSettings['realitySettings']['settings']['fingerprint'],
                     $streamSettings['realitySettings']['serverNames'][0] ?? null,
@@ -111,12 +116,23 @@ class PullVlessConfigs extends Command
 
                 unset($vlessConfig['user_id']);
 
+                $uuid = $client['id'] ?? null;
+
+                $uuids[] = $uuid;
+
                 VlessConfigModel::query()->updateOrCreate([
                     'server_id' => $server->id,
-                    'uuid' => $client['id'] ?? null,
+                    'uuid' => $uuid,
                     'name' => $client['email'] ?? null,
                 ], $vlessConfig);
             }
+        }
+
+        if ($uuids) {
+            VlessConfigModel::query()
+                ->where('server_id', '=', $server->id)
+                ->whereNotIn('uuid', $uuids)
+                ->delete();
         }
     }
 }

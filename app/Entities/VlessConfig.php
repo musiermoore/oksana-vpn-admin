@@ -19,6 +19,7 @@ class VlessConfig
         private ?string $type = null,
         private ?string $encryption = null,
         private ?string $security = null,
+        private ?string $flow = null,
 
         private ?string $pbk = null,
         private ?string $fp = null,
@@ -47,6 +48,7 @@ class VlessConfig
         $config->setType($data['type'] ?? null);
         $config->setEncryption($data['encryption'] ?? null);
         $config->setSecurity($data['security'] ?? null);
+        $config->setFlow($data['flow'] ?? null);
 
         $config->setPbk($data['pbk'] ?? null);
         $config->setFp($data['fp'] ?? null);
@@ -70,6 +72,7 @@ class VlessConfig
             'type' => $this->type,
             'encryption' => $this->encryption,
             'security' => $this->security,
+            'flow' => $this->flow,
             'pbk' => $this->pbk,
             'fp' => $this->fp,
             'sni' => $this->sni,
@@ -185,6 +188,17 @@ class VlessConfig
     public function setSecurity(?string $security): self
     {
         $this->security = $security;
+        return $this;
+    }
+
+    public function getFlow(): ?string
+    {
+        return $this->flow;
+    }
+
+    public function setFlow(?string $flow): self
+    {
+        $this->flow = $flow;
         return $this;
     }
 

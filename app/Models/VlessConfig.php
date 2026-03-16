@@ -22,6 +22,7 @@ class VlessConfig extends Model
         'type',
         'encryption',
         'security',
+        'flow',
 
         'pbk',
         'fp',

@@ -59,7 +59,9 @@ class VlessConfig extends Model
             "spx=" . urlencode($this->spx)
         ]);
 
-        return "vless://{$this->uuid}@{$this->server->ip}:{$this->port}?$params";
+        $label = str($this->server->code . '_' . $this->name)->slug();
+
+        return "vless://{$this->uuid}@{$this->server->ip}:{$this->port}?{$params}#{$label}";
     }
 
     public function getQrCodeContent(): string

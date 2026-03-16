@@ -127,16 +127,14 @@ class UserController extends Controller
             ? $user->vlessConfigs()
             : $user->configs();
 
-        $configN = $config;
         $config = $query
             ->where('name', $config)
             ->first();
 
         if (empty($config)) {
             return response()->json([
-//                'message' => "Я не смогла найти такой конфиг ☹️\n\n"
-//                    . "Сообщи об этом @soussangler"
-                'message' => $type . ' ' . $configN
+                'message' => "Я не смогла найти такой конфиг ☹️\n\n"
+                    . "Сообщи об этом @soussangler"
             ], 404);
         }
 

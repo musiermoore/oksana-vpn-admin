@@ -57,7 +57,8 @@ class VlessConfig extends Model
             "fp={$this->fp}",
             "sni={$this->sni}",
             "sid={$this->sid}",
-            "spx=" . urlencode($this->spx)
+            "spx=" . urlencode($this->spx),
+            "flow={$this->flow}"
         ]);
 
         $label = str($this->server->code . '_' . $this->name)->slug();

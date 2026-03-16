@@ -49,7 +49,7 @@ class VlessConfig extends Model
 
     public function getLink(): string
     {
-        $params = implode('&', [
+        $paramList = [
             "type={$this->type}",
             "encryption={$this->encryption}",
             "security={$this->security}",
@@ -58,8 +58,13 @@ class VlessConfig extends Model
             "sni={$this->sni}",
             "sid={$this->sid}",
             "spx=" . urlencode($this->spx),
-            "flow={$this->flow}"
-        ]);
+        ];
+
+        if ($this->flow) {
+            $paramList[] = "flow={$this->flow}";
+        }
+
+        $params = implode('&', $paramList);
 
         $label = str($this->server->code . '_' . $this->name)->slug();
 

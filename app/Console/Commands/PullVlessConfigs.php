@@ -87,8 +87,6 @@ class PullVlessConfigs extends Command
                 ->filter(fn($client) => !empty($client['enable']));
 
             foreach ($clients as $client) {
-                if ($client['email'] === 'musiermoore-mac') dd($client);
-
                 $config = new VlessConfig(
                     $server->id,
                     null,

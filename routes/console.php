@@ -10,6 +10,6 @@ use App\Console\Commands\RemoveOldTrafficLogs;
 Schedule::command(CalculatePeersTraffic::class)->everyMinute();
 Schedule::command(DetectHighTraffic::class)->everyMinute();
 Schedule::command(RemoveOldTrafficLogs::class)->everyMinute();
-Schedule::command(PullVlessConfigs::class)->everyFiveMinutes();
+Schedule::command(PullVlessConfigs::class)->everyMinute();
 Schedule::command(AddExtraPayments::class)->hourly();
 Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyThirtyMinutes();

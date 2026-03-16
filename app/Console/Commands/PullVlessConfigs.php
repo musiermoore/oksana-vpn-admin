@@ -121,7 +121,6 @@ class PullVlessConfigs extends Command
                 VlessConfigModel::query()->updateOrCreate([
                     'server_id' => $server->id,
                     'uuid' => $uuid,
-                    'name' => $client['email'] ?? null,
                 ], $vlessConfig);
             }
         }

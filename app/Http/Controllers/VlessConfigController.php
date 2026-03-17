@@ -34,7 +34,9 @@ class VlessConfigController extends Controller
 
     public function create()
     {
-        $users = User::get();
+        $users = User::query()
+            ->where('users.is_active', true)
+            ->get();
         $servers = Server::get();
 
         $existingConfigs = VlessConfig::query()
@@ -65,7 +67,9 @@ class VlessConfigController extends Controller
     public function edit(VlessConfig $vlessConfig)
     {
         $config = $vlessConfig;
-        $users = User::get();
+        $users = User::query()
+            ->where('users.is_active', true)
+            ->get();
 
         return view('configs.vless-edit', compact('config', 'users'));
     }

@@ -94,6 +94,7 @@ class PullVlessConfigs extends Command
                     null,
                     true,
                     $client['id'],
+                    $client['subId'] ?? null,
                     $row['port'],
                     $streamSettings['network'],
                     'none',

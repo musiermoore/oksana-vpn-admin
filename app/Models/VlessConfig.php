@@ -16,6 +16,7 @@ class VlessConfig extends Model
         'is_active',
 
         'uuid',
+        'sub_id',
 
         'port',
 
@@ -49,6 +50,15 @@ class VlessConfig extends Model
 
     public function getLink(): string
     {
+        if (empty($this->sub_id)) {
+            return $this->getStaticLink();
+        }
+
+        return "https://{$this->server->ip}:2096/sub/{$this->sub_id}";
+    }
+
+    private function getStaticLink(): string
+    {
         $paramList = [
             "type={$this->type}",
             "encryption={$this->encryption}",
@@ -69,6 +79,7 @@ class VlessConfig extends Model
         $label = str($this->server->code . '_' . $this->name)->slug();
 
         return "vless://{$this->uuid}@{$this->server->ip}:{$this->port}?{$params}#{$label}";
+
     }
 
     public function getQrCodeContent(): string

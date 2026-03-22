@@ -13,6 +13,7 @@ class VlessConfig
         private bool $isActive = true,
 
         private ?string $uuid = null,
+        private ?string $subId = null,
 
         private ?int $port = null,
 
@@ -42,6 +43,7 @@ class VlessConfig
         $config->setIsActive($data['is_active'] ?? true);
 
         $config->setUuid($data['uuid'] ?? null);
+        $config->setSubId($data['sub_id'] ?? null);
 
         $config->setPort($data['port'] ?? null);
 
@@ -68,6 +70,7 @@ class VlessConfig
             'description' => $this->description,
             'is_active' => $this->isActive,
             'uuid' => $this->uuid,
+            'sub_id' => $this->subId,
             'port' => $this->port,
             'type' => $this->type,
             'encryption' => $this->encryption,
@@ -144,6 +147,17 @@ class VlessConfig
     public function setUuid(?string $uuid): self
     {
         $this->uuid = $uuid;
+        return $this;
+    }
+
+    public function getSubId(): ?string
+    {
+        return $this->subId;
+    }
+
+    public function setSubId(?string $subId): self
+    {
+        $this->subId = $subId;
         return $this;
     }
 

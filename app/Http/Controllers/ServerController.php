@@ -30,7 +30,7 @@ class ServerController extends Controller
      */
     public function store(Request $request)
     {
-        $server = Server::create($request->post());
+        $server = Server::create($this->serverData($request));
 
         return redirect()->route('servers.edit', $server->id)
             ->with('success', 'Сервер успешно создан.');
@@ -49,7 +49,7 @@ class ServerController extends Controller
      */
     public function update(Request $request, Server $server)
     {
-        $data = $request->post();
+        $data = $this->serverData($request);
 
         if (empty($data['ssh_private_key'])) {
             unset($data['ssh_private_key']);
@@ -75,5 +75,16 @@ class ServerController extends Controller
 
         return redirect()->route('servers.index')
             ->with('success', 'Сервер успешно удалён');
+    }
+
+    private function serverData(Request $request): array
+    {
+        $data = $request->post();
+
+        if (empty($data['link_host'])) {
+            $data['link_host'] = $data['ip'] ?? null;
+        }
+
+        return $data;
     }
 }

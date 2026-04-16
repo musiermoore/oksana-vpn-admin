@@ -14,6 +14,7 @@ class Server extends Model
         'name',
         'code',
         'ip',
+        'link_host',
         'app_path',
         'ssh_private_key',
         'ssh_public_key',
@@ -35,5 +36,10 @@ class Server extends Model
         $sshKeyPath = '/var/www/html/storage/ssh_key';
 
         return "timeout 15 $(which ssh) -i $sshKeyPath -o BatchMode=yes -o StrictHostKeyChecking=no root@{$this->ip} 2>&1";
+    }
+
+    public function getHost()
+    {
+        return $this->link_host ?: $this->ip;
     }
 }

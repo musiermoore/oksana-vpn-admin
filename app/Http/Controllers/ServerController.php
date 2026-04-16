@@ -79,12 +79,6 @@ class ServerController extends Controller
 
     private function serverData(Request $request): array
     {
-        $data = $request->post();
-
-        if (empty($data['link_host'])) {
-            $data['link_host'] = $data['ip'] ?? null;
-        }
-
-        return $data;
+        return $request->post();
     }
 }

@@ -18,7 +18,7 @@
         </div>
         <div class="form-group">
             <label for="link_host">Link Host</label>
-            <input name="link_host" id="link_host" class="form-control" value="{{ old('link_host', $server->link_host ?? $server->ip) }}">
+            <input name="link_host" id="link_host" class="form-control" value="{{ old('link_host', $server->link_host) }}">
         </div>
         <div class="form-group">
             <label for="app_path">Путь до приложения</label>

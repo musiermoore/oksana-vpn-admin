@@ -46,4 +46,20 @@ class CurrentPayment extends Model
             ->orderByDesc('start_date')
             ->value('id');
     }
+
+    public static function getPreviousPaymentPeriodId(): ?int
+    {
+        $activePeriodStartDate = self::query()
+            ->whereId(self::getActivePaymentPeriodId())
+            ->value('start_date');
+
+        if (! $activePeriodStartDate) {
+            return null;
+        }
+
+        return self::query()
+            ->where('start_date', '<', $activePeriodStartDate)
+            ->orderByDesc('start_date')
+            ->value('id');
+    }
 }

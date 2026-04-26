@@ -31,9 +31,7 @@ class AddExtraPayments extends Command
     {
         $this->currentPaymentPeriodId = CurrentPayment::getActivePaymentPeriodId();
 
-        $previousPeriodId = CurrentPayment::orderByDesc('start_date')
-            ->where('id', '!=', $this->currentPaymentPeriodId)
-            ->value('id');
+        $previousPeriodId = CurrentPayment::getPreviousPaymentPeriodId();
 
         if (! $this->currentPaymentPeriodId || ! $previousPeriodId) {
             return;

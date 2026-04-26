@@ -22,38 +22,50 @@ class AddExtraPayments extends Command
      */
     protected $description = 'Add extra payments from the previous month if exist';
 
+    private ?int $currentPaymentPeriodId = null;
+
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $currentPaymentPeriodId = CurrentPayment::orderByDesc('start_date')->value('id');
+        $this->currentPaymentPeriodId = CurrentPayment::getActivePaymentPeriodId();
 
         $previousPeriodId = CurrentPayment::orderByDesc('start_date')
-            ->where('id', '!=', $currentPaymentPeriodId)
+            ->where('id', '!=', $this->currentPaymentPeriodId)
             ->value('id');
 
-        $usersWithExtraPayments = User::query()
+        if (! $this->currentPaymentPeriodId || ! $previousPeriodId) {
+            return;
+        }
+
+        $users = User::query()
             ->withWhereHas('extraPayments', function ($query) use ($previousPeriodId) {
-                $query->where('current_payment_id', '=', $previousPeriodId);
+                $query
+                    ->where('current_payment_id', $previousPeriodId)
+                    ->where('amount', '>', 0);
             })
-            ->select(['users.*'])
-            ->doesntHave('extraPayments', callback: function ($query) use ($currentPaymentPeriodId) {
-                $query->where('current_payment_id', '=', $currentPaymentPeriodId);
+            ->whereDoesntHave('extraPayments', function ($query) {
+                $query->where('current_payment_id', $this->currentPaymentPeriodId);
             })
             ->get();
 
-        foreach ($usersWithExtraPayments as $user) {
-            $previousExtraPayment = $user->extraPayments->first();
-
-            if (empty($previousExtraPayment)) {
-                continue;
-            }
-
-            $user->extraPayments()->create([
-                'current_payment_id' => $currentPaymentPeriodId,
-                'amount' => $previousExtraPayment->amount
-            ]);
+        foreach ($users as $user) {
+            $this->addExtraPayment($user);
         }
+    }
+
+    private function addExtraPayment(User $user): void
+    {
+        $previousExtraPayment = $user->extraPayments->first();
+
+        if (! $previousExtraPayment) {
+            return;
+        }
+
+        $user->extraPayments()->create([
+            'current_payment_id' => $this->currentPaymentPeriodId,
+            'amount' => $previousExtraPayment->amount,
+        ]);
     }
 }

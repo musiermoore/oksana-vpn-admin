@@ -43,7 +43,7 @@ class ExtraPaymentController extends Controller
      */
     public function store(Request $request)
     {
-        if (empty($request->user_id) || empty($request->current_payment_id) || empty($request->amount)) {
+        if (empty($request->user_id) || empty($request->current_payment_id) || $request->amount < 0) {
             return redirect()->back()
                 ->with('error', 'Невалидные данные.');
         }

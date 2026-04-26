@@ -37,4 +37,13 @@ class CurrentPayment extends Model
     {
         return 50;
     }
+
+    public static function getActivePaymentPeriodId(): ?int
+    {
+        return self::query()
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->orderByDesc('start_date')
+            ->value('id');
+    }
 }

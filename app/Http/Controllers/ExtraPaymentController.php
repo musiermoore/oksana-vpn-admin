@@ -29,7 +29,7 @@ class ExtraPaymentController extends Controller
     {
         $users = User::all();
         $currentPayments = CurrentPayment::latest()->get();
-        $activePeriodId = CurrentPayment::orderByDesc('start_date')->value('id');
+        $activePeriodId = CurrentPayment::getActivePaymentPeriodId();
 
         return view('extra-payments.create', compact(
             'users',

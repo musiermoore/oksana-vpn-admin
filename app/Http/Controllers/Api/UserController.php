@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\UserApiService;
+use App\Services\VlessSubscriptionService;
 use Exception;
 use Illuminate\Http\Request;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -166,5 +167,29 @@ class UserController extends Controller
             ]);
 
         return response(200);
+    }
+
+    public function getVlessLink(Request $request, string $telegram)
+    {
+        $user = UserApiService::instance($telegram)->getUser();
+
+        if (empty($user)) {
+            return response()->json([
+                'message' => "Я не вижу тебя в списках 😢\n\n"
+                    . "Сообщи свой никнем @soussangler"
+            ], 404);
+        }
+
+        if ($user->hasDebt()) {
+            return response()->json([
+                'user' => $user,
+                'type' => 'debt',
+                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+            ], 403);
+        }
+
+        $service = new VlessSubscriptionService($user);
+
+        return response($service->getAllSubscriptions());
     }
 }

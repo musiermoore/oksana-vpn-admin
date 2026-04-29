@@ -12,6 +12,8 @@ Route::name('api.')->middleware(BasicAuth::class)->group(function () {
         ->name('users.configs.download');
     Route::get('users/{telegram}/configs/{type}/{config}/qr-code', [UserController::class, 'downloadQrCode'])
         ->name('users.configs.qr-code');
+    Route::get('users/{telegram}/vless-link', [UserController::class, 'getVlessLink'])
+        ->name('users.configs.vless-link');
     Route::get('users/{telegram}/balance', [UserController::class, 'balance'])
         ->name('users.balance');
     Route::post('users/{telegram}/save-id', [UserController::class, 'saveTelegramId'])

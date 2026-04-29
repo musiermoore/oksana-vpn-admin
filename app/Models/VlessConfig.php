@@ -54,10 +54,10 @@ class VlessConfig extends Model
             return $this->getStaticLink();
         }
 
-        return "https://{$this->server->getHost()}/sub/{$this->sub_id}";
+        return $this->getSubscriptionLink();
     }
 
-    private function getStaticLink(): string
+    public function getStaticLink(): string
     {
         $paramList = [
             "type={$this->type}",
@@ -79,7 +79,11 @@ class VlessConfig extends Model
         $label = str($this->server->code . '_' . $this->name)->slug();
 
         return "vless://{$this->uuid}@{$this->server->getHost()}?{$params}#{$label}";
+    }
 
+    public function getSubscriptionLink(): string
+    {
+        return "https://{$this->server->getHost()}/sub/{$this->sub_id}";
     }
 
     public function getQrCodeContent(): string

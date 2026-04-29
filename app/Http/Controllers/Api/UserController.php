@@ -191,7 +191,9 @@ class UserController extends Controller
         $link = route('vless.connect', [
             'tg' => Crypt::encrypt($user->telegram_id),
             'i' => Crypt::encrypt($user->id),
-        ]);
+        ], absolute: false);
+
+        $link = config('vless.domain') . '/' . $link;
 
         return response($link);
     }

@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Config;
-use App\Models\Server;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Models\VlessConfig;
+use App\Services\VlessSubscriptionService;
 use DB;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Crypt;
 use Log;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -120,5 +119,26 @@ class VlessConfigController extends Controller
             Log::error($exception->getMessage());
             abort(500);
         }
+    }
+
+    public function connect(Request $request)
+    {
+        try {
+            $telegramId = Crypt::decrypt($request->tg);
+            $userId = Crypt::decrypt($request->i);
+        } catch (Exception $exception) {
+            return null;
+        }
+
+        if (empty($telegramId) || empty($userId)) {
+            return null;
+        }
+
+        $user = User::query()->whereTelegramId($telegramId)->find($userId);
+
+        $service = new VlessSubscriptionService($user);
+        $subscriptions = $service->getAllSubscriptions();
+
+        return response($subscriptions);
     }
 }

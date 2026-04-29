@@ -33,7 +33,7 @@ class VlessSubscriptionService
 
         try {
             $response = Http::timeout(10)
-                ->get($config->getStaticLink())
+                ->get($config->getSubscriptionLink())
                 ->body();
 
             $decoded = base64_decode($response, true);

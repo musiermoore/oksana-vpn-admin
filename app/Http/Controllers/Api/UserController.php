@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\UserApiService;
-use App\Services\VlessSubscriptionService;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class UserController extends Controller
@@ -188,8 +188,11 @@ class UserController extends Controller
             ], 403);
         }
 
-        $service = new VlessSubscriptionService($user);
+        $link = route('vless.connect', [
+            'tg' => Crypt::encrypt($user->telegram_id),
+            'i' => Crypt::encrypt($user->id),
+        ]);
 
-        return response($service->getAllSubscriptions());
+        return response($link);
     }
 }

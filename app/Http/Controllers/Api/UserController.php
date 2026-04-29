@@ -193,7 +193,7 @@ class UserController extends Controller
             'i' => Crypt::encrypt($user->id),
         ], absolute: false);
 
-        $link = config('vless.domain') . '/' . $link;
+        $link = config('vless.domain') . $link;
 
         return response($link);
     }

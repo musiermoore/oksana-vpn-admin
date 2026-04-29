@@ -38,7 +38,6 @@ class PullVlessConfigs extends Command
 
     private function handleServer(Server $server)
     {
-
         $tempKeyPath = tempnam(sys_get_temp_dir(), 'sshkey_');
 
         $key = $server->ssh_private_key;

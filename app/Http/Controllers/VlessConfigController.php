@@ -37,7 +37,6 @@ class VlessConfigController extends Controller
         $users = User::query()
             ->where('users.is_active', true)
             ->get();
-        $servers = Server::get();
 
         $existingConfigs = VlessConfig::query()
             ->selectRaw('vless_configs.id, CONCAT(servers.code, ": ", vless_configs.name) AS formatted_name')
@@ -46,7 +45,7 @@ class VlessConfigController extends Controller
             ->get()
             ->pluck('formatted_name', 'id');
 
-        return view('configs.vless-create', compact('users', 'servers', 'existingConfigs'));
+        return view('configs.vless-create', compact('users', 'existingConfigs'));
     }
 
     public function store(Request $request)

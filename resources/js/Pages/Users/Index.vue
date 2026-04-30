@@ -55,8 +55,8 @@ const destroyUser = (user) => {
                     <td>{{ user.telegram }}</td>
                     <td>{{ user.name }}</td>
                     <td>{{ user.description || '—' }}</td>
-                    <td>{{ Math.max(0, user.approved_transactions_sum_amount - user.payment_amount) }}</td>
-                    <td>{{ Math.max(0, user.payment_amount - user.approved_transactions_sum_amount) }}</td>
+                    <td>{{ Math.max(0, user.balance) }}</td>
+                    <td>{{ Math.max(0, -user.balance) }}</td>
                     <td>
                         <div class="actions">
                             <Link class="button button--secondary" :href="user.links.edit">Изменить</Link>

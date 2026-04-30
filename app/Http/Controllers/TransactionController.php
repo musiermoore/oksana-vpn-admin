@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class TransactionController extends Controller
@@ -22,24 +21,10 @@ class TransactionController extends Controller
             ->latest()
             ->get();
 
-        $userBalance = User::query()
-            ->select([
-                DB::raw('SUM(current_payments.amount) + users.extra_payment AS payment_amount')
-            ])
-            ->leftJoin('current_payments', function ($join) {
-                $join
-                    ->where(function ($query) {
-                        $query
-                            ->where('start_date', '>=', DB::raw('users.join_at'))
-                            ->orWhereNull('join_at');
-                    })
-                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
-            })
-            ->groupBy('users.id')
-            ->pluck('payment_amount')
-            ->sum();
-
-        $balance = $transactions->sum('amount') - $userBalance;
+        $balance = User::query()
+            ->select('users.id', 'users.balance')
+            ->get()
+            ->sum('balance');
 
         return $this->inertia('Transactions/Index', [
             'balance' => (float) $balance,

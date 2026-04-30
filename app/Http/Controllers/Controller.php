@@ -35,6 +35,7 @@ abstract class Controller
             'description' => $user->description,
             'join_at' => $user->join_at,
             'extra_payment' => $user->extra_payment,
+            'balance' => (float) ($user->balance ?? 0),
             'is_active' => $user->is_active,
             'full_name' => $user->full_name,
             'approved_transactions_sum_amount' => (float) ($user->approved_transactions_sum_amount ?? 0),

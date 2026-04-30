@@ -1,14 +1,16 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
 import FlashMessages from '../Shared/FlashMessages.vue';
 
 const page = usePage();
 const navigation = computed(() => page.props.app.navigation ?? []);
+const currentUser = computed(() => page.props.auth?.user ?? null);
 const isMobile = ref(false);
 const isSidebarOpen = ref(false);
 const isSidebarCollapsed = ref(false);
 const collapseStorageKey = 'vpn-admin-sidebar-collapsed';
+const logoutForm = useForm({});
 
 const normalizePath = (value) => {
     if (!value) {
@@ -56,6 +58,10 @@ const toggleSidebar = () => {
 
 const closeSidebar = () => {
     isSidebarOpen.value = false;
+};
+
+const logout = () => {
+    logoutForm.post('/logout');
 };
 
 onMounted(() => {
@@ -141,6 +147,19 @@ watch(
                     <span class="brand__mark">WG</span>
                     <span>{{ page.props.app.name }}</span>
                 </Link>
+
+                <div v-if="currentUser" class="shell__topbar-spacer" />
+
+                <div v-if="currentUser" class="shell__userbar">
+                    <div class="shell__usercopy">
+                        <strong>{{ currentUser.telegram || currentUser.name }}</strong>
+                        <span>{{ currentUser.name }}</span>
+                    </div>
+
+                    <button class="button button--secondary" type="button" @click="logout">
+                        Выйти
+                    </button>
+                </div>
             </header>
 
             <main class="shell__content stack">

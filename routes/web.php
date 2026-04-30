@@ -3,6 +3,7 @@
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\ExtraPaymentController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
@@ -13,7 +14,13 @@ use App\Http\Controllers\WireGuardController;
 use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(BasicAuth::class)->group(function () {
+Route::middleware([BasicAuth::class, 'guest'])->group(function () {
+    Route::get('login', [AuthController::class, 'create'])->name('login');
+    Route::post('login/code', [AuthController::class, 'sendCode'])->name('login.code');
+    Route::post('login', [AuthController::class, 'store'])->name('login.store');
+});
+
+Route::middleware('auth')->group(function () {
     Route::get('/', [WireGuardController::class, 'activePeers'])->name('wireguard.active-peers');
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
 
@@ -40,10 +47,11 @@ Route::middleware(BasicAuth::class)->group(function () {
         ->name('transactions.approve');
     Route::delete('transactions/{transaction}/decline', [TransactionController::class, 'decline'])
         ->name('transactions.decline');
+
+    Route::post('logout', [AuthController::class, 'destroy'])->name('logout');
 });
 
 Route::get('configs/{userToken:token}', [UserController::class, 'configs'])
-    ->withoutMiddleware(BasicAuth::class)
     ->name('users.configs');
 Route::get('configs/{userToken:token}/{config}/download', [ConfigController::class, 'download'])
     ->name('users.configs.download');

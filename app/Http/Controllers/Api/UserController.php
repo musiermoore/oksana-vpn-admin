@@ -25,8 +25,8 @@ class UserController extends Controller
         }
 
         return response()->json([
-            'balance' => max(0, $user->transactions_sum_amount - $user->payment_amount),
-            'debt' => max(0, $user->payment_amount - $user->transactions_sum_amount)
+            'balance' => max(0, $user->balance),
+            'debt' => max(0, -$user->balance)
         ]);
     }
 
@@ -43,7 +43,7 @@ class UserController extends Controller
             ], 404);
         }
 
-        if ($user->hasDebt()) {
+        if (! $user->hasActiveAccess()) {
             return response()->json([
                 'configs' => [],
                 'type' => 'debt',
@@ -71,7 +71,7 @@ class UserController extends Controller
             ], 404);
         }
 
-        if ($user->hasDebt()) {
+        if (! $user->hasActiveAccess()) {
             return response()->json([
                 'type' => 'debt',
                 'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
@@ -116,7 +116,7 @@ class UserController extends Controller
             ], 404);
         }
 
-        if ($user->hasDebt()) {
+        if (! $user->hasActiveAccess()) {
             return response()->json([
                 'user' => $user,
                 'type' => 'debt',
@@ -180,7 +180,7 @@ class UserController extends Controller
             ], 404);
         }
 
-        if ($user->hasDebt()) {
+        if (! $user->hasActiveAccess()) {
             return response()->json([
                 'user' => $user,
                 'type' => 'debt',

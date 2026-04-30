@@ -4,10 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\CurrentPayment;
 use App\Models\User;
-use App\Models\UserExtraPayment;
 use App\Models\UserToken;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -17,28 +15,11 @@ class UserController extends Controller
         $onlyInactive = $request->boolean('inactive');
 
         $users = User::query()
-            ->select([
-                'users.*',
-                DB::raw('SUM(IFNULL(current_payments.amount, 0)) + IFNULL(user_extra_payments.amount, 0) + IFNULL(users.extra_payment, 0) AS payment_amount')
-            ])
-            ->withSum('approvedTransactions', 'amount')
-            ->leftJoin('current_payments', function ($join) {
-                $join
-                    ->where(function ($query) {
-                        $query
-                            ->where('start_date', '>=', DB::raw('users.join_at'))
-                            ->orWhereNull('join_at');
-                    })
-                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
-            })
-            ->leftJoinSub(
-                UserExtraPayment::select(['user_id', DB::raw('SUM(amount) AS amount')])->groupBy('user_id'),
-                'user_extra_payments', 'user_extra_payments.user_id', '=', 'users.id'
-            )
+            ->select('users.*')
+            ->tap(fn ($query) => User::applyBillingSummary($query))
             ->when(!$onlyInactive && ! $getAll, fn ($query) => $query->where('users.is_active', '=', true))
             ->when($onlyInactive, fn ($query) => $query->where('users.is_active', '=', false))
-            ->groupBy('users.id')
-            ->orderByRaw('GREATEST(0, IFNULL(payment_amount, 0) - IFNULL(approved_transactions_sum_amount, 0)) DESC')
+            ->orderByRaw('GREATEST(0, -IFNULL(users.balance, 0)) DESC')
             ->orderBy('created_at')
             ->get();
 

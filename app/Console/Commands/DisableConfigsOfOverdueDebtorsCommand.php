@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Config;
-use App\Models\CurrentPayment;
-use App\Models\Transaction;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -30,46 +29,33 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
      */
     public function handle()
     {
+        User::syncAllStoredBalances();
+        app(SubscriptionService::class)->renewEligibleSubscriptions();
+        User::syncAllStoredBalances();
         $this->disableConfigs();
         $this->enableConfigs();
     }
 
     private function getQuery()
     {
-        $transactionsJoin = Transaction::query()
-            ->select(['user_id', DB::raw('SUM(IFNULL(amount, 0)) AS balance')])
-            ->groupBy('user_id');
-
         return User::query()
-            ->with('configs')
+            ->with(['configs', 'activeSubscription'])
             ->select([
                 'users.id',
                 'users.telegram',
-                DB::raw('IFNULL(balance, 0) - SUM(amount) + users.extra_payment AS final_balance'),
+                DB::raw('COALESCE(users.balance, 0) AS final_balance'),
             ])
-            ->leftJoinSub($transactionsJoin, 'transactions', 'transactions.user_id', '=', 'users.id')
-            ->leftJoin('current_payments', function ($join) {
-                $join
-                    ->where(function ($query) {
-                        $query
-                            ->where('start_date', '>=', DB::raw('users.join_at'))
-                            ->orWhereNull('join_at');
-                    })
-                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
-            })
             ->groupBy('users.id');
     }
 
     private function disableConfigs(): void
     {
-        $lastPeriod = CurrentPayment::orderByDesc('start_date')->value('amount');
-
         $users = $this->getQuery()
             ->whereHas('configs', function ($query) {
                 $query->where('is_active', '=', true);
             })
-            ->having('final_balance', '<', -$lastPeriod)
-            ->get();
+            ->get()
+            ->filter(fn (User $user) => $user->final_balance < 0 || ! $user->hasActiveSubscription());
 
         $ids = [];
 
@@ -89,9 +75,9 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->whereHas('configs', function ($query) {
                 $query->where('is_active', '=', false);
             })
-            ->having('final_balance', '>=', 0)
             ->where('is_active', '=', true)
-            ->get();
+            ->get()
+            ->filter(fn (User $user) => $user->final_balance >= 0 && $user->hasActiveSubscription());
 
         $ids = [];
 

@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -26,6 +29,7 @@ class User extends Authenticatable
         'description',
         'join_at',
         'extra_payment',
+        'balance',
         'is_admin',
         'is_active'
     ];
@@ -50,6 +54,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'balance' => 'float',
         ];
     }
 
@@ -82,6 +87,25 @@ class User extends Authenticatable
     public function extraPayments(): HasMany
     {
         return $this->hasMany(UserExtraPayment::class);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(UserSubscription::class);
+    }
+
+    public function activeSubscription(): HasOne
+    {
+        return $this->hasOne(UserSubscription::class)
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->ofMany('end_date', 'max');
+    }
+
+    public function latestSubscription(): HasOne
+    {
+        return $this->hasOne(UserSubscription::class)
+            ->ofMany('end_date', 'max');
     }
 
     public function getFullNameAttribute(): string
@@ -120,25 +144,189 @@ class User extends Authenticatable
 
     public function hasDebt()
     {
+        return $this->getDebtAmount() > 0;
+    }
+
+    public function hasActiveAccess(): bool
+    {
+        return $this->hasActiveSubscription() && ! $this->hasDebt();
+    }
+
+    public function hasActiveSubscription(): bool
+    {
+        if ($this->relationLoaded('activeSubscription')) {
+            return $this->activeSubscription !== null;
+        }
+
+        return $this->activeSubscription()->exists();
+    }
+
+    public function getBalanceAmount(string $transactionsRelation = 'transactions'): float
+    {
+        return $this->getStoredBalanceAmount();
+    }
+
+    public function getDebtAmount(string $transactionsRelation = 'transactions'): float
+    {
+        return max(0, -$this->getStoredBalanceAmount());
+    }
+
+    public function getPaymentAmount(): float
+    {
+        if (array_key_exists('payment_amount', $this->attributes)) {
+            return (float) $this->attributes['payment_amount'];
+        }
+
         $user = self::query()
+            ->select('users.id')
+            ->whereKey($this->getKey())
+            ->tap(fn (Builder $query) => self::applyBillingSummary($query))
+            ->first();
+
+        return (float) ($user?->payment_amount ?? 0);
+    }
+
+    public static function subscriptionChargesSubquery(?CarbonInterface $asOf = null): Builder
+    {
+        $asOf ??= now();
+
+        return UserSubscription::query()
+            ->join('current_payments', function ($join) use ($asOf) {
+                $join
+                    ->whereColumn('current_payments.start_date', '<=', 'user_subscriptions.end_date')
+                    ->whereColumn('current_payments.end_date', '>=', 'user_subscriptions.start_date')
+                    ->whereDate('current_payments.start_date', '<=', $asOf->toDateString());
+            })
             ->select([
-                'users.id', 'users.telegram',
-                DB::raw('SUM(current_payments.amount) AS payment_amount')
+                'user_subscriptions.user_id',
+                DB::raw('SUM(current_payments.amount) AS amount'),
             ])
-            ->withSum('transactions', 'amount')
-            ->leftJoin('current_payments', function ($join) {
+            ->groupBy('user_subscriptions.user_id');
+    }
+
+    public static function extraPaymentChargesSubquery(): Builder
+    {
+        return UserExtraPayment::query()
+            ->select([
+                'user_id',
+                DB::raw('SUM(amount) AS amount'),
+            ])
+            ->groupBy('user_id');
+    }
+
+    public static function paymentPeriodChargesSubquery(?CarbonInterface $asOf = null): Builder
+    {
+        $asOf ??= now();
+
+        return self::query()
+            ->leftJoin('current_payments', function ($join) use ($asOf) {
                 $join
                     ->where(function ($query) {
                         $query
-                            ->where('start_date', '>=', DB::raw('users.join_at'))
-                            ->orWhereNull('join_at');
+                            ->whereColumn('current_payments.start_date', '>=', 'users.join_at')
+                            ->orWhereNull('users.join_at');
                     })
-                    ->where('start_date', '<=', DB::raw('CURRENT_TIMESTAMP()'));
+                    ->whereDate('current_payments.start_date', '<=', $asOf->toDateString());
             })
-            ->groupBy('users.id')
-            ->find($this->id);
+            ->select([
+                'users.id',
+                DB::raw('SUM(COALESCE(current_payments.amount, 0)) AS amount'),
+            ])
+            ->groupBy('users.id');
+    }
 
-        return max(0, $user->payment_amount - $user->transactions_sum_amount) > 0;
+    public static function applyBillingSummary(
+        Builder $query,
+        string $transactionsRelation = 'approvedTransactions'
+    ): Builder {
+        return $query
+            ->leftJoinSub(
+                self::subscriptionChargesSubquery(),
+                'subscription_charges',
+                'subscription_charges.user_id',
+                '=',
+                'users.id'
+            )
+            ->leftJoinSub(
+                self::extraPaymentChargesSubquery(),
+                'user_extra_payments',
+                'user_extra_payments.user_id',
+                '=',
+                'users.id'
+            )
+            ->addSelect(DB::raw(
+                'COALESCE(subscription_charges.amount, 0)'
+                . ' + COALESCE(user_extra_payments.amount, 0)'
+                . ' + COALESCE(users.extra_payment, 0) AS payment_amount'
+            ))
+            ->groupBy('users.id');
+    }
+
+    public static function buildBalanceSyncQuery(): Builder
+    {
+        return self::query()
+            ->select('users.id', 'users.balance')
+            ->leftJoinSub(
+                self::paymentPeriodChargesSubquery(),
+                'payment_period_charges',
+                'payment_period_charges.id',
+                '=',
+                'users.id'
+            )
+            ->leftJoinSub(
+                self::extraPaymentChargesSubquery(),
+                'user_extra_payments',
+                'user_extra_payments.user_id',
+                '=',
+                'users.id'
+            )
+            ->withSum('approvedTransactions', 'amount')
+            ->addSelect(DB::raw(
+                'COALESCE(payment_period_charges.amount, 0)'
+                . ' + COALESCE(user_extra_payments.amount, 0)'
+                . ' + COALESCE(users.extra_payment, 0) AS spent_amount'
+            ))
+            ->groupBy('users.id');
+    }
+
+    public function getStoredBalanceAmount(): float
+    {
+        if (array_key_exists('balance', $this->attributes)) {
+            return (float) $this->attributes['balance'];
+        }
+
+        $user = self::query()
+            ->select(['users.id', 'users.balance'])
+            ->whereKey($this->getKey())
+            ->first();
+
+        return (float) ($user?->balance ?? 0);
+    }
+
+    public function syncStoredBalance(): void
+    {
+        $syncedUser = self::buildBalanceSyncQuery()
+            ->whereKey($this->getKey())
+            ->first();
+
+        if (! $syncedUser) {
+            return;
+        }
+
+        $this->forceFill([
+            'balance' => (float) ($syncedUser->approved_transactions_sum_amount ?? 0) - (float) ($syncedUser->spent_amount ?? 0),
+        ])->saveQuietly();
+    }
+
+    public static function syncAllStoredBalances(): void
+    {
+        self::buildBalanceSyncQuery()
+            ->get()
+            ->each(function (User $user) {
+                $user->forceFill([
+                    'balance' => (float) ($user->approved_transactions_sum_amount ?? 0) - (float) ($user->spent_amount ?? 0),
+                ])->saveQuietly();
+            });
     }
 
     public function createDefaultConfigs(): bool

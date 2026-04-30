@@ -28,7 +28,19 @@ class VlessConfigController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        return view('configs.vless', compact('users'));
+        return $this->inertia('Configs/VlessIndex', [
+            'users' => $users->map(fn (User $user) => [
+                'id' => $user->id,
+                'full_name' => $user->full_name,
+                'is_active' => $user->is_active,
+                'edit_url' => route('users.edit', $user),
+                'configs' => $user->vlessConfigs->map(fn (VlessConfig $config) => $this->vlessConfigData($config))->values(),
+            ])->values(),
+            'tabs' => [
+                ['label' => 'WireGuard', 'href' => route('configs.index'), 'active' => false],
+                ['label' => 'VLESS', 'href' => route('vless-configs.index'), 'active' => true],
+            ],
+        ]);
     }
 
     public function create()
@@ -44,7 +56,13 @@ class VlessConfigController extends Controller
             ->get()
             ->pluck('formatted_name', 'id');
 
-        return view('configs.vless-create', compact('users', 'existingConfigs'));
+        return $this->inertia('Configs/VlessForm', [
+            'mode' => 'create',
+            'submit_url' => route('vless-configs.store'),
+            'config' => null,
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'existing_configs' => $existingConfigs->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values(),
+        ]);
     }
 
     public function store(Request $request)
@@ -69,7 +87,13 @@ class VlessConfigController extends Controller
             ->where('users.is_active', true)
             ->get();
 
-        return view('configs.vless-edit', compact('config', 'users'));
+        return $this->inertia('Configs/VlessForm', [
+            'mode' => 'edit',
+            'submit_url' => route('vless-configs.update', $config),
+            'config' => $this->vlessConfigData($config),
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'existing_configs' => [],
+        ]);
     }
 
     public function update(Request $request, VlessConfig $vlessConfig)

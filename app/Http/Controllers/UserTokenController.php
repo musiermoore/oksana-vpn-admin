@@ -17,14 +17,19 @@ class UserTokenController extends Controller
             ->orWhereNull('expires_at')
             ->get();
 
-        return view('user-tokens.index', compact('userTokens'));
+        return $this->inertia('UserTokens/Index', [
+            'user_tokens' => $userTokens->map(fn (UserToken $userToken) => $this->userTokenData($userToken))->values(),
+        ]);
     }
 
     public function create()
     {
         $users = User::get();
 
-        return view('user-tokens.create', compact('users'));
+        return $this->inertia('UserTokens/Create', [
+            'submit_url' => route('user-tokens.store'),
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+        ]);
     }
 
     public function store(Request $request)
@@ -51,6 +56,24 @@ class UserTokenController extends Controller
             abort(404);
         }
 
-        return view('user-tokens.show', compact('userToken'));
+        return $this->inertia('UserTokens/Show', [
+            'user_token' => [
+                ...$this->userTokenData($userToken),
+                'download_items' => $userToken->user->configs->map(function ($config) use ($userToken) {
+                    $params = [
+                        'userToken' => $userToken->token,
+                        'config' => $config->id,
+                        'password' => $userToken->password,
+                    ];
+
+                    return [
+                        'id' => $config->id,
+                        'name' => $config->name,
+                        'qr_code_url' => route('users.configs.qr-code', $params),
+                        'download_url' => route('users.configs.download', $params),
+                    ];
+                })->values(),
+            ],
+        ]);
     }
 }

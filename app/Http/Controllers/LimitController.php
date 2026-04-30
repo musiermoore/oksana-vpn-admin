@@ -20,7 +20,14 @@ class LimitController extends Controller
             ->orderBy('server_id')
             ->get();
 
-        return view('limits.index', compact('configs'));
+        return $this->inertia('Limits/Index', [
+            'configs' => $configs->map(function (Config $config) {
+                return [
+                    ...$this->configData($config),
+                    'limits' => $config->limits->map(fn (Limit $limit) => $this->limitData($limit))->values(),
+                ];
+            })->values(),
+        ]);
     }
 
     /**
@@ -31,7 +38,11 @@ class LimitController extends Controller
         $configs = Config::query()->with('user')->get();
         $speedLimits = Limit::getSpeedLimits();
 
-        return view('limits.create', compact('configs', 'speedLimits'));
+        return $this->inertia('Limits/Create', [
+            'submit_url' => route('limits.store'),
+            'configs' => $configs->map(fn (Config $config) => $this->configData($config))->values(),
+            'speed_limits' => $speedLimits,
+        ]);
     }
 
     /**

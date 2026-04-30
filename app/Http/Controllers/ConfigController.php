@@ -28,7 +28,19 @@ class ConfigController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        return view('configs.index', compact('users'));
+        return $this->inertia('Configs/Index', [
+            'users' => $users->map(fn (User $user) => [
+                'id' => $user->id,
+                'full_name' => $user->full_name,
+                'is_active' => $user->is_active,
+                'edit_url' => route('users.edit', $user),
+                'configs' => $user->configs->map(fn (Config $config) => $this->configData($config))->values(),
+            ])->values(),
+            'tabs' => [
+                ['label' => 'WireGuard', 'href' => route('configs.index'), 'active' => true],
+                ['label' => 'VLESS', 'href' => route('vless-configs.index'), 'active' => false],
+            ],
+        ]);
     }
 
     public function create()
@@ -52,7 +64,12 @@ class ConfigController extends Controller
             ->sort()
             ->values();
 
-        return view('configs.create', compact('users', 'servers', 'fileNames'));
+        return $this->inertia('Configs/Create', [
+            'submit_url' => route('configs.store'),
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'servers' => $servers->map(fn (Server $server) => $this->serverData($server))->values(),
+            'file_names' => $fileNames->values(),
+        ]);
     }
 
     public function store(Request $request)
@@ -80,7 +97,10 @@ class ConfigController extends Controller
     {
         $servers = Server::get();
 
-        return view('configs.create-bulk', compact('servers'));
+        return $this->inertia('Configs/BulkCreate', [
+            'submit_url' => route('configs.store-bulk'),
+            'servers' => $servers->map(fn (Server $server) => $this->serverData($server))->values(),
+        ]);
     }
 
     public function storeBulk(Request $request)
@@ -125,7 +145,12 @@ class ConfigController extends Controller
         $users = User::get();
         $servers = Server::get();
 
-        return view('configs.edit', compact('config', 'users', 'servers'));
+        return $this->inertia('Configs/Edit', [
+            'submit_url' => route('configs.update', $config),
+            'config' => $this->configData($config),
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'servers' => $servers->map(fn (Server $server) => $this->serverData($server))->values(),
+        ]);
     }
 
     public function update(Request $request, Config $config)

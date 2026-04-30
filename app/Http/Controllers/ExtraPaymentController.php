@@ -19,7 +19,9 @@ class ExtraPaymentController extends Controller
             ->latest()
             ->get();
 
-        return view('extra-payments.index', compact('payments'));
+        return $this->inertia('ExtraPayments/Index', [
+            'payments' => $payments->map(fn (UserExtraPayment $payment) => $this->extraPaymentData($payment))->values(),
+        ]);
     }
 
     /**
@@ -31,11 +33,14 @@ class ExtraPaymentController extends Controller
         $currentPayments = CurrentPayment::latest()->get();
         $activePeriodId = CurrentPayment::getActivePaymentPeriodId();
 
-        return view('extra-payments.create', compact(
-            'users',
-            'currentPayments',
-            'activePeriodId'
-        ));
+        return $this->inertia('ExtraPayments/Create', [
+            'submit_url' => route('extra-payments.store'),
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'current_payments' => $currentPayments
+                ->map(fn (CurrentPayment $currentPayment) => $this->currentPaymentData($currentPayment))
+                ->values(),
+            'active_period_id' => $activePeriodId,
+        ]);
     }
 
     /**

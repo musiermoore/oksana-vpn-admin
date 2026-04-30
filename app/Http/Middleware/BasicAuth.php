@@ -24,7 +24,7 @@ class BasicAuth
             exit;
         }
 
-        view()->share('isAuthorized', true);
+        $request->attributes->set('isAuthorized', true);
 
         return $next($request);
     }

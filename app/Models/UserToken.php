@@ -25,7 +25,7 @@ class UserToken extends Model
 
     public function validateToken(?string $password): bool
     {
-        if (now()->gte(Carbon::parse($this->expires_at))) {
+        if ($this->expires_at && now()->gte(Carbon::parse($this->expires_at))) {
             abort(404);
         }
 

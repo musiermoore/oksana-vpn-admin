@@ -10,12 +10,27 @@ class CurrentPaymentController extends Controller
     public function index()
     {
         $currentPayments = CurrentPayment::all();
-        return view('current-payments.index', compact('currentPayments'));
+
+        return $this->inertia('CurrentPayments/Index', [
+            'current_payments' => $currentPayments
+                ->map(fn (CurrentPayment $currentPayment) => $this->currentPaymentData($currentPayment))
+                ->values(),
+        ]);
     }
 
     public function create()
     {
-        return view('current-payments.create');
+        $subMonth = now()->day < 21 ? 1 : 0;
+
+        return $this->inertia('CurrentPayments/Form', [
+            'mode' => 'create',
+            'submit_url' => route('current-payments.store'),
+            'current_payment' => [
+                'start_date' => now()->subMonths($subMonth)->format('Y-m-21'),
+                'end_date' => now()->addMonth()->subMonths($subMonth)->format('Y-m-21'),
+                'amount' => CurrentPayment::getHostingPrice(),
+            ],
+        ]);
     }
 
     public function store(Request $request)
@@ -26,7 +41,11 @@ class CurrentPaymentController extends Controller
 
     public function edit(CurrentPayment $currentPayment)
     {
-        return view('current-payments.edit', compact('currentPayment'));
+        return $this->inertia('CurrentPayments/Form', [
+            'mode' => 'edit',
+            'submit_url' => route('current-payments.update', $currentPayment),
+            'current_payment' => $this->currentPaymentData($currentPayment),
+        ]);
     }
 
     public function update(Request $request, CurrentPayment $currentPayment)

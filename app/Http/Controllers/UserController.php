@@ -42,16 +42,27 @@ class UserController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        return view('users.index', compact('users'));
+        return $this->inertia('Users/Index', [
+            'filters' => [
+                'all' => $getAll,
+                'inactive' => $onlyInactive,
+            ],
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+        ]);
     }
 
     public function create()
     {
-        $payments = CurrentPayment::select(['start_date', 'amount'])
+        $payments = CurrentPayment::select(['id', 'start_date', 'end_date', 'amount'])
             ->orderByDesc('start_date')
             ->get();
 
-        return view('users.create', compact('payments'));
+        return $this->inertia('Users/Form', [
+            'mode' => 'create',
+            'submit_url' => route('users.store'),
+            'user' => null,
+            'payments' => $payments->map(fn ($payment) => $this->currentPaymentData($payment))->values(),
+        ]);
     }
 
     public function store(Request $request)
@@ -67,7 +78,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        $payments = CurrentPayment::select(['start_date', 'amount'])
+        $payments = CurrentPayment::select(['id', 'start_date', 'end_date', 'amount'])
             ->orderByDesc('start_date')
             ->get();
 
@@ -78,7 +89,12 @@ class UserController extends Controller
             'configs'
         ]);
 
-        return view('users.edit', compact('user', 'payments'));
+        return $this->inertia('Users/Form', [
+            'mode' => 'edit',
+            'submit_url' => route('users.update', $user),
+            'user' => $this->userData($user, true),
+            'payments' => $payments->map(fn ($payment) => $this->currentPaymentData($payment))->values(),
+        ]);
     }
 
     public function update(Request $request, User $user)
@@ -103,6 +119,26 @@ class UserController extends Controller
             ]);
         }
 
-        return view('users.configs', compact('userToken', 'isPasswordCorrect'));
+        return $this->inertia('Users/Configs', [
+            'token' => [
+                ...$this->userTokenData($userToken),
+                'download_items' => $userToken->user->configs->map(function ($config) use ($request, $userToken) {
+                    $params = [
+                        'userToken' => $userToken->token,
+                        'config' => $config->id,
+                        'password' => $request->password,
+                    ];
+
+                    return [
+                        'id' => $config->id,
+                        'name' => $config->name,
+                        'qr_code_url' => route('users.configs.qr-code', $params),
+                        'download_url' => route('users.configs.download', $params),
+                    ];
+                })->values(),
+            ],
+            'is_password_correct' => $isPasswordCorrect,
+            'password' => $request->password,
+        ]);
     }
 }

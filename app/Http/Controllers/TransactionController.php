@@ -41,18 +41,23 @@ class TransactionController extends Controller
 
         $balance = $transactions->sum('amount') - $userBalance;
 
-        return view('transactions.index', compact(
-            'transactions',
-            'pendingTransactions',
-            'balance'
-        ));
+        return $this->inertia('Transactions/Index', [
+            'balance' => (float) $balance,
+            'transactions' => $transactions->map(fn (Transaction $transaction) => $this->transactionData($transaction))->values(),
+            'pending_transactions' => $pendingTransactions->map(fn (Transaction $transaction) => $this->transactionData($transaction))->values(),
+        ]);
     }
 
     public function create()
     {
         $users = User::get();
 
-        return view('transactions.create', compact('users'));
+        return $this->inertia('Transactions/Form', [
+            'mode' => 'create',
+            'submit_url' => route('transactions.store'),
+            'transaction' => null,
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+        ]);
     }
 
     public function store(Request $request)
@@ -65,7 +70,12 @@ class TransactionController extends Controller
     {
         $users = User::get();
 
-        return view('transactions.edit', compact('transaction', 'users'));
+        return $this->inertia('Transactions/Form', [
+            'mode' => 'edit',
+            'submit_url' => route('transactions.update', $transaction),
+            'transaction' => $this->transactionData($transaction),
+            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+        ]);
     }
 
     public function update(Request $request, Transaction $transaction)

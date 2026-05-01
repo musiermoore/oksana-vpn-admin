@@ -2,19 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Config\StoreBulkConfigRequest;
+use App\Http\Requests\Config\StoreConfigRequest;
+use App\Http\Requests\Config\UpdateConfigRequest;
 use App\Models\Config;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\UserToken;
-use DB;
+use App\Services\Crud\ConfigCrudService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Log;
+use RuntimeException;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ConfigController extends Controller
 {
+    public function __construct(
+        private readonly ConfigCrudService $configService,
+    ) {}
+
     public function index()
     {
         $users = User::query()
@@ -72,21 +80,13 @@ class ConfigController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreConfigRequest $request)
     {
-        $user = User::find($request->user_id);
+        $failedConfigs = $this->configService->createMany($request->toDto());
 
-        $configs = $request->post('configs', []);
-
-        $success = true;
-
-        foreach ($configs as $config) {
-            $success = $user->createConfig($config);
-        }
-
-        if (!$success) {
+        if ($failedConfigs !== []) {
             return redirect()->back()
-                ->with('error', 'Некоторые из конфигов не были созданы');
+                ->with('error', 'Некоторые из конфигов не были созданы: '.implode(', ', $failedConfigs));
         }
 
         return redirect()->route('configs.index')
@@ -103,37 +103,13 @@ class ConfigController extends Controller
         ]);
     }
 
-    public function storeBulk(Request $request)
+    public function storeBulk(StoreBulkConfigRequest $request)
     {
-        $server = Server::find($request->server_id);
+        $failedConfigs = $this->configService->createBulk($request->toDto());
 
-        $users = User::query()
-            ->with('configs')
-            ->whereDoesntHave('configs', function ($query) use ($server) {
-                $query->where('server_id', '=', $server->id);
-            })
-            ->get();
-
-        $errorConfigs = [];
-
-        foreach ($users as $user) {
-            $telegram = str_replace('@', '', $user->telegram);
-
-            $config = [
-                'name' => $telegram . '_' . $server->code,
-                'server_id' => $server->id,
-            ];
-
-            $success = $user->createConfig($config);
-
-            if (!$success) {
-                $errorConfigs[] = $config['name'];
-            }
-        }
-
-        if ($errorConfigs) {
+        if ($failedConfigs !== []) {
             return redirect()->back()
-                ->with('error', 'Некоторые из конфигов не были созданы: ' . implode(', ', $errorConfigs));
+                ->with('error', 'Некоторые из конфигов не были созданы: '.implode(', ', $failedConfigs));
         }
 
         return redirect()->route('configs.index')
@@ -153,12 +129,9 @@ class ConfigController extends Controller
         ]);
     }
 
-    public function update(Request $request, Config $config)
+    public function update(UpdateConfigRequest $request, Config $config)
     {
-        $config->update([
-            'user_id' => $request->user_id,
-            'description' => $request->description
-        ]);
+        $this->configService->update($config, $request->toDto());
 
         return redirect()->route('configs.index')
             ->with('success', 'Конфиг успешно обновлён');
@@ -167,13 +140,8 @@ class ConfigController extends Controller
     public function destroy(Config $config)
     {
         try {
-            if (! $config->deleteWgConfig()) {
-                return redirect()->route('configs.index')
-                    ->with('error', 'Ошибка при удалении конфига');
-            }
-
-            $config->delete();
-        } catch (Exception) {
+            $this->configService->delete($config);
+        } catch (RuntimeException) {
             return redirect()->route('configs.index')
                 ->with('error', 'Ошибка при удалении конфига');
         }
@@ -185,13 +153,8 @@ class ConfigController extends Controller
     public function enable(Config $config)
     {
         try {
-            if (! $config->enableWgConfig()) {
-                return redirect()->route('configs.index')
-                    ->with('error', 'Ошибка при включении конфига');
-            }
-
-            $config->update(['is_active' => true]);
-        } catch (Exception) {
+            $this->configService->enable($config);
+        } catch (RuntimeException) {
             return redirect()->route('configs.index')
                 ->with('error', 'Ошибка при включении конфига');
         }
@@ -203,13 +166,8 @@ class ConfigController extends Controller
     public function disable(Config $config)
     {
         try {
-            if (! $config->disableWgConfig()) {
-                return redirect()->route('configs.index')
-                    ->with('error', 'Ошибка при отключении конфига');
-            }
-
-            $config->update(['is_active' => false]);
-        } catch (Exception) {
+            $this->configService->disable($config);
+        } catch (RuntimeException) {
             return redirect()->route('configs.index')
                 ->with('error', 'Ошибка при отключении конфига');
         }
@@ -243,7 +201,7 @@ class ConfigController extends Controller
         try {
             return response()->download(
                 $config->path,
-                preg_replace('/[^a-zA-Z0-9]/', '', $config->name) . '.conf'
+                preg_replace('/[^a-zA-Z0-9]/', '', $config->name).'.conf'
             );
         } catch (Exception $exception) {
             Log::error($exception->getMessage());

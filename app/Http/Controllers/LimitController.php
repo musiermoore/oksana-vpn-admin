@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Limit\StoreLimitRequest;
 use App\Models\Config;
 use App\Models\Limit;
-use Illuminate\Http\Request;
+use App\Services\Crud\LimitCrudService;
+use RuntimeException;
 
 class LimitController extends Controller
 {
+    public function __construct(
+        private readonly LimitCrudService $limitService,
+    ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -48,23 +54,14 @@ class LimitController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreLimitRequest $request)
     {
-        $config = Config::find($request->config_id);
-
-        if (empty($config)) {
+        try {
+            $this->limitService->create($request->toDto());
+        } catch (RuntimeException $exception) {
             return redirect()->back()
-                ->with('error', 'Конфиг не найден.');
+                ->with('error', $exception->getMessage());
         }
-
-        $result = $config->setSpeedLimit($request->amount);
-
-        if (!$result) {
-            return redirect()->back()
-                ->with('error', 'Команда выполнилась с ошибкой.');
-        }
-
-        $config->limits()->create($request->post());
 
         return redirect()->route('limits.index')
             ->with('success', 'Ограничение успешно создано.');
@@ -75,21 +72,12 @@ class LimitController extends Controller
      */
     public function destroy(Limit $limit)
     {
-        $config = $limit->config;
-
-        if (empty($config)) {
+        try {
+            $this->limitService->delete($limit);
+        } catch (RuntimeException $exception) {
             return redirect()->back()
-                ->with('error', 'Конфиг не найден.');
+                ->with('error', $exception->getMessage());
         }
-
-        $result = $config->removeSpeedLimit($limit->amount);
-
-        if (!$result) {
-            return redirect()->back()
-                ->with('error', 'Команда выполнилась с ошибкой.');
-        }
-
-        $limit->delete();
 
         return redirect()->route('limits.index')
             ->with('success', 'Ограничение успешно удалёно');

@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Server\StoreServerRequest;
+use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
-use Illuminate\Http\Request;
+use App\Services\Crud\ServerCrudService;
+use RuntimeException;
 
 class ServerController extends Controller
 {
+    public function __construct(
+        private readonly ServerCrudService $serverService,
+    ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -35,9 +42,9 @@ class ServerController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreServerRequest $request)
     {
-        $server = Server::create($this->requestServerData($request));
+        $server = $this->serverService->create($request->toDto());
 
         return redirect()->route('servers.edit', $server->id)
             ->with('success', 'Сервер успешно создан.');
@@ -59,15 +66,9 @@ class ServerController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Server $server)
+    public function update(UpdateServerRequest $request, Server $server)
     {
-        $data = $this->requestServerData($request);
-
-        if (empty($data['ssh_private_key'])) {
-            unset($data['ssh_private_key']);
-        }
-
-        $server->update($data);
+        $this->serverService->update($server, $request->toDto());
 
         return redirect()->back()
             ->with('success', 'Сервер успешно обновлён.');
@@ -78,19 +79,14 @@ class ServerController extends Controller
      */
     public function destroy(Server $server)
     {
-        if ($server->configs()->exists()) {
+        try {
+            $this->serverService->delete($server);
+        } catch (RuntimeException $exception) {
             return redirect()->back()
-                ->with('error', 'К серверу привязаны конфиги.');
+                ->with('error', $exception->getMessage());
         }
-
-        $server->delete();
 
         return redirect()->route('servers.index')
             ->with('success', 'Сервер успешно удалён');
-    }
-
-    private function requestServerData(Request $request): array
-    {
-        return $request->post();
     }
 }

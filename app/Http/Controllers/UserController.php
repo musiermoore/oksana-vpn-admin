@@ -2,13 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\StoreUserRequest;
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\CurrentPayment;
 use App\Models\User;
 use App\Models\UserToken;
+use App\Services\Crud\UserCrudService;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    public function __construct(
+        private readonly UserCrudService $userService,
+    ) {}
+
     public function index(Request $request)
     {
         $getAll = $request->boolean('all');
@@ -17,7 +24,7 @@ class UserController extends Controller
         $users = User::query()
             ->select('users.*')
             ->tap(fn ($query) => User::applyBillingSummary($query))
-            ->when(!$onlyInactive && ! $getAll, fn ($query) => $query->where('users.is_active', '=', true))
+            ->when(! $onlyInactive && ! $getAll, fn ($query) => $query->where('users.is_active', '=', true))
             ->when($onlyInactive, fn ($query) => $query->where('users.is_active', '=', false))
             ->orderByRaw('GREATEST(0, -IFNULL(users.balance, 0)) DESC')
             ->orderBy('created_at')
@@ -46,13 +53,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $user = User::create($request->post());
-
-        if ($request->boolean('create_configs')) {
-            $user->createDefaultConfigs();
-        }
+        $this->userService->create($request->toDto());
 
         return redirect()->route('users.index');
     }
@@ -67,7 +70,7 @@ class UserController extends Controller
             'transactions' => function ($query) {
                 $query->with('type')->latest();
             },
-            'configs'
+            'configs',
         ]);
 
         return $this->inertia('Users/Form', [
@@ -78,15 +81,17 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        $user->update($request->post());
+        $this->userService->update($user, $request->toDto());
+
         return redirect()->route('users.index');
     }
 
     public function destroy(User $user)
     {
-        $user->delete();
+        $this->userService->delete($user);
+
         return redirect()->route('users.index');
     }
 
@@ -96,7 +101,7 @@ class UserController extends Controller
 
         if ($isPasswordCorrect && empty($userToken->expires_at)) {
             $userToken->update([
-                'expires_at' => now()->addMinutes(10)
+                'expires_at' => now()->addMinutes(10),
             ]);
         }
 

@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Transaction\StoreTransactionRequest;
+use App\Http\Requests\Transaction\UpdateTransactionRequest;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Telegram\Bot\Laravel\Facades\Telegram;
+use App\Services\Crud\TransactionCrudService;
 
 class TransactionController extends Controller
 {
+    public function __construct(
+        private readonly TransactionCrudService $transactionService,
+    ) {}
+
     public function index()
     {
         $transactions = Transaction::with(['user', 'type'])
@@ -48,9 +53,10 @@ class TransactionController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreTransactionRequest $request)
     {
-        Transaction::create($this->validatedData($request));
+        $this->transactionService->create($request->toDto());
+
         return redirect()->route('transactions.index');
     }
 
@@ -68,53 +74,31 @@ class TransactionController extends Controller
         ]);
     }
 
-    public function update(Request $request, Transaction $transaction)
+    public function update(UpdateTransactionRequest $request, Transaction $transaction)
     {
-        $transaction->update($this->validatedData($request));
+        $this->transactionService->update($transaction, $request->toDto());
+
         return redirect()->route('transactions.index');
     }
 
     public function destroy(Transaction $transaction)
     {
-        $transaction->delete();
+        $this->transactionService->delete($transaction);
+
         return redirect()->back();
     }
 
     public function approve(Transaction $transaction)
     {
-        $transaction->update(['is_approved' => true]);
-
-        Telegram::sendMessage([
-            'chat_id' => $transaction->user->telegram_id,
-            'text' => "Баланс пополнен на $transaction->amount"
-        ]);
+        $this->transactionService->approve($transaction);
 
         return redirect()->back();
     }
 
     public function decline(Transaction $transaction)
     {
-        $amount = $transaction->amount;
-        $telegramId = $transaction->user->telegram_id;
-
-        $transaction->delete();
-
-        Telegram::sendMessage([
-            'chat_id' => $telegramId,
-            'text' => "Пополнение баланса на $amount отклонено"
-        ]);
+        $this->transactionService->decline($transaction);
 
         return redirect()->back();
-    }
-
-    private function validatedData(Request $request): array
-    {
-        return $request->validate([
-            'user_id' => ['required', 'exists:users,id'],
-            'type_id' => ['required', 'exists:transaction_types,id'],
-            'amount' => ['required', 'numeric'],
-            'description' => ['nullable', 'string'],
-            'is_approved' => ['nullable', 'boolean'],
-        ]);
     }
 }

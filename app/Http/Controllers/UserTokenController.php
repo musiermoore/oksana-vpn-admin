@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\UserToken;
+use App\Http\Requests\UserToken\StoreUserTokenRequest;
 use App\Models\User;
+use App\Models\UserToken;
+use App\Services\Crud\UserTokenCrudService;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class UserTokenController extends Controller
 {
+    public function __construct(
+        private readonly UserTokenCrudService $userTokenService,
+    ) {}
+
     public function index()
     {
         $userTokens = UserToken::query()
@@ -32,21 +36,17 @@ class UserTokenController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreUserTokenRequest $request)
     {
-        $user = User::find($request->user_id);
-
-        $token = $user->tokens()->create([
-            'token' => Str::random(40),
-            'password' => Str::random(10)
-        ]);
+        $token = $this->userTokenService->create($request->toDto());
 
         return redirect()->route('user-tokens.show', $token->id);
     }
 
     public function destroy(UserToken $userToken)
     {
-        $userToken->delete();
+        $this->userTokenService->delete($userToken);
+
         return redirect()->route('user-tokens.index');
     }
 

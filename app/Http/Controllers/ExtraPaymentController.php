@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ExtraPayment\StoreExtraPaymentRequest;
 use App\Models\CurrentPayment;
 use App\Models\User;
 use App\Models\UserExtraPayment;
-use Illuminate\Http\Request;
+use App\Services\Crud\ExtraPaymentCrudService;
 
 class ExtraPaymentController extends Controller
 {
+    public function __construct(
+        private readonly ExtraPaymentCrudService $extraPaymentService,
+    ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -46,18 +51,9 @@ class ExtraPaymentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreExtraPaymentRequest $request)
     {
-        if (empty($request->user_id) || empty($request->current_payment_id) || $request->amount < 0) {
-            return redirect()->back()
-                ->with('error', 'Невалидные данные.');
-        }
-
-        UserExtraPayment::create([
-            'user_id' => $request->user_id,
-            'current_payment_id' => $request->current_payment_id,
-            'amount' => $request->amount,
-        ]);
+        $this->extraPaymentService->create($request->toDto());
 
         return redirect()->route('extra-payments.index')
             ->with('success', 'Доп. оплата успешно добавлена.');
@@ -68,7 +64,7 @@ class ExtraPaymentController extends Controller
      */
     public function destroy(string $id)
     {
-        UserExtraPayment::whereId($id)->delete();
+        $this->extraPaymentService->delete($id);
 
         return redirect()->route('extra-payments.index')
             ->with('success', 'Доп. оплата успешно удалена.');

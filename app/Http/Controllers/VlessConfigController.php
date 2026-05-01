@@ -2,19 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\VlessConfig\StoreVlessConfigRequest;
+use App\Http\Requests\VlessConfig\UpdateVlessConfigRequest;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Models\VlessConfig;
+use App\Services\Crud\VlessConfigCrudService;
 use App\Services\VlessSubscriptionService;
-use DB;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Log;
+use RuntimeException;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class VlessConfigController extends Controller
 {
+    public function __construct(
+        private readonly VlessConfigCrudService $vlessConfigService,
+    ) {}
+
     public function index()
     {
         $users = User::query()
@@ -65,16 +72,14 @@ class VlessConfigController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreVlessConfigRequest $request)
     {
-        $config = VlessConfig::find($request->config_id);
-
-        if ($config->user_id) {
+        try {
+            $this->vlessConfigService->assign($request->toDto());
+        } catch (RuntimeException $exception) {
             return redirect()->back()
-                ->with('error', 'Конфиг уже привязан к другому человеку');
+                ->with('error', $exception->getMessage());
         }
-
-        $config->update(['user_id' => $request->user_id]);
 
         return redirect()->route('vless-configs.index')
             ->with('success', 'Конфиги успешно созданы');
@@ -96,11 +101,9 @@ class VlessConfigController extends Controller
         ]);
     }
 
-    public function update(Request $request, VlessConfig $vlessConfig)
+    public function update(UpdateVlessConfigRequest $request, VlessConfig $vlessConfig)
     {
-        $vlessConfig->update([
-            'user_id' => $request->user_id,
-        ]);
+        $this->vlessConfigService->update($vlessConfig, $request->toDto());
 
         return redirect()->route('vless-configs.index')
             ->with('success', 'Конфиг успешно обновлён');
@@ -108,7 +111,7 @@ class VlessConfigController extends Controller
 
     public function destroy(VlessConfig $vlessConfig)
     {
-        $vlessConfig->update(['user_id' => null]);
+        $this->vlessConfigService->unassign($vlessConfig);
 
         return redirect()->back()
             ->with('success', 'Конфиг отвязан от пользователя');
@@ -137,7 +140,7 @@ class VlessConfigController extends Controller
         try {
             return response()->download(
                 $config->path,
-                preg_replace('/[^a-zA-Z0-9]/', '', $config->name) . '.conf'
+                preg_replace('/[^a-zA-Z0-9]/', '', $config->name).'.conf'
             );
         } catch (Exception $exception) {
             Log::error($exception->getMessage());

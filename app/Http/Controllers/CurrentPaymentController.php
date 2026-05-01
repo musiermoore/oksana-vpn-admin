@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CurrentPayment\StoreCurrentPaymentRequest;
+use App\Http\Requests\CurrentPayment\UpdateCurrentPaymentRequest;
 use App\Models\CurrentPayment;
-use Illuminate\Http\Request;
+use App\Services\Crud\CurrentPaymentCrudService;
 
 class CurrentPaymentController extends Controller
 {
+    public function __construct(
+        private readonly CurrentPaymentCrudService $currentPaymentService,
+    ) {}
+
     public function index()
     {
         $currentPayments = CurrentPayment::all();
@@ -33,9 +39,10 @@ class CurrentPaymentController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreCurrentPaymentRequest $request)
     {
-        CurrentPayment::create($request->post());
+        $this->currentPaymentService->create($request->toDto());
+
         return redirect()->route('current-payments.index');
     }
 
@@ -48,15 +55,17 @@ class CurrentPaymentController extends Controller
         ]);
     }
 
-    public function update(Request $request, CurrentPayment $currentPayment)
+    public function update(UpdateCurrentPaymentRequest $request, CurrentPayment $currentPayment)
     {
-        $currentPayment->update($request->post());
+        $this->currentPaymentService->update($currentPayment, $request->toDto());
+
         return redirect()->route('current-payments.index');
     }
 
     public function destroy(CurrentPayment $currentPayment)
     {
-        $currentPayment->delete();
+        $this->currentPaymentService->delete($currentPayment);
+
         return redirect()->route('current-payments.index');
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
 use App\Services\SubscriptionService;
 use Illuminate\Console\Command;
 
@@ -27,8 +26,6 @@ class RenewSubscriptionsCommand extends Command
      */
     public function handle(SubscriptionService $subscriptionService): void
     {
-        User::syncAllStoredBalances();
         $subscriptionService->renewEligibleSubscriptions();
-        User::syncAllStoredBalances();
     }
 }

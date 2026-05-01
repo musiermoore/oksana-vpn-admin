@@ -28,7 +28,6 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
      */
     public function handle()
     {
-        User::syncAllStoredBalances();
         $this->disableConfigs();
         $this->enableConfigs();
     }

@@ -197,13 +197,6 @@ class User extends Authenticatable
         ]);
     }
 
-    public static function buildBalanceSyncQuery(): Builder
-    {
-        return self::query()
-            ->select('users.id', 'users.balance')
-            ->withSum('approvedTransactions', 'amount');
-    }
-
     public function getStoredBalanceAmount(): float
     {
         if (array_key_exists('balance', $this->attributes)) {
@@ -216,32 +209,6 @@ class User extends Authenticatable
             ->first();
 
         return (float) ($user?->balance ?? 0);
-    }
-
-    public function syncStoredBalance(): void
-    {
-        $syncedUser = self::buildBalanceSyncQuery()
-            ->whereKey($this->getKey())
-            ->first();
-
-        if (! $syncedUser) {
-            return;
-        }
-
-        $this->forceFill([
-            'balance' => (float) ($syncedUser->approved_transactions_sum_amount ?? 0),
-        ])->saveQuietly();
-    }
-
-    public static function syncAllStoredBalances(): void
-    {
-        self::buildBalanceSyncQuery()
-            ->get()
-            ->each(function (User $user) {
-                $user->forceFill([
-                    'balance' => (float) ($user->approved_transactions_sum_amount ?? 0),
-                ])->saveQuietly();
-            });
     }
 
     public function createDefaultConfigs(): bool

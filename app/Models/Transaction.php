@@ -31,28 +31,31 @@ class Transaction extends Model
     {
         static::created(function (Transaction $transaction) {
             if ($transaction->is_approved) {
-                self::syncUserBalance($transaction->user_id);
+                self::applyBalanceDelta((int) $transaction->user_id, (float) $transaction->amount);
             }
         });
 
         static::updated(function (Transaction $transaction) {
-            $affectedUserIds = collect([
-                $transaction->user_id,
-                $transaction->getOriginal('user_id'),
-            ])->filter()->unique();
+            $originalUserId = (int) $transaction->getOriginal('user_id');
+            $currentUserId = (int) $transaction->user_id;
+            $originalAmount = (float) $transaction->getOriginal('amount');
+            $currentAmount = (float) $transaction->amount;
+            $wasApproved = (bool) $transaction->getOriginal('is_approved');
+            $isApproved = (bool) $transaction->is_approved;
 
-            if (
-                $transaction->wasChanged(['user_id', 'amount', 'is_approved'])
-                || $transaction->getOriginal('is_approved')
-            ) {
-                foreach ($affectedUserIds as $userId) {
-                    self::syncUserBalance((int) $userId);
-                }
+            if ($wasApproved) {
+                self::applyBalanceDelta($originalUserId, -$originalAmount);
+            }
+
+            if ($isApproved) {
+                self::applyBalanceDelta($currentUserId, $currentAmount);
             }
         });
 
         static::deleted(function (Transaction $transaction) {
-            self::syncUserBalance((int) $transaction->user_id);
+            if ($transaction->is_approved) {
+                self::applyBalanceDelta((int) $transaction->user_id, -(float) $transaction->amount);
+            }
         });
     }
 
@@ -72,14 +75,14 @@ class Transaction extends Model
         return Carbon::make($this->attributes['created_at'])->format('d.m.Y H:i');
     }
 
-    public static function syncUserBalance(int $userId): void
+    public static function applyBalanceDelta(int $userId, float $amount): void
     {
-        $user = User::query()->find($userId);
-
-        if (! $user) {
+        if ($userId <= 0 || $amount == 0.0) {
             return;
         }
 
-        $user->syncStoredBalance();
+        User::query()
+            ->whereKey($userId)
+            ->increment('balance', $amount);
     }
 }

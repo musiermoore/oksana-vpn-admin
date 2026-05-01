@@ -35,7 +35,6 @@ abstract class Controller
             'telegram_id' => $user->telegram_id,
             'description' => $user->description,
             'join_at' => $user->join_at,
-            'extra_payment' => $user->extra_payment,
             'balance' => (float) ($user->balance ?? 0),
             'is_active' => $user->is_active,
             'full_name' => $user->full_name,

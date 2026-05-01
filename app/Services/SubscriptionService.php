@@ -47,7 +47,7 @@ class SubscriptionService
             return;
         }
 
-        $amount = (float) $activePeriod->amount;
+        $amount = $this->getRenewalAmount($user, $activePeriod->id, (float) $activePeriod->amount);
         if ($this->userHasEnoughBalance($user, $amount) === false) {
             return;
         }
@@ -83,6 +83,15 @@ class SubscriptionService
                 'description' => 'Продление подписки',
             ]);
         });
+    }
+
+    private function getRenewalAmount(User $user, int $paymentPeriodId, float $baseAmount): float
+    {
+        $extraAmount = (float) $user->extraPayments()
+            ->where('current_payment_id', $paymentPeriodId)
+            ->sum('amount');
+
+        return $baseAmount + $extraAmount;
     }
 
     private function userHasEnoughBalance(User $user, float $requiredAmount): bool

@@ -27,7 +27,6 @@ class User extends Authenticatable
         'telegram_id',
         'description',
         'join_at',
-        'extra_payment',
         'balance',
         'is_admin',
         'is_active'
@@ -185,70 +184,24 @@ class User extends Authenticatable
         return (float) ($user?->payment_amount ?? 0);
     }
 
-    public static function subscriptionChargesSubquery(): Builder
-    {
-        return UserSubscription::query()
-            ->select([
-                'user_subscriptions.user_id',
-                DB::raw('SUM(user_subscriptions.price) AS amount'),
-            ])
-            ->groupBy('user_subscriptions.user_id');
-    }
-
-    public static function extraPaymentChargesSubquery(): Builder
-    {
-        return UserExtraPayment::query()
-            ->select([
-                'user_id',
-                DB::raw('SUM(amount) AS amount'),
-            ])
-            ->groupBy('user_id');
-    }
-
     public static function applyBillingSummary(
         Builder $query,
         string $transactionsRelation = 'approvedTransactions'
     ): Builder {
-        return $query
-            ->leftJoinSub(
-                self::subscriptionChargesSubquery(),
-                'subscription_charges',
-                'subscription_charges.user_id',
-                '=',
-                'users.id'
-            )
-            ->leftJoinSub(
-                self::extraPaymentChargesSubquery(),
-                'user_extra_payments',
-                'user_extra_payments.user_id',
-                '=',
-                'users.id'
-            )
-            ->addSelect(DB::raw(
-                'COALESCE(subscription_charges.amount, 0)'
-                . ' + COALESCE(user_extra_payments.amount, 0)'
-                . ' + COALESCE(users.extra_payment, 0) AS payment_amount'
-            ))
-            ->groupBy('users.id');
+        return $query->addSelect([
+            'payment_amount' => Transaction::query()
+                ->selectRaw('ABS(COALESCE(SUM(amount), 0))')
+                ->whereColumn('transactions.user_id', 'users.id')
+                ->where('transactions.is_approved', true)
+                ->where('transactions.amount', '<', 0),
+        ]);
     }
 
     public static function buildBalanceSyncQuery(): Builder
     {
         return self::query()
             ->select('users.id', 'users.balance')
-            ->leftJoinSub(
-                self::extraPaymentChargesSubquery(),
-                'user_extra_payments',
-                'user_extra_payments.user_id',
-                '=',
-                'users.id'
-            )
-            ->withSum('approvedTransactions', 'amount')
-            ->addSelect(DB::raw(
-                'COALESCE(user_extra_payments.amount, 0)'
-                . ' + COALESCE(users.extra_payment, 0) AS spent_amount'
-            ))
-            ->groupBy('users.id');
+            ->withSum('approvedTransactions', 'amount');
     }
 
     public function getStoredBalanceAmount(): float
@@ -276,7 +229,7 @@ class User extends Authenticatable
         }
 
         $this->forceFill([
-            'balance' => (float) ($syncedUser->approved_transactions_sum_amount ?? 0) - (float) ($syncedUser->spent_amount ?? 0),
+            'balance' => (float) ($syncedUser->approved_transactions_sum_amount ?? 0),
         ])->saveQuietly();
     }
 
@@ -286,7 +239,7 @@ class User extends Authenticatable
             ->get()
             ->each(function (User $user) {
                 $user->forceFill([
-                    'balance' => (float) ($user->approved_transactions_sum_amount ?? 0) - (float) ($user->spent_amount ?? 0),
+                    'balance' => (float) ($user->approved_transactions_sum_amount ?? 0),
                 ])->saveQuietly();
             });
     }

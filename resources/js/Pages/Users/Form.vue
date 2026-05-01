@@ -14,7 +14,6 @@ const props = defineProps({
 const form = useForm({
     name: props.user?.name ?? '',
     telegram: props.user?.telegram ?? '',
-    extra_payment: props.user?.extra_payment ?? 0,
     description: props.user?.description ?? '',
     join_at: props.user?.join_at ?? props.payments[0]?.start_date ?? '',
     create_configs: true,
@@ -61,11 +60,6 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
             <label class="field">
                 <span>Telegram</span>
                 <input v-model="form.telegram" type="text" required>
-            </label>
-
-            <label class="field">
-                <span>Доп. оплата</span>
-                <input v-model="form.extra_payment" type="number" required>
             </label>
 
             <label class="field">

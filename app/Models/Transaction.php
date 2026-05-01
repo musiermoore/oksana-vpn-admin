@@ -5,15 +5,27 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 class Transaction extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'user_id',
+        'type_id',
         'amount',
-        'is_approved'
+        'is_approved',
+        'description',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'float',
+            'is_approved' => 'bool',
+        ];
+    }
 
     protected static function booted(): void
     {
@@ -44,10 +56,15 @@ class Transaction extends Model
         });
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)
             ->withTrashed();
+    }
+
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(TransactionType::class, 'type_id');
     }
 
     public function getFormattedCreatedAtAttribute()

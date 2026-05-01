@@ -146,7 +146,7 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                     </thead>
                     <tbody>
                         <tr v-for="transaction in user.transactions" :key="transaction.id">
-                            <td>{{ transaction.amount }}</td>
+                            <td>{{ transaction.amount }}<template v-if="transaction.type"> · {{ transaction.type.name }}</template></td>
                             <td>{{ transaction.formatted_created_at }}</td>
                             <td>
                                 <div v-if="transaction.is_approved" class="actions">

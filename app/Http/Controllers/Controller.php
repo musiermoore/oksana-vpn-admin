@@ -7,6 +7,7 @@ use App\Models\CurrentPayment;
 use App\Models\Limit;
 use App\Models\Server;
 use App\Models\Transaction;
+use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\UserExtraPayment;
 use App\Models\UserToken;
@@ -128,7 +129,9 @@ abstract class Controller
             'id' => $transaction->id,
             'amount' => (float) $transaction->amount,
             'is_approved' => (bool) $transaction->is_approved,
+            'description' => $transaction->description,
             'formatted_created_at' => $transaction->formatted_created_at,
+            'type' => $transaction->type ? $this->transactionTypeData($transaction->type) : null,
             'user' => $transaction->user ? [
                 'id' => $transaction->user->id,
                 'full_name' => $transaction->user->full_name,
@@ -141,6 +144,15 @@ abstract class Controller
                 'approve' => route('transactions.approve', $transaction),
                 'decline' => route('transactions.decline', $transaction),
             ],
+        ];
+    }
+
+    protected function transactionTypeData(TransactionType $type): array
+    {
+        return [
+            'id' => $type->id,
+            'name' => $type->name,
+            'slug' => $type->slug,
         ];
     }
 

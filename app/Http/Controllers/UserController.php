@@ -65,7 +65,7 @@ class UserController extends Controller
 
         $user->load([
             'transactions' => function ($query) {
-                $query->latest();
+                $query->with('type')->latest();
             },
             'configs'
         ]);

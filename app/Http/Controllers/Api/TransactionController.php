@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Transaction;
+use App\Models\TransactionType;
 use App\Models\User;
 use App\Services\UserApiService;
 use Exception;
@@ -24,8 +25,10 @@ class TransactionController
 
         try {
             $transaction = $user->transactions()->create([
+                'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
                 'amount' => $request->amount,
-                'is_approved' => false
+                'is_approved' => false,
+                'description' => $request->bank,
             ]);
         } catch (Exception $exception) {
             return response()->json([

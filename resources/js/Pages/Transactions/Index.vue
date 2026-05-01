@@ -48,7 +48,7 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                             <Link v-if="transaction.user?.is_active" :href="transaction.user.edit_url">{{ transaction.user.full_name }}</Link>
                             <span v-else>{{ transaction.user?.full_name }}</span>
                         </td>
-                        <td>{{ transaction.amount }}</td>
+                        <td>{{ transaction.amount }}<template v-if="transaction.type"> · {{ transaction.type.name }}</template></td>
                         <td>{{ transaction.formatted_created_at }}</td>
                         <td>
                             <div class="actions">
@@ -80,7 +80,7 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                             <Link v-if="transaction.user?.is_active" :href="transaction.user.edit_url">{{ transaction.user.full_name }}</Link>
                             <span v-else>{{ transaction.user?.full_name }}</span>
                         </td>
-                        <td>{{ transaction.amount }}</td>
+                        <td>{{ transaction.amount }}<template v-if="transaction.type"> · {{ transaction.type.name }}</template></td>
                         <td>{{ transaction.formatted_created_at }}</td>
                         <td>
                             <div class="actions">

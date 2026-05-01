@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transaction;
+use App\Models\TransactionType;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Telegram\Bot\Laravel\Facades\Telegram;
@@ -11,12 +12,12 @@ class TransactionController extends Controller
 {
     public function index()
     {
-        $transactions = Transaction::with('user')
+        $transactions = Transaction::with(['user', 'type'])
             ->whereIsApproved(true)
             ->latest()
             ->get();
 
-        $pendingTransactions = Transaction::with('user')
+        $pendingTransactions = Transaction::with(['user', 'type'])
             ->whereIsApproved(false)
             ->latest()
             ->get();
@@ -36,36 +37,40 @@ class TransactionController extends Controller
     public function create()
     {
         $users = User::get();
+        $types = TransactionType::query()->orderBy('id')->get();
 
         return $this->inertia('Transactions/Form', [
             'mode' => 'create',
             'submit_url' => route('transactions.store'),
             'transaction' => null,
             'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'types' => $types->map(fn (TransactionType $type) => $this->transactionTypeData($type))->values(),
         ]);
     }
 
     public function store(Request $request)
     {
-        Transaction::create($request->post());
+        Transaction::create($this->validatedData($request));
         return redirect()->route('transactions.index');
     }
 
     public function edit(Transaction $transaction)
     {
         $users = User::get();
+        $types = TransactionType::query()->orderBy('id')->get();
 
         return $this->inertia('Transactions/Form', [
             'mode' => 'edit',
             'submit_url' => route('transactions.update', $transaction),
             'transaction' => $this->transactionData($transaction),
             'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'types' => $types->map(fn (TransactionType $type) => $this->transactionTypeData($type))->values(),
         ]);
     }
 
     public function update(Request $request, Transaction $transaction)
     {
-        $transaction->update($request->post());
+        $transaction->update($this->validatedData($request));
         return redirect()->route('transactions.index');
     }
 
@@ -100,5 +105,16 @@ class TransactionController extends Controller
         ]);
 
         return redirect()->back();
+    }
+
+    private function validatedData(Request $request): array
+    {
+        return $request->validate([
+            'user_id' => ['required', 'exists:users,id'],
+            'type_id' => ['required', 'exists:transaction_types,id'],
+            'amount' => ['required', 'numeric'],
+            'description' => ['nullable', 'string'],
+            'is_approved' => ['nullable', 'boolean'],
+        ]);
     }
 }

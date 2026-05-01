@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\CarbonInterface;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -186,20 +185,12 @@ class User extends Authenticatable
         return (float) ($user?->payment_amount ?? 0);
     }
 
-    public static function subscriptionChargesSubquery(?CarbonInterface $asOf = null): Builder
+    public static function subscriptionChargesSubquery(): Builder
     {
-        $asOf ??= now();
-
         return UserSubscription::query()
-            ->join('current_payments', function ($join) use ($asOf) {
-                $join
-                    ->whereColumn('current_payments.start_date', '<=', 'user_subscriptions.end_date')
-                    ->whereColumn('current_payments.end_date', '>=', 'user_subscriptions.start_date')
-                    ->whereDate('current_payments.start_date', '<=', $asOf->toDateString());
-            })
             ->select([
                 'user_subscriptions.user_id',
-                DB::raw('SUM(current_payments.amount) AS amount'),
+                DB::raw('SUM(user_subscriptions.price) AS amount'),
             ])
             ->groupBy('user_subscriptions.user_id');
     }
@@ -212,27 +203,6 @@ class User extends Authenticatable
                 DB::raw('SUM(amount) AS amount'),
             ])
             ->groupBy('user_id');
-    }
-
-    public static function paymentPeriodChargesSubquery(?CarbonInterface $asOf = null): Builder
-    {
-        $asOf ??= now();
-
-        return self::query()
-            ->leftJoin('current_payments', function ($join) use ($asOf) {
-                $join
-                    ->where(function ($query) {
-                        $query
-                            ->whereColumn('current_payments.start_date', '>=', 'users.join_at')
-                            ->orWhereNull('users.join_at');
-                    })
-                    ->whereDate('current_payments.start_date', '<=', $asOf->toDateString());
-            })
-            ->select([
-                'users.id',
-                DB::raw('SUM(COALESCE(current_payments.amount, 0)) AS amount'),
-            ])
-            ->groupBy('users.id');
     }
 
     public static function applyBillingSummary(
@@ -267,13 +237,6 @@ class User extends Authenticatable
         return self::query()
             ->select('users.id', 'users.balance')
             ->leftJoinSub(
-                self::paymentPeriodChargesSubquery(),
-                'payment_period_charges',
-                'payment_period_charges.id',
-                '=',
-                'users.id'
-            )
-            ->leftJoinSub(
                 self::extraPaymentChargesSubquery(),
                 'user_extra_payments',
                 'user_extra_payments.user_id',
@@ -282,8 +245,7 @@ class User extends Authenticatable
             )
             ->withSum('approvedTransactions', 'amount')
             ->addSelect(DB::raw(
-                'COALESCE(payment_period_charges.amount, 0)'
-                . ' + COALESCE(user_extra_payments.amount, 0)'
+                'COALESCE(user_extra_payments.amount, 0)'
                 . ' + COALESCE(users.extra_payment, 0) AS spent_amount'
             ))
             ->groupBy('users.id');

@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Config;
 use App\Models\User;
-use App\Services\SubscriptionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -29,8 +28,6 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
      */
     public function handle()
     {
-        User::syncAllStoredBalances();
-        app(SubscriptionService::class)->renewEligibleSubscriptions();
         User::syncAllStoredBalances();
         $this->disableConfigs();
         $this->enableConfigs();

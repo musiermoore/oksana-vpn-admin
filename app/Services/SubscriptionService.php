@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\PaymentPeriod;
+use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\UserSubscription;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SubscriptionService
 {
@@ -21,64 +24,65 @@ class SubscriptionService
 
     public function renewForUser(User $user): void
     {
-        if ($user->activeSubscription) {
-            $this->renewActiveSubscription($user);
-
-            return;
-        }
-
-        $this->startCurrentPeriodSubscription($user);
+        $this->renewActiveSubscription($user);
     }
 
     private function renewActiveSubscription(User $user): void
     {
+        $activePeriod = PaymentPeriod::getActive();
+        $activeSubscription = $user->activeSubscription;
         $latestSubscription = $user->latestSubscription;
-        $activePeriod = PaymentPeriod::getActive();
 
-        if (! $latestSubscription || ! $activePeriod) {
+        if (! $activeSubscription || ! $latestSubscription || ! $activePeriod) {
             return;
         }
 
-        if ($latestSubscription->end_date > $activePeriod->end_date) {
+        if ($latestSubscription->id !== $activeSubscription->id) {
             return;
         }
 
-        $nextPeriod = PaymentPeriod::getNextAfterDate($latestSubscription->end_date);
+        $renewalDate = Carbon::parse($activeSubscription->end_date)->subDay()->startOfDay();
 
-        if (! $nextPeriod || $this->userHasEnoughBalance($user, (float) $nextPeriod->amount) === false) {
+        if (today()->lt($renewalDate)) {
             return;
         }
 
-        $this->createSubscriptionIfMissing($user, $nextPeriod->start_date, $nextPeriod->end_date);
+        $amount = (float) $activePeriod->amount;
+        if ($this->userHasEnoughBalance($user, $amount) === false) {
+            return;
+        }
+
+        $startDate = Carbon::parse($activeSubscription->end_date)->addDay()->toDateString();
+        $endDate = Carbon::parse($startDate)->addMonth()->toDateString();
+
+        $this->createSubscriptionIfMissing($user, $startDate, $endDate, $amount);
     }
 
-    private function startCurrentPeriodSubscription(User $user): void
+    private function createSubscriptionIfMissing(User $user, string $startDate, string $endDate, float $price): void
     {
-        $activePeriod = PaymentPeriod::getActive();
+        DB::transaction(function () use ($user, $startDate, $endDate, $price) {
+            $subscription = UserSubscription::query()->firstOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                ],
+                [
+                    'price' => $price,
+                ]
+            );
 
-        if (! $activePeriod || $this->userHasEnoughBalance($user, (float) $activePeriod->amount) === false) {
-            return;
-        }
+            if (! $subscription->wasRecentlyCreated) {
+                return;
+            }
 
-        $hasActivePeriodCovered = $user->subscriptions()
-            ->whereDate('start_date', '<=', $activePeriod->end_date)
-            ->whereDate('end_date', '>=', $activePeriod->start_date)
-            ->exists();
-
-        if ($hasActivePeriodCovered) {
-            return;
-        }
-
-        $this->createSubscriptionIfMissing($user, $activePeriod->start_date, $activePeriod->end_date);
-    }
-
-    private function createSubscriptionIfMissing(User $user, string $startDate, string $endDate): void
-    {
-        UserSubscription::firstOrCreate([
-            'user_id' => $user->id,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-        ]);
+            $user->transactions()->create([
+                'type_id' => TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
+                'amount' => -$price,
+                'is_approved' => true,
+                'description' => 'Продление подписки',
+            ]);
+        });
     }
 
     private function userHasEnoughBalance(User $user, float $requiredAmount): bool

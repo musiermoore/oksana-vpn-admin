@@ -1,7 +1,6 @@
 services:
     app:
         container_name: wireguard_app
-        platform: linux/amd64
         env_file:
             - .env
         build:
@@ -47,7 +46,6 @@ services:
 
     mysql:
         container_name: wireguard_mysql
-        platform: linux/amd64
         env_file:
             - .env
         image: mysql:8.0

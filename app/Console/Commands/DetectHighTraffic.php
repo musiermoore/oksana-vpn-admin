@@ -49,7 +49,7 @@ class DetectHighTraffic extends Command
             ->orHaving(WireGuardTrafficService::RECEIVED_TYPE . '_traffic_usage', '>=', $highLimit)
             ->get();
 
-        $devChatId = "-4543488848";
+        $devChatId = config('services.telegram.dev_chat_id');
 
         foreach ($configs as $config) {
             if ($config['sent_traffic_usage'] > $highLimit) {
@@ -75,10 +75,12 @@ class DetectHighTraffic extends Command
                 continue;
             }
 
-            Telegram::sendMessage([
-                'chat_id' => $devChatId,
-                'text' => $user->full_name . " ($config->name) даёт джаззу больше $highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
-            ]);
+            if (!empty($devChatId)) {
+                Telegram::sendMessage([
+                    'chat_id' => $devChatId,
+                    'text' => $user->full_name . " ($config->name) даёт джаззу больше $highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
+                ]);
+            }
 
             if (!empty($user->telegram_id)) {
                 Telegram::sendMessage([

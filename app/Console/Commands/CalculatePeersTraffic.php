@@ -29,7 +29,9 @@ class CalculatePeersTraffic extends Command
      */
     public function handle(): void
     {
-        $servers = Server::all();
+        $servers = Server::query()
+            ->where('is_vless', false)
+            ->get();
 
         foreach ($servers as $server) {
             $traffics = WireGuardTrafficService::getTraffic($server->id);

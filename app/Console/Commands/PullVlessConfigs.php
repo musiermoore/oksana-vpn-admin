@@ -66,9 +66,13 @@ class PullVlessConfigs extends Command
 
         $output = shell_exec($command);
 
-        try {
-            $data = json_decode($output, true);
-        } catch (\Exception $exception) {
+        if (! is_string($output) || trim($output) === '') {
+            return;
+        }
+
+        $data = json_decode($output, true);
+
+        if (! is_array($data)) {
             return;
         }
 

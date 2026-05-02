@@ -61,10 +61,19 @@ class WireGuardService
 
     public function getWireguardHandshakes(Server $server)
     {
+        if ($server->is_vless) {
+            return [];
+        }
+
         $serverCode = $server->slug_code;
+        $path = storage_path("app/wireguard/wg-show_$serverCode.txt");
+
+        if (! File::exists($path)) {
+            return [];
+        }
 
         // Execute the wg command and capture the output
-        $output = file_get_contents(storage_path("app/wireguard/wg-show_$serverCode.txt"));
+        $output = file_get_contents($path);
 
         $peerPattern = '/peer: (.*)/';
         $handshakePattern = '/latest handshake: (.*)/';
@@ -136,11 +145,19 @@ class WireGuardService
     {
         $server = Server::find($serverId);
 
+        if (! $server || $server->is_vless) {
+            return collect();
+        }
+
         $clientPeers = [];
 
         $configPath = storage_path('app/wireguard/clients-' . $server->slug_code);
 
         $clientPeers = array_merge($clientPeers, $this->getWireguardHandshakes($server));
+
+        if (! File::isDirectory($configPath)) {
+            return collect($clientPeers);
+        }
 
         $contacts = $this->getContacts($serverId);
         $files = $this->listFilesInDirectory($configPath);

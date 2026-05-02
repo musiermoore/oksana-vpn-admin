@@ -46,7 +46,8 @@ RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interacti
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-RUN php artisan package:discover --ansi
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/config.php bootstrap/cache/routes*.php bootstrap/cache/events.php \
+    && php artisan package:discover --ansi
 
 EXPOSE 8000
 

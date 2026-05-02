@@ -140,11 +140,11 @@ class UserController extends Controller
         try {
             $configBody = $config->getQrCodeContent();
 
-            $svg = QrCode::margin(5)->size(512)->generate($configBody);
+            $png = QrCode::format('png')->margin(5)->size(512)->generate($configBody);
 
-            return response($svg)
-                ->header('Content-Type', 'image/svg+xml')
-                ->header('Content-Disposition', 'attachment; filename="qrcode.svg"');
+            return response($png)
+                ->header('Content-Type', 'image/png')
+                ->header('Content-Disposition', 'attachment; filename="qrcode.png"');
         } catch (Exception $exception) {
             report($exception);
 

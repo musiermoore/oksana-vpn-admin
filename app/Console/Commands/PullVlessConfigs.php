@@ -57,12 +57,18 @@ class PullVlessConfigs extends Command
         $sqliteQuery = str_replace('`', '\"', DB::table('inbounds')->toRawSql());
         $sqliteCommand = "sqlite3 /etc/x-ui/x-ui.db -json \"$sqliteQuery\"";
 
-        $command = "timeout 15 $(which ssh) "
+        $sshCommand = "ssh "
             . "-i " . escapeshellarg($tempKeyPath) . " "
             . "-o BatchMode=yes "
             . "-o StrictHostKeyChecking=no "
-            . "root@" . escapeshellarg($server->ip) . " "
+            . "-o ConnectTimeout=15 "
+            . escapeshellarg("root@{$server->ip}") . " "
             . escapeshellarg($sqliteCommand);
+
+        $timeoutBinary = trim((string) shell_exec('command -v timeout 2>/dev/null'));
+        $command = $timeoutBinary !== ''
+            ? escapeshellcmd($timeoutBinary) . " 15 {$sshCommand}"
+            : $sshCommand;
 
         $output = shell_exec($command);
 

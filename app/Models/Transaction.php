@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\UserBalanceDeltaRequested;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +32,10 @@ class Transaction extends Model
     {
         static::created(function (Transaction $transaction) {
             if ($transaction->is_approved) {
-                self::applyBalanceDelta((int) $transaction->user_id, (float) $transaction->amount);
+                event(new UserBalanceDeltaRequested(
+                    userId: (int) $transaction->user_id,
+                    amount: (float) $transaction->amount,
+                ));
             }
         });
 
@@ -44,17 +48,26 @@ class Transaction extends Model
             $isApproved = (bool) $transaction->is_approved;
 
             if ($wasApproved) {
-                self::applyBalanceDelta($originalUserId, -$originalAmount);
+                event(new UserBalanceDeltaRequested(
+                    userId: $originalUserId,
+                    amount: -$originalAmount,
+                ));
             }
 
             if ($isApproved) {
-                self::applyBalanceDelta($currentUserId, $currentAmount);
+                event(new UserBalanceDeltaRequested(
+                    userId: $currentUserId,
+                    amount: $currentAmount,
+                ));
             }
         });
 
         static::deleted(function (Transaction $transaction) {
             if ($transaction->is_approved) {
-                self::applyBalanceDelta((int) $transaction->user_id, -(float) $transaction->amount);
+                event(new UserBalanceDeltaRequested(
+                    userId: (int) $transaction->user_id,
+                    amount: -(float) $transaction->amount,
+                ));
             }
         });
     }
@@ -73,16 +86,5 @@ class Transaction extends Model
     public function getFormattedCreatedAtAttribute()
     {
         return Carbon::make($this->attributes['created_at'])->format('d.m.Y H:i');
-    }
-
-    public static function applyBalanceDelta(int $userId, float $amount): void
-    {
-        if ($userId <= 0 || $amount == 0.0) {
-            return;
-        }
-
-        User::query()
-            ->whereKey($userId)
-            ->increment('balance', $amount);
     }
 }

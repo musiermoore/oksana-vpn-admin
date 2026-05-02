@@ -56,8 +56,6 @@ class SubscriptionService
         $endDate = Carbon::parse($startDate)->addMonth()->toDateString();
 
         $this->createSubscriptionIfMissing($user, $startDate, $endDate, $amount);
-
-        User::whereId($user->id)->decrement('balance', $amount);
     }
 
     private function createSubscriptionIfMissing(User $user, string $startDate, string $endDate, float $price): void

@@ -6,13 +6,14 @@ This file captures project-specific working rules so future development stays co
 
 ## Command Rules
 
-- Use `docker compose exec laravel.test` for all PHP commands.
-- Use the local machine directly for all `npm` commands.
+- Use `docker compose exec app` for all PHP and Composer commands.
+- Use `docker compose exec vite` for Node and npm commands when they need the container environment.
+- Use the default `docker compose` files for development, and `docker compose -f docker-compose.prod.yml ...` only for production workflows.
 - Prefer `rg` for searching in the codebase.
 
 ## Backend Rules
 
-- The project uses Laravel 11 with PHP 8.2.
+- The project uses Laravel 13 with PHP 8.3.
 - Keep business logic in services or commands when it spans multiple models.
 - Prefer Eloquent relations and existing query patterns used in the project.
 - When changing billing logic, verify how `User::syncStoredBalance()` and approved transactions interact.

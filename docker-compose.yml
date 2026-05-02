@@ -1,59 +1,87 @@
 services:
-    laravel.test:
+    app:
         container_name: wireguard_app
+        platform: linux/amd64
+        env_file:
+            - .env
         build:
-            context: ./vendor/laravel/sail/runtimes/8.3
-            dockerfile: Dockerfile
-            args:
-                WWWGROUP: '${WWWGROUP}'
-        image: sail-8.3/app
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
+            context: .
+            dockerfile: docker/app/Dockerfile
+        working_dir: /var/www/html
+        command: php artisan serve --host=0.0.0.0 --port=8000
         ports:
-            - '${APP_PORT:-80}:80'
-        environment:
-            WWWUSER: '${WWWUSER}'
-            LARAVEL_SAIL: 1
-            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
-            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
-            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+            - '${APP_PORT:-8000}:8000'
         volumes:
             - '.:/var/www/html'
         networks:
-            - sail
+            - app
             - oksana-vpn
         depends_on:
-            - mysql
+            mysql:
+                condition: service_healthy
+
+    vite:
+        container_name: wireguard_vite
+        platform: linux/amd64
+        env_file:
+            - .env
+        build:
+            context: .
+            dockerfile: docker/vite/Dockerfile
+        working_dir: /var/www/html
+        command: sh -lc "if [ ! -d node_modules ] || [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm install; fi && npm run dev"
+        ports:
+            - '${VITE_PORT:-5173}:5173'
+        volumes:
+            - '.:/var/www/html'
+            - vite-node-modules:/var/www/html/node_modules
+        environment:
+            VITE_PORT: '${VITE_PORT:-5173}'
+            VITE_HMR_HOST: '${VITE_HMR_HOST:-localhost}'
+            VITE_HMR_PORT: '${VITE_HMR_PORT:-5173}'
+            CHOKIDAR_USEPOLLING: 'true'
+        networks:
+            - app
+        depends_on:
+            - app
+
     mysql:
-        image: 'mysql/mysql-server:8.0'
+        container_name: wireguard_mysql
+        platform: linux/amd64
+        env_file:
+            - .env
+        image: mysql:8.0
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_ROOT_HOST: '%'
             MYSQL_DATABASE: '${DB_DATABASE}'
             MYSQL_USER: '${DB_USERNAME}'
             MYSQL_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_ALLOW_EMPTY_PASSWORD: 1
         volumes:
-            - 'sail-mysql:/var/lib/mysql'
-            - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
-
+            - mysql-data:/var/lib/mysql
+            - ./docker/mysql/init:/docker-entrypoint-initdb.d
         networks:
-            - sail
+            - app
         healthcheck:
             test:
                 - CMD
                 - mysqladmin
                 - ping
                 - '-p${DB_PASSWORD}'
-            retries: 3
+            retries: 5
             timeout: 5s
+            interval: 5s
+            start_period: 15s
+
 networks:
-    sail:
+    app:
         driver: bridge
     oksana-vpn:
         external: true
+
 volumes:
-    sail-mysql:
+    mysql-data:
+        driver: local
+    vite-node-modules:
         driver: local

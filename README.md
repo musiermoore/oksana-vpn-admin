@@ -5,7 +5,7 @@
 ### Composer Install
 Для начала нужно установить все пакеты:
 ```shell
-docker run -v ${PWD}:/dir -w /dir composer composer install --ignore-platform-reqs
+docker compose run --rm app composer install
 ```
 
 ### Настройка .env
@@ -30,16 +30,27 @@ BASIC_AUTH_PASSWORD=
 ### Запуск проекта
 
 ```shell
-./vendor/bin/sail up -d
-./vendor/bin/sail php artisan optimize 
-./vendor/bin/sail php artisan migrate 
+docker compose up -d --build
+docker compose exec app php artisan optimize
+docker compose exec app php artisan migrate
 ```
+
+`docker compose` без дополнительных флагов использует dev-окружение по умолчанию.
 
 ### Frontend
 
 Для запуска билда скриптов и стилей:
 ```shell
-./vendor/bin/sail npm run dev
+docker compose logs -f vite
 ```
 
 Все стили и скрипты хранятся в `resources/css` и `resources/js` 
+
+### Production
+
+Для production используется отдельный compose-файл:
+```shell
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+В production Vite не запускается отдельным контейнером: ассеты собираются внутри production image.

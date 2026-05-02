@@ -1,0 +1,56 @@
+services:
+    app:
+        container_name: wireguard_app_prod
+        platform: linux/amd64
+        env_file:
+            - .env
+        build:
+            context: .
+            dockerfile: docker/app/Dockerfile.prod
+        restart: unless-stopped
+        ports:
+            - '${APP_PORT:-8000}:8000'
+        networks:
+            - app
+            - oksana-vpn
+        depends_on:
+            mysql:
+                condition: service_healthy
+
+    mysql:
+        container_name: wireguard_mysql_prod
+        platform: linux/amd64
+        env_file:
+            - .env
+        image: mysql:8.0
+        restart: unless-stopped
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+        volumes:
+            - mysql-data-prod:/var/lib/mysql
+            - ./docker/mysql/init:/docker-entrypoint-initdb.d
+        networks:
+            - app
+        healthcheck:
+            test:
+                - CMD
+                - mysqladmin
+                - ping
+                - '-p${DB_PASSWORD}'
+            retries: 5
+            timeout: 5s
+            interval: 5s
+            start_period: 15s
+
+networks:
+    app:
+        driver: bridge
+    oksana-vpn:
+        external: true
+
+volumes:
+    mysql-data-prod:
+        driver: local

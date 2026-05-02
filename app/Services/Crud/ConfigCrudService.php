@@ -80,7 +80,8 @@ class ConfigCrudService
             }
 
             $this->configs->delete($config);
-        } catch (Exception) {
+        } catch (Exception $exception) {
+            report($exception);
             throw new RuntimeException('Ошибка при удалении конфига');
         }
     }
@@ -93,7 +94,8 @@ class ConfigCrudService
             }
 
             $this->configs->update($config, ['is_active' => true]);
-        } catch (Exception) {
+        } catch (Exception $exception) {
+            report($exception);
             throw new RuntimeException('Ошибка при включении конфига');
         }
     }
@@ -106,7 +108,8 @@ class ConfigCrudService
             }
 
             $this->configs->update($config, ['is_active' => false]);
-        } catch (Exception) {
+        } catch (Exception $exception) {
+            report($exception);
             throw new RuntimeException('Ошибка при отключении конфига');
         }
     }

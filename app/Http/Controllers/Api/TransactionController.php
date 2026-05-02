@@ -31,6 +31,8 @@ class TransactionController
                 'description' => $request->bank,
             ]);
         } catch (Exception $exception) {
+            report($exception);
+
             return response()->json([
                 'message' => "Что-то пошло не так. "
                     . "Сообщи свой никнем @soussangler"

@@ -135,6 +135,7 @@ class User extends Authenticatable
             return $isCreated;
         } catch (Exception $exception) {
             DB::rollBack();
+            report($exception);
 
             return false;
         }

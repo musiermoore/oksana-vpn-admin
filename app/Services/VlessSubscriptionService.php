@@ -50,6 +50,7 @@ class VlessSubscriptionService
                 ->all();
 
         } catch (\Exception $e) {
+            report($e);
             return [];
         }
     }

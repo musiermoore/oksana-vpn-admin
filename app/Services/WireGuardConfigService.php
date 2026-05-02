@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Config;
 use App\Models\Server;
 use Exception;
-use Telegram\Bot\Laravel\Facades\Telegram;
 
 class WireGuardConfigService
 {
@@ -36,6 +35,7 @@ class WireGuardConfigService
         try {
             return $this->runFile(self::WG_CREATE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
+            report($exception);
             return false;
         }
     }
@@ -45,6 +45,7 @@ class WireGuardConfigService
         try {
             return ! $this->fileExists($this->config->name) || $this->runFile(self::WG_DELETE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
+            report($exception);
             return false;
         }
     }
@@ -54,6 +55,7 @@ class WireGuardConfigService
         try {
             return ! $this->fileExists($this->config->name) || $this->runFile(self::WG_ENABLE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
+            report($exception);
             return false;
         }
     }
@@ -63,6 +65,7 @@ class WireGuardConfigService
         try {
             return ! $this->fileExists($this->config->name) || $this->runFile(self::WG_DISABLE_CONFIG_FILE, [$this->config->name]);
         } catch (Exception $exception) {
+            report($exception);
             return false;
         }
     }
@@ -81,6 +84,7 @@ class WireGuardConfigService
         try {
             return $this->runFile(self::WG_SET_LIMIT_FILE, [str_replace('/24', '', $this->config->address), $limit]);
         } catch (Exception $exception) {
+            report($exception);
             return false;
         }
     }
@@ -90,10 +94,7 @@ class WireGuardConfigService
         try {
             return $this->runFile(self::WG_REMOVE_LIMIT_FILE, [str_replace('/24', '', $this->config->address), $limit]);
         } catch (Exception $exception) {
-            Telegram::sendMessage([
-                'chat_id' => "-4543488848",
-                'text' => $exception->getMessage()
-            ]);
+            report($exception);
             return false;
         }
     }

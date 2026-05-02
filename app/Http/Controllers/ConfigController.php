@@ -13,7 +13,6 @@ use App\Services\Crud\ConfigCrudService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Log;
 use RuntimeException;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -187,7 +186,7 @@ class ConfigController extends Controller
 
             return QrCode::size(600)->generate($configBody);
         } catch (Exception $exception) {
-            Log::error($exception->getMessage());
+            report($exception);
             abort(500);
         }
     }
@@ -204,7 +203,7 @@ class ConfigController extends Controller
                 preg_replace('/[^a-zA-Z0-9]/', '', $config->name).'.conf'
             );
         } catch (Exception $exception) {
-            Log::error($exception->getMessage());
+            report($exception);
             abort(500);
         }
     }

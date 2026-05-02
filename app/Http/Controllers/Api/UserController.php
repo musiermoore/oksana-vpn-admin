@@ -98,6 +98,8 @@ class UserController extends Controller
                 ? response($config->getLink())
                 : response()->download($config->path, $config->name . '.conf');
         } catch (Exception $exception) {
+            report($exception);
+
             return response()->json([
                 'message' => "Что-то пошло не так 🤯️\n\n"
                     . "Сообщи об этом @soussangler" . $exception->getMessage()
@@ -148,6 +150,8 @@ class UserController extends Controller
                 ->header('Content-Type', 'image/png')
                 ->header('Content-Disposition', 'attachment; filename="qrcode.png"');
         } catch (Exception $exception) {
+            report($exception);
+
             return response()->json([
                 'message' => "Что-то пошло не так 🤯️\n\n"
                     . "Сообщи об этом @soussangler"

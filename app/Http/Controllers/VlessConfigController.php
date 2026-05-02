@@ -12,7 +12,6 @@ use App\Services\VlessSubscriptionService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
-use Log;
 use RuntimeException;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -126,7 +125,7 @@ class VlessConfigController extends Controller
         try {
             return QrCode::size(600)->generate($config->getLink());
         } catch (Exception $exception) {
-            Log::error($exception->getMessage());
+            report($exception);
             abort(500);
         }
     }
@@ -143,7 +142,7 @@ class VlessConfigController extends Controller
                 preg_replace('/[^a-zA-Z0-9]/', '', $config->name).'.conf'
             );
         } catch (Exception $exception) {
-            Log::error($exception->getMessage());
+            report($exception);
             abort(500);
         }
     }

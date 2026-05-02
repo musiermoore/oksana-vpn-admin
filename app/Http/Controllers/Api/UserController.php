@@ -30,7 +30,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function getUserConfigs($telegram, $type)
+    public function getUserConfigs(string $telegram, string $type)
     {
         $user = UserApiService::instance($telegram)->getUser();
 
@@ -60,7 +60,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function downloadConfig($telegram, $type, $config)
+    public function downloadConfig(string $telegram, string $type, string $configId)
     {
         $user = UserApiService::instance($telegram)->getUser();
 
@@ -82,9 +82,7 @@ class UserController extends Controller
             ? $user->vlessConfigs()
             : $user->configs();
 
-        $config = $query
-            ->where('name', $config)
-            ->first();
+        $config = $query->find($configId);
 
         if (empty($config)) {
             return response()->json([
@@ -107,7 +105,7 @@ class UserController extends Controller
         }
     }
 
-    public function downloadQrCode($telegram, $type, $config)
+    public function downloadQrCode(string $telegram, string $type, string $configId)
     {
         $user = UserApiService::instance($telegram)->getUser();
 
@@ -130,9 +128,7 @@ class UserController extends Controller
             ? $user->vlessConfigs()
             : $user->configs();
 
-        $config = $query
-            ->where('name', $config)
-            ->first();
+        $config = $query->find($configId);
 
         if (empty($config)) {
             return response()->json([

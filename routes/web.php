@@ -5,6 +5,7 @@ use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\ExtraPaymentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LimitController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -25,6 +26,10 @@ Route::middleware('auth')->group(function () {
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
 
     Route::resource('users', UserController::class);
+    Route::get('notifications/create', [NotificationController::class, 'create'])
+        ->name('notifications.create');
+    Route::post('notifications', [NotificationController::class, 'store'])
+        ->name('notifications.store');
     Route::resource('user-tokens', UserTokenController::class)->except(['edit', 'update']);
     Route::resource('configs', ConfigController::class)->except(['show']);
     Route::resource('vless-configs', VlessConfigController::class)->except(['show']);

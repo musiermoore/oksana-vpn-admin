@@ -13,6 +13,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
         $proxy = (string) config('telegram.proxy', '');
 
         if ($proxy === '') {
@@ -25,13 +33,5 @@ class AppServiceProvider extends ServiceProvider
                 'proxy' => $proxy,
             ])),
         );
-    }
-
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        //
     }
 }

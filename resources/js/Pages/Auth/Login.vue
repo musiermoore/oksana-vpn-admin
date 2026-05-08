@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import {Head, useForm, usePage} from '@inertiajs/vue3';
 import PublicLayout from '../../Layouts/PublicLayout.vue';
 
 defineOptions({ layout: PublicLayout });
@@ -11,8 +11,11 @@ const props = defineProps({
     code_expires_in_seconds: Number,
 });
 
+const page = usePage()
+
 const requestCodeForm = useForm({
     telegram: props.telegram ?? '',
+    force: page.props.ziggy.query.force ?? false
 });
 
 const step = ref(props.code_requested ? 'verify' : 'request');

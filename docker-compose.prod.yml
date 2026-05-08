@@ -3,6 +3,8 @@ services:
         container_name: wireguard_app_prod
         env_file:
             - .env
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
         build:
             context: .
             dockerfile: docker/app/Dockerfile.prod

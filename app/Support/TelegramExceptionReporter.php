@@ -32,9 +32,19 @@ class TelegramExceptionReporter
             return;
         }
 
-        $this->http
+        $request = $this->http
             ->asForm()
-            ->timeout(5)
+            ->timeout(5);
+
+        $proxy = (string) config('telegram.proxy', '');
+
+        if ($proxy !== '') {
+            $request = $request->withOptions([
+                'proxy' => $proxy,
+            ]);
+        }
+
+        $request
             ->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
                 'chat_id' => $chatId,
                 'parse_mode' => 'HTML',

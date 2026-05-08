@@ -41,6 +41,13 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($request->boolean('force')) {
+            Auth::login($user);
+            $request->session()->regenerate();
+
+            return redirect()->intended(route('wireguard.active-peers'));
+        }
+
         $code = (string) random_int(100000, 999999);
 
         Cache::put($this->cacheKey($user), [

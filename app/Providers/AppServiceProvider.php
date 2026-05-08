@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\ServiceProvider;
+use Telegram\Bot\BotsManager;
 use Telegram\Bot\HttpClients\GuzzleHttpClient;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,25 +14,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
-    }
+        $this->app->extend(BotsManager::class, function (BotsManager $manager, $app): BotsManager {
+            $proxy = (string) config('telegram.proxy', '');
 
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        $proxy = (string) config('telegram.proxy', '');
+            if ($proxy === '') {
+                return $manager;
+            }
 
-        if ($proxy === '') {
-            return;
-        }
-
-        config()->set(
-            'telegram.http_client_handler',
-            new GuzzleHttpClient(new Client([
+            $config = config('telegram');
+            $config['http_client_handler'] = new GuzzleHttpClient(new Client([
                 'proxy' => $proxy,
-            ])),
-        );
+            ]));
+
+            return (new BotsManager($config))->setContainer($app);
+        });
     }
 }

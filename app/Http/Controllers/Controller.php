@@ -104,14 +104,16 @@ abstract class Controller
         ];
     }
 
-    protected function serverData(Server $server): array
+    protected function serverData(Server $server, bool $includeCredentials = false): array
     {
-        return [
+        $data = [
             'id' => $server->id,
             'name' => $server->name,
             'code' => $server->code,
             'ip' => $server->ip,
             'link_host' => $server->link_host,
+            'panel_link' => $server->panel_link,
+            'panel_username' => $server->panel_username,
             'app_path' => $server->app_path,
             'ssh_public_key' => $server->ssh_public_key,
             'is_vless' => (bool) $server->is_vless,
@@ -120,6 +122,12 @@ abstract class Controller
                 'destroy' => route('servers.destroy', $server),
             ],
         ];
+
+        if ($includeCredentials) {
+            $data['panel_password'] = $server->panel_password;
+        }
+
+        return $data;
     }
 
     protected function transactionData(Transaction $transaction): array

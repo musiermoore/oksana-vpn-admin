@@ -59,7 +59,7 @@ class ServerController extends Controller
             'mode' => 'edit',
             'submit_url' => route('servers.update', $server),
             'method' => 'patch',
-            'server' => $this->serverData($server),
+            'server' => $this->serverData($server, true),
         ]);
     }
 

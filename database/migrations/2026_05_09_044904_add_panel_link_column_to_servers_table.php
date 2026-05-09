@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('servers', function (Blueprint $table) {
             $table->string('panel_link')->nullable()->after('link_host');
             $table->string('panel_username')->nullable()->after('panel_link');
-            $table->string('panel_password')->nullable()->after('panel_username');
+            $table->text('panel_password')->nullable()->after('panel_username');
         });
     }
 

@@ -24,6 +24,14 @@ class Server extends Model
         'is_vless',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'panel_password' => 'encrypted',
+            'is_vless' => 'boolean',
+        ];
+    }
+
     public function configs(): HasMany
     {
         return $this->hasMany(Config::class);

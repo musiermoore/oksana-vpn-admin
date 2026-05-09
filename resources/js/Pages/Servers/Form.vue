@@ -16,6 +16,9 @@ const form = useForm({
     code: props.server?.code ?? '',
     ip: props.server?.ip ?? '',
     link_host: props.server?.link_host ?? '',
+    panel_link: props.server?.panel_link ?? '',
+    panel_username: props.server?.panel_username ?? '',
+    panel_password: props.server?.panel_password ?? '',
     app_path: props.server?.app_path ?? '',
     ssh_private_key: '',
     ssh_public_key: props.server?.ssh_public_key ?? '',
@@ -36,6 +39,9 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Сокращение</span><input v-model="form.code" required></label>
             <label class="field"><span>IP</span><input v-model="form.ip" required></label>
             <label class="field"><span>Link Host</span><input v-model="form.link_host"></label>
+            <label class="field"><span>Panel Link</span><input v-model="form.panel_link"></label>
+            <label class="field"><span>Panel Username</span><input v-model="form.panel_username"></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>Panel Password</span><input v-model="form.panel_password" type="password"></label>
             <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><input v-model="form.app_path" required></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><textarea v-model="form.ssh_private_key" /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><textarea v-model="form.ssh_public_key" /></label>

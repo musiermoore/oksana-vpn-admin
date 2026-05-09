@@ -66,6 +66,13 @@ class User extends Authenticatable
         return $this->hasMany(VlessConfig::class);
     }
 
+    public function activeVlessConfigs()
+    {
+        return $this->vlessConfigs()
+            ->where('vless_configs.is_active', true)
+            ->where('vless_configs.enable', true);
+    }
+
     public function tokens()
     {
         return $this->hasMany(UserToken::class);

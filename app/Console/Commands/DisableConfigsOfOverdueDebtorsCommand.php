@@ -4,8 +4,11 @@ namespace App\Console\Commands;
 
 use App\Models\Config;
 use App\Models\User;
+use App\Models\VlessConfig;
+use App\Services\Crud\VlessConfigCrudService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class DisableConfigsOfOverdueDebtorsCommand extends Command
 {
@@ -28,14 +31,16 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
      */
     public function handle()
     {
-        $this->disableConfigs();
-        $this->enableConfigs();
+        $this->disableWireGuardConfigs();
+        $this->enableWireGuardConfigs();
+        $this->disableVlessConfigs();
+        $this->enableVlessConfigs();
     }
 
     private function getQuery()
     {
         return User::query()
-            ->with(['configs', 'activeSubscription'])
+            ->with(['activeSubscription'])
             ->select([
                 'users.id',
                 'users.telegram',
@@ -44,12 +49,19 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->groupBy('users.id');
     }
 
-    private function disableConfigs(): void
+    private function disableWireGuardConfigs(): void
     {
         $users = $this->getQuery()
             ->whereHas('configs', function ($query) {
-                $query->where('is_active', '=', true);
+                $query
+                    ->where('is_active', '=', true)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
             })
+            ->with(['configs' => function ($query) {
+                $query
+                    ->where('is_active', '=', true)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
+            }])
             ->get()
             ->filter(fn (User $user) => $user->final_balance < 0 || ! $user->hasActiveSubscription());
 
@@ -65,12 +77,19 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
         Config::whereIn('id', $ids)->update(['is_active' => false]);
     }
 
-    private function enableConfigs(): void
+    private function enableWireGuardConfigs(): void
     {
         $users = $this->getQuery()
             ->whereHas('configs', function ($query) {
-                $query->where('is_active', '=', false);
+                $query
+                    ->where('is_active', '=', false)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
             })
+            ->with(['configs' => function ($query) {
+                $query
+                    ->where('is_active', '=', false)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
+            }])
             ->where('is_active', '=', true)
             ->get()
             ->filter(fn (User $user) => $user->final_balance >= 0 && $user->hasActiveSubscription());
@@ -85,5 +104,74 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
         }
 
         Config::whereIn('id', $ids)->update(['is_active' => true]);
+    }
+
+    private function disableVlessConfigs(): void
+    {
+        $users = $this->getQuery()
+            ->whereHas('vlessConfigs', function ($query) {
+                $query
+                    ->where('enable', '=', true)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+            })
+            ->with(['vlessConfigs' => function ($query) {
+                $query
+                    ->where('enable', '=', true)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+            }])
+            ->get()
+            ->filter(fn (User $user) => $user->final_balance < 0 || ! $user->hasActiveSubscription());
+
+        $ids = [];
+        $service = app(VlessConfigCrudService::class);
+
+        foreach ($users as $user) {
+            foreach ($user->vlessConfigs as $config) {
+                try {
+                    $service->disable($config);
+                    $ids[] = $config->id;
+                } catch (RuntimeException $exception) {
+                    report($exception);
+                    $this->warn("Failed to disable VLESS config [{$config->id}] for user [{$user->id}]");
+                }
+            }
+        }
+
+        VlessConfig::whereIn('id', $ids)->update(['enable' => false]);
+    }
+
+    private function enableVlessConfigs(): void
+    {
+        $users = $this->getQuery()
+            ->whereHas('vlessConfigs', function ($query) {
+                $query
+                    ->where('enable', '=', false)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+            })
+            ->with(['vlessConfigs' => function ($query) {
+                $query
+                    ->where('enable', '=', false)
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+            }])
+            ->where('is_active', '=', true)
+            ->get()
+            ->filter(fn (User $user) => $user->final_balance >= 0 && $user->hasActiveSubscription());
+
+        $ids = [];
+        $service = app(VlessConfigCrudService::class);
+
+        foreach ($users as $user) {
+            foreach ($user->vlessConfigs as $config) {
+                try {
+                    $service->enable($config);
+                    $ids[] = $config->id;
+                } catch (RuntimeException $exception) {
+                    report($exception);
+                    $this->warn("Failed to enable VLESS config [{$config->id}] for user [{$user->id}]");
+                }
+            }
+        }
+
+        VlessConfig::whereIn('id', $ids)->update(['enable' => true]);
     }
 }

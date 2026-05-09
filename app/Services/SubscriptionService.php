@@ -11,10 +11,16 @@ use Illuminate\Support\Facades\DB;
 
 class SubscriptionService
 {
+    private const RENEWAL_REMINDER_COOLDOWN_HOURS = 24;
+
+    public function __construct(
+        private readonly TelegramBroadcastService $telegramBroadcastService,
+    ) {}
+
     public function renewEligibleSubscriptions(): void
     {
         $users = User::query()
-            ->with(['activeSubscription', 'latestSubscription'])
+            ->with('latestSubscription')
             ->get();
 
         foreach ($users as $user) {
@@ -24,43 +30,78 @@ class SubscriptionService
 
     public function renewForUser(User $user): void
     {
-        $this->renewActiveSubscription($user);
-    }
-
-    private function renewActiveSubscription(User $user): void
-    {
-        $activePeriod = PaymentPeriod::getActive();
-        $activeSubscription = $user->activeSubscription;
         $latestSubscription = $user->latestSubscription;
+        $activePeriod = PaymentPeriod::getActive();
 
-        if (! $activeSubscription || ! $latestSubscription || ! $activePeriod) {
-            return;
-        }
-
-        if ($latestSubscription->id !== $activeSubscription->id) {
-            return;
-        }
-
-        $renewalDate = Carbon::parse($activeSubscription->end_date)->subDay()->startOfDay();
-
-        if (today()->lt($renewalDate)) {
+        if (! $latestSubscription || ! $activePeriod || ! $this->isRenewalDue($latestSubscription)) {
             return;
         }
 
         $amount = $this->getRenewalAmount($user, $activePeriod->id, (float) $activePeriod->amount);
-        if ($this->userHasEnoughBalance($user, $amount) === false) {
+
+        if (! $this->userHasEnoughBalance($user, $amount)) {
             return;
         }
 
-        $startDate = Carbon::parse($activeSubscription->end_date)->addDay()->toDateString();
+        $startDate = Carbon::parse($latestSubscription->end_date)->addDay()->toDateString();
         $endDate = Carbon::parse($startDate)->addMonth()->toDateString();
 
-        $this->createSubscriptionIfMissing($user, $startDate, $endDate, $amount);
+        $createdSubscription = $this->createSubscriptionIfMissing($user, $startDate, $endDate, $amount);
+
+        if (! $createdSubscription?->wasRecentlyCreated) {
+            return;
+        }
+
+        $this->notifyAboutSuccessfulRenewal($user, $createdSubscription);
     }
 
-    private function createSubscriptionIfMissing(User $user, string $startDate, string $endDate, float $price): void
+    public function sendRenewalReminders(): void
     {
-        DB::transaction(function () use ($user, $startDate, $endDate, $price) {
+        $users = User::query()
+            ->with('latestSubscription')
+            ->get();
+
+        foreach ($users as $user) {
+            $this->sendRenewalReminderForUser($user);
+        }
+    }
+
+    private function sendRenewalReminderForUser(User $user): void
+    {
+        $latestSubscription = $user->latestSubscription;
+        $activePeriod = PaymentPeriod::getActive();
+
+        if (! $latestSubscription || ! $activePeriod || ! $this->isRenewalDue($latestSubscription)) {
+            return;
+        }
+
+        $amount = $this->getRenewalAmount($user, $activePeriod->id, (float) $activePeriod->amount);
+
+        if ($this->userHasEnoughBalance($user, $amount) || ! $this->shouldSendReminder($latestSubscription)) {
+            return;
+        }
+
+        if (! $this->telegramBroadcastService->sendToSingleUser(
+            $user,
+            "You don't have enough money to renew the subscription"
+        )) {
+            return;
+        }
+
+        $latestSubscription->forceFill([
+            'renewal_reminder_sent_at' => now(),
+        ])->save();
+    }
+
+    private function createSubscriptionIfMissing(
+        User $user,
+        string $startDate,
+        string $endDate,
+        float $price
+    ): ?UserSubscription {
+        $createdSubscription = null;
+
+        DB::transaction(function () use ($user, $startDate, $endDate, $price, &$createdSubscription) {
             $subscription = UserSubscription::query()->firstOrCreate(
                 [
                     'user_id' => $user->id,
@@ -73,6 +114,8 @@ class SubscriptionService
             );
 
             if (! $subscription->wasRecentlyCreated) {
+                $createdSubscription = $subscription;
+
                 return;
             }
 
@@ -82,7 +125,11 @@ class SubscriptionService
                 'is_approved' => true,
                 'description' => 'Продление подписки',
             ]);
+
+            $createdSubscription = $subscription;
         });
+
+        return $createdSubscription;
     }
 
     private function getRenewalAmount(User $user, int $paymentPeriodId, float $baseAmount): float
@@ -97,5 +144,42 @@ class SubscriptionService
     private function userHasEnoughBalance(User $user, float $requiredAmount): bool
     {
         return $user->getBalanceAmount() >= $requiredAmount;
+    }
+
+    private function isRenewalDue(UserSubscription $latestSubscription): bool
+    {
+        $renewalDate = Carbon::parse($latestSubscription->end_date)->subDay()->startOfDay();
+
+        return now()->greaterThanOrEqualTo($renewalDate);
+    }
+
+    private function shouldSendReminder(UserSubscription $latestSubscription): bool
+    {
+        if ($latestSubscription->renewal_reminder_sent_at === null) {
+            return true;
+        }
+
+        return $latestSubscription->renewal_reminder_sent_at
+            ->copy()
+            ->addHours(self::RENEWAL_REMINDER_COOLDOWN_HOURS)
+            ->lessThanOrEqualTo(now());
+    }
+
+    private function notifyAboutSuccessfulRenewal(User $user, UserSubscription $subscription): void
+    {
+        if ($subscription->renewal_success_notified_at !== null) {
+            return;
+        }
+
+        if (! $this->telegramBroadcastService->sendToSingleUser(
+            $user,
+            'Your subscription has been renewed successfully.'
+        )) {
+            return;
+        }
+
+        $subscription->forceFill([
+            'renewal_success_notified_at' => now(),
+        ])->save();
     }
 }

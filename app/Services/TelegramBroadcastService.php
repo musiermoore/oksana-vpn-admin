@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Telegram\Bot\FileUpload\InputFile;
@@ -69,6 +70,13 @@ class TelegramBroadcastService
             'failed' => count($failedUsers),
             'failed_users' => array_slice($failedUsers, 0, 5),
         ];
+    }
+
+    public function sendToSingleUser(User $user, string $messageHtml): bool
+    {
+        $result = $this->send(collect([$user]), $messageHtml);
+
+        return $result['sent'] === 1;
     }
 
     private function sendToUser(string $chatId, string $messageHtml, ?InputFile $photo): void

@@ -12,7 +12,17 @@ class UserSubscription extends Model
         'start_date',
         'end_date',
         'price',
+        'renewal_reminder_sent_at',
+        'renewal_success_notified_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'renewal_reminder_sent_at' => 'datetime',
+            'renewal_success_notified_at' => 'datetime',
+        ];
+    }
 
     public function user(): BelongsTo
     {

@@ -5,8 +5,9 @@ namespace App\Console\Commands;
 use App\Entities\VlessConfig;
 use App\Models\VlessConfig AS VlessConfigModel;
 use App\Models\Server;
+use App\Services\XuiConfigService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class PullVlessConfigs extends Command
 {
@@ -27,58 +28,31 @@ class PullVlessConfigs extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
-        $servers = Server::whereIsVless(true)->get();
+        $servers = Server::query()
+            ->whereNotNull([
+                'panel_link',
+                'panel_username',
+                'panel_password'
+            ])
+            ->whereIsVless(true)
+            ->get();
 
         foreach ($servers as $server) {
             $this->handleServer($server);
         }
+
+        return self::SUCCESS;
     }
 
-    private function handleServer(Server $server)
+    private function handleServer(Server $server): void
     {
-        $tempKeyPath = tempnam(sys_get_temp_dir(), 'sshkey_');
-
-        $key = $server->ssh_private_key;
-
-        // convert escaped newlines if they exist
-        $key = str_replace('\\n', "\n", $key);
-
-        // remove Windows CR
-        $key = str_replace("\r", '', $key);
-
-        // ensure newline at end
-        $key = trim($key) . "\n";
-
-        file_put_contents($tempKeyPath, $key);
-        chmod($tempKeyPath, 0600);
-
-        $sqliteQuery = str_replace('`', '\"', DB::table('inbounds')->toRawSql());
-        $sqliteCommand = "sqlite3 /etc/x-ui/x-ui.db -json \"$sqliteQuery\"";
-
-        $sshCommand = "ssh "
-            . "-i " . escapeshellarg($tempKeyPath) . " "
-            . "-o BatchMode=yes "
-            . "-o StrictHostKeyChecking=no "
-            . "-o ConnectTimeout=15 "
-            . escapeshellarg("root@{$server->ip}") . " "
-            . escapeshellarg($sqliteCommand);
-
-        $timeoutBinary = trim((string) shell_exec('command -v timeout 2>/dev/null'));
-        $command = $timeoutBinary !== ''
-            ? escapeshellcmd($timeoutBinary) . " 15 {$sshCommand}"
-            : $sshCommand;
-
-        $output = shell_exec($command);
-
-        if (! is_string($output) || trim($output) === '') {
-            return;
-        }
-
-        $data = json_decode($output, true);
-
-        if (! is_array($data)) {
+        try {
+            $data = (new XuiConfigService($server))->getInbounds();
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->warn("Failed to pull VLESS configs from server [{$server->id}]");
             return;
         }
 
@@ -86,9 +60,13 @@ class PullVlessConfigs extends Command
 
         foreach ($data as $row) {
             try {
-                $settings = json_decode($row['settings'], true);
-                $streamSettings = json_decode($row['stream_settings'], true);
-            } catch (\Exception $exception) {
+                $settings = $this->decodeJsonField($row['settings'] ?? null);
+                $streamSettings = $this->decodeJsonField($row['streamSettings'] ?? $row['stream_settings'] ?? null);
+            } catch (Throwable $exception) {
+                continue;
+            }
+
+            if (($row['protocol'] ?? null) !== 'vless') {
                 continue;
             }
 
@@ -96,35 +74,39 @@ class PullVlessConfigs extends Command
                 ->filter(fn($client) => !empty($client['enable']));
 
             foreach ($clients as $client) {
+                $uuid = $client['id'] ?? null;
+
+                if (! $uuid) {
+                    continue;
+                }
+
                 $config = new VlessConfig(
                     $server->id,
                     null,
-                    $client['email'],
+                    $client['email'] ?? null,
                     null,
                     true,
-                    $client['id'],
+                    $uuid,
                     $client['subId'] ?? null,
-                    $row['port'],
-                    $streamSettings['network'],
+                    $row['port'] ?? null,
+                    $streamSettings['network'] ?? null,
                     'none',
-                    $streamSettings['security'],
-                    $client['flow'],
-                    $streamSettings['realitySettings']['settings']['publicKey'],
-                    $streamSettings['realitySettings']['settings']['fingerprint'],
+                    $streamSettings['security'] ?? null,
+                    $client['flow'] ?? null,
+                    $streamSettings['realitySettings']['settings']['publicKey'] ?? null,
+                    $streamSettings['realitySettings']['settings']['fingerprint'] ?? null,
                     $streamSettings['realitySettings']['serverNames'][0] ?? null,
                     $streamSettings['realitySettings']['shortIds'][0] ?? null,
-                '/'
+                    '/'
                 );
 
                 $vlessConfig = [
                     ...$config->toArray(),
                     'created_at' => now(),
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ];
 
                 unset($vlessConfig['user_id']);
-
-                $uuid = $client['id'] ?? null;
 
                 $uuids[] = $uuid;
 
@@ -141,5 +123,20 @@ class PullVlessConfigs extends Command
                 ->whereNotIn('uuid', $uuids)
                 ->delete();
         }
+    }
+
+    private function decodeJsonField(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 }

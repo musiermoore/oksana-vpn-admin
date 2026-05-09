@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class VlessSubscriptionService
 {
@@ -14,10 +15,16 @@ class VlessSubscriptionService
 
     public function getAllSubscriptions(): string
     {
-        $links = $this->user->vlessConfigs()
+        $configs = $this->user->vlessConfigs()
             ->where('is_active', true)
+            ->with('server')
             ->get()
-            ->flatMap(fn (VlessConfig $config) => $this->getSubscriptionData($config))
+            ->values();
+
+        $displayNames = $this->buildDisplayNames($configs->all());
+
+        $links = $configs
+            ->flatMap(fn (VlessConfig $config) => $this->getSubscriptionData($config, $displayNames[$config->getKey()] ?? $config->server->name))
             ->filter()
             ->unique()
             ->implode("\n");
@@ -25,10 +32,10 @@ class VlessSubscriptionService
         return base64_encode($links);
     }
 
-    private function getSubscriptionData(VlessConfig $config): array
+    private function getSubscriptionData(VlessConfig $config, string $displayName): array
     {
         if (empty($config->sub_id)) {
-            return [$config->getStaticLink()];
+            return [$this->renameLink($config->getStaticLink(), $displayName)];
         }
 
         try {
@@ -46,6 +53,7 @@ class VlessSubscriptionService
             return collect(preg_split('/\r\n|\r|\n/', $decoded))
                 ->map(fn ($line) => trim($line))
                 ->filter(fn ($line) => !empty($line) && str_starts_with($line, 'vless://'))
+                ->map(fn ($line) => $this->renameLink($line, $displayName))
                 ->values()
                 ->all();
 
@@ -53,5 +61,39 @@ class VlessSubscriptionService
             report($e);
             return [];
         }
+    }
+
+    /**
+     * @param  array<int, VlessConfig>  $configs
+     * @return array<int, string>
+     */
+    private function buildDisplayNames(array $configs): array
+    {
+        $totalByServerName = collect($configs)
+            ->countBy(fn (VlessConfig $config) => $config->server->name);
+
+        $currentIndexes = [];
+
+        return collect($configs)
+            ->mapWithKeys(function (VlessConfig $config) use ($totalByServerName, &$currentIndexes) {
+                $serverName = $config->server->name;
+                $currentIndexes[$serverName] = ($currentIndexes[$serverName] ?? 0) + 1;
+
+                $displayName = $totalByServerName[$serverName] > 1
+                    ? "{$serverName} - {$currentIndexes[$serverName]}"
+                    : $serverName;
+
+                return [$config->getKey() => $displayName];
+            })
+            ->all();
+    }
+
+    private function renameLink(string $link, string $displayName): string
+    {
+        if (! str_contains($link, '#')) {
+            return $link.'#'.rawurlencode($displayName);
+        }
+
+        return Str::before($link, '#').'#'.rawurlencode($displayName);
     }
 }

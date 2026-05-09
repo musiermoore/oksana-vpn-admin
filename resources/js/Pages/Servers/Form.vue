@@ -15,6 +15,7 @@ const form = useForm({
     name: props.server?.name ?? '',
     code: props.server?.code ?? '',
     ip: props.server?.ip ?? '',
+    is_https: props.server?.is_https ?? false,
     link_host: props.server?.link_host ?? '',
     panel_link: props.server?.panel_link ?? '',
     panel_username: props.server?.panel_username ?? '',
@@ -38,6 +39,7 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Имя</span><input v-model="form.name" required></label>
             <label class="field"><span>Сокращение</span><input v-model="form.code" required></label>
             <label class="field"><span>IP</span><input v-model="form.ip" required></label>
+            <label class="field"><span>Is HTTPS</span><input v-model="form.is_https" type="checkbox"></label>
             <label class="field"><span>Link Host</span><input v-model="form.link_host"></label>
             <label class="field"><span>Panel Link</span><input v-model="form.panel_link"></label>
             <label class="field"><span>Panel Username</span><input v-model="form.panel_username"></label>

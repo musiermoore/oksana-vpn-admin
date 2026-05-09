@@ -81,9 +81,14 @@ class VlessConfig extends Model
         return "vless://{$this->uuid}@{$this->server->getHost()}?{$params}#{$label}";
     }
 
+    public function getBaseUrl(): string
+    {
+        return "{$this->server->getScheme()}://{$this->server->getHost()}";
+    }
+
     public function getSubscriptionLink(): string
     {
-        return "https://{$this->server->getHost()}/sub/{$this->sub_id}";
+        return "{$this->getBaseUrl()}/sub/{$this->sub_id}";
     }
 
     public function getQrCodeContent(): string

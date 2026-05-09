@@ -111,6 +111,7 @@ abstract class Controller
             'name' => $server->name,
             'code' => $server->code,
             'ip' => $server->ip,
+            'is_https' => (bool) $server->is_https,
             'link_host' => $server->link_host,
             'panel_link' => $server->panel_link,
             'panel_username' => $server->panel_username,

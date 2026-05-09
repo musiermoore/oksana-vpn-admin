@@ -14,6 +14,7 @@ class Server extends Model
         'name',
         'code',
         'ip',
+        'is_https',
         'link_host',
         'panel_link',
         'panel_username',
@@ -28,6 +29,7 @@ class Server extends Model
     {
         return [
             'panel_password' => 'encrypted',
+            'is_https' => 'boolean',
             'is_vless' => 'boolean',
         ];
     }
@@ -47,6 +49,11 @@ class Server extends Model
         $sshKeyPath = '/var/www/html/storage/ssh_key';
 
         return "ssh -i {$sshKeyPath} -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@{$this->ip} 2>&1";
+    }
+
+    public function getScheme(): string
+    {
+        return $this->is_https ? 'https' : 'http';
     }
 
     public function getHost()

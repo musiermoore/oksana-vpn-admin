@@ -116,6 +116,32 @@ class VlessConfigController extends Controller
             ->with('success', 'Конфиг отвязан от пользователя');
     }
 
+    public function enable(VlessConfig $vlessConfig)
+    {
+        try {
+            $this->vlessConfigService->enable($vlessConfig);
+        } catch (RuntimeException) {
+            return redirect()->route('vless-configs.index')
+                ->with('error', 'Ошибка при включении конфига');
+        }
+
+        return redirect()->back()
+            ->with('success', 'Конфиг успешно включён');
+    }
+
+    public function disable(VlessConfig $vlessConfig)
+    {
+        try {
+            $this->vlessConfigService->disable($vlessConfig);
+        } catch (RuntimeException) {
+            return redirect()->route('vless-configs.index')
+                ->with('error', 'Ошибка при отключении конфига');
+        }
+
+        return redirect()->back()
+            ->with('success', 'Конфиг успешно отключён');
+    }
+
     public function qrCode(Request $request, UserToken $userToken, VlessConfig $config)
     {
         if (! $userToken->validateToken($request->password)) {

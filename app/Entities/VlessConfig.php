@@ -11,6 +11,7 @@ class VlessConfig
         private ?string $name = null,
         private ?string $description = null,
         private bool $isActive = true,
+        private bool $enable = true,
 
         private ?string $uuid = null,
         private ?string $subId = null,
@@ -41,6 +42,7 @@ class VlessConfig
         $config->setName($data['name'] ?? null);
         $config->setDescription($data['description'] ?? null);
         $config->setIsActive($data['is_active'] ?? true);
+        $config->setEnable($data['enable'] ?? true);
 
         $config->setUuid($data['uuid'] ?? null);
         $config->setSubId($data['sub_id'] ?? null);
@@ -69,6 +71,7 @@ class VlessConfig
             'name' => $this->name,
             'description' => $this->description,
             'is_active' => $this->isActive,
+            'enable' => $this->enable,
             'uuid' => $this->uuid,
             'sub_id' => $this->subId,
             'port' => $this->port,
@@ -136,6 +139,17 @@ class VlessConfig
     public function setIsActive(bool $isActive): self
     {
         $this->isActive = $isActive;
+        return $this;
+    }
+
+    public function isEnabled(): bool
+    {
+        return $this->enable;
+    }
+
+    public function setEnable(bool $enable): self
+    {
+        $this->enable = $enable;
         return $this;
     }
 

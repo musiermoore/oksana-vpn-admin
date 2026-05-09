@@ -47,6 +47,10 @@ Route::middleware('auth')->group(function () {
         ->name('configs.enable');
     Route::post('configs/{config}/disable', [ConfigController::class, 'disable'])
         ->name('configs.disable');
+    Route::post('vless-configs/{vlessConfig}/enable', [VlessConfigController::class, 'enable'])
+        ->name('vless-configs.enable');
+    Route::post('vless-configs/{vlessConfig}/disable', [VlessConfigController::class, 'disable'])
+        ->name('vless-configs.disable');
 
     Route::post('transactions/{transaction}/approve', [TransactionController::class, 'approve'])
         ->name('transactions.approve');

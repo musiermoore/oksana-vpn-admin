@@ -14,6 +14,7 @@ class VlessConfig extends Model
         'name', // email in 3x-ui
         'description',
         'is_active',
+        'enable',
 
         'uuid',
         'sub_id',
@@ -31,6 +32,14 @@ class VlessConfig extends Model
         'sid',
         'spx',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'enable' => 'boolean',
+        ];
+    }
 
     public function user(): BelongsTo
     {

@@ -90,6 +90,7 @@ abstract class Controller
             'id' => $config->id,
             'name' => $config->name,
             'is_active' => (bool) $config->is_active,
+            'enable' => (bool) $config->enable,
             'link' => $config->link,
             'server' => $config->server ? $this->serverData($config->server) : null,
             'user' => $config->user ? [
@@ -100,6 +101,8 @@ abstract class Controller
             'links' => [
                 'edit' => route('vless-configs.edit', $config),
                 'destroy' => route('vless-configs.destroy', $config),
+                'enable' => route('vless-configs.enable', $config),
+                'disable' => route('vless-configs.disable', $config),
             ],
         ];
     }

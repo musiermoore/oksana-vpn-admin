@@ -14,6 +14,10 @@ const unlinkConfig = (config) => {
         router.delete(config.links.destroy);
     }
 };
+
+const toggleConfig = (config) => {
+    router.post(config.enable ? config.links.disable : config.links.enable);
+};
 </script>
 
 <template>
@@ -56,6 +60,14 @@ const unlinkConfig = (config) => {
                             <div v-for="config in user.configs" :key="config.id" class="item-row">
                                 <Link :href="config.links.edit">{{ config.server.code }}: {{ config.name }}</Link>
                                 <div class="actions">
+                                    <button
+                                        class="button"
+                                        :class="config.enable ? 'button--danger' : 'button--success'"
+                                        type="button"
+                                        @click="toggleConfig(config)"
+                                    >
+                                        {{ config.enable ? 'Отключить' : 'Включить' }}
+                                    </button>
                                     <button class="button button--danger" type="button" @click="unlinkConfig(config)">Отвязать</button>
                                 </div>
                             </div>

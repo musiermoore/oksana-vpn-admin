@@ -104,6 +104,7 @@ class PullVlessConfigsDeprecated extends Command
                     $client['email'],
                     null,
                     true,
+                    !empty($client['enable']),
                     $client['id'],
                     $client['subId'] ?? null,
                     $row['port'],

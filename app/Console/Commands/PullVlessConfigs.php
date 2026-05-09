@@ -70,8 +70,7 @@ class PullVlessConfigs extends Command
                 continue;
             }
 
-            $clients = collect($settings['clients'] ?? [])
-                ->filter(fn($client) => !empty($client['enable']));
+            $clients = collect($settings['clients'] ?? []);
 
             foreach ($clients as $client) {
                 $uuid = $client['id'] ?? null;
@@ -86,6 +85,7 @@ class PullVlessConfigs extends Command
                     $client['email'] ?? null,
                     null,
                     true,
+                    !empty($client['enable']),
                     $uuid,
                     $client['subId'] ?? null,
                     $row['port'] ?? null,

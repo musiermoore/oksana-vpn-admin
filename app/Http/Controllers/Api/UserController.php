@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\UserApiService;
 use Exception;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -169,7 +170,42 @@ class UserController extends Controller
         return response(200);
     }
 
-    public function getVlessLink(Request $request, string $telegram)
+    public function getVlessLink(string $telegram)
+    {
+        $result = $this->resolveVlessLink($telegram);
+
+        if ($result instanceof Response) {
+            return $result;
+        }
+
+        return response($result);
+    }
+
+    public function getVlessQrCode(string $telegram)
+    {
+        $result = $this->resolveVlessLink($telegram);
+
+        if ($result instanceof Response) {
+            return $result;
+        }
+
+        try {
+            $png = QrCode::format('png')->margin(5)->size(512)->generate($result);
+
+            return response($png)
+                ->header('Content-Type', 'image/png')
+                ->header('Content-Disposition', 'attachment; filename="vless-qrcode.png"');
+        } catch (Exception $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => "Что-то пошло не так 🤯️\n\n"
+                    . "Сообщи об этом @soussangler"
+            ], 500);
+        }
+    }
+
+    private function resolveVlessLink(string $telegram): Response|string
     {
         $user = UserApiService::instance($telegram)->getUser();
 
@@ -193,8 +229,6 @@ class UserController extends Controller
             'i' => Crypt::encrypt($user->id),
         ], absolute: false);
 
-        $link = config('vless.domain') . $link;
-
-        return response($link);
+        return config('vless.domain') . $link;
     }
 }

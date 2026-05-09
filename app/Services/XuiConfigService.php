@@ -37,8 +37,8 @@ class XuiConfigService
 
     private function setSession(): void
     {
-        $response = Http::asForm()
-            ->baseUrl(rtrim($this->server->panel_link, '/'))
+        $response = $this->getRequest()
+            ->asForm()
             ->post('/login', [
                 'username' => $this->server->panel_username,
                 'password' => $this->server->panel_password,
@@ -71,8 +71,15 @@ class XuiConfigService
             $headers['Cookie'] = '3x-ui=' . $this->session;
         }
 
+        $options = [];
+
+        if (config('telegram.proxy')) {
+            $options['proxy'] = config('telegram.proxy');
+        }
+
         return Http::baseUrl(rtrim($this->server->panel_link, '/'))
             ->timeout(15)
-            ->withHeaders($headers);
+            ->withHeaders($headers)
+            ->withOptions($options);
     }
 }

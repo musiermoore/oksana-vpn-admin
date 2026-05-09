@@ -17,6 +17,7 @@ class VlessSubscriptionService
     {
         $configs = $this->user->vlessConfigs()
             ->where('is_active', true)
+            ->where('enable', true)
             ->with('server')
             ->get()
             ->values();

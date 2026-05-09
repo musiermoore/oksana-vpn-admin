@@ -17,7 +17,7 @@ class PullVlessConfigsDeprecated extends Command
      *
      * @var string
      */
-    protected $signature = 'vless-configs:pull';
+    protected $signature = 'vless-configs:pull-deprecated';
 
     /**
      * The console command description.

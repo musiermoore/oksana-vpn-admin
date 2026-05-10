@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PaymentPeriod;
 use App\Models\User;
 use App\Support\BotApiMessages;
 use App\Services\UserApiService;
@@ -12,9 +13,49 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Throwable;
 
 class UserController extends Controller
 {
+    public function registrationStatus(string $telegramId)
+    {
+        try {
+            $user = User::query()
+                ->with([
+                    'activeSubscription:id,user_id,end_date',
+                ])
+                ->select([
+                    'users.id',
+                    'users.telegram_id',
+                    'users.balance',
+                ])
+                ->where('telegram_id', trim($telegramId))
+                ->where('users.is_active', true)
+                ->whereNull('users.deleted_at')
+                ->first();
+
+            if (! $user) {
+                return response()->json([
+                    'registered' => false,
+                    'active_subscription_end_date' => null,
+                    'has_money_for_next_subscription_month' => false,
+                ]);
+            }
+
+            return response()->json([
+                'registered' => true,
+                'active_subscription_end_date' => $user->activeSubscription?->end_date,
+                'has_money_for_next_subscription_month' => $this->hasMoneyForNextSubscriptionMonth($user),
+            ]);
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            return response()->json([
+                'message' => BotApiMessages::unexpectedError(),
+            ], 500);
+        }
+    }
+
     public function balance(string $telegramId)
     {
         $user = UserApiService::instance($telegramId)->getUser();
@@ -298,5 +339,22 @@ class UserController extends Controller
         }
 
         return '@' . ltrim($telegram, '@');
+    }
+
+    private function hasMoneyForNextSubscriptionMonth(User $user): bool
+    {
+        $activePaymentPeriod = PaymentPeriod::getActive();
+
+        if (! $activePaymentPeriod) {
+            return false;
+        }
+
+        $extraAmount = (float) $user->extraPayments()
+            ->where('current_payment_id', $activePaymentPeriod->id)
+            ->sum('amount');
+
+        $requiredAmount = (float) $activePaymentPeriod->amount + $extraAmount;
+
+        return $user->getStoredBalanceAmount() >= $requiredAmount;
     }
 }

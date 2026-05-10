@@ -21,6 +21,8 @@ Route::name('api.')->middleware([BasicAuth::class, TrackApiRequests::class])->gr
         ->name('users.configs.vless.qr-code');
     Route::get('users/{telegramId}/balance', [UserController::class, 'balance'])
         ->name('users.balance');
+    Route::get('users/{telegramId}/registration-status', [UserController::class, 'registrationStatus'])
+        ->name('users.registration-status');
     Route::post('users/{telegramId}/save-id', [UserController::class, 'saveTelegramId'])
         ->name('users.save-telegram-id');
 

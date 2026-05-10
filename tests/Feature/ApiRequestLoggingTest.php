@@ -56,6 +56,37 @@ class ApiRequestLoggingTest extends TestCase
         });
     }
 
+    public function test_registration_status_request_dispatches_log_job(): void
+    {
+        Queue::fake();
+
+        $user = User::query()->create([
+            'name' => 'Tester',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+            'balance' => 42,
+            'is_active' => true,
+        ]);
+
+        $response = $this->getJson('/api/users/123456/registration-status');
+
+        $response->assertOk()
+            ->assertJsonPath('registered', true);
+
+        Queue::assertPushed(StoreApiRequestLogJob::class, function (StoreApiRequestLogJob $job) use ($user) {
+            return $job->payload['user_id'] === $user->id
+                && $job->payload['action'] === 'api.users.registration-status'
+                && $job->payload['method'] === 'GET'
+                && $job->payload['endpoint'] === 'api/users/{telegramId}/registration-status'
+                && $job->payload['response_status'] === 200
+                && $job->payload['params'] === [
+                    'route' => [
+                        'telegramId' => '123456',
+                    ],
+                ];
+        });
+    }
+
     public function test_log_job_persists_request_log(): void
     {
         $payload = [

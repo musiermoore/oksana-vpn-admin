@@ -31,23 +31,24 @@ class DispatchDefaultConfigsForUserJob implements ShouldQueue
             return;
         }
 
-        $servers = Server::query()
+        $wireGuardServer = Server::query()
             ->where('is_ready', true)
-            ->get();
+            ->where('is_vless', false)
+            ->orderBy('id')
+            ->first();
 
-        $existingWireGuardServerIds = $user->configs->pluck('server_id')->all();
-        $existingVlessServerIds = $user->vlessConfigs->pluck('server_id')->all();
+        $vlessServer = Server::query()
+            ->where('is_ready', true)
+            ->where('is_vless', true)
+            ->orderBy('id')
+            ->first();
 
-        foreach ($servers as $server) {
-            if ($server->is_vless) {
-                if (in_array($server->id, $existingVlessServerIds, true)) {
-                    continue;
-                }
-            } elseif (in_array($server->id, $existingWireGuardServerIds, true)) {
-                continue;
-            }
+        if ($user->configs->isEmpty() && $wireGuardServer) {
+            EnsureDefaultConfigForUserServerJob::dispatch($user->id, $wireGuardServer->id);
+        }
 
-            EnsureDefaultConfigForUserServerJob::dispatch($user->id, $server->id);
+        if ($user->vlessConfigs->isEmpty() && $vlessServer) {
+            EnsureDefaultConfigForUserServerJob::dispatch($user->id, $vlessServer->id);
         }
     }
 }

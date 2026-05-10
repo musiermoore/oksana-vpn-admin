@@ -9,6 +9,7 @@
         "inertiajs/inertia-laravel": "^3.0",
         "irazasyed/telegram-bot-sdk": "^3.14",
         "laravel/framework": "^13.0",
+        "laravel/horizon": "^5.46",
         "laravel/tinker": "^3.0",
         "simplesoftwareio/simple-qrcode": "^4.2"
     },

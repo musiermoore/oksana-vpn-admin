@@ -7,6 +7,7 @@ use App\Http\Requests\CurrentPayment\StoreCurrentPaymentRequest;
 use App\Http\Requests\CurrentPayment\UpdateCurrentPaymentRequest;
 use App\Models\CurrentPayment;
 use App\Services\Crud\CurrentPaymentCrudService;
+use Illuminate\Http\Request;
 
 class CurrentPaymentController extends Controller
 {
@@ -14,12 +15,12 @@ class CurrentPaymentController extends Controller
         private readonly CurrentPaymentCrudService $currentPaymentService,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $currentPayments = CurrentPayment::all();
 
         return $this->inertia('CurrentPayments/Index', [
-            'current_payments' => CurrentPaymentResource::collection($currentPayments),
+            'current_payments' => CurrentPaymentResource::collection($currentPayments)->toArray($request),
         ]);
     }
 

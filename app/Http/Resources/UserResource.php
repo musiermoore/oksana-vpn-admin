@@ -21,8 +21,8 @@ class UserResource extends JsonResource
             'full_name' => $this->full_name,
             'approved_transactions_sum_amount' => (float) ($this->approved_transactions_sum_amount ?? 0),
             'payment_amount' => (float) ($this->payment_amount ?? 0),
-            'configs' => $this->whenLoaded('configs', fn () => ConfigResource::collection($this->configs)),
-            'transactions' => $this->whenLoaded('transactions', fn () => TransactionResource::collection($this->transactions)),
+            'configs' => $this->whenLoaded('configs', fn () => ConfigResource::collection($this->configs)->toArray($request)),
+            'transactions' => $this->whenLoaded('transactions', fn () => TransactionResource::collection($this->transactions)->toArray($request)),
             'links' => [
                 'edit' => route('users.edit', $this->resource),
                 'destroy' => route('users.destroy', $this->resource),

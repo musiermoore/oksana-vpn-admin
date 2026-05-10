@@ -37,7 +37,7 @@ class UserSubscriptionController extends Controller
             'filters' => [
                 'old' => $showOld,
             ],
-            'subscriptions' => UserSubscriptionResource::collection($subscriptions),
+            'subscriptions' => UserSubscriptionResource::collection($subscriptions)->toArray($request),
         ]);
     }
 

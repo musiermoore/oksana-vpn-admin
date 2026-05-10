@@ -29,7 +29,7 @@ class WireGuardController extends Controller
             'filters' => [
                 'server_id' => $selectedServerId,
             ],
-            'servers' => ServerResource::collection($servers),
+            'servers' => ServerResource::collection($servers)->toArray($request),
             'peerGroups' => collect($peers)->map(function (Collection $peerType, string $key) {
                 return [
                     'key' => $key,
@@ -70,8 +70,8 @@ class WireGuardController extends Controller
                 'end_date' => $request->query('end_date', now()->format('Y-m-d\TH:i')),
             ],
             'server_time' => now()->format('Y-m-d\TH:i'),
-            'servers' => ServerResource::collection($servers),
-            'users' => UserResource::collection($users),
+            'servers' => ServerResource::collection($servers)->toArray($request),
+            'users' => UserResource::collection($users)->toArray($request),
             'peers' => collect($peers)->map(function (array $peer) {
                 return [
                     'telegram' => $peer['telegram'] ?? null,

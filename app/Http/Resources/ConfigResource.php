@@ -22,7 +22,7 @@ class ConfigResource extends JsonResource
                 'is_active' => $this->user->is_active,
             ] : null,
             'formatted_last_traffic' => $this->formatted_last_traffic,
-            'limits' => $this->whenLoaded('limits', fn () => LimitResource::collection($this->limits)),
+            'limits' => $this->whenLoaded('limits', fn () => LimitResource::collection($this->limits)->toArray($request)),
             'links' => [
                 'edit' => route('configs.edit', $this->resource),
                 'destroy' => route('configs.destroy', $this->resource),

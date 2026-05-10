@@ -10,6 +10,7 @@ use App\Models\CurrentPayment;
 use App\Models\User;
 use App\Models\UserExtraPayment;
 use App\Services\Crud\ExtraPaymentCrudService;
+use Illuminate\Http\Request;
 
 class ExtraPaymentController extends Controller
 {
@@ -20,7 +21,7 @@ class ExtraPaymentController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $payments = UserExtraPayment::query()
             ->with(['user', 'currentPayment'])
@@ -28,14 +29,14 @@ class ExtraPaymentController extends Controller
             ->get();
 
         return $this->inertia('ExtraPayments/Index', [
-            'payments' => ExtraPaymentResource::collection($payments),
+            'payments' => ExtraPaymentResource::collection($payments)->toArray($request),
         ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         $users = User::all();
         $currentPayments = CurrentPayment::latest()->get();
@@ -43,8 +44,8 @@ class ExtraPaymentController extends Controller
 
         return $this->inertia('ExtraPayments/Create', [
             'submit_url' => route('extra-payments.store'),
-            'users' => UserResource::collection($users),
-            'current_payments' => CurrentPaymentResource::collection($currentPayments),
+            'users' => UserResource::collection($users)->toArray($request),
+            'current_payments' => CurrentPaymentResource::collection($currentPayments)->toArray($request),
             'active_period_id' => $activePeriodId,
         ]);
     }

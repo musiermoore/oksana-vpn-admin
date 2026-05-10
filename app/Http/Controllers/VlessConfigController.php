@@ -23,7 +23,7 @@ class VlessConfigController extends Controller
         private readonly VlessConfigCrudService $vlessConfigService,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $users = User::query()
             ->with('vlessConfigs.user')
@@ -42,7 +42,7 @@ class VlessConfigController extends Controller
                 'full_name' => $user->full_name,
                 'is_active' => $user->is_active,
                 'edit_url' => route('users.edit', $user),
-                'configs' => VlessConfigResource::collection($user->vlessConfigs),
+                'configs' => VlessConfigResource::collection($user->vlessConfigs)->toArray($request),
             ])->values(),
             'tabs' => [
                 ['label' => 'WireGuard', 'href' => route('configs.index'), 'active' => false],
@@ -51,7 +51,7 @@ class VlessConfigController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $users = User::query()
             ->where('users.is_active', true)
@@ -68,7 +68,7 @@ class VlessConfigController extends Controller
             'mode' => 'create',
             'submit_url' => route('vless-configs.store'),
             'config' => null,
-            'users' => UserResource::collection($users),
+            'users' => UserResource::collection($users)->toArray($request),
             'existing_configs' => $existingConfigs->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values(),
         ]);
     }
@@ -86,7 +86,7 @@ class VlessConfigController extends Controller
             ->with('success', 'Конфиги успешно созданы');
     }
 
-    public function edit(VlessConfig $vlessConfig)
+    public function edit(Request $request, VlessConfig $vlessConfig)
     {
         $config = $vlessConfig;
         $users = User::query()
@@ -97,7 +97,7 @@ class VlessConfigController extends Controller
             'mode' => 'edit',
             'submit_url' => route('vless-configs.update', $config),
             'config' => new VlessConfigResource($config),
-            'users' => UserResource::collection($users),
+            'users' => UserResource::collection($users)->toArray($request),
             'existing_configs' => [],
         ]);
     }

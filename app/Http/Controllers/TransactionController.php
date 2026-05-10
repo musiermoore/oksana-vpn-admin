@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Services\Crud\TransactionCrudService;
+use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
@@ -18,7 +19,7 @@ class TransactionController extends Controller
         private readonly TransactionCrudService $transactionService,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $transactions = Transaction::with(['user', 'type'])
             ->whereIsApproved(true)
@@ -37,12 +38,12 @@ class TransactionController extends Controller
 
         return $this->inertia('Transactions/Index', [
             'balance' => (float) $balance,
-            'transactions' => TransactionResource::collection($transactions),
-            'pending_transactions' => TransactionResource::collection($pendingTransactions),
+            'transactions' => TransactionResource::collection($transactions)->toArray($request),
+            'pending_transactions' => TransactionResource::collection($pendingTransactions)->toArray($request),
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $users = User::get();
         $types = TransactionType::query()->orderBy('id')->get();
@@ -51,8 +52,8 @@ class TransactionController extends Controller
             'mode' => 'create',
             'submit_url' => route('transactions.store'),
             'transaction' => null,
-            'users' => UserResource::collection($users),
-            'types' => TransactionTypeResource::collection($types),
+            'users' => UserResource::collection($users)->toArray($request),
+            'types' => TransactionTypeResource::collection($types)->toArray($request),
         ]);
     }
 
@@ -63,7 +64,7 @@ class TransactionController extends Controller
         return redirect()->route('transactions.index');
     }
 
-    public function edit(Transaction $transaction)
+    public function edit(Request $request, Transaction $transaction)
     {
         $users = User::get();
         $types = TransactionType::query()->orderBy('id')->get();
@@ -72,8 +73,8 @@ class TransactionController extends Controller
             'mode' => 'edit',
             'submit_url' => route('transactions.update', $transaction),
             'transaction' => new TransactionResource($transaction),
-            'users' => UserResource::collection($users),
-            'types' => TransactionTypeResource::collection($types),
+            'users' => UserResource::collection($users)->toArray($request),
+            'types' => TransactionTypeResource::collection($types)->toArray($request),
         ]);
     }
 

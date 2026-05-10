@@ -25,7 +25,7 @@ class ConfigController extends Controller
         private readonly ConfigCrudService $configService,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $users = User::query()
             ->with('configs.user')
@@ -44,7 +44,7 @@ class ConfigController extends Controller
                 'full_name' => $user->full_name,
                 'is_active' => $user->is_active,
                 'edit_url' => route('users.edit', $user),
-                'configs' => ConfigResource::collection($user->configs),
+                'configs' => ConfigResource::collection($user->configs)->toArray($request),
             ])->values(),
             'tabs' => [
                 ['label' => 'WireGuard', 'href' => route('configs.index'), 'active' => true],
@@ -53,7 +53,7 @@ class ConfigController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $users = User::get();
         $servers = Server::get();
@@ -76,8 +76,8 @@ class ConfigController extends Controller
 
         return $this->inertia('Configs/Create', [
             'submit_url' => route('configs.store'),
-            'users' => UserResource::collection($users),
-            'servers' => ServerResource::collection($servers),
+            'users' => UserResource::collection($users)->toArray($request),
+            'servers' => ServerResource::collection($servers)->toArray($request),
             'file_names' => $fileNames->values(),
         ]);
     }
@@ -95,13 +95,13 @@ class ConfigController extends Controller
             ->with('success', 'Конфиги успешно созданы');
     }
 
-    public function createBulk()
+    public function createBulk(Request $request)
     {
         $servers = Server::get();
 
         return $this->inertia('Configs/BulkCreate', [
             'submit_url' => route('configs.store-bulk'),
-            'servers' => ServerResource::collection($servers),
+            'servers' => ServerResource::collection($servers)->toArray($request),
         ]);
     }
 
@@ -118,7 +118,7 @@ class ConfigController extends Controller
             ->with('success', 'Конфиги успешно созданы');
     }
 
-    public function edit(Config $config)
+    public function edit(Request $request, Config $config)
     {
         $users = User::get();
         $servers = Server::get();
@@ -126,8 +126,8 @@ class ConfigController extends Controller
         return $this->inertia('Configs/Edit', [
             'submit_url' => route('configs.update', $config),
             'config' => new ConfigResource($config),
-            'users' => UserResource::collection($users),
-            'servers' => ServerResource::collection($servers),
+            'users' => UserResource::collection($users)->toArray($request),
+            'servers' => ServerResource::collection($servers)->toArray($request),
         ]);
     }
 

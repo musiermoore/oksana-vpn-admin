@@ -38,11 +38,11 @@ class UserController extends Controller
                 'all' => $getAll,
                 'inactive' => $onlyInactive,
             ],
-            'users' => UserResource::collection($users),
+            'users' => UserResource::collection($users)->toArray($request),
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $payments = CurrentPayment::select(['id', 'start_date', 'end_date', 'amount'])
             ->orderByDesc('start_date')
@@ -52,7 +52,7 @@ class UserController extends Controller
             'mode' => 'create',
             'submit_url' => route('users.store'),
             'user' => null,
-            'payments' => CurrentPaymentResource::collection($payments),
+            'payments' => CurrentPaymentResource::collection($payments)->toArray($request),
         ]);
     }
 
@@ -63,7 +63,7 @@ class UserController extends Controller
         return redirect()->route('users.index');
     }
 
-    public function edit(User $user)
+    public function edit(Request $request, User $user)
     {
         $payments = CurrentPayment::select(['id', 'start_date', 'end_date', 'amount'])
             ->orderByDesc('start_date')
@@ -80,7 +80,7 @@ class UserController extends Controller
             'mode' => 'edit',
             'submit_url' => route('users.update', $user),
             'user' => new UserResource($user),
-            'payments' => CurrentPaymentResource::collection($payments),
+            'payments' => CurrentPaymentResource::collection($payments)->toArray($request),
         ]);
     }
 

@@ -8,6 +8,7 @@ use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
 use App\Services\Crud\ServerCrudService;
+use Illuminate\Http\Request;
 use RuntimeException;
 
 class ServerController extends Controller
@@ -19,12 +20,12 @@ class ServerController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $servers = Server::all();
 
         return $this->inertia('Servers/Index', [
-            'servers' => ServerResource::collection($servers),
+            'servers' => ServerResource::collection($servers)->toArray($request),
         ]);
     }
 

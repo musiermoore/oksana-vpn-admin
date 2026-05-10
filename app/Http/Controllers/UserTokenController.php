@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserToken;
 use App\Services\Crud\UserTokenCrudService;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class UserTokenController extends Controller
 {
@@ -16,7 +17,7 @@ class UserTokenController extends Controller
         private readonly UserTokenCrudService $userTokenService,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $userTokens = UserToken::query()
             ->where('expires_at', '>', now())
@@ -24,17 +25,17 @@ class UserTokenController extends Controller
             ->get();
 
         return $this->inertia('UserTokens/Index', [
-            'user_tokens' => UserTokenResource::collection($userTokens),
+            'user_tokens' => UserTokenResource::collection($userTokens)->toArray($request),
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $users = User::get();
 
         return $this->inertia('UserTokens/Create', [
             'submit_url' => route('user-tokens.store'),
-            'users' => UserResource::collection($users),
+            'users' => UserResource::collection($users)->toArray($request),
         ]);
     }
 

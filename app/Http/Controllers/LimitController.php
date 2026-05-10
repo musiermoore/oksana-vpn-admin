@@ -7,6 +7,7 @@ use App\Http\Requests\Limit\StoreLimitRequest;
 use App\Models\Config;
 use App\Models\Limit;
 use App\Services\Crud\LimitCrudService;
+use Illuminate\Http\Request;
 use RuntimeException;
 
 class LimitController extends Controller
@@ -18,7 +19,7 @@ class LimitController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $configs = Config::query()
             ->withWhereHas('limits')
@@ -28,21 +29,21 @@ class LimitController extends Controller
             ->get();
 
         return $this->inertia('Limits/Index', [
-            'configs' => ConfigResource::collection($configs),
+            'configs' => ConfigResource::collection($configs)->toArray($request),
         ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         $configs = Config::query()->with('user')->get();
         $speedLimits = Limit::getSpeedLimits();
 
         return $this->inertia('Limits/Create', [
             'submit_url' => route('limits.store'),
-            'configs' => ConfigResource::collection($configs),
+            'configs' => ConfigResource::collection($configs)->toArray($request),
             'speed_limits' => $speedLimits,
         ]);
     }

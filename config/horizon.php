@@ -40,6 +40,19 @@ return [
             'timeout' => 120,
             'nice' => 0,
         ],
+        'supervisor-vless-configs' => [
+            'connection' => 'redis',
+            'queue' => ['vless-configs'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 120,
+            'nice' => 0,
+        ],
     ],
     'environments' => [
         'production' => [

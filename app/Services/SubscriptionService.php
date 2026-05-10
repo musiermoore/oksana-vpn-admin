@@ -24,24 +24,21 @@ class SubscriptionService
 
     public function renewForUser(User $user): void
     {
-        $this->renewActiveSubscription($user);
+        $this->renewOrCreateSubscription($user);
     }
 
-    private function renewActiveSubscription(User $user): void
+    private function renewOrCreateSubscription(User $user): void
     {
         $activePeriod = PaymentPeriod::getActive();
-        $activeSubscription = $user->activeSubscription;
         $latestSubscription = $user->latestSubscription;
 
-        if (! $activeSubscription || ! $latestSubscription || ! $activePeriod) {
+        if (! $activePeriod) {
             return;
         }
 
-        if ($latestSubscription->id !== $activeSubscription->id) {
-            return;
-        }
-
-        $renewalDate = Carbon::parse($activeSubscription->end_date)->subDay()->startOfDay();
+        $renewalDate = $latestSubscription
+            ? Carbon::parse($latestSubscription->end_date)->subDay()->startOfDay()
+            : today()->startOfDay();
 
         if (today()->lt($renewalDate)) {
             return;
@@ -52,7 +49,9 @@ class SubscriptionService
             return;
         }
 
-        $startDate = Carbon::parse($activeSubscription->end_date)->addDay()->toDateString();
+        $startDate = $latestSubscription
+            ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
+            : today()->toDateString();
         $endDate = Carbon::parse($startDate)->addMonth()->toDateString();
 
         $this->createSubscriptionIfMissing($user, $startDate, $endDate, $amount);

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\UserSubscriptionResource;
 use App\Http\Requests\UserSubscription\UpdateUserSubscriptionRequest;
 use App\Models\UserSubscription;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,8 +10,6 @@ use Illuminate\Http\Request;
 
 class UserSubscriptionController extends Controller
 {
-    use BuildsInertiaData;
-
     public function index(Request $request)
     {
         $showOld = $request->boolean('old');
@@ -39,9 +37,7 @@ class UserSubscriptionController extends Controller
             'filters' => [
                 'old' => $showOld,
             ],
-            'subscriptions' => $subscriptions
-                ->map(fn (UserSubscription $subscription) => $this->userSubscriptionData($subscription))
-                ->values(),
+            'subscriptions' => UserSubscriptionResource::collection($subscriptions),
         ]);
     }
 
@@ -53,7 +49,7 @@ class UserSubscriptionController extends Controller
 
         return $this->inertia('Subscriptions/Form', [
             'submit_url' => route('subscriptions.update', $subscription),
-            'subscription' => $this->userSubscriptionData($subscription),
+            'subscription' => new UserSubscriptionResource($subscription),
         ]);
     }
 

@@ -2,29 +2,30 @@
 
 namespace App\Http\Resources;
 
-use App\Models\VlessConfig;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class VlessConfigResource
+class VlessConfigResource extends JsonResource
 {
-    public static function make(VlessConfig $config): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $config->id,
-            'name' => $config->name,
-            'is_active' => (bool) $config->is_active,
-            'enable' => (bool) $config->enable,
-            'link' => $config->link,
-            'server' => $config->server ? ServerResource::make($config->server) : null,
-            'user' => $config->user ? [
-                'id' => $config->user->id,
-                'full_name' => $config->user->full_name,
-                'is_active' => $config->user->is_active,
+            'id' => $this->id,
+            'name' => $this->name,
+            'is_active' => (bool) $this->is_active,
+            'enable' => (bool) $this->enable,
+            'link' => $this->link,
+            'server' => $this->server ? new ServerResource($this->server) : null,
+            'user' => $this->user ? [
+                'id' => $this->user->id,
+                'full_name' => $this->user->full_name,
+                'is_active' => $this->user->is_active,
             ] : null,
             'links' => [
-                'edit' => route('vless-configs.edit', $config),
-                'destroy' => route('vless-configs.destroy', $config),
-                'enable' => route('vless-configs.enable', $config),
-                'disable' => route('vless-configs.disable', $config),
+                'edit' => route('vless-configs.edit', $this->resource),
+                'destroy' => route('vless-configs.destroy', $this->resource),
+                'enable' => route('vless-configs.enable', $this->resource),
+                'disable' => route('vless-configs.disable', $this->resource),
             ],
         ];
     }

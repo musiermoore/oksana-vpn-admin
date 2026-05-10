@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\UserResource;
+use App\Http\Resources\VlessConfigResource;
 use App\Http\Requests\VlessConfig\StoreVlessConfigRequest;
 use App\Http\Requests\VlessConfig\UpdateVlessConfigRequest;
 use App\Models\User;
@@ -18,8 +19,6 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class VlessConfigController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly VlessConfigCrudService $vlessConfigService,
     ) {}
@@ -43,7 +42,7 @@ class VlessConfigController extends Controller
                 'full_name' => $user->full_name,
                 'is_active' => $user->is_active,
                 'edit_url' => route('users.edit', $user),
-                'configs' => $user->vlessConfigs->map(fn (VlessConfig $config) => $this->vlessConfigData($config))->values(),
+                'configs' => VlessConfigResource::collection($user->vlessConfigs),
             ])->values(),
             'tabs' => [
                 ['label' => 'WireGuard', 'href' => route('configs.index'), 'active' => false],
@@ -69,7 +68,7 @@ class VlessConfigController extends Controller
             'mode' => 'create',
             'submit_url' => route('vless-configs.store'),
             'config' => null,
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'users' => UserResource::collection($users),
             'existing_configs' => $existingConfigs->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values(),
         ]);
     }
@@ -97,8 +96,8 @@ class VlessConfigController extends Controller
         return $this->inertia('Configs/VlessForm', [
             'mode' => 'edit',
             'submit_url' => route('vless-configs.update', $config),
-            'config' => $this->vlessConfigData($config),
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'config' => new VlessConfigResource($config),
+            'users' => UserResource::collection($users),
             'existing_configs' => [],
         ]);
     }

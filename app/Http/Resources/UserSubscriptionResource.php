@@ -2,27 +2,28 @@
 
 namespace App\Http\Resources;
 
-use App\Models\UserSubscription;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class UserSubscriptionResource
+class UserSubscriptionResource extends JsonResource
 {
-    public static function make(UserSubscription $subscription): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $subscription->id,
-            'start_date' => $subscription->start_date,
-            'end_date' => $subscription->end_date,
-            'price' => (float) $subscription->price,
-            'is_active' => now()->betweenIncluded($subscription->start_date, $subscription->end_date),
-            'user' => $subscription->user ? [
-                'id' => $subscription->user->id,
-                'full_name' => $subscription->user->full_name,
-                'telegram' => $subscription->user->telegram,
-                'is_active' => $subscription->user->is_active,
-                'edit_url' => route('users.edit', $subscription->user),
+            'id' => $this->id,
+            'start_date' => $this->start_date,
+            'end_date' => $this->end_date,
+            'price' => (float) $this->price,
+            'is_active' => now()->betweenIncluded($this->start_date, $this->end_date),
+            'user' => $this->user ? [
+                'id' => $this->user->id,
+                'full_name' => $this->user->full_name,
+                'telegram' => $this->user->telegram,
+                'is_active' => $this->user->is_active,
+                'edit_url' => route('users.edit', $this->user),
             ] : null,
             'links' => [
-                'edit' => route('subscriptions.edit', $subscription),
+                'edit' => route('subscriptions.edit', $this->resource),
             ],
         ];
     }

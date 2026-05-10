@@ -2,17 +2,18 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class LimitResource
+class LimitResource extends JsonResource
 {
-    public static function make(Limit $limit): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $limit->id,
-            'amount' => (int) $limit->amount,
+            'id' => $this->id,
+            'amount' => (int) $this->amount,
             'links' => [
-                'destroy' => route('limits.destroy', $limit),
+                'destroy' => route('limits.destroy', $this->resource),
             ],
         ];
     }

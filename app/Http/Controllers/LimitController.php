@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\ConfigResource;
 use App\Http\Requests\Limit\StoreLimitRequest;
 use App\Models\Config;
 use App\Models\Limit;
@@ -11,8 +11,6 @@ use RuntimeException;
 
 class LimitController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly LimitCrudService $limitService,
     ) {}
@@ -30,12 +28,7 @@ class LimitController extends Controller
             ->get();
 
         return $this->inertia('Limits/Index', [
-            'configs' => $configs->map(function (Config $config) {
-                return [
-                    ...$this->configData($config),
-                    'limits' => $config->limits->map(fn (Limit $limit) => $this->limitData($limit))->values(),
-                ];
-            })->values(),
+            'configs' => ConfigResource::collection($configs),
         ]);
     }
 
@@ -49,7 +42,7 @@ class LimitController extends Controller
 
         return $this->inertia('Limits/Create', [
             'submit_url' => route('limits.store'),
-            'configs' => $configs->map(fn (Config $config) => $this->configData($config))->values(),
+            'configs' => ConfigResource::collection($configs),
             'speed_limits' => $speedLimits,
         ]);
     }

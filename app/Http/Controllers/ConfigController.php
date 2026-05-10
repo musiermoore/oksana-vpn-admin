@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\ConfigResource;
+use App\Http\Resources\ServerResource;
+use App\Http\Resources\UserResource;
 use App\Http\Requests\Config\StoreBulkConfigRequest;
 use App\Http\Requests\Config\StoreConfigRequest;
 use App\Http\Requests\Config\UpdateConfigRequest;
@@ -19,8 +21,6 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ConfigController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly ConfigCrudService $configService,
     ) {}
@@ -44,7 +44,7 @@ class ConfigController extends Controller
                 'full_name' => $user->full_name,
                 'is_active' => $user->is_active,
                 'edit_url' => route('users.edit', $user),
-                'configs' => $user->configs->map(fn (Config $config) => $this->configData($config))->values(),
+                'configs' => ConfigResource::collection($user->configs),
             ])->values(),
             'tabs' => [
                 ['label' => 'WireGuard', 'href' => route('configs.index'), 'active' => true],
@@ -76,8 +76,8 @@ class ConfigController extends Controller
 
         return $this->inertia('Configs/Create', [
             'submit_url' => route('configs.store'),
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
-            'servers' => $servers->map(fn (Server $server) => $this->serverData($server))->values(),
+            'users' => UserResource::collection($users),
+            'servers' => ServerResource::collection($servers),
             'file_names' => $fileNames->values(),
         ]);
     }
@@ -101,7 +101,7 @@ class ConfigController extends Controller
 
         return $this->inertia('Configs/BulkCreate', [
             'submit_url' => route('configs.store-bulk'),
-            'servers' => $servers->map(fn (Server $server) => $this->serverData($server))->values(),
+            'servers' => ServerResource::collection($servers),
         ]);
     }
 
@@ -125,9 +125,9 @@ class ConfigController extends Controller
 
         return $this->inertia('Configs/Edit', [
             'submit_url' => route('configs.update', $config),
-            'config' => $this->configData($config),
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
-            'servers' => $servers->map(fn (Server $server) => $this->serverData($server))->values(),
+            'config' => new ConfigResource($config),
+            'users' => UserResource::collection($users),
+            'servers' => ServerResource::collection($servers),
         ]);
     }
 

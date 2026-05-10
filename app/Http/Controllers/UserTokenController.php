@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\UserResource;
+use App\Http\Resources\UserTokenResource;
 use App\Http\Requests\UserToken\StoreUserTokenRequest;
 use App\Models\User;
 use App\Models\UserToken;
@@ -11,8 +12,6 @@ use Carbon\Carbon;
 
 class UserTokenController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly UserTokenCrudService $userTokenService,
     ) {}
@@ -25,7 +24,7 @@ class UserTokenController extends Controller
             ->get();
 
         return $this->inertia('UserTokens/Index', [
-            'user_tokens' => $userTokens->map(fn (UserToken $userToken) => $this->userTokenData($userToken))->values(),
+            'user_tokens' => UserTokenResource::collection($userTokens),
         ]);
     }
 
@@ -35,7 +34,7 @@ class UserTokenController extends Controller
 
         return $this->inertia('UserTokens/Create', [
             'submit_url' => route('user-tokens.store'),
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'users' => UserResource::collection($users),
         ]);
     }
 
@@ -61,7 +60,7 @@ class UserTokenController extends Controller
 
         return $this->inertia('UserTokens/Show', [
             'user_token' => [
-                ...$this->userTokenData($userToken),
+                ...(new UserTokenResource($userToken))->resolve(),
                 'download_items' => $userToken->user->configs->map(function ($config) use ($userToken) {
                     $params = [
                         'userToken' => $userToken->token,

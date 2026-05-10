@@ -2,16 +2,17 @@
 
 namespace App\Http\Resources;
 
-use App\Models\TransactionType;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class TransactionTypeResource
+class TransactionTypeResource extends JsonResource
 {
-    public static function make(TransactionType $type): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $type->id,
-            'name' => $type->name,
-            'slug' => $type->slug,
+            'id' => $this->id,
+            'name' => $this->name,
+            'slug' => $this->slug,
         ];
     }
 }

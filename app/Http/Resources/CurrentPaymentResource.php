@@ -2,23 +2,24 @@
 
 namespace App\Http\Resources;
 
-use App\Models\CurrentPayment;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class CurrentPaymentResource
+class CurrentPaymentResource extends JsonResource
 {
-    public static function make(CurrentPayment $currentPayment): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $currentPayment->id,
-            'start_date' => $currentPayment->start_date,
-            'end_date' => $currentPayment->end_date,
-            'amount' => (float) $currentPayment->amount,
-            'formatted_start_date' => $currentPayment->formatted_start_date,
-            'formatted_end_date' => $currentPayment->formatted_end_date,
-            'full_date' => $currentPayment->full_date,
+            'id' => $this->id,
+            'start_date' => $this->start_date,
+            'end_date' => $this->end_date,
+            'amount' => (float) $this->amount,
+            'formatted_start_date' => $this->formatted_start_date,
+            'formatted_end_date' => $this->formatted_end_date,
+            'full_date' => $this->full_date,
             'links' => [
-                'edit' => route('current-payments.edit', $currentPayment),
-                'destroy' => route('current-payments.destroy', $currentPayment),
+                'edit' => route('current-payments.edit', $this->resource),
+                'destroy' => route('current-payments.destroy', $this->resource),
             ],
         ];
     }

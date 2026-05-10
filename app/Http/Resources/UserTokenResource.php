@@ -2,27 +2,28 @@
 
 namespace App\Http\Resources;
 
-use App\Models\UserToken;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class UserTokenResource
+class UserTokenResource extends JsonResource
 {
-    public static function make(UserToken $userToken): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $userToken->id,
-            'token' => $userToken->token,
-            'password' => $userToken->password,
-            'expires_at' => $userToken->expires_at,
-            'user' => $userToken->user ? [
-                'id' => $userToken->user->id,
-                'name' => $userToken->user->name,
-                'telegram' => $userToken->user->telegram,
-                'full_name' => $userToken->user->full_name,
+            'id' => $this->id,
+            'token' => $this->token,
+            'password' => $this->password,
+            'expires_at' => $this->expires_at,
+            'user' => $this->user ? [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
+                'telegram' => $this->user->telegram,
+                'full_name' => $this->user->full_name,
             ] : null,
             'links' => [
-                'show' => route('user-tokens.show', $userToken),
-                'destroy' => route('user-tokens.destroy', $userToken),
-                'public_configs' => route('users.configs', $userToken->token),
+                'show' => route('user-tokens.show', $this->resource),
+                'destroy' => route('user-tokens.destroy', $this->resource),
+                'public_configs' => route('users.configs', $this->token),
             ],
         ];
     }

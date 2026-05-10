@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\ServerFormResource;
+use App\Http\Resources\ServerResource;
 use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
@@ -11,8 +12,6 @@ use RuntimeException;
 
 class ServerController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly ServerCrudService $serverService,
     ) {}
@@ -25,7 +24,7 @@ class ServerController extends Controller
         $servers = Server::all();
 
         return $this->inertia('Servers/Index', [
-            'servers' => $servers->map(fn (Server $server) => $this->serverData($server))->values(),
+            'servers' => ServerResource::collection($servers),
         ]);
     }
 
@@ -62,7 +61,7 @@ class ServerController extends Controller
             'mode' => 'edit',
             'submit_url' => route('servers.update', $server),
             'method' => 'patch',
-            'server' => $this->serverData($server, true),
+            'server' => new ServerFormResource($server),
         ]);
     }
 

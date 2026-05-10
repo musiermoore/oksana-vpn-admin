@@ -2,30 +2,32 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Config;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class ConfigResource
+class ConfigResource extends JsonResource
 {
-    public static function make(Config $config): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $config->id,
-            'name' => $config->name,
-            'description' => $config->description,
-            'address' => $config->address,
-            'is_active' => (bool) $config->is_active,
-            'server' => $config->server ? ServerResource::make($config->server) : null,
-            'user' => $config->user ? [
-                'id' => $config->user->id,
-                'full_name' => $config->user->full_name,
-                'is_active' => $config->user->is_active,
+            'id' => $this->id,
+            'name' => $this->name,
+            'description' => $this->description,
+            'address' => $this->address,
+            'is_active' => (bool) $this->is_active,
+            'server' => $this->server ? new ServerResource($this->server) : null,
+            'user' => $this->user ? [
+                'id' => $this->user->id,
+                'full_name' => $this->user->full_name,
+                'is_active' => $this->user->is_active,
             ] : null,
-            'formatted_last_traffic' => $config->formatted_last_traffic,
+            'formatted_last_traffic' => $this->formatted_last_traffic,
+            'limits' => $this->whenLoaded('limits', fn () => LimitResource::collection($this->limits)),
             'links' => [
-                'edit' => route('configs.edit', $config),
-                'destroy' => route('configs.destroy', $config),
-                'enable' => route('configs.enable', $config),
-                'disable' => route('configs.disable', $config),
+                'edit' => route('configs.edit', $this->resource),
+                'destroy' => route('configs.destroy', $this->resource),
+                'enable' => route('configs.enable', $this->resource),
+                'disable' => route('configs.disable', $this->resource),
             ],
         ];
     }

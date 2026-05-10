@@ -2,34 +2,29 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Server;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class ServerResource
+class ServerResource extends JsonResource
 {
-    public static function make(Server $server, bool $includeCredentials = false): array
+    public function toArray(Request $request): array
     {
-        $data = [
-            'id' => $server->id,
-            'name' => $server->name,
-            'code' => $server->code,
-            'ip' => $server->ip,
-            'is_https' => (bool) $server->is_https,
-            'link_host' => $server->link_host,
-            'panel_link' => $server->panel_link,
-            'panel_username' => $server->panel_username,
-            'app_path' => $server->app_path,
-            'ssh_public_key' => $server->ssh_public_key,
-            'is_vless' => (bool) $server->is_vless,
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'code' => $this->code,
+            'ip' => $this->ip,
+            'is_https' => (bool) $this->is_https,
+            'link_host' => $this->link_host,
+            'panel_link' => $this->panel_link,
+            'panel_username' => $this->panel_username,
+            'app_path' => $this->app_path,
+            'ssh_public_key' => $this->ssh_public_key,
+            'is_vless' => (bool) $this->is_vless,
             'links' => [
-                'edit' => route('servers.edit', $server),
-                'destroy' => route('servers.destroy', $server),
+                'edit' => route('servers.edit', $this->resource),
+                'destroy' => route('servers.destroy', $this->resource),
             ],
         ];
-
-        if ($includeCredentials) {
-            $data['panel_password'] = $server->panel_password;
-        }
-
-        return $data;
     }
 }

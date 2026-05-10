@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\CurrentPaymentResource;
 use App\Http\Requests\CurrentPayment\StoreCurrentPaymentRequest;
 use App\Http\Requests\CurrentPayment\UpdateCurrentPaymentRequest;
 use App\Models\CurrentPayment;
@@ -10,8 +10,6 @@ use App\Services\Crud\CurrentPaymentCrudService;
 
 class CurrentPaymentController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly CurrentPaymentCrudService $currentPaymentService,
     ) {}
@@ -21,9 +19,7 @@ class CurrentPaymentController extends Controller
         $currentPayments = CurrentPayment::all();
 
         return $this->inertia('CurrentPayments/Index', [
-            'current_payments' => $currentPayments
-                ->map(fn (CurrentPayment $currentPayment) => $this->currentPaymentData($currentPayment))
-                ->values(),
+            'current_payments' => CurrentPaymentResource::collection($currentPayments),
         ]);
     }
 
@@ -54,7 +50,7 @@ class CurrentPaymentController extends Controller
         return $this->inertia('CurrentPayments/Form', [
             'mode' => 'edit',
             'submit_url' => route('current-payments.update', $currentPayment),
-            'current_payment' => $this->currentPaymentData($currentPayment),
+            'current_payment' => new CurrentPaymentResource($currentPayment),
         ]);
     }
 

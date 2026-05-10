@@ -2,30 +2,31 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Transaction;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class TransactionResource
+class TransactionResource extends JsonResource
 {
-    public static function make(Transaction $transaction): array
+    public function toArray(Request $request): array
     {
         return [
-            'id' => $transaction->id,
-            'amount' => (float) $transaction->amount,
-            'is_approved' => (bool) $transaction->is_approved,
-            'description' => $transaction->description,
-            'formatted_created_at' => $transaction->formatted_created_at,
-            'type' => $transaction->type ? TransactionTypeResource::make($transaction->type) : null,
-            'user' => $transaction->user ? [
-                'id' => $transaction->user->id,
-                'full_name' => $transaction->user->full_name,
-                'is_active' => $transaction->user->is_active,
-                'edit_url' => route('users.edit', $transaction->user),
+            'id' => $this->id,
+            'amount' => (float) $this->amount,
+            'is_approved' => (bool) $this->is_approved,
+            'description' => $this->description,
+            'formatted_created_at' => $this->formatted_created_at,
+            'type' => $this->type ? new TransactionTypeResource($this->type) : null,
+            'user' => $this->user ? [
+                'id' => $this->user->id,
+                'full_name' => $this->user->full_name,
+                'is_active' => $this->user->is_active,
+                'edit_url' => route('users.edit', $this->user),
             ] : null,
             'links' => [
-                'edit' => route('transactions.edit', $transaction),
-                'destroy' => route('transactions.destroy', $transaction),
-                'approve' => route('transactions.approve', $transaction),
-                'decline' => route('transactions.decline', $transaction),
+                'edit' => route('transactions.edit', $this->resource),
+                'destroy' => route('transactions.destroy', $this->resource),
+                'approve' => route('transactions.approve', $this->resource),
+                'decline' => route('transactions.decline', $this->resource),
             ],
         ];
     }

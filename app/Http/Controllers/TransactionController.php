@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\TransactionResource;
+use App\Http\Resources\TransactionTypeResource;
+use App\Http\Resources\UserResource;
 use App\Http\Requests\Transaction\StoreTransactionRequest;
 use App\Http\Requests\Transaction\UpdateTransactionRequest;
 use App\Models\Transaction;
@@ -12,8 +14,6 @@ use App\Services\Crud\TransactionCrudService;
 
 class TransactionController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly TransactionCrudService $transactionService,
     ) {}
@@ -37,8 +37,8 @@ class TransactionController extends Controller
 
         return $this->inertia('Transactions/Index', [
             'balance' => (float) $balance,
-            'transactions' => $transactions->map(fn (Transaction $transaction) => $this->transactionData($transaction))->values(),
-            'pending_transactions' => $pendingTransactions->map(fn (Transaction $transaction) => $this->transactionData($transaction))->values(),
+            'transactions' => TransactionResource::collection($transactions),
+            'pending_transactions' => TransactionResource::collection($pendingTransactions),
         ]);
     }
 
@@ -51,8 +51,8 @@ class TransactionController extends Controller
             'mode' => 'create',
             'submit_url' => route('transactions.store'),
             'transaction' => null,
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
-            'types' => $types->map(fn (TransactionType $type) => $this->transactionTypeData($type))->values(),
+            'users' => UserResource::collection($users),
+            'types' => TransactionTypeResource::collection($types),
         ]);
     }
 
@@ -71,9 +71,9 @@ class TransactionController extends Controller
         return $this->inertia('Transactions/Form', [
             'mode' => 'edit',
             'submit_url' => route('transactions.update', $transaction),
-            'transaction' => $this->transactionData($transaction),
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
-            'types' => $types->map(fn (TransactionType $type) => $this->transactionTypeData($type))->values(),
+            'transaction' => new TransactionResource($transaction),
+            'users' => UserResource::collection($users),
+            'types' => TransactionTypeResource::collection($types),
         ]);
     }
 

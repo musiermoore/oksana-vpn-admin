@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\CurrentPaymentResource;
+use App\Http\Resources\ExtraPaymentResource;
+use App\Http\Resources\UserResource;
 use App\Http\Requests\ExtraPayment\StoreExtraPaymentRequest;
 use App\Models\CurrentPayment;
 use App\Models\User;
@@ -11,8 +13,6 @@ use App\Services\Crud\ExtraPaymentCrudService;
 
 class ExtraPaymentController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly ExtraPaymentCrudService $extraPaymentService,
     ) {}
@@ -28,7 +28,7 @@ class ExtraPaymentController extends Controller
             ->get();
 
         return $this->inertia('ExtraPayments/Index', [
-            'payments' => $payments->map(fn (UserExtraPayment $payment) => $this->extraPaymentData($payment))->values(),
+            'payments' => ExtraPaymentResource::collection($payments),
         ]);
     }
 
@@ -43,10 +43,8 @@ class ExtraPaymentController extends Controller
 
         return $this->inertia('ExtraPayments/Create', [
             'submit_url' => route('extra-payments.store'),
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
-            'current_payments' => $currentPayments
-                ->map(fn (CurrentPayment $currentPayment) => $this->currentPaymentData($currentPayment))
-                ->values(),
+            'users' => UserResource::collection($users),
+            'current_payments' => CurrentPaymentResource::collection($currentPayments),
             'active_period_id' => $activePeriodId,
         ]);
     }

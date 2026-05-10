@@ -2,43 +2,31 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Config;
-use App\Models\Transaction;
-use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class UserResource
+class UserResource extends JsonResource
 {
-    public static function make(User $user, bool $includeRelations = false): array
+    public function toArray(Request $request): array
     {
-        $data = [
-            'id' => $user->id,
-            'name' => $user->name,
-            'telegram' => $user->telegram,
-            'telegram_id' => $user->telegram_id,
-            'description' => $user->description,
-            'join_at' => $user->join_at,
-            'balance' => (float) ($user->balance ?? 0),
-            'is_active' => $user->is_active,
-            'full_name' => $user->full_name,
-            'approved_transactions_sum_amount' => (float) ($user->approved_transactions_sum_amount ?? 0),
-            'payment_amount' => (float) ($user->payment_amount ?? 0),
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'telegram' => $this->telegram,
+            'telegram_id' => $this->telegram_id,
+            'description' => $this->description,
+            'join_at' => $this->join_at,
+            'balance' => (float) ($this->balance ?? 0),
+            'is_active' => $this->is_active,
+            'full_name' => $this->full_name,
+            'approved_transactions_sum_amount' => (float) ($this->approved_transactions_sum_amount ?? 0),
+            'payment_amount' => (float) ($this->payment_amount ?? 0),
+            'configs' => $this->whenLoaded('configs', fn () => ConfigResource::collection($this->configs)),
+            'transactions' => $this->whenLoaded('transactions', fn () => TransactionResource::collection($this->transactions)),
             'links' => [
-                'edit' => route('users.edit', $user),
-                'destroy' => route('users.destroy', $user),
+                'edit' => route('users.edit', $this->resource),
+                'destroy' => route('users.destroy', $this->resource),
             ],
         ];
-
-        if ($includeRelations) {
-            $data['configs'] = $user->configs
-                ->map(fn (Config $config) => ConfigResource::make($config))
-                ->values()
-                ->all();
-            $data['transactions'] = $user->transactions
-                ->map(fn (Transaction $transaction) => TransactionResource::make($transaction))
-                ->values()
-                ->all();
-        }
-
-        return $data;
     }
 }

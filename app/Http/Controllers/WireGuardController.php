@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\ServerResource;
+use App\Http\Resources\UserResource;
 use App\Models\Config;
 use App\Models\Server;
 use App\Models\Traffic;
@@ -15,8 +16,6 @@ use Illuminate\Support\Facades\DB;
 
 class WireGuardController extends Controller
 {
-    use BuildsInertiaData;
-
     public function activePeers(Request $request)
     {
         $servers = Server::get();
@@ -30,7 +29,7 @@ class WireGuardController extends Controller
             'filters' => [
                 'server_id' => $selectedServerId,
             ],
-            'servers' => $servers->map(fn(Server $server) => $this->serverData($server))->values(),
+            'servers' => ServerResource::collection($servers),
             'peerGroups' => collect($peers)->map(function (Collection $peerType, string $key) {
                 return [
                     'key' => $key,
@@ -71,8 +70,8 @@ class WireGuardController extends Controller
                 'end_date' => $request->query('end_date', now()->format('Y-m-d\TH:i')),
             ],
             'server_time' => now()->format('Y-m-d\TH:i'),
-            'servers' => $servers->map(fn(Server $server) => $this->serverData($server))->values(),
-            'users' => $users->map(fn(User $user) => $this->userData($user))->values(),
+            'servers' => ServerResource::collection($servers),
+            'users' => UserResource::collection($users),
             'peers' => collect($peers)->map(function (array $peer) {
                 return [
                     'telegram' => $peer['telegram'] ?? null,

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\BuildsInertiaData;
+use App\Http\Resources\CurrentPaymentResource;
+use App\Http\Resources\UserResource;
+use App\Http\Resources\UserTokenResource;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\CurrentPayment;
@@ -13,8 +15,6 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    use BuildsInertiaData;
-
     public function __construct(
         private readonly UserCrudService $userService,
     ) {}
@@ -38,7 +38,7 @@ class UserController extends Controller
                 'all' => $getAll,
                 'inactive' => $onlyInactive,
             ],
-            'users' => $users->map(fn (User $user) => $this->userData($user))->values(),
+            'users' => UserResource::collection($users),
         ]);
     }
 
@@ -52,7 +52,7 @@ class UserController extends Controller
             'mode' => 'create',
             'submit_url' => route('users.store'),
             'user' => null,
-            'payments' => $payments->map(fn ($payment) => $this->currentPaymentData($payment))->values(),
+            'payments' => CurrentPaymentResource::collection($payments),
         ]);
     }
 
@@ -79,8 +79,8 @@ class UserController extends Controller
         return $this->inertia('Users/Form', [
             'mode' => 'edit',
             'submit_url' => route('users.update', $user),
-            'user' => $this->userData($user, true),
-            'payments' => $payments->map(fn ($payment) => $this->currentPaymentData($payment))->values(),
+            'user' => new UserResource($user),
+            'payments' => CurrentPaymentResource::collection($payments),
         ]);
     }
 
@@ -110,7 +110,7 @@ class UserController extends Controller
 
         return $this->inertia('Users/Configs', [
             'token' => [
-                ...$this->userTokenData($userToken),
+                ...(new UserTokenResource($userToken))->resolve(),
                 'download_items' => $userToken->user->configs->map(function ($config) use ($request, $userToken) {
                     $params = [
                         'userToken' => $userToken->token,

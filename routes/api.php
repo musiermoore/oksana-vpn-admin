@@ -3,9 +3,10 @@
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Middleware\BasicAuth;
+use App\Http\Middleware\TrackApiRequests;
 use Illuminate\Support\Facades\Route;
 
-Route::name('api.')->middleware(BasicAuth::class)->group(function () {
+Route::name('api.')->middleware([BasicAuth::class, TrackApiRequests::class])->group(function () {
     Route::get('users/{telegram}/{type}/configs', [UserController::class, 'getUserConfigs'])
         ->name('users.configs');
     Route::get('users/{telegram}/configs/{type}/{config}/download', [UserController::class, 'downloadConfig'])

@@ -495,6 +495,10 @@ textarea {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.grid--filters {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 .field {
     display: grid;
     gap: 8px;
@@ -712,6 +716,19 @@ tbody tr:hover {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+}
+
+.code-block {
+    margin: 0;
+    max-width: 460px;
+    padding: 12px;
+    border-radius: 16px;
+    overflow: auto;
+    background: rgba(15, 23, 42, 0.96);
+    color: #dbeafe;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
 }
 
 @media (max-width: 720px) {

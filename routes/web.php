@@ -6,6 +6,7 @@ use App\Http\Controllers\ExtraPaymentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ApiRequestLogController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -25,6 +26,7 @@ Route::middleware([BasicAuth::class, 'guest'])->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/', [WireGuardController::class, 'activePeers'])->name('wireguard.active-peers');
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
+    Route::get('api-request-logs', [ApiRequestLogController::class, 'index'])->name('api-request-logs.index');
 
     Route::resource('users', UserController::class);
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);

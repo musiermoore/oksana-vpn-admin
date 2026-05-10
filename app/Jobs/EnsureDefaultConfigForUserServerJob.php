@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Server;
 use App\Models\User;
-use App\Models\VlessConfig;
+use App\Services\XuiConfigService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -67,18 +67,6 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
             return;
         }
 
-        $vlessConfig = VlessConfig::query()
-            ->where('server_id', $server->id)
-            ->whereNull('user_id')
-            ->orderBy('id')
-            ->first();
-
-        if (! $vlessConfig) {
-            throw new RuntimeException(
-                "No free VLESS config available for server [{$server->id}] and user [{$user->id}]"
-            );
-        }
-
-        $vlessConfig->update(['user_id' => $user->id]);
+        (new XuiConfigService($server))->createClientOnFirstAvailableInbound($user);
     }
 }

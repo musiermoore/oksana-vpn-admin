@@ -15,7 +15,7 @@ class TransactionResource extends JsonResource
             'is_approved' => (bool) $this->is_approved,
             'description' => $this->description,
             'formatted_created_at' => $this->formatted_created_at,
-            'type' => $this->type ? new TransactionTypeResource($this->type) : null,
+            'type' => $this->type ? (new TransactionTypeResource($this->type))->toArray($request) : null,
             'user' => $this->user ? [
                 'id' => $this->user->id,
                 'full_name' => $this->user->full_name,

@@ -6,8 +6,8 @@ use App\Jobs\EnsureDefaultConfigForUserServerJob;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\UserSubscription;
-use App\Models\VlessConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class EnsureDefaultConfigForUserServerJobTest extends TestCase
@@ -47,13 +47,16 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
     }
 
-    public function test_job_assigns_one_vless_config_for_ready_server(): void
+    public function test_job_creates_one_vless_config_for_ready_server(): void
     {
         $server = Server::query()->create([
             'name' => 'Ready VLESS',
             'code' => 'RVL',
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
             'is_ready' => true,
             'is_vless' => true,
         ]);
@@ -71,21 +74,47 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'price' => 10,
         ]);
 
-        $vlessConfig = VlessConfig::query()->create([
-            'server_id' => $server->id,
-            'user_id' => null,
-            'name' => 'free-config',
-            'is_active' => true,
-            'enable' => true,
-            'uuid' => '33333333-3333-3333-3333-333333333333',
+        Http::fake([
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/inbounds/addClient' => Http::response([
+                'success' => true,
+            ]),
         ]);
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
         $this->assertDatabaseHas('vless_configs', [
-            'id' => $vlessConfig->id,
             'user_id' => $user->id,
             'server_id' => $server->id,
+            'port' => 443,
+            'type' => 'tcp',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'enable' => true,
         ]);
     }
 }

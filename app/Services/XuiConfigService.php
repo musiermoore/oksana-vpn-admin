@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Entities\VlessConfig as VlessConfigData;
 use App\Models\Server;
+use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -46,6 +48,33 @@ class XuiConfigService
         $payload = $response->json();
 
         return is_array($payload) ? $payload : [];
+    }
+
+    public function createClientOnFirstAvailableInbound(User $user): VlessConfig
+    {
+        $inbound = collect($this->getInbounds())
+            ->first(fn (array $row) => ($row['protocol'] ?? null) === 'vless');
+
+        if (! $inbound) {
+            throw new RuntimeException("No VLESS inbound available for server [{$this->server->id}]");
+        }
+
+        $inboundId = $inbound['id'] ?? null;
+
+        if (! $inboundId) {
+            throw new RuntimeException("VLESS inbound does not contain id for server [{$this->server->id}]");
+        }
+
+        $settings = $this->getConfigSettings((string) $user->telegram);
+
+        $this->addClient((int) $inboundId, (string) $user->telegram, $settings);
+
+        $attributes = $this->buildLocalConfigAttributes($inbound, $settings, $user->id);
+
+        return VlessConfig::query()->updateOrCreate([
+            'server_id' => $this->server->id,
+            'uuid' => $attributes['uuid'],
+        ], $attributes);
     }
 
     public function setClientEnabled(string $uuid, bool $enabled): array
@@ -182,6 +211,51 @@ class XuiConfigService
             'comment' => '',
             'reset' => 0,
         ];
+    }
+
+    private function buildLocalConfigAttributes(array $inbound, array $settings, ?int $userId = null): array
+    {
+        $streamSettings = $this->decodeJsonField(
+            $inbound['streamSettings'] ?? $inbound['stream_settings'] ?? null
+        );
+
+        $config = new VlessConfigData(
+            $this->server->id,
+            $userId,
+            $settings['email'] ?? null,
+            null,
+            true,
+            (bool) ($settings['enable'] ?? true),
+            $settings['id'] ?? null,
+            $settings['subId'] ?? null,
+            $inbound['port'] ?? null,
+            $streamSettings['network'] ?? null,
+            'none',
+            $streamSettings['security'] ?? null,
+            $settings['flow'] ?? null,
+            $streamSettings['realitySettings']['settings']['publicKey'] ?? null,
+            $streamSettings['realitySettings']['settings']['fingerprint'] ?? null,
+            $streamSettings['realitySettings']['serverNames'][0] ?? null,
+            $streamSettings['realitySettings']['shortIds'][0] ?? null,
+            '/'
+        );
+
+        return $config->toArray();
+    }
+
+    private function decodeJsonField(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function extractClientFromTrafficPayload(array $payload, VlessConfig $config, bool $enabled): array

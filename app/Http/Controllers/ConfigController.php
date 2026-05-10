@@ -125,7 +125,7 @@ class ConfigController extends Controller
 
         return $this->inertia('Configs/Edit', [
             'submit_url' => route('configs.update', $config),
-            'config' => new ConfigResource($config),
+            'config' => (new ConfigResource($config))->toArray($request),
             'users' => UserResource::collection($users)->toArray($request),
             'servers' => ServerResource::collection($servers)->toArray($request),
         ]);

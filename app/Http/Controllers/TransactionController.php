@@ -72,7 +72,7 @@ class TransactionController extends Controller
         return $this->inertia('Transactions/Form', [
             'mode' => 'edit',
             'submit_url' => route('transactions.update', $transaction),
-            'transaction' => new TransactionResource($transaction),
+            'transaction' => (new TransactionResource($transaction))->toArray($request),
             'users' => UserResource::collection($users)->toArray($request),
             'types' => TransactionTypeResource::collection($types)->toArray($request),
         ]);

@@ -46,12 +46,12 @@ class CurrentPaymentController extends Controller
         return redirect()->route('current-payments.index');
     }
 
-    public function edit(CurrentPayment $currentPayment)
+    public function edit(Request $request, CurrentPayment $currentPayment)
     {
         return $this->inertia('CurrentPayments/Form', [
             'mode' => 'edit',
             'submit_url' => route('current-payments.update', $currentPayment),
-            'current_payment' => new CurrentPaymentResource($currentPayment),
+            'current_payment' => (new CurrentPaymentResource($currentPayment))->toArray($request),
         ]);
     }
 

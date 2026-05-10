@@ -79,7 +79,7 @@ class UserController extends Controller
         return $this->inertia('Users/Form', [
             'mode' => 'edit',
             'submit_url' => route('users.update', $user),
-            'user' => new UserResource($user),
+            'user' => (new UserResource($user))->toArray($request),
             'payments' => CurrentPaymentResource::collection($payments)->toArray($request),
         ]);
     }
@@ -110,7 +110,7 @@ class UserController extends Controller
 
         return $this->inertia('Users/Configs', [
             'token' => [
-                ...(new UserTokenResource($userToken))->resolve(),
+                ...(new UserTokenResource($userToken))->toArray($request),
                 'download_items' => $userToken->user->configs->map(function ($config) use ($request, $userToken) {
                     $params = [
                         'userToken' => $userToken->token,

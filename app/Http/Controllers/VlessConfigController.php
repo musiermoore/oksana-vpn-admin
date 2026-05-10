@@ -96,7 +96,7 @@ class VlessConfigController extends Controller
         return $this->inertia('Configs/VlessForm', [
             'mode' => 'edit',
             'submit_url' => route('vless-configs.update', $config),
-            'config' => new VlessConfigResource($config),
+            'config' => (new VlessConfigResource($config))->toArray($request),
             'users' => UserResource::collection($users)->toArray($request),
             'existing_configs' => [],
         ]);

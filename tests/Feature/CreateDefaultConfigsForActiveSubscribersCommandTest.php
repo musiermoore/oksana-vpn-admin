@@ -18,7 +18,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_command_dispatches_jobs_only_for_active_subscribers_missing_a_config_type(): void
+    public function test_command_dispatches_jobs_for_all_active_subscribers(): void
     {
         Queue::fake();
 
@@ -124,14 +124,14 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             return $job->userId === $hasOnlyVlessUser->id;
         });
 
-        Queue::assertNotPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($hasBothUser) {
+        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($hasBothUser) {
             return $job->userId === $hasBothUser->id;
         });
 
-        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, 2);
+        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, 3);
     }
 
-    public function test_user_job_dispatches_one_job_per_missing_config_type(): void
+    public function test_user_job_dispatches_one_job_per_missing_server_config(): void
     {
         Queue::fake();
 
@@ -188,23 +188,32 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
         Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, 2);
     }
 
-    public function test_user_job_dispatches_only_wireguard_when_vless_exists(): void
+    public function test_user_job_dispatches_missing_server_pair_when_user_has_other_server_configs(): void
     {
         Queue::fake();
 
-        $wireGuardServer = Server::query()->create([
-            'name' => 'Ready WG',
-            'code' => 'RWG',
+        $latviaWireGuardServer = Server::query()->create([
+            'name' => 'Latvia WG',
+            'code' => 'LV-WG',
             'ip' => '10.0.0.1',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => false,
         ]);
 
-        $vlessServer = Server::query()->create([
-            'name' => 'Ready VLESS',
-            'code' => 'RVL',
+        $latviaVlessServer = Server::query()->create([
+            'name' => 'Latvia VLESS',
+            'code' => 'LV-VL',
             'ip' => '10.0.0.2',
+            'app_path' => '/opt/app',
+            'is_ready' => true,
+            'is_vless' => true,
+        ]);
+
+        $finlandVlessServer = Server::query()->create([
+            'name' => 'Finland VLESS',
+            'code' => 'FI-VL',
+            'ip' => '10.0.0.3',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => true,
@@ -223,10 +232,18 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'price' => 10,
         ]);
 
-        VlessConfig::query()->create([
-            'server_id' => $vlessServer->id,
+        Config::query()->create([
             'user_id' => $user->id,
-            'name' => 'existing-vless',
+            'server_id' => $latviaWireGuardServer->id,
+            'name' => 'latvia-wg',
+            'description' => null,
+            'is_active' => true,
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $finlandVlessServer->id,
+            'user_id' => $user->id,
+            'name' => 'finland-vless',
             'is_active' => true,
             'enable' => true,
             'uuid' => '33333333-3333-3333-3333-333333333333',
@@ -235,33 +252,37 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
 
         (new DispatchDefaultConfigsForUserJob($user->id))->handle();
 
-        Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($user, $wireGuardServer) {
-            return $job->userId === $user->id && $job->serverId === $wireGuardServer->id;
+        Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($user, $latviaVlessServer) {
+            return $job->userId === $user->id && $job->serverId === $latviaVlessServer->id;
         });
 
-        Queue::assertNotPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($vlessServer) {
-            return $job->serverId === $vlessServer->id;
+        Queue::assertNotPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($latviaWireGuardServer) {
+            return $job->serverId === $latviaWireGuardServer->id;
+        });
+
+        Queue::assertNotPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($finlandVlessServer) {
+            return $job->serverId === $finlandVlessServer->id;
         });
 
         Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, 1);
     }
 
-    public function test_user_job_dispatches_only_vless_when_wireguard_exists(): void
+    public function test_user_job_dispatches_only_missing_vless_for_server_when_wireguard_exists_on_same_server(): void
     {
         Queue::fake();
 
-        $wireGuardServer = Server::query()->create([
-            'name' => 'Ready WG',
-            'code' => 'RWG',
+        $latviaWireGuardServer = Server::query()->create([
+            'name' => 'Latvia WG',
+            'code' => 'LV-WG',
             'ip' => '10.0.0.1',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => false,
         ]);
 
-        $vlessServer = Server::query()->create([
-            'name' => 'Ready VLESS',
-            'code' => 'RVL',
+        $latviaVlessServer = Server::query()->create([
+            'name' => 'Latvia VLESS',
+            'code' => 'LV-VL',
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
             'is_ready' => true,
@@ -283,7 +304,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
 
         Config::query()->create([
             'user_id' => $user->id,
-            'server_id' => $wireGuardServer->id,
+            'server_id' => $latviaWireGuardServer->id,
             'name' => 'existing-wg',
             'description' => null,
             'is_active' => true,
@@ -291,12 +312,12 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
 
         (new DispatchDefaultConfigsForUserJob($user->id))->handle();
 
-        Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($user, $vlessServer) {
-            return $job->userId === $user->id && $job->serverId === $vlessServer->id;
+        Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($user, $latviaVlessServer) {
+            return $job->userId === $user->id && $job->serverId === $latviaVlessServer->id;
         });
 
-        Queue::assertNotPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($wireGuardServer) {
-            return $job->serverId === $wireGuardServer->id;
+        Queue::assertNotPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($latviaWireGuardServer) {
+            return $job->serverId === $latviaWireGuardServer->id;
         });
 
         Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, 1);

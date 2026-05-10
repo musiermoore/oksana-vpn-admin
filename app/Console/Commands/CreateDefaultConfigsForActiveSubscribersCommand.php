@@ -16,10 +16,6 @@ class CreateDefaultConfigsForActiveSubscribersCommand extends Command
     {
         $users = User::query()
             ->whereHas('activeSubscription')
-            ->where(function ($query) {
-                $query->doesntHave('configs')
-                    ->orDoesntHave('vlessConfigs');
-            })
             ->select('id')
             ->get();
 

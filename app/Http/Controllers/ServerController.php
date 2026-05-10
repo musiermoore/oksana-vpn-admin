@@ -62,7 +62,7 @@ class ServerController extends Controller
             'mode' => 'edit',
             'submit_url' => route('servers.update', $server),
             'method' => 'patch',
-            'server' => (new ServerFormResource($server))->toArray($request),
+            'server' => (new ServerFormResource($server))->toArray(request()),
         ]);
     }
 

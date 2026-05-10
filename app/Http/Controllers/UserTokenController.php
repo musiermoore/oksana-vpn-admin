@@ -61,7 +61,7 @@ class UserTokenController extends Controller
 
         return $this->inertia('UserTokens/Show', [
             'user_token' => [
-                ...(new UserTokenResource($userToken))->toArray($request),
+                ...(new UserTokenResource($userToken))->toArray(request()),
                 'download_items' => $userToken->user->configs->map(function ($config) use ($userToken) {
                     $params = [
                         'userToken' => $userToken->token,

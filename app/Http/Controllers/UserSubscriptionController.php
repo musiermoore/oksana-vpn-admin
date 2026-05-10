@@ -49,7 +49,7 @@ class UserSubscriptionController extends Controller
 
         return $this->inertia('Subscriptions/Form', [
             'submit_url' => route('subscriptions.update', $subscription),
-            'subscription' => (new UserSubscriptionResource($subscription))->toArray($request),
+            'subscription' => (new UserSubscriptionResource($subscription))->toArray(request()),
         ]);
     }
 

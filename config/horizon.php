@@ -10,6 +10,7 @@ return [
     'middleware' => ['web'],
     'waits' => [
         'redis:default' => 60,
+        'redis:configs' => 120,
         'redis:vless-configs' => 120,
     ],
     'trim' => [
@@ -29,7 +30,7 @@ return [
     'defaults' => [
         'supervisor-default' => [
             'connection' => 'redis',
-            'queue' => ['default'],
+            'queue' => ['default', 'configs'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -57,6 +58,7 @@ return [
     'environments' => [
         'production' => [
             'supervisor-default' => [
+                'queue' => ['default', 'configs'],
                 'maxProcesses' => 10,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
@@ -71,7 +73,7 @@ return [
         ],
         'local' => [
             'supervisor-default' => [
-                'queue' => ['default', 'vless-configs'],
+                'queue' => ['default', 'configs', 'vless-configs'],
                 'maxProcesses' => 3,
             ],
         ],

@@ -22,7 +22,13 @@ class UserController extends Controller
         try {
             $user = User::query()
                 ->with([
-                    'activeSubscription:id,user_id,end_date',
+                    'activeSubscription' => function ($query) {
+                        $query->select([
+                            'user_subscriptions.id',
+                            'user_subscriptions.user_id',
+                            'user_subscriptions.end_date',
+                        ]);
+                    },
                 ])
                 ->select([
                     'users.id',

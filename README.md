@@ -37,6 +37,14 @@ docker compose exec app php artisan migrate
 
 `docker compose` без дополнительных флагов использует dev-окружение по умолчанию.
 
+Для локальных очередей через Redis:
+```.dotenv
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+```
+
 ### Frontend
 
 Для запуска билда скриптов и стилей:

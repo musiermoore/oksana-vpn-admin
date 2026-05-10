@@ -20,6 +20,8 @@ services:
         depends_on:
             mysql:
                 condition: service_healthy
+            redis:
+                condition: service_healthy
 
     vite:
         container_name: wireguard_vite
@@ -74,6 +76,24 @@ services:
             interval: 5s
             start_period: 15s
 
+    redis:
+        container_name: wireguard_redis
+        image: redis:7-alpine
+        command: ["redis-server", "--appendonly", "yes"]
+        volumes:
+            - redis-data:/data
+        networks:
+            - app
+        healthcheck:
+            test:
+                - CMD
+                - redis-cli
+                - ping
+            retries: 5
+            timeout: 5s
+            interval: 5s
+            start_period: 5s
+
 networks:
     app:
         driver: bridge
@@ -82,6 +102,8 @@ networks:
 
 volumes:
     mysql-data:
+        driver: local
+    redis-data:
         driver: local
     vite-node-modules:
         driver: local

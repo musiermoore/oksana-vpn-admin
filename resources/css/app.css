@@ -515,6 +515,20 @@ textarea {
     color: var(--text);
 }
 
+.field input[readonly],
+.field textarea[readonly],
+.field select[readonly],
+.field input:disabled,
+.field textarea:disabled,
+.field select:disabled {
+    border-color: rgba(148, 163, 184, 0.55);
+    background:
+        linear-gradient(135deg, rgba(241, 245, 249, 0.98), rgba(226, 232, 240, 0.92));
+    color: var(--muted);
+    cursor: not-allowed;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
 .field textarea {
     min-height: 120px;
     resize: vertical;

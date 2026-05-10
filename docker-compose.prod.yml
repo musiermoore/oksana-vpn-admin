@@ -17,6 +17,28 @@ services:
         depends_on:
             mysql:
                 condition: service_healthy
+            redis:
+                condition: service_healthy
+
+    horizon:
+        container_name: wireguard_horizon_prod
+        env_file:
+            - .env
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        build:
+            context: .
+            dockerfile: docker/app/Dockerfile.prod
+        restart: unless-stopped
+        command: ["php", "artisan", "horizon"]
+        networks:
+            - app
+            - oksana-vpn
+        depends_on:
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
 
     mysql:
         container_name: wireguard_mysql_prod
@@ -47,6 +69,25 @@ services:
             interval: 5s
             start_period: 15s
 
+    redis:
+        container_name: wireguard_redis_prod
+        image: redis:7-alpine
+        restart: unless-stopped
+        command: ["redis-server", "--appendonly", "yes"]
+        volumes:
+            - redis-data-prod:/data
+        networks:
+            - app
+        healthcheck:
+            test:
+                - CMD
+                - redis-cli
+                - ping
+            retries: 5
+            timeout: 5s
+            interval: 5s
+            start_period: 5s
+
 networks:
     app:
         driver: bridge
@@ -55,4 +96,6 @@ networks:
 
 volumes:
     mysql-data-prod:
+        driver: local
+    redis-data-prod:
         driver: local

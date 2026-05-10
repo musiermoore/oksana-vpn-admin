@@ -54,3 +54,31 @@ docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 В production Vite не запускается отдельным контейнером: ассеты собираются внутри production image.
+
+### Horizon и очереди в production
+
+Для Horizon нужен Redis и отдельный worker-процесс. В production compose уже добавлены сервисы `redis` и `horizon`.
+
+Минимальные переменные в `.env`:
+```.dotenv
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+```
+
+Сначала нужно сохранить пакет в проект через обычный `app` контейнер с bind mount:
+```shell
+docker compose up -d app mysql
+docker compose exec app composer require laravel/horizon
+```
+
+После этого можно пересобрать production image и запустить Horizon:
+```shell
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec app php artisan optimize:clear
+docker compose -f docker-compose.prod.yml exec app php artisan migrate
+docker compose -f docker-compose.prod.yml restart horizon
+```
+
+Команда `vless-configs:pull` теперь только ставит задачи в очередь, а обработка идёт через queue `vless-configs` в Horizon.

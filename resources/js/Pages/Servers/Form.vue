@@ -24,6 +24,7 @@ const form = useForm({
     ssh_private_key: '',
     ssh_public_key: props.server?.ssh_public_key ?? '',
     is_vless: props.server?.is_vless ?? false,
+    is_ready: props.server?.is_ready ?? false,
 });
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
@@ -48,6 +49,7 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><textarea v-model="form.ssh_private_key" /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><textarea v-model="form.ssh_public_key" /></label>
             <label class="field"><span>Is Vless</span><input v-model="form.is_vless" type="checkbox"></label>
+            <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
 
             <div class="actions" style="grid-column: 1 / -1;">
                 <button class="button" type="submit" :disabled="form.processing">Сохранить</button>

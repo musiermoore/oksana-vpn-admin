@@ -27,6 +27,7 @@ class StoreServerRequest extends FormRequest
             'ssh_private_key' => ['nullable', 'string'],
             'ssh_public_key' => ['nullable', 'string'],
             'is_vless' => ['nullable', 'boolean'],
+            'is_ready' => ['nullable', 'boolean'],
         ];
     }
 
@@ -47,6 +48,7 @@ class StoreServerRequest extends FormRequest
             sshPrivateKey: $data['ssh_private_key'] ?? null,
             sshPublicKey: $data['ssh_public_key'] ?? null,
             isVless: (bool) ($data['is_vless'] ?? false),
+            isReady: (bool) ($data['is_ready'] ?? false),
         );
     }
 }

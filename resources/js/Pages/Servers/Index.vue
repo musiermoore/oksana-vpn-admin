@@ -31,6 +31,7 @@ const destroyServer = (server) => confirm(`Удалить сервер ${server.
                     <th>Сокращение</th>
                     <th>IP</th>
                     <th>HTTPS</th>
+                    <th>Готов</th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -40,6 +41,7 @@ const destroyServer = (server) => confirm(`Удалить сервер ${server.
                     <td>{{ server.code }}</td>
                     <td>{{ server.ip }}</td>
                     <td>{{ server.is_https ? 'Да' : 'Нет' }}</td>
+                    <td>{{ server.is_ready ? 'Да' : 'Нет' }}</td>
                     <td>
                         <div class="actions">
                             <Link class="button button--secondary" :href="server.links.edit">Изменить</Link>

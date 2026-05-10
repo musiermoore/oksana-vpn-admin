@@ -23,6 +23,7 @@ class Server extends Model
         'ssh_private_key',
         'ssh_public_key',
         'is_vless',
+        'is_ready',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class Server extends Model
             'panel_password' => 'encrypted',
             'is_https' => 'boolean',
             'is_vless' => 'boolean',
+            'is_ready' => 'boolean',
         ];
     }
 

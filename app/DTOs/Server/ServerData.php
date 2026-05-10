@@ -17,6 +17,7 @@ readonly class ServerData
         public ?string $sshPrivateKey,
         public ?string $sshPublicKey,
         public bool $isVless,
+        public bool $isReady,
     ) {}
 
     public function toArray(): array
@@ -34,6 +35,7 @@ readonly class ServerData
             'ssh_private_key' => $this->sshPrivateKey,
             'ssh_public_key' => $this->sshPublicKey,
             'is_vless' => $this->isVless,
+            'is_ready' => $this->isReady,
         ];
     }
 }

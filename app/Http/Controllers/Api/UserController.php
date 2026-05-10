@@ -15,9 +15,9 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class UserController extends Controller
 {
-    public function balance($telegram)
+    public function balance(string $telegramId)
     {
-        $user = UserApiService::instance($telegram)->getUser();
+        $user = UserApiService::instance($telegramId)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -31,9 +31,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function getUserConfigs(string $telegram, string $type)
+    public function getUserConfigs(string $telegramId, string $type)
     {
-        $user = UserApiService::instance($telegram)->getUser();
+        $user = UserApiService::instance($telegramId)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -59,9 +59,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function downloadConfig(string $telegram, string $type, string $configId)
+    public function downloadConfig(string $telegramId, string $type, string $configId)
     {
-        $user = UserApiService::instance($telegram)->getUser();
+        $user = UserApiService::instance($telegramId)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -101,9 +101,9 @@ class UserController extends Controller
         }
     }
 
-    public function downloadQrCode(string $telegram, string $type, string $configId)
+    public function downloadQrCode(string $telegramId, string $type, string $configId)
     {
-        $user = UserApiService::instance($telegram)->getUser();
+        $user = UserApiService::instance($telegramId)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -151,38 +151,28 @@ class UserController extends Controller
     public function register(Request $request)
     {
         $payload = $request->validate([
-            'telegram' => ['required', 'string', 'max:255'],
+            'telegram' => ['nullable', 'string', 'max:255'],
             'telegram_id' => ['required', 'string', 'max:255'],
             'name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $telegram = $this->normalizeTelegram($payload['telegram']);
+        $telegram = $this->normalizeTelegram((string) ($payload['telegram'] ?? ''));
         $telegramId = trim($payload['telegram_id']);
-        $name = trim((string) ($payload['name'] ?? '')) ?: ltrim($telegram, '@');
+        $name = trim((string) ($payload['name'] ?? '')) ?: ($telegram !== '' ? ltrim($telegram, '@') : $telegramId);
 
         [$user, $created] = DB::transaction(function () use ($telegram, $telegramId, $name) {
-            $user = User::query()->where('telegram', $telegram)->first();
-
-            if ($user) {
-                User::query()
-                    ->where('telegram_id', $telegramId)
-                    ->whereKeyNot($user->id)
-                    ->update(['telegram_id' => null]);
-
-                $user->update([
-                    'telegram_id' => $telegramId,
-                    'name' => $name,
-                    'join_at' => $user->join_at ?: now()->toDateString(),
-                ]);
-
-                return [$user->refresh(), false];
-            }
-
             $user = User::query()->where('telegram_id', $telegramId)->first();
 
             if ($user) {
+                if ($telegram !== '') {
+                    User::query()
+                        ->where('telegram', $telegram)
+                        ->whereKeyNot($user->id)
+                        ->update(['telegram' => null]);
+                }
+
                 $user->update([
-                    'telegram' => $telegram,
+                    'telegram' => $telegram !== '' ? $telegram : $user->telegram,
                     'name' => $name,
                     'join_at' => $user->join_at ?: now()->toDateString(),
                 ]);
@@ -190,8 +180,27 @@ class UserController extends Controller
                 return [$user->refresh(), false];
             }
 
+            if ($telegram !== '') {
+                $user = User::query()->where('telegram', $telegram)->first();
+
+                if ($user) {
+                    User::query()
+                        ->where('telegram_id', $telegramId)
+                        ->whereKeyNot($user->id)
+                        ->update(['telegram_id' => null]);
+
+                    $user->update([
+                        'telegram_id' => $telegramId,
+                        'name' => $name,
+                        'join_at' => $user->join_at ?: now()->toDateString(),
+                    ]);
+
+                    return [$user->refresh(), false];
+                }
+            }
+
             $user = User::query()->create([
-                'telegram' => $telegram,
+                'telegram' => $telegram !== '' ? $telegram : null,
                 'telegram_id' => $telegramId,
                 'name' => $name,
                 'join_at' => now()->toDateString(),
@@ -213,16 +222,16 @@ class UserController extends Controller
         ], $created ? 201 : 200);
     }
 
-    public function saveTelegramId(Request $request, string $telegram)
+    public function saveTelegramId(Request $request, string $telegramId)
     {
-        $request->merge(['telegram' => $telegram]);
+        $request->merge(['telegram_id' => $telegramId]);
 
         return $this->register($request);
     }
 
-    public function getVlessLink(string $telegram)
+    public function getVlessLink(string $telegramId)
     {
-        $result = $this->resolveVlessLink($telegram);
+        $result = $this->resolveVlessLink($telegramId);
 
         if ($result instanceof Response) {
             return $result;
@@ -231,9 +240,9 @@ class UserController extends Controller
         return response($result);
     }
 
-    public function getVlessQrCode(string $telegram)
+    public function getVlessQrCode(string $telegramId)
     {
-        $result = $this->resolveVlessLink($telegram);
+        $result = $this->resolveVlessLink($telegramId);
 
         if ($result instanceof Response) {
             return $result;
@@ -254,9 +263,9 @@ class UserController extends Controller
         }
     }
 
-    private function resolveVlessLink(string $telegram): Response|string
+    private function resolveVlessLink(string $telegramId): Response|string
     {
-        $user = UserApiService::instance($telegram)->getUser();
+        $user = UserApiService::instance($telegramId)->getUser();
 
         if (empty($user)) {
             return response()->json([
@@ -283,6 +292,10 @@ class UserController extends Controller
     private function normalizeTelegram(string $telegram): string
     {
         $telegram = trim($telegram);
+
+        if ($telegram === '') {
+            return '';
+        }
 
         return '@' . ltrim($telegram, '@');
     }

@@ -20,6 +20,7 @@ class ApiRequestLoggingTest extends TestCase
         $user = User::query()->create([
             'name' => 'Tester',
             'telegram' => '@tester',
+            'telegram_id' => '123456',
             'balance' => 42,
         ]);
 
@@ -28,7 +29,7 @@ class ApiRequestLoggingTest extends TestCase
                 'X-Timezone' => 'Europe/Berlin',
                 'X-Timezone-Offset' => '-120',
             ])
-            ->getJson('/api/users/tester/balance?source=telegram');
+            ->getJson('/api/users/123456/balance?source=telegram');
 
         $response->assertOk()
             ->assertJson([
@@ -40,13 +41,13 @@ class ApiRequestLoggingTest extends TestCase
             return $job->payload['user_id'] === $user->id
                 && $job->payload['action'] === 'api.users.balance'
                 && $job->payload['method'] === 'GET'
-                && $job->payload['endpoint'] === 'api/users/{telegram}/balance'
+                && $job->payload['endpoint'] === 'api/users/{telegramId}/balance'
                 && $job->payload['request_timezone'] === 'Europe/Berlin'
                 && $job->payload['request_timezone_offset'] === -120
                 && $job->payload['response_status'] === 200
                 && $job->payload['params'] === [
                     'route' => [
-                        'telegram' => 'tester',
+                        'telegramId' => '123456',
                     ],
                     'query' => [
                         'source' => 'telegram',
@@ -61,9 +62,9 @@ class ApiRequestLoggingTest extends TestCase
             'user_id' => null,
             'action' => 'api.users.balance',
             'method' => 'GET',
-            'endpoint' => 'api/users/{telegram}/balance',
+            'endpoint' => 'api/users/{telegramId}/balance',
             'params' => [
-                'route' => ['telegram' => 'tester'],
+                'route' => ['telegramId' => '123456'],
             ],
             'request_timezone' => 'Europe/Berlin',
             'request_timezone_offset' => -120,
@@ -76,7 +77,7 @@ class ApiRequestLoggingTest extends TestCase
         $this->assertDatabaseHas('api_request_logs', [
             'action' => 'api.users.balance',
             'method' => 'GET',
-            'endpoint' => 'api/users/{telegram}/balance',
+            'endpoint' => 'api/users/{telegramId}/balance',
             'request_timezone' => 'Europe/Berlin',
             'request_timezone_offset' => -120,
             'response_status' => 200,

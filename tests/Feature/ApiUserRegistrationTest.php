@@ -28,4 +28,23 @@ class ApiUserRegistrationTest extends TestCase
             'name' => 'Alice',
         ]);
     }
+
+    public function test_register_endpoint_creates_user_with_only_telegram_id(): void
+    {
+        $response = $this->postJson('/api/users/register', [
+            'telegram_id' => '987654321',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('user.telegram', null)
+            ->assertJsonPath('user.telegram_id', '987654321')
+            ->assertJsonPath('user.name', '987654321');
+
+        $this->assertDatabaseHas('users', [
+            'telegram' => null,
+            'telegram_id' => '987654321',
+            'name' => '987654321',
+        ]);
+    }
 }

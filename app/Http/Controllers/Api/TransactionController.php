@@ -15,7 +15,7 @@ class TransactionController
 {
     public function store(Request $request)
     {
-        $user = UserApiService::instance($request->telegram)->getUser();
+        $user = UserApiService::instance((string) $request->route('telegramId'))->getUser();
 
         if (empty($user)) {
             return response()->json([

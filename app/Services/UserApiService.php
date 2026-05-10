@@ -6,16 +6,16 @@ use App\Models\User;
 
 class UserApiService
 {
-    public string $telegram;
+    public string $telegramId;
 
-    public function __construct(string $telegram)
+    public function __construct(string $telegramId)
     {
-        $this->telegram = $telegram;
+        $this->telegramId = trim($telegramId);
     }
 
-    public static function instance(string $telegram): UserApiService
+    public static function instance(string $telegramId): UserApiService
     {
-        return new self($telegram);
+        return new self($telegramId);
     }
 
     public function getUser(): ?User
@@ -36,7 +36,7 @@ class UserApiService
                 'users.telegram_id',
                 'users.balance',
             ])
-            ->whereTelegram('@' . $this->telegram)
+            ->where('telegram_id', $this->telegramId)
             ->tap(fn ($query) => User::applyBillingSummary($query));
 
         return $query->first();

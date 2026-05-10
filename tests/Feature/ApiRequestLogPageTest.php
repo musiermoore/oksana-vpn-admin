@@ -29,7 +29,7 @@ class ApiRequestLogPageTest extends TestCase
             'user_id' => $trackedUser->id,
             'action' => 'api.users.balance',
             'method' => 'GET',
-            'endpoint' => 'api/users/{telegram}/balance',
+            'endpoint' => 'api/users/{telegramId}/balance',
             'params' => ['query' => ['source' => 'telegram']],
             'request_timezone' => 'Europe/Berlin',
             'response_status' => 200,
@@ -39,7 +39,7 @@ class ApiRequestLogPageTest extends TestCase
             'user_id' => $trackedUser->id,
             'action' => 'api.users.configs',
             'method' => 'GET',
-            'endpoint' => 'api/users/{telegram}/{type}/configs',
+            'endpoint' => 'api/users/{telegramId}/{type}/configs',
             'params' => ['route' => ['type' => 'wireguard']],
             'request_timezone' => 'Asia/Omsk',
             'response_status' => 200,
@@ -74,7 +74,7 @@ class ApiRequestLogPageTest extends TestCase
             'user_id' => $trackedUser->id,
             'action' => 'api.users.balance',
             'method' => 'GET',
-            'endpoint' => 'api/users/{telegram}/balance',
+            'endpoint' => 'api/users/{telegramId}/balance',
             'response_status' => 200,
         ]);
 
@@ -82,7 +82,7 @@ class ApiRequestLogPageTest extends TestCase
             'user_id' => $trackedUser->id,
             'action' => 'api.users.configs',
             'method' => 'GET',
-            'endpoint' => 'api/users/{telegram}/{type}/configs',
+            'endpoint' => 'api/users/{telegramId}/{type}/configs',
             'response_status' => 200,
         ]);
 

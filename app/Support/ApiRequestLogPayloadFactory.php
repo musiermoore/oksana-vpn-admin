@@ -48,6 +48,14 @@ class ApiRequestLogPayloadFactory
             return $userId;
         }
 
+        $telegramId = $route?->parameter('telegramId') ?? $request->input('telegram_id');
+
+        if (is_string($telegramId) && trim($telegramId) !== '') {
+            return User::query()
+                ->where('telegram_id', trim($telegramId))
+                ->value('id');
+        }
+
         $telegram = $route?->parameter('telegram') ?? $request->input('telegram');
 
         if (is_string($telegram) && $telegram !== '') {
@@ -55,14 +63,6 @@ class ApiRequestLogPayloadFactory
 
             return User::query()
                 ->where('telegram', $normalizedTelegram)
-                ->value('id');
-        }
-
-        $telegramId = $request->input('telegram_id');
-
-        if ($telegramId !== null && $telegramId !== '') {
-            return User::query()
-                ->where('telegram_id', $telegramId)
                 ->value('id');
         }
 

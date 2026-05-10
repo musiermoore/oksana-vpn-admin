@@ -9,6 +9,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserSubscriptionController;
 use App\Http\Controllers\UserTokenController;
 use App\Http\Controllers\VlessConfigController;
 use App\Http\Controllers\WireGuardController;
@@ -26,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
 
     Route::resource('users', UserController::class);
+    Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);
     Route::get('notifications/create', [NotificationController::class, 'create'])
         ->name('notifications.create');
     Route::post('notifications', [NotificationController::class, 'store'])

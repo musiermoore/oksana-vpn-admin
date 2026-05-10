@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\UserExtraPayment;
+use App\Models\UserSubscription;
 use App\Models\UserToken;
 use App\Models\VlessConfig;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -233,6 +234,27 @@ abstract class Controller
                 'show' => route('user-tokens.show', $userToken),
                 'destroy' => route('user-tokens.destroy', $userToken),
                 'public_configs' => route('users.configs', $userToken->token),
+            ],
+        ];
+    }
+
+    protected function userSubscriptionData(UserSubscription $subscription): array
+    {
+        return [
+            'id' => $subscription->id,
+            'start_date' => $subscription->start_date,
+            'end_date' => $subscription->end_date,
+            'price' => (float) $subscription->price,
+            'is_active' => now()->betweenIncluded($subscription->start_date, $subscription->end_date),
+            'user' => $subscription->user ? [
+                'id' => $subscription->user->id,
+                'full_name' => $subscription->user->full_name,
+                'telegram' => $subscription->user->telegram,
+                'is_active' => $subscription->user->is_active,
+                'edit_url' => route('users.edit', $subscription->user),
+            ] : null,
+            'links' => [
+                'edit' => route('subscriptions.edit', $subscription),
             ],
         ];
     }

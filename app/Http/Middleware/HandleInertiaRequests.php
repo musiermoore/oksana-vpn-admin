@@ -18,6 +18,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Конфиги', 'href' => route('configs.index'), 'badge' => 'CF'],
             ['label' => 'VLESS', 'href' => route('vless-configs.index'), 'badge' => 'VL'],
             ['label' => 'Транзакции', 'href' => route('transactions.index'), 'badge' => 'TX'],
+            ['label' => 'Подписки', 'href' => route('subscriptions.index'), 'badge' => 'SB'],
             ['label' => 'Периоды оплаты', 'href' => route('current-payments.index'), 'badge' => 'PP'],
             ['label' => 'Доп. оплаты', 'href' => route('extra-payments.index'), 'badge' => 'DP'],
             ['label' => 'Рассылка', 'href' => route('notifications.create'), 'badge' => 'NT'],

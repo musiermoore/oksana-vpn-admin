@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(fn (Request $request) => route('wireguard.active-peers'));
 
         $middleware->preventRequestForgery(except: [
+            'api/users/register',
             'api/users/*/save-id',
         ]);
     })

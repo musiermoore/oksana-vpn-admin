@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable
 {
@@ -219,21 +220,37 @@ class User extends Authenticatable
         return (float) ($user?->balance ?? 0);
     }
 
-    public function createDefaultConfigs(): bool
+    public function getDefaultConfigNameForServer(Server $server): string
+    {
+        $telegram = trim((string) $this->telegram, '@');
+
+        return ($telegram !== '' ? $telegram : 'user_' . $this->id) . '_' . $server->code;
+    }
+
+    public function createDefaultConfigs(?Collection $servers = null): bool
     {
         $success = true;
 
-        $servers = Server::all();
+        $servers ??= Server::query()
+            ->where('is_ready', true)
+            ->where('is_vless', false)
+            ->get();
 
-        $configs = $servers->map(fn($server) => [
-            'name' => str_replace('@', '', $this->telegram) . '_' . $server->code,
-            'server_id' => $server->id,
-            'user_id' => $this->id,
-            'is_active' => true,
-        ]);
+        $existingServerIds = $this->configs()
+            ->pluck('server_id')
+            ->all();
+
+        $configs = $servers
+            ->reject(fn (Server $server) => in_array($server->id, $existingServerIds, true))
+            ->map(fn (Server $server) => [
+                'name' => $this->getDefaultConfigNameForServer($server),
+                'server_id' => $server->id,
+                'user_id' => $this->id,
+                'is_active' => true,
+            ]);
 
         foreach ($configs as $config) {
-            $success = $this->createConfig($config);
+            $success = $this->createConfig($config) && $success;
         }
 
         return $success;

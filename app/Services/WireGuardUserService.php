@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\BotApiMessages;
 
 class WireGuardUserService
 {
@@ -26,9 +27,7 @@ class WireGuardUserService
             return response()->json([
                 'status' => false,
                 'user' => null,
-                'message' =>
-                    "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler"
+                'message' => BotApiMessages::userNotFound(),
             ], 404);
         }
 
@@ -37,7 +36,7 @@ class WireGuardUserService
                 'status' => false,
                 'user' => $this->user,
                 'type' => 'debt',
-                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+                'message' => BotApiMessages::accessRequiresPayment(),
             ], 403);
         }
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
+use App\Support\BotApiMessages;
 use App\Services\UserApiService;
 use Exception;
 use Illuminate\Http\Request;
@@ -18,8 +19,7 @@ class TransactionController
 
         if (empty($user)) {
             return response()->json([
-                'message' => "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler"
+                'message' => BotApiMessages::userNotFound(),
             ], 404);
         }
 
@@ -34,8 +34,7 @@ class TransactionController
             report($exception);
 
             return response()->json([
-                'message' => "Что-то пошло не так. "
-                    . "Сообщи свой никнем @soussangler"
+                'message' => BotApiMessages::unexpectedError(),
             ], 500);
         }
 

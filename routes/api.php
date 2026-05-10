@@ -7,6 +7,8 @@ use App\Http\Middleware\TrackApiRequests;
 use Illuminate\Support\Facades\Route;
 
 Route::name('api.')->middleware([BasicAuth::class, TrackApiRequests::class])->group(function () {
+    Route::post('users/register', [UserController::class, 'register'])
+        ->name('users.register');
     Route::get('users/{telegram}/{type}/configs', [UserController::class, 'getUserConfigs'])
         ->name('users.configs');
     Route::get('users/{telegram}/configs/{type}/{config}/download', [UserController::class, 'downloadConfig'])

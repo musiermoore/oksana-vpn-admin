@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\BotApiMessages;
 use App\Services\UserApiService;
 use Exception;
 use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class UserController extends Controller
@@ -19,9 +21,7 @@ class UserController extends Controller
 
         if (empty($user)) {
             return response()->json([
-                'message' =>
-                    "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler"
+                'message' => BotApiMessages::userNotFound(),
             ], 404);
         }
 
@@ -38,9 +38,7 @@ class UserController extends Controller
         if (empty($user)) {
             return response()->json([
                 'configs' => [],
-                'message' =>
-                    "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler"
+                'message' => BotApiMessages::userNotFound(),
             ], 404);
         }
 
@@ -48,7 +46,7 @@ class UserController extends Controller
             return response()->json([
                 'configs' => [],
                 'type' => 'debt',
-                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+                'message' => BotApiMessages::accessRequiresPayment(),
             ], 403);
         }
 
@@ -67,15 +65,14 @@ class UserController extends Controller
 
         if (empty($user)) {
             return response()->json([
-                'message' => "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler или @soussangler"
+                'message' => BotApiMessages::userNotFound(),
             ], 404);
         }
 
         if (! $user->hasActiveAccess()) {
             return response()->json([
                 'type' => 'debt',
-                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+                'message' => BotApiMessages::accessRequiresPayment(),
             ], 403);
         }
 
@@ -87,8 +84,7 @@ class UserController extends Controller
 
         if (empty($config)) {
             return response()->json([
-                'message' => "Я не смогла найти такой конфиг ☹️\n\n"
-                    . "Сообщи об этом @soussangler"
+                'message' => BotApiMessages::configNotFound(),
             ], 404);
         }
 
@@ -100,8 +96,7 @@ class UserController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => "Что-то пошло не так 🤯️\n\n"
-                    . "Сообщи об этом @soussangler" . $exception->getMessage()
+                'message' => BotApiMessages::unexpectedError(),
             ], 500);
         }
     }
@@ -112,8 +107,7 @@ class UserController extends Controller
 
         if (empty($user)) {
             return response()->json([
-                'message' => "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler"
+                'message' => BotApiMessages::userNotFound(),
             ], 404);
         }
 
@@ -121,7 +115,7 @@ class UserController extends Controller
             return response()->json([
                 'user' => $user,
                 'type' => 'debt',
-                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+                'message' => BotApiMessages::accessRequiresPayment(),
             ], 403);
         }
 
@@ -133,8 +127,7 @@ class UserController extends Controller
 
         if (empty($config)) {
             return response()->json([
-                'message' => "Я не смогла найти такой конфиг ☹️\n\n"
-                    . "Сообщи об этом @soussangler"
+                'message' => BotApiMessages::configNotFound(),
             ], 404);
         }
 
@@ -150,24 +143,81 @@ class UserController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => "Что-то пошло не так 🤯️\n\n"
-                    . "Сообщи об этом @soussangler"
+                'message' => BotApiMessages::unexpectedError(),
             ], 500);
         }
     }
 
-    public function saveTelegramId(Request $request, $telegram)
+    public function register(Request $request)
     {
-        User::whereTelegram('@' . $telegram)->update([
-            'telegram_id' => $request->telegram_id
+        $payload = $request->validate([
+            'telegram' => ['required', 'string', 'max:255'],
+            'telegram_id' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        User::whereTelegramId($request->telegram_id)
-            ->update([
-                'telegram' => '@' . $telegram
+        $telegram = $this->normalizeTelegram($payload['telegram']);
+        $telegramId = trim($payload['telegram_id']);
+        $name = trim((string) ($payload['name'] ?? '')) ?: ltrim($telegram, '@');
+
+        [$user, $created] = DB::transaction(function () use ($telegram, $telegramId, $name) {
+            $user = User::query()->where('telegram', $telegram)->first();
+
+            if ($user) {
+                User::query()
+                    ->where('telegram_id', $telegramId)
+                    ->whereKeyNot($user->id)
+                    ->update(['telegram_id' => null]);
+
+                $user->update([
+                    'telegram_id' => $telegramId,
+                    'name' => $name,
+                    'join_at' => $user->join_at ?: now()->toDateString(),
+                ]);
+
+                return [$user->refresh(), false];
+            }
+
+            $user = User::query()->where('telegram_id', $telegramId)->first();
+
+            if ($user) {
+                $user->update([
+                    'telegram' => $telegram,
+                    'name' => $name,
+                    'join_at' => $user->join_at ?: now()->toDateString(),
+                ]);
+
+                return [$user->refresh(), false];
+            }
+
+            $user = User::query()->create([
+                'telegram' => $telegram,
+                'telegram_id' => $telegramId,
+                'name' => $name,
+                'join_at' => now()->toDateString(),
             ]);
 
-        return response(200);
+            return [$user, true];
+        });
+
+        return response()->json([
+            'message' => $created
+                ? 'Регистрация выполнена. Теперь можно пользоваться ботом.'
+                : 'Telegram успешно привязан.',
+            'user' => [
+                'id' => $user->id,
+                'telegram' => $user->telegram,
+                'telegram_id' => $user->telegram_id,
+                'name' => $user->name,
+            ],
+        ], $created ? 201 : 200);
+    }
+
+    public function saveTelegramId(Request $request, string $telegram)
+    {
+        $request->merge(['telegram' => $telegram]);
+
+        return $this->register($request);
     }
 
     public function getVlessLink(string $telegram)
@@ -199,8 +249,7 @@ class UserController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => "Что-то пошло не так 🤯️\n\n"
-                    . "Сообщи об этом @soussangler"
+                'message' => BotApiMessages::unexpectedError(),
             ], 500);
         }
     }
@@ -211,8 +260,7 @@ class UserController extends Controller
 
         if (empty($user)) {
             return response()->json([
-                'message' => "Я не вижу тебя в списках 😢\n\n"
-                    . "Сообщи свой никнем @soussangler"
+                'message' => BotApiMessages::userNotFound(),
             ], 404);
         }
 
@@ -220,7 +268,7 @@ class UserController extends Controller
             return response()->json([
                 'user' => $user,
                 'type' => 'debt',
-                'message' => "VPN не оплачен, необходимо пополнить баланс. Команда /balance"
+                'message' => BotApiMessages::accessRequiresPayment(),
             ], 403);
         }
 
@@ -230,5 +278,12 @@ class UserController extends Controller
         ], absolute: false);
 
         return config('vless.domain') . $link;
+    }
+
+    private function normalizeTelegram(string $telegram): string
+    {
+        $telegram = trim($telegram);
+
+        return '@' . ltrim($telegram, '@');
     }
 }

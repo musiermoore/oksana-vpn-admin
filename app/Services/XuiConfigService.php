@@ -199,7 +199,7 @@ class XuiConfigService
             'email' => sprintf(
                 '%s_%s_%d',
                 ltrim($telegram, '@'),
-                Str::snake($this->server->name),
+                Str::slug(Str::snake($this->server->name), '_'),
                 $nextConfigId,
             ),
             'limitIp' => 0,

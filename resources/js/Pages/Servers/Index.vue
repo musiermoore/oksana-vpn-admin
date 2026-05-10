@@ -8,7 +8,13 @@ defineProps({
     servers: Array,
 });
 
-const destroyServer = (server) => confirm(`Удалить сервер ${server.name}?`) && router.delete(server.links.destroy);
+const destroyServer = (server) => {
+    const destroyLink = server?.links?.destroy;
+
+    if (destroyLink && confirm(`Удалить сервер ${server.name}?`)) {
+        router.delete(destroyLink);
+    }
+};
 </script>
 
 <template>
@@ -44,8 +50,16 @@ const destroyServer = (server) => confirm(`Удалить сервер ${server.
                     <td>{{ server.is_ready ? 'Да' : 'Нет' }}</td>
                     <td>
                         <div class="actions">
-                            <Link class="button button--secondary" :href="server.links.edit">Изменить</Link>
-                            <button class="button button--danger" type="button" @click="destroyServer(server)">Удалить</button>
+                            <Link v-if="server.links?.edit" class="button button--secondary" :href="server.links.edit">Изменить</Link>
+                            <button
+                                v-if="server.links?.destroy"
+                                class="button button--danger"
+                                type="button"
+                                @click="destroyServer(server)"
+                            >
+                                Удалить
+                            </button>
+                            <span v-if="!server.links?.edit && !server.links?.destroy">—</span>
                         </div>
                     </td>
                 </tr>

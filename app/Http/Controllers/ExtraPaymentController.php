@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\ExtraPayment\StoreExtraPaymentRequest;
 use App\Models\CurrentPayment;
 use App\Models\User;
@@ -10,6 +11,8 @@ use App\Services\Crud\ExtraPaymentCrudService;
 
 class ExtraPaymentController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly ExtraPaymentCrudService $extraPaymentService,
     ) {}

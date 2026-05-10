@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\Config\StoreBulkConfigRequest;
 use App\Http\Requests\Config\StoreConfigRequest;
 use App\Http\Requests\Config\UpdateConfigRequest;
@@ -18,6 +19,8 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ConfigController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly ConfigCrudService $configService,
     ) {}

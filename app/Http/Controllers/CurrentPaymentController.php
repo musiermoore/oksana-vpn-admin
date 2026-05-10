@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\CurrentPayment\StoreCurrentPaymentRequest;
 use App\Http\Requests\CurrentPayment\UpdateCurrentPaymentRequest;
 use App\Models\CurrentPayment;
@@ -9,6 +10,8 @@ use App\Services\Crud\CurrentPaymentCrudService;
 
 class CurrentPaymentController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly CurrentPaymentCrudService $currentPaymentService,
     ) {}

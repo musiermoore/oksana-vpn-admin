@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\CurrentPayment;
@@ -12,6 +13,8 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly UserCrudService $userService,
     ) {}

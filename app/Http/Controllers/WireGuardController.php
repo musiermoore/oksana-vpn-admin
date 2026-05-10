@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Models\Config;
 use App\Models\Server;
 use App\Models\Traffic;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class WireGuardController extends Controller
 {
+    use BuildsInertiaData;
+
     public function activePeers(Request $request)
     {
         $servers = Server::get();

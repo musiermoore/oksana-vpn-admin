@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\VlessConfig\StoreVlessConfigRequest;
 use App\Http\Requests\VlessConfig\UpdateVlessConfigRequest;
 use App\Models\User;
@@ -17,6 +18,8 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class VlessConfigController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly VlessConfigCrudService $vlessConfigService,
     ) {}

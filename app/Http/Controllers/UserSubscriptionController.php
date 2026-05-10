@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\UserSubscription\UpdateUserSubscriptionRequest;
 use App\Models\UserSubscription;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class UserSubscriptionController extends Controller
 {
+    use BuildsInertiaData;
+
     public function index(Request $request)
     {
         $showOld = $request->boolean('old');

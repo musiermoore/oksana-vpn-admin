@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
@@ -10,6 +11,8 @@ use RuntimeException;
 
 class ServerController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly ServerCrudService $serverService,
     ) {}

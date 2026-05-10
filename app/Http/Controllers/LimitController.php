@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\Limit\StoreLimitRequest;
 use App\Models\Config;
 use App\Models\Limit;
@@ -10,6 +11,8 @@ use RuntimeException;
 
 class LimitController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly LimitCrudService $limitService,
     ) {}

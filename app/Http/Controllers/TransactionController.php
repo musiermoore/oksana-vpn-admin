@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\Transaction\StoreTransactionRequest;
 use App\Http\Requests\Transaction\UpdateTransactionRequest;
 use App\Models\Transaction;
@@ -11,6 +12,8 @@ use App\Services\Crud\TransactionCrudService;
 
 class TransactionController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly TransactionCrudService $transactionService,
     ) {}

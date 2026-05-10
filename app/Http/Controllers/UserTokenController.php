@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsInertiaData;
 use App\Http\Requests\UserToken\StoreUserTokenRequest;
 use App\Models\User;
 use App\Models\UserToken;
@@ -10,6 +11,8 @@ use Carbon\Carbon;
 
 class UserTokenController extends Controller
 {
+    use BuildsInertiaData;
+
     public function __construct(
         private readonly UserTokenCrudService $userTokenService,
     ) {}

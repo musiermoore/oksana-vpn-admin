@@ -12,6 +12,7 @@ class TransactionType extends Model
 
     public const SLUG_DEPOSIT = 'deposit';
     public const SLUG_SUBSCRIPTION = 'subscription';
+    public const SLUG_EXTRA_PAYMENT = 'extra-payment';
 
     protected $fillable = [
         'name',

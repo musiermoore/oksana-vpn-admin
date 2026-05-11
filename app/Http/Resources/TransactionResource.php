@@ -12,6 +12,9 @@ class TransactionResource extends JsonResource
         return [
             'id' => $this->id,
             'amount' => (float) $this->amount,
+            'current_balance_amount' => $this->current_balance_amount !== null
+                ? (float) $this->current_balance_amount
+                : null,
             'is_approved' => (bool) $this->is_approved,
             'description' => $this->description,
             'formatted_created_at' => $this->formatted_created_at,

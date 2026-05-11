@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Events\UserBalanceDeltaRequested;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +15,7 @@ class Transaction extends Model
         'user_id',
         'type_id',
         'amount',
+        'current_balance_amount',
         'is_approved',
         'description',
     ];
@@ -24,6 +24,7 @@ class Transaction extends Model
     {
         return [
             'amount' => 'float',
+            'current_balance_amount' => 'float',
             'is_approved' => 'bool',
         ];
     }
@@ -32,14 +33,19 @@ class Transaction extends Model
     {
         static::created(function (Transaction $transaction) {
             if ($transaction->is_approved) {
-                event(new UserBalanceDeltaRequested(
+                self::applyBalanceDelta(
                     userId: (int) $transaction->user_id,
                     amount: (float) $transaction->amount,
-                ));
+                );
+                self::syncCurrentBalanceAmounts((int) $transaction->user_id);
             }
         });
 
         static::updated(function (Transaction $transaction) {
+            if (! $transaction->wasChanged(['user_id', 'amount', 'is_approved'])) {
+                return;
+            }
+
             $originalUserId = (int) $transaction->getOriginal('user_id');
             $currentUserId = (int) $transaction->user_id;
             $originalAmount = (float) $transaction->getOriginal('amount');
@@ -48,26 +54,36 @@ class Transaction extends Model
             $isApproved = (bool) $transaction->is_approved;
 
             if ($wasApproved) {
-                event(new UserBalanceDeltaRequested(
+                self::applyBalanceDelta(
                     userId: $originalUserId,
                     amount: -$originalAmount,
-                ));
+                );
             }
 
             if ($isApproved) {
-                event(new UserBalanceDeltaRequested(
+                self::applyBalanceDelta(
                     userId: $currentUserId,
                     amount: $currentAmount,
-                ));
+                );
+            }
+
+            $affectedUserIds = array_unique(array_filter([
+                $wasApproved ? $originalUserId : null,
+                $isApproved ? $currentUserId : null,
+            ]));
+
+            foreach ($affectedUserIds as $affectedUserId) {
+                self::syncCurrentBalanceAmounts((int) $affectedUserId);
             }
         });
 
         static::deleted(function (Transaction $transaction) {
             if ($transaction->is_approved) {
-                event(new UserBalanceDeltaRequested(
+                self::applyBalanceDelta(
                     userId: (int) $transaction->user_id,
                     amount: -(float) $transaction->amount,
-                ));
+                );
+                self::syncCurrentBalanceAmounts((int) $transaction->user_id);
             }
         });
     }
@@ -86,5 +102,52 @@ class Transaction extends Model
     public function getFormattedCreatedAtAttribute()
     {
         return Carbon::make($this->attributes['created_at'])->format('d.m.Y H:i');
+    }
+
+    public function getApprovalMessageTextAttribute(): string
+    {
+        $amount = abs((float) $this->amount);
+
+        if ((float) $this->amount < 0) {
+            return "С баланса было списано $amount";
+        }
+
+        return "Баланс был пополнен на $amount";
+    }
+
+    private static function applyBalanceDelta(int $userId, float $amount): void
+    {
+        if ($userId <= 0 || $amount === 0.0) {
+            return;
+        }
+
+        User::query()
+            ->whereKey($userId)
+            ->increment('balance', $amount);
+    }
+
+    private static function syncCurrentBalanceAmounts(int $userId): void
+    {
+        $approvedTransactions = self::query()
+            ->where('user_id', $userId)
+            ->where('is_approved', true)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get(['id', 'amount']);
+
+        $runningBalance = 0.0;
+
+        foreach ($approvedTransactions as $approvedTransaction) {
+            $runningBalance += (float) $approvedTransaction->amount;
+
+            self::query()
+                ->whereKey($approvedTransaction->id)
+                ->update(['current_balance_amount' => $runningBalance]);
+        }
+
+        self::query()
+            ->where('user_id', $userId)
+            ->where('is_approved', false)
+            ->update(['current_balance_amount' => null]);
     }
 }

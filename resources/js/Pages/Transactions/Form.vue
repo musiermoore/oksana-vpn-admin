@@ -36,25 +36,27 @@ const amountHint = () => chargeTypeSlugs.includes(selectedType()?.slug)
     <section class="page-card stack">
         <div class="page-header"><div><h1>{{ mode === 'edit' ? 'Редактирование транзакции' : 'Создание транзакции' }}</h1></div></div>
 
-        <form class="grid grid--two" @submit.prevent="submit">
-            <label class="field">
-                <span>Участник</span>
-                <select v-model="form.user_id">
-                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
-                </select>
-            </label>
+        <form @submit.prevent="submit">
+            <div class="grid grid--two">
+                <label class="field">
+                    <span>Участник</span>
+                    <select v-model="form.user_id">
+                        <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span>Тип</span>
+                    <select v-model="form.type_id">
+                        <option v-for="type in types" :key="type.id" :value="type.id">{{ type.name }}</option>
+                    </select>
+                </label>
+            </div>
 
             <label class="field">
                 <span>Сумма</span>
                 <input v-model="form.amount" type="number" min="0" step="0.01" required>
-                <small>{{ amountHint() }}</small>
-            </label>
-
-            <label class="field">
-                <span>Тип</span>
-                <select v-model="form.type_id">
-                    <option v-for="type in types" :key="type.id" :value="type.id">{{ type.name }}</option>
-                </select>
+                <small class="field-hint">{{ amountHint() }}</small>
             </label>
 
             <label class="field">
@@ -69,3 +71,11 @@ const amountHint = () => chargeTypeSlugs.includes(selectedType()?.slug)
         </form>
     </section>
 </template>
+
+<style scoped>
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px 0;
+}
+</style>

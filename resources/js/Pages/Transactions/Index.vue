@@ -38,6 +38,8 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                     <tr>
                         <th>Участник</th>
                         <th>Сумма</th>
+                        <th>Баланс после</th>
+                        <th>Одобрена</th>
                         <th>Дата</th>
                         <th>Действия</th>
                     </tr>
@@ -49,6 +51,8 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                             <span v-else>{{ transaction.user?.full_name }}</span>
                         </td>
                         <td>{{ transaction.amount }}<template v-if="transaction.type"> · {{ transaction.type.name }}</template></td>
+                        <td>{{ transaction.current_balance_amount ?? '—' }}</td>
+                        <td>{{ transaction.is_approved ? 'Да' : 'Нет' }}</td>
                         <td>{{ transaction.formatted_created_at }}</td>
                         <td>
                             <div class="actions">
@@ -70,6 +74,8 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                     <tr>
                         <th>Участник</th>
                         <th>Сумма</th>
+                        <th>Баланс после</th>
+                        <th>Одобрена</th>
                         <th>Дата</th>
                         <th>Действия</th>
                     </tr>
@@ -81,6 +87,8 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                             <span v-else>{{ transaction.user?.full_name }}</span>
                         </td>
                         <td>{{ transaction.amount }}<template v-if="transaction.type"> · {{ transaction.type.name }}</template></td>
+                        <td>{{ transaction.current_balance_amount ?? '—' }}</td>
+                        <td>{{ transaction.is_approved ? 'Да' : 'Нет' }}</td>
                         <td>{{ transaction.formatted_created_at }}</td>
                         <td>
                             <div class="actions">

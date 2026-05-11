@@ -12,14 +12,22 @@ const props = defineProps({
     types: Array,
 });
 
+const chargeTypeSlugs = ['subscription', 'extra-payment'];
+
 const form = useForm({
     user_id: props.transaction?.user?.id ?? props.users[0]?.id ?? '',
     type_id: props.transaction?.type?.id ?? props.types[0]?.id ?? '',
-    amount: props.transaction?.amount ?? '',
+    amount: props.transaction?.amount ? Math.abs(props.transaction.amount) : '',
     description: props.transaction?.description ?? '',
+    is_approved: true
 });
 
 const submit = () => props.mode === 'edit' ? form.put(props.submit_url) : form.post(props.submit_url);
+
+const selectedType = () => props.types.find((type) => type.id === form.type_id);
+const amountHint = () => chargeTypeSlugs.includes(selectedType()?.slug)
+    ? 'Введите положительную сумму. Списание сохранится как отрицательная транзакция.'
+    : 'Введите положительную сумму пополнения.';
 </script>
 
 <template>
@@ -38,7 +46,8 @@ const submit = () => props.mode === 'edit' ? form.put(props.submit_url) : form.p
 
             <label class="field">
                 <span>Сумма</span>
-                <input v-model="form.amount" type="number" step="0.01" required>
+                <input v-model="form.amount" type="number" min="0" step="0.01" required>
+                <small>{{ amountHint() }}</small>
             </label>
 
             <label class="field">

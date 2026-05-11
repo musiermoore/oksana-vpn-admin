@@ -14,8 +14,9 @@ RUN apt-get update \
         libicu-dev \
         libonig-dev \
         libxml2-dev \
-    && pecl install imagick \
+    && pecl install imagick redis \
     && docker-php-ext-enable imagick \
+    && docker-php-ext-enable redis \
     && docker-php-ext-configure gd \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \

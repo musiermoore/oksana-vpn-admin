@@ -18,4 +18,9 @@ class EventServiceProvider extends ServiceProvider
             ApplyUserBalanceDelta::class,
         ],
     ];
+
+    public function shouldDiscoverEvents(): bool
+    {
+        return false;
+    }
 }

@@ -5,14 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
-use App\Support\BotApiMessages;
+use App\Services\Crud\TransactionCrudService;
 use App\Services\UserApiService;
+use App\Support\BotApiMessages;
 use Exception;
 use Illuminate\Http\Request;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class TransactionController
 {
+    public function __construct(
+        private readonly TransactionCrudService $transactionService,
+    ) {}
+
     public function store(Request $request)
     {
         $user = UserApiService::instance((string) $request->route('telegramId'))->getUser();
@@ -62,12 +67,7 @@ class TransactionController
 
     public function approve(Transaction $transaction)
     {
-        $transaction->update(['is_approved' => true]);
-
-        Telegram::sendMessage([
-            'chat_id' => $transaction->user->telegram_id,
-            'text' => "Баланс пополнен на $transaction->amount"
-        ]);
+        $this->transactionService->approve($transaction);
 
         return response()->json([
             'message' => "Пополнение одобрено."
@@ -76,15 +76,7 @@ class TransactionController
 
     public function decline(Transaction $transaction)
     {
-        $amount = $transaction->amount;
-        $telegramId = $transaction->user->telegram_id;
-
-        $transaction->delete();
-
-        Telegram::sendMessage([
-            'chat_id' => $telegramId,
-            'text' => "Пополнение баланса на $amount отклонено"
-        ]);
+        $this->transactionService->decline($transaction);
 
         return response()->json([
             'message' => "Пополнение отклонено."

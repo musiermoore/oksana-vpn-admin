@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -14,6 +15,7 @@ use RuntimeException;
 class XuiConfigService
 {
     private ?string $session = null;
+    private ?string $csrf = null;
 
     public function __construct(
         private readonly Server $server,
@@ -129,6 +131,8 @@ class XuiConfigService
 
     private function setSession(): void
     {
+        $this->setStartSessionAndCsrf();
+
         $response = $this->getRequest()
             ->asForm()
             ->post('/login', [
@@ -137,14 +141,13 @@ class XuiConfigService
             ])
             ->throw();
 
-        $cookie = $response->cookies()->getCookieByName('3x-ui')
-            ?? $response->cookies()->getCookieByName('x-ui');
+        $cookie = $this->getAuthorizationCookie($response);
 
-        if (! $cookie?->getValue()) {
+        if (empty($cookie)) {
             throw new RuntimeException("Unable to authenticate with 3x-ui for server [{$this->server->id}]");
         }
 
-        $this->session = $cookie?->getValue();
+        $this->session = $cookie;
     }
 
     public function getSession(): ?string
@@ -152,15 +155,49 @@ class XuiConfigService
         return $this->session;
     }
 
+    private function setStartSessionAndCsrf(): void
+    {
+        $response = $this->getRequest()->get('/');
+
+        $this->csrf = $this->getCsrfToken($response);
+        $this->session = $this->getAuthorizationCookie($response);
+    }
+
+    private function getAuthorizationCookie(Response $response): ?string
+    {
+        $cookie = $response->cookies()->getCookieByName('3x-ui')
+            ?? $response->cookies()->getCookieByName('x-ui');
+
+        return $cookie?->getValue();
+    }
+
+    private function getCsrfToken(Response $response): ?string
+    {
+        $html = $response->body();
+
+        preg_match('/meta name="csrf-token" content="([^"]+)"/', $html, $matches);
+
+        return $matches[1] ?? null;
+    }
+
     private function getRequest(): PendingRequest
     {
         $headers = [
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Origin' => rtrim($this->server->panel_link, '/'),
+            'Referer' => rtrim($this->server->panel_link, '/') . '/',
+            'User-Agent' => 'Mozilla/5.0',
         ];
 
         if ($this->session) {
             $headers['Cookie'] = '3x-ui=' . $this->session;
+            $headers['Set-Cookie'] = '3x-ui=' . $this->session;
+        }
+
+        if ($this->csrf) {
+            $headers['X-CSRF-Token'] = $this->csrf;
         }
 
         $options = [];
@@ -169,7 +206,7 @@ class XuiConfigService
             $options['proxy'] = config('telegram.proxy');
         }
 
-        return Http::baseUrl(rtrim($this->server->panel_link, '/'))
+        return Http::baseUrl($this->getBaseUrl())
             ->timeout(15)
             ->withHeaders($headers)
             ->withOptions($options);
@@ -288,5 +325,10 @@ class XuiConfigService
                 'reset' => $client['reset'] ?? 0,
             ],
         ];
+    }
+
+    private function getBaseUrl(): string
+    {
+        return rtrim($this->server->panel_link, '/');
     }
 }

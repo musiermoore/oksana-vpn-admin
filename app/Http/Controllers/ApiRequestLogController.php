@@ -86,7 +86,7 @@ class ApiRequestLogController extends Controller
 
         return $this->inertia('ApiRequestLogs/Index', [
             'filters' => $filters,
-            'logs' => ApiRequestLogResource::collection($logs)->toArray($request),
+            'logs' => ApiRequestLogResource::collection($logs)->response()->getData(true),
             'timezone_stats' => $timezoneStats,
             'overview' => $overview,
             'viewer_timezone' => $viewerTimezone,

@@ -6,14 +6,42 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
-    filters: Object,
-    logs: Object,
-    timezone_stats: Array,
-    overview: Object,
-    actions: Array,
-    endpoints: Array,
-    methods: Array,
-    viewer_timezone: String,
+    filters: {
+        type: Object,
+        default: () => ({}),
+    },
+    logs: {
+        type: Object,
+        default: () => ({ data: [], links: [] }),
+    },
+    timezone_stats: {
+        type: Array,
+        default: () => [],
+    },
+    overview: {
+        type: Object,
+        default: () => ({
+            total: 0,
+            unique_users: 0,
+            timezone_count: 0,
+        }),
+    },
+    actions: {
+        type: Array,
+        default: () => [],
+    },
+    endpoints: {
+        type: Array,
+        default: () => [],
+    },
+    methods: {
+        type: Array,
+        default: () => [],
+    },
+    viewer_timezone: {
+        type: String,
+        default: '',
+    },
 });
 
 const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -77,7 +105,8 @@ const formatTimestamp = (isoString) => {
     }).format(new Date(isoString));
 };
 
-const paginationLinks = computed(() => props.logs.links ?? []);
+const logsData = computed(() => props.logs?.data ?? []);
+const paginationLinks = computed(() => props.logs?.meta?.links ?? []);
 </script>
 
 <template>
@@ -192,7 +221,7 @@ const paginationLinks = computed(() => props.logs.links ?? []);
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="log in logs.data" :key="log.id">
+                <tr v-for="log in logsData" :key="log.id">
                     <td>
                         <strong>{{ formatTimestamp(log.created_at) }}</strong>
                         <div class="muted">HTTP {{ log.method }} · {{ log.response_status ?? '—' }}</div>
@@ -221,7 +250,7 @@ const paginationLinks = computed(() => props.logs.links ?? []);
             </tbody>
         </table>
 
-        <div v-if="!logs.data.length" class="empty-state">По текущим фильтрам ничего не найдено.</div>
+        <div v-if="!logsData.length" class="empty-state">По текущим фильтрам ничего не найдено.</div>
     </section>
 
     <section v-if="paginationLinks.length > 3" class="page-card">

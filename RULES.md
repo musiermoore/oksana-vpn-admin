@@ -15,6 +15,7 @@ This file captures project-specific working rules so future development stays co
 
 - The project uses Laravel 13 with PHP 8.3.
 - Keep business logic in services or commands when it spans multiple models.
+- Use repositories inside services instead of querying Eloquent models directly.
 - Prefer Eloquent relations and existing query patterns used in the project.
 - When changing billing logic, verify how `User::syncStoredBalance()` and approved transactions interact.
 

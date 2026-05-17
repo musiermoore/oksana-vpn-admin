@@ -9,14 +9,17 @@ use App\Models\Config;
 use App\Models\Server;
 use App\Models\User;
 use App\Repositories\ConfigRepository;
+use App\Repositories\ServerRepository;
 use App\Repositories\UserRepository;
 use Exception;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class ConfigCrudService
 {
     public function __construct(
         private readonly ConfigRepository $configs,
+        private readonly ServerRepository $servers,
         private readonly UserRepository $users,
     ) {}
 
@@ -26,11 +29,25 @@ class ConfigCrudService
     public function createMany(ConfigStoreData $data): array
     {
         $user = $this->users->findOrFail($data->userId);
+        $servers = $this->servers
+            ->findByIds(array_values(array_unique(array_map(
+                fn ($config) => $config->serverId,
+                $data->configs,
+            ))))
+            ->keyBy('id');
         $failedConfigs = [];
 
         foreach ($data->configs as $config) {
-            if (! $user->createConfig($config->toArray())) {
-                $failedConfigs[] = $config->name;
+            /** @var Server $server */
+            $server = $servers->get($config->serverId) ?? $this->servers->findOrFail($config->serverId);
+            $configName = $this->generateConfigName($user, $server);
+
+            if (! $user->createConfig([
+                'name' => $configName,
+                'description' => $config->description,
+                'server_id' => $server->id,
+            ])) {
+                $failedConfigs[] = $configName;
             }
         }
 
@@ -42,7 +59,7 @@ class ConfigCrudService
      */
     public function createBulk(ConfigBulkStoreData $data): array
     {
-        $server = Server::query()->findOrFail($data->serverId);
+        $server = $this->servers->findOrFail($data->serverId);
 
         $users = User::query()
             ->with('configs')
@@ -112,5 +129,39 @@ class ConfigCrudService
             report($exception);
             throw new RuntimeException('Ошибка при отключении конфига');
         }
+    }
+
+    private function generateConfigName(User $user, Server $server): string
+    {
+        $userPart = Str::slug(trim((string) $user->telegram, '@'));
+        $userPart = $userPart !== '' ? $userPart : (string) $user->telegram_id;
+
+        $serverPart = Str::slug($server->name);
+        $serverPart = $serverPart !== '' ? $serverPart : Str::slug($server->code);
+        $serverPart = $serverPart !== '' ? $serverPart : 'server';
+
+        $name = implode('-', [
+            $userPart,
+            $serverPart,
+            $this->generateAlphabeticString(16),
+        ]);
+
+        if (Config::whereName($name)->exists()) {
+            return $this->generateConfigName($user, $server);
+        }
+
+        return $name;
+    }
+
+    private function generateAlphabeticString(int $length): string
+    {
+        $alphabet = 'abcdefghijklmnopqrstuvwxyz';
+        $value = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $value .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        return $value;
     }
 }

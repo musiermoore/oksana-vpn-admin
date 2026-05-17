@@ -15,7 +15,6 @@ use App\Models\UserToken;
 use App\Services\Crud\ConfigCrudService;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -56,29 +55,12 @@ class ConfigController extends Controller
     public function create(Request $request)
     {
         $users = User::get();
-        $servers = Server::get();
-
-        $fileNames = Storage::disk('local')->files('configs');
-
-        $existingConfigNames = Config::pluck('name');
-
-        $fileNames = collect($fileNames)
-            ->map(function ($fileName) {
-                $fileName = str_replace('configs/', '', $fileName);
-
-                return str_replace('.conf', '', $fileName);
-            })
-            ->filter(function ($fileName) use ($existingConfigNames) {
-                return $existingConfigNames->doesntContain($fileName);
-            })
-            ->sort()
-            ->values();
+        $servers = Server::whereIsVless(false)->get();
 
         return $this->inertia('Configs/Create', [
             'submit_url' => route('configs.store'),
             'users' => UserResource::collection($users)->toArray($request),
             'servers' => ServerResource::collection($servers)->toArray($request),
-            'file_names' => $fileNames->values(),
         ]);
     }
 
@@ -92,7 +74,7 @@ class ConfigController extends Controller
         }
 
         return redirect()->route('configs.index')
-            ->with('success', 'Конфиги успешно созданы');
+            ->with('success', 'Конфиг(и) успешно создан(ы)');
     }
 
     public function createBulk(Request $request)

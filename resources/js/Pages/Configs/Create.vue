@@ -8,15 +8,14 @@ const props = defineProps({
     submit_url: String,
     users: Array,
     servers: Array,
-    file_names: Array,
 });
 
 const form = useForm({
     user_id: props.users[0]?.id ?? '',
-    configs: [{ name: props.file_names[0] ?? '', server_id: props.servers[0]?.id ?? '' }],
+    configs: [{ server_id: props.servers[0]?.id ?? '', description: '' }],
 });
 
-const addRow = () => form.configs.push({ name: props.file_names[0] ?? '', server_id: props.servers[0]?.id ?? '' });
+const addRow = () => form.configs.push({ server_id: props.servers[0]?.id ?? '', description: '' });
 const removeRow = (index) => form.configs.splice(index, 1);
 const submit = () => form.post(props.submit_url);
 </script>
@@ -38,19 +37,17 @@ const submit = () => form.post(props.submit_url);
             </label>
 
             <div class="stack">
-                <div v-for="(config, index) in form.configs" :key="index" class="panel grid grid--two">
-                    <label class="field">
-                        <span>Файл конфига</span>
-                        <select v-model="config.name">
-                            <option v-for="fileName in file_names" :key="fileName" :value="fileName">{{ fileName }}</option>
-                        </select>
-                    </label>
-
+                <div v-for="(config, index) in form.configs" :key="index" class="panel grid">
                     <label class="field">
                         <span>Сервер</span>
                         <select v-model="config.server_id">
                             <option v-for="server in servers" :key="server.id" :value="server.id">{{ server.name }}</option>
                         </select>
+                    </label>
+
+                    <label class="field">
+                        <span>Описание (необязательно)</span>
+                        <textarea v-model="config.description" />
                     </label>
 
                     <div class="actions" style="grid-column: 1 / -1;">

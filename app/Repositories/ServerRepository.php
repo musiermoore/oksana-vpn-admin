@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Server;
+use Illuminate\Database\Eloquent\Collection;
 
 class ServerRepository
 {
@@ -21,5 +22,21 @@ class ServerRepository
     public function delete(Server $server): void
     {
         $server->delete();
+    }
+
+    public function findOrFail(int $id): Server
+    {
+        return Server::query()->findOrFail($id);
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @return Collection<int, Server>
+     */
+    public function findByIds(array $ids): Collection
+    {
+        return Server::query()
+            ->whereIn('id', $ids)
+            ->get();
     }
 }

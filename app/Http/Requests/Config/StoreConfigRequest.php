@@ -18,8 +18,8 @@ class StoreConfigRequest extends FormRequest
         return [
             'user_id' => ['required', 'exists:users,id'],
             'configs' => ['required', 'array', 'min:1'],
-            'configs.*.name' => ['required', 'string', 'max:255'],
             'configs.*.server_id' => ['required', 'exists:servers,id'],
+            'configs.*.description' => ['nullable', 'string'],
         ];
     }
 
@@ -31,8 +31,8 @@ class StoreConfigRequest extends FormRequest
             userId: (int) $data['user_id'],
             configs: array_map(
                 fn (array $config) => new ConfigCreateItemData(
-                    name: $config['name'],
                     serverId: (int) $config['server_id'],
+                    description: $config['description'] ?? null,
                 ),
                 $data['configs'],
             ),

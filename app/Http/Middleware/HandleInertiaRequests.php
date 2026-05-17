@@ -15,15 +15,15 @@ class HandleInertiaRequests extends Middleware
 
         $navigation = $user ? [
             ['label' => 'Участники', 'href' => route('users.index'), 'badge' => 'US'],
-            ['label' => 'Конфиги', 'href' => route('configs.index'), 'badge' => 'CF'],
+            ['label' => 'WireGuard', 'href' => route('configs.index'), 'badge' => 'WG'],
             ['label' => 'VLESS', 'href' => route('vless-configs.index'), 'badge' => 'VL'],
-            ['label' => 'Транзакции', 'href' => route('transactions.index'), 'badge' => 'TX'],
+            ['label' => 'Транзакции', 'href' => route('transactions.index'), 'badge' => 'TR'],
             ['label' => 'Подписки', 'href' => route('subscriptions.index'), 'badge' => 'SB'],
             ['label' => 'Периоды оплаты', 'href' => route('current-payments.index'), 'badge' => 'PP'],
             ['label' => 'Доп. оплаты', 'href' => route('extra-payments.index'), 'badge' => 'DP'],
             ['label' => 'API лог', 'href' => route('api-request-logs.index'), 'badge' => 'LG'],
             ['label' => 'Рассылка', 'href' => route('notifications.create'), 'badge' => 'NT'],
-            ['label' => 'Серверы', 'href' => route('servers.index'), 'badge' => 'SV'],
+            ['label' => 'Сервера', 'href' => route('servers.index'), 'badge' => 'SV'],
         ] : [];
 
         return array_merge(parent::share($request), [

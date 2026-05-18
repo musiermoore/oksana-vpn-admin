@@ -10,10 +10,13 @@ use App\Http\Resources\Api\ApiConfigResource;
 use App\Http\Resources\Api\ApiRegisteredUserResource;
 use App\Http\Resources\Api\ApiRegistrationStatusResource;
 use App\Http\Resources\Api\ApiVlessConfigResource;
+use App\Models\User;
 use App\Support\BotApiMessages;
 use App\Services\Api\ApiUserService;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Throwable;
 
@@ -43,14 +46,25 @@ class UserController extends Controller
         }
     }
 
-    public function balance()
+    public function balance(): JsonResponse
     {
-        return response()->json((new ApiBalanceResource(request()->attributes->get('apiUser')))->resolve());
+        $user = $this->resolveApiUser();
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        return response()->json((new ApiBalanceResource($user))->resolve());
     }
 
-    public function getUserConfigs(Request $request, string $type)
+    public function getUserConfigs(Request $request, string $telegramId, string $type): JsonResponse
     {
-        $user = $request->attributes->get('apiUser');
+        $user = $this->resolveApiUser($request);
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
         $configs = $this->userService->getUserConfigs($user, $type);
 
         $resource = $this->userService->isVlessType($type)
@@ -62,9 +76,15 @@ class UserController extends Controller
         ]);
     }
 
-    public function downloadConfig(Request $request, string $type, string $configId)
+    public function downloadConfig(Request $request, string $telegramId, string $type, string $configId): Response
     {
-        $config = $this->userService->findUserConfig($request->attributes->get('apiUser'), $type, $configId);
+        $user = $this->resolveApiUser($request);
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $config = $this->userService->findUserConfig($user, $type, $configId);
 
         if (empty($config)) {
             return response()->json([
@@ -85,9 +105,15 @@ class UserController extends Controller
         }
     }
 
-    public function downloadQrCode(Request $request, string $type, string $configId)
+    public function downloadQrCode(Request $request, string $telegramId, string $type, string $configId): Response
     {
-        $config = $this->userService->findUserConfig($request->attributes->get('apiUser'), $type, $configId);
+        $user = $this->resolveApiUser($request);
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        $config = $this->userService->findUserConfig($user, $type, $configId);
 
         if (empty($config)) {
             return response()->json([
@@ -124,16 +150,28 @@ class UserController extends Controller
 
     public function getVlessLink()
     {
-        return response($this->userService->getVlessLink(request()->attributes->get('apiUser')));
+        $user = $this->resolveApiUser();
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        return response($this->userService->getVlessLink($user));
     }
 
     public function getVlessQrCode()
     {
+        $user = $this->resolveApiUser();
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
         try {
             $png = QrCode::format('png')
                 ->margin(5)
                 ->size(512)
-                ->generate($this->userService->getVlessLink(request()->attributes->get('apiUser')));
+                ->generate($this->userService->getVlessLink($user));
 
             return response($png)
                 ->header('Content-Type', 'image/png')
@@ -157,5 +195,26 @@ class UserController extends Controller
                 : 'Telegram успешно привязан.',
             'user' => (new ApiRegisteredUserResource($result->user))->resolve(),
         ], $result->created ? 201 : 200);
+    }
+
+    private function resolveApiUser(?Request $request = null): User|JsonResponse
+    {
+        $request ??= request();
+
+        $user = $request->attributes->get('apiUser');
+
+        if ($user instanceof User) {
+            return $user;
+        }
+
+        $resolvedUser = $request->user();
+
+        if ($resolvedUser instanceof User) {
+            return $resolvedUser;
+        }
+
+        return response()->json([
+            'message' => BotApiMessages::userNotFound(),
+        ], 404);
     }
 }

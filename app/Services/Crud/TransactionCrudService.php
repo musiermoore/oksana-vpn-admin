@@ -3,6 +3,7 @@
 namespace App\Services\Crud;
 
 use App\DTOs\Transaction\TransactionData;
+use App\Events\TransactionApproved;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Repositories\TransactionRepository;
@@ -32,6 +33,8 @@ class TransactionCrudService
     public function approve(Transaction $transaction): void
     {
         $transaction = $this->transactions->update($transaction, ['is_approved' => true]);
+
+        event(new TransactionApproved($transaction));
 
         Telegram::sendMessage([
             'chat_id' => $transaction->user->telegram_id,

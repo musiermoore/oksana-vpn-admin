@@ -40,11 +40,11 @@ class DispatchDefaultConfigsForUserJob implements ShouldQueue
         $existingVlessServerIds = $user->vlessConfigs->pluck('server_id')->all();
 
         foreach ($servers as $server) {
-            if ($server->is_vless) {
-                if (in_array($server->id, $existingVlessServerIds, true)) {
-                    continue;
-                }
-            } elseif (in_array($server->id, $existingWireGuardServerIds, true)) {
+            $ids = $server->is_vless
+                ? $existingVlessServerIds
+                : $existingWireGuardServerIds;
+
+            if (in_array($server->id, $ids, true)) {
                 continue;
             }
 

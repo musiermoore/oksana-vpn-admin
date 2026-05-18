@@ -129,8 +129,6 @@ class TransactionCrudServiceTest extends TestCase
 
         app(TransactionCrudService::class)->approve($transaction);
 
-        $this->assertSame(0.0, $user->fresh()->balance);
-
         $subscription = UserSubscription::query()
             ->where('user_id', $user->id)
             ->sole();

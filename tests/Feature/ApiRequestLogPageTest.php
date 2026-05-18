@@ -52,7 +52,13 @@ class ApiRequestLogPageTest extends TestCase
                 ->component('ApiRequestLogs/Index')
                 ->where('overview.total', 2)
                 ->where('viewer_timezone', 'Europe/Berlin')
-                ->where('timezone_stats.0.timezone', 'Europe/Berlin')
+                ->where('timezone_stats', function ($stats): bool {
+                    return collect($stats)
+                        ->pluck('timezone')
+                        ->sort()
+                        ->values()
+                        ->all() === ['Asia/Omsk', 'Europe/Berlin'];
+                })
                 ->where('logs.data.0.action', 'api.users.balance')
                 ->where('logs.data.0.user.telegram', '@client')
             );

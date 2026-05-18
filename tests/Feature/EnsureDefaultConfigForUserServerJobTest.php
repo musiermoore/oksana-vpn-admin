@@ -75,6 +75,11 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
             'https://panel.test/login' => Http::response([], 200, [
                 'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
             ]),

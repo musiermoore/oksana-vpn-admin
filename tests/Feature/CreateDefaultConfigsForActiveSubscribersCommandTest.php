@@ -323,7 +323,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
         Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, 1);
     }
 
-    public function test_command_is_scheduled_every_fifteen_minutes(): void
+    public function test_command_is_scheduled_every_five_minutes(): void
     {
         $events = collect(Schedule::events());
 
@@ -332,6 +332,6 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
         });
 
         $this->assertNotNull($event);
-        $this->assertSame('*/15 * * * *', $event->expression);
+        $this->assertSame('*/5 * * * *', $event->expression);
     }
 }

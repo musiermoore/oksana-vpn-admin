@@ -20,7 +20,7 @@ class TransactionController
     {
         try {
             $transaction = $this->apiTransactionService->createDepositRequest(
-                $request->user(),
+                $request->attributes->get('apiUser'),
                 $request->toDto(),
             );
         } catch (Throwable $throwable) {

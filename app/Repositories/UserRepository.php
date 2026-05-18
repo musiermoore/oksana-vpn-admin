@@ -63,7 +63,7 @@ class UserRepository
     {
         return User::query()
             ->with([
-                'configs' => function (Builder $query) {
+                'configs' => function ($query) {
                     $query->select([
                         'id',
                         'user_id',
@@ -88,7 +88,13 @@ class UserRepository
     {
         return User::query()
             ->with([
-                'activeSubscription:id,user_id,end_date',
+                'activeSubscription' => function ($query) {
+                    $query->select([
+                        'user_subscriptions.id',
+                        'user_subscriptions.user_id',
+                        'user_subscriptions.end_date',
+                    ]);
+                },
             ])
             ->select([
                 'users.id',

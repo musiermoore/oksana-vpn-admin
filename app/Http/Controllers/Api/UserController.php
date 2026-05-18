@@ -45,12 +45,12 @@ class UserController extends Controller
 
     public function balance()
     {
-        return response()->json((new ApiBalanceResource(request()->user()))->resolve());
+        return response()->json((new ApiBalanceResource(request()->attributes->get('apiUser')))->resolve());
     }
 
     public function getUserConfigs(Request $request, string $type)
     {
-        $user = $request->user();
+        $user = $request->attributes->get('apiUser');
         $configs = $this->userService->getUserConfigs($user, $type);
 
         $resource = $this->userService->isVlessType($type)
@@ -64,7 +64,7 @@ class UserController extends Controller
 
     public function downloadConfig(Request $request, string $type, string $configId)
     {
-        $config = $this->userService->findUserConfig($request->user(), $type, $configId);
+        $config = $this->userService->findUserConfig($request->attributes->get('apiUser'), $type, $configId);
 
         if (empty($config)) {
             return response()->json([
@@ -87,7 +87,7 @@ class UserController extends Controller
 
     public function downloadQrCode(Request $request, string $type, string $configId)
     {
-        $config = $this->userService->findUserConfig($request->user(), $type, $configId);
+        $config = $this->userService->findUserConfig($request->attributes->get('apiUser'), $type, $configId);
 
         if (empty($config)) {
             return response()->json([
@@ -124,7 +124,7 @@ class UserController extends Controller
 
     public function getVlessLink()
     {
-        return response($this->userService->getVlessLink(request()->user()));
+        return response($this->userService->getVlessLink(request()->attributes->get('apiUser')));
     }
 
     public function getVlessQrCode()
@@ -133,7 +133,7 @@ class UserController extends Controller
             $png = QrCode::format('png')
                 ->margin(5)
                 ->size(512)
-                ->generate($this->userService->getVlessLink(request()->user()));
+                ->generate($this->userService->getVlessLink(request()->attributes->get('apiUser')));
 
             return response($png)
                 ->header('Content-Type', 'image/png')

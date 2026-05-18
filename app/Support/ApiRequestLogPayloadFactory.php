@@ -29,6 +29,12 @@ class ApiRequestLogPayloadFactory
 
     private function resolveUserId(Request $request): ?int
     {
+        $requestUser = $request->user();
+
+        if ($requestUser instanceof User) {
+            return (int) $requestUser->getKey();
+        }
+
         $route = $request->route();
         $boundUser = $route?->parameter('user');
 

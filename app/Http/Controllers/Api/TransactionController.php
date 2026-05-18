@@ -6,7 +6,6 @@ use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Services\Crud\TransactionCrudService;
-use App\Services\UserApiService;
 use App\Support\BotApiMessages;
 use Exception;
 use Illuminate\Http\Request;
@@ -20,13 +19,7 @@ class TransactionController
 
     public function store(Request $request)
     {
-        $user = UserApiService::instance((string) $request->route('telegramId'))->getUser();
-
-        if (empty($user)) {
-            return response()->json([
-                'message' => BotApiMessages::userNotFound(),
-            ], 404);
-        }
+        $user = $request->attributes->get('apiUser');
 
         try {
             $transaction = $user->transactions()->create([

@@ -62,15 +62,9 @@ class UserController extends Controller
         }
     }
 
-    public function balance(string $telegramId)
+    public function balance()
     {
-        $user = UserApiService::instance($telegramId)->getUser();
-
-        if (empty($user)) {
-            return response()->json([
-                'message' => BotApiMessages::userNotFound(),
-            ], 404);
-        }
+        $user = request()->attributes->get('apiUser');
 
         return response()->json([
             'balance' => max(0, $user->balance),
@@ -78,24 +72,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function getUserConfigs(string $telegramId, string $type)
+    public function getUserConfigs(string $type)
     {
-        $user = UserApiService::instance($telegramId)->getUser();
-
-        if (empty($user)) {
-            return response()->json([
-                'configs' => [],
-                'message' => BotApiMessages::userNotFound(),
-            ], 404);
-        }
-
-        if (! $user->hasActiveAccess()) {
-            return response()->json([
-                'configs' => [],
-                'type' => 'debt',
-                'message' => BotApiMessages::accessRequiresPayment(),
-            ], 403);
-        }
+        $user = request()->attributes->get('apiUser');
 
         $configs = $type === 'vless'
             ? $user->vlessConfigs
@@ -106,22 +85,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function downloadConfig(string $telegramId, string $type, string $configId)
+    public function downloadConfig(string $type, string $configId)
     {
-        $user = UserApiService::instance($telegramId)->getUser();
-
-        if (empty($user)) {
-            return response()->json([
-                'message' => BotApiMessages::userNotFound(),
-            ], 404);
-        }
-
-        if (! $user->hasActiveAccess()) {
-            return response()->json([
-                'type' => 'debt',
-                'message' => BotApiMessages::accessRequiresPayment(),
-            ], 403);
-        }
+        $user = request()->attributes->get('apiUser');
 
         $query = $type === 'vless'
             ? $user->vlessConfigs()
@@ -148,23 +114,9 @@ class UserController extends Controller
         }
     }
 
-    public function downloadQrCode(string $telegramId, string $type, string $configId)
+    public function downloadQrCode(string $type, string $configId)
     {
-        $user = UserApiService::instance($telegramId)->getUser();
-
-        if (empty($user)) {
-            return response()->json([
-                'message' => BotApiMessages::userNotFound(),
-            ], 404);
-        }
-
-        if (! $user->hasActiveAccess()) {
-            return response()->json([
-                'user' => $user,
-                'type' => 'debt',
-                'message' => BotApiMessages::accessRequiresPayment(),
-            ], 403);
-        }
+        $user = request()->attributes->get('apiUser');
 
         $query = $type === 'vless'
             ? $user->vlessConfigs()
@@ -276,9 +228,9 @@ class UserController extends Controller
         return $this->register($request);
     }
 
-    public function getVlessLink(string $telegramId)
+    public function getVlessLink()
     {
-        $result = $this->resolveVlessLink($telegramId);
+        $result = $this->resolveVlessLink();
 
         if ($result instanceof Response) {
             return $result;
@@ -287,9 +239,9 @@ class UserController extends Controller
         return response($result);
     }
 
-    public function getVlessQrCode(string $telegramId)
+    public function getVlessQrCode()
     {
-        $result = $this->resolveVlessLink($telegramId);
+        $result = $this->resolveVlessLink();
 
         if ($result instanceof Response) {
             return $result;
@@ -310,23 +262,9 @@ class UserController extends Controller
         }
     }
 
-    private function resolveVlessLink(string $telegramId): Response|string
+    private function resolveVlessLink(): Response|string
     {
-        $user = UserApiService::instance($telegramId)->getUser();
-
-        if (empty($user)) {
-            return response()->json([
-                'message' => BotApiMessages::userNotFound(),
-            ], 404);
-        }
-
-        if (! $user->hasActiveAccess()) {
-            return response()->json([
-                'user' => $user,
-                'type' => 'debt',
-                'message' => BotApiMessages::accessRequiresPayment(),
-            ], 403);
-        }
+        $user = request()->attributes->get('apiUser');
 
         $link = route('vless.connect', [
             'tg' => Crypt::encrypt($user->telegram_id),

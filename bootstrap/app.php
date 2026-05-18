@@ -1,7 +1,9 @@
 <?php
 
 use App\Support\TelegramExceptionReporter;
+use App\Http\Middleware\EnsureApiUserHasActiveAccess;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ResolveApiUser;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
+        ]);
+
+        $middleware->alias([
+            'api.user' => ResolveApiUser::class,
+            'api.user.access' => EnsureApiUserHasActiveAccess::class,
         ]);
 
         $middleware->redirectGuestsTo(fn (Request $request) => route('login'));

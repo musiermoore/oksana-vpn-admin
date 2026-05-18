@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\UserApiService;
+use App\Services\Api\ApiUserService;
 use App\Support\BotApiMessages;
 use Closure;
 use Illuminate\Http\Request;
@@ -11,10 +11,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ResolveApiUser
 {
+    public function __construct(
+        private readonly ApiUserService $userService,
+    ) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $telegramId = (string) $request->route('telegramId');
-        $user = UserApiService::instance($telegramId)->getUser();
+        $user = $this->userService->findUserByTelegramId($telegramId);
 
         if (! $user) {
             return response()->json([

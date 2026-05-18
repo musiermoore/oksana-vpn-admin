@@ -2,59 +2,37 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\Api\StoreApiTransactionRequest;
 use App\Models\Transaction;
-use App\Models\TransactionType;
-use App\Models\User;
+use App\Services\Api\ApiTransactionService;
 use App\Services\Crud\TransactionCrudService;
 use App\Support\BotApiMessages;
-use Exception;
-use Illuminate\Http\Request;
-use Telegram\Bot\Laravel\Facades\Telegram;
+use Throwable;
 
 class TransactionController
 {
     public function __construct(
         private readonly TransactionCrudService $transactionService,
+        private readonly ApiTransactionService $apiTransactionService,
     ) {}
 
-    public function store(Request $request)
+    public function store(StoreApiTransactionRequest $request)
     {
-        $user = $request->attributes->get('apiUser');
-
         try {
-            $transaction = $user->transactions()->create([
-                'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
-                'amount' => $request->amount,
-                'is_approved' => false,
-                'description' => $request->bank,
-            ]);
-        } catch (Exception $exception) {
-            report($exception);
+            $transaction = $this->apiTransactionService->createDepositRequest(
+                $request->user(),
+                $request->toDto(),
+            );
+        } catch (Throwable $throwable) {
+            report($throwable);
 
             return response()->json([
                 'message' => BotApiMessages::unexpectedError(),
             ], 500);
         }
 
-        $adminUserIds = User::whereIsAdmin(true)->pluck('telegram_id');
-
-        foreach ($adminUserIds as $chatId) {
-            Telegram::sendMessage([
-                'chat_id' => $chatId,
-                'text' => "$user->full_name пополнил баланс на $transaction->amount ($request->bank).",
-                'reply_markup' => json_encode([
-                    'inline_keyboard' => [
-                        [
-                            ['text' => 'Принять', 'callback_data' => "approve_deposit|$transaction->id"],
-                            ['text' => 'Отклонить', 'callback_data' => "deny_deposit|$transaction->id"]
-                        ]
-                    ]
-                ])
-            ]);
-        }
-
         return response()->json([
-            'message' => "Запрос на пополнение $transaction->amount ($request->bank) отправлен.",
+            'message' => "Запрос на пополнение $transaction->amount ({$transaction->description}) отправлен.",
         ]);
     }
 

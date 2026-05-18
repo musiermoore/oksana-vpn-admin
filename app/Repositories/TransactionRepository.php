@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Transaction;
+use App\Models\User;
 
 class TransactionRepository
 {
@@ -21,5 +22,10 @@ class TransactionRepository
     public function delete(Transaction $transaction): void
     {
         $transaction->delete();
+    }
+
+    public function createForUser(User $user, array $attributes): Transaction
+    {
+        return $user->transactions()->create($attributes);
     }
 }

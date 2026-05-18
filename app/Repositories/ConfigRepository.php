@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Config;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 class ConfigRepository
 {
@@ -22,5 +23,16 @@ class ConfigRepository
     public function createForUser(User $user, array $attributes): Config
     {
         return $user->configs()->create($attributes);
+    }
+
+    public function allForUser(User $user): Collection
+    {
+        return $user->configs()
+            ->get(['id', 'user_id', 'name']);
+    }
+
+    public function findForUser(User $user, int|string $id): ?Config
+    {
+        return $user->configs()->find($id);
     }
 }

@@ -3,56 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\PaymentPeriod;
-use App\Models\User;
+use App\DTOs\User\ApiUserRegistrationData;
+use App\Http\Requests\Api\RegisterApiUserRequest;
+use App\Http\Resources\Api\ApiBalanceResource;
+use App\Http\Resources\Api\ApiConfigResource;
+use App\Http\Resources\Api\ApiRegisteredUserResource;
+use App\Http\Resources\Api\ApiRegistrationStatusResource;
+use App\Http\Resources\Api\ApiVlessConfigResource;
 use App\Support\BotApiMessages;
-use App\Services\UserApiService;
+use App\Services\Api\ApiUserService;
 use Exception;
-use Illuminate\Http\Response;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Throwable;
 
 class UserController extends Controller
 {
+    public function __construct(
+        private readonly ApiUserService $userService,
+    ) {}
+
     public function registrationStatus(string $telegramId)
     {
         try {
-            $user = User::query()
-                ->with([
-                    'activeSubscription' => function ($query) {
-                        $query->select([
-                            'user_subscriptions.id',
-                            'user_subscriptions.user_id',
-                            'user_subscriptions.end_date',
-                        ]);
-                    },
-                ])
-                ->select([
-                    'users.id',
-                    'users.telegram_id',
-                    'users.balance',
-                ])
-                ->where('telegram_id', trim($telegramId))
-                ->where('users.is_active', true)
-                ->whereNull('users.deleted_at')
-                ->first();
+            $user = $this->userService->findActiveUserByTelegramId($telegramId);
 
-            if (! $user) {
-                return response()->json([
-                    'registered' => false,
-                    'active_subscription_end_date' => null,
-                    'has_money_for_next_subscription_month' => false,
-                ]);
-            }
-
-            return response()->json([
-                'registered' => true,
-                'active_subscription_end_date' => $user->activeSubscription?->end_date,
-                'has_money_for_next_subscription_month' => $this->hasMoneyForNextSubscriptionMonth($user),
-            ]);
+            return response()->json(
+                (new ApiRegistrationStatusResource(
+                    $user,
+                    $user ? $this->userService->hasMoneyForNextSubscriptionMonth($user) : false,
+                ))->resolve()
+            );
         } catch (Throwable $throwable) {
             report($throwable);
 
@@ -64,36 +45,26 @@ class UserController extends Controller
 
     public function balance()
     {
-        $user = request()->attributes->get('apiUser');
+        return response()->json((new ApiBalanceResource(request()->user()))->resolve());
+    }
+
+    public function getUserConfigs(Request $request, string $type)
+    {
+        $user = $request->user();
+        $configs = $this->userService->getUserConfigs($user, $type);
+
+        $resource = $this->userService->isVlessType($type)
+            ? ApiVlessConfigResource::collection($configs)
+            : ApiConfigResource::collection($configs);
 
         return response()->json([
-            'balance' => max(0, $user->balance),
-            'debt' => max(0, -$user->balance)
+            'configs' => $resource->resolve(),
         ]);
     }
 
-    public function getUserConfigs(string $type)
+    public function downloadConfig(Request $request, string $type, string $configId)
     {
-        $user = request()->attributes->get('apiUser');
-
-        $configs = $type === 'vless'
-            ? $user->vlessConfigs
-            : $user->configs;
-
-        return response()->json([
-            'configs' => $configs,
-        ]);
-    }
-
-    public function downloadConfig(string $type, string $configId)
-    {
-        $user = request()->attributes->get('apiUser');
-
-        $query = $type === 'vless'
-            ? $user->vlessConfigs()
-            : $user->configs();
-
-        $config = $query->find($configId);
+        $config = $this->userService->findUserConfig($request->user(), $type, $configId);
 
         if (empty($config)) {
             return response()->json([
@@ -102,7 +73,7 @@ class UserController extends Controller
         }
 
         try {
-            return $type === 'vless'
+            return $this->userService->isVlessType($type)
                 ? response($config->getLink())
                 : response()->download($config->path, $config->name . '.conf');
         } catch (Exception $exception) {
@@ -114,15 +85,9 @@ class UserController extends Controller
         }
     }
 
-    public function downloadQrCode(string $type, string $configId)
+    public function downloadQrCode(Request $request, string $type, string $configId)
     {
-        $user = request()->attributes->get('apiUser');
-
-        $query = $type === 'vless'
-            ? $user->vlessConfigs()
-            : $user->configs();
-
-        $config = $query->find($configId);
+        $config = $this->userService->findUserConfig($request->user(), $type, $configId);
 
         if (empty($config)) {
             return response()->json([
@@ -147,108 +112,28 @@ class UserController extends Controller
         }
     }
 
-    public function register(Request $request)
+    public function register(RegisterApiUserRequest $request)
     {
-        $payload = $request->validate([
-            'telegram' => ['nullable', 'string', 'max:255'],
-            'telegram_id' => ['required', 'string', 'max:255'],
-            'name' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $telegram = $this->normalizeTelegram((string) ($payload['telegram'] ?? ''));
-        $telegramId = trim($payload['telegram_id']);
-        $name = trim((string) ($payload['name'] ?? '')) ?: ($telegram !== '' ? ltrim($telegram, '@') : $telegramId);
-
-        [$user, $created] = DB::transaction(function () use ($telegram, $telegramId, $name) {
-            $user = User::query()->where('telegram_id', $telegramId)->first();
-
-            if ($user) {
-                if ($telegram !== '') {
-                    User::query()
-                        ->where('telegram', $telegram)
-                        ->whereKeyNot($user->id)
-                        ->update(['telegram' => null]);
-                }
-
-                $user->update([
-                    'telegram' => $telegram !== '' ? $telegram : $user->telegram,
-                    'name' => $name,
-                    'join_at' => $user->join_at ?: now()->toDateString(),
-                ]);
-
-                return [$user->refresh(), false];
-            }
-
-            if ($telegram !== '') {
-                $user = User::query()->where('telegram', $telegram)->first();
-
-                if ($user) {
-                    User::query()
-                        ->where('telegram_id', $telegramId)
-                        ->whereKeyNot($user->id)
-                        ->update(['telegram_id' => null]);
-
-                    $user->update([
-                        'telegram_id' => $telegramId,
-                        'name' => $name,
-                        'join_at' => $user->join_at ?: now()->toDateString(),
-                    ]);
-
-                    return [$user->refresh(), false];
-                }
-            }
-
-            $user = User::query()->create([
-                'telegram' => $telegram !== '' ? $telegram : null,
-                'telegram_id' => $telegramId,
-                'name' => $name,
-                'join_at' => now()->toDateString(),
-            ]);
-
-            return [$user, true];
-        });
-
-        return response()->json([
-            'message' => $created
-                ? 'Регистрация выполнена. Теперь можно пользоваться ботом.'
-                : 'Telegram успешно привязан.',
-            'user' => [
-                'id' => $user->id,
-                'telegram' => $user->telegram,
-                'telegram_id' => $user->telegram_id,
-                'name' => $user->name,
-            ],
-        ], $created ? 201 : 200);
+        return $this->registrationResponse($request->toDto());
     }
 
-    public function saveTelegramId(Request $request, string $telegramId)
+    public function saveTelegramId(RegisterApiUserRequest $request, string $telegramId)
     {
-        $request->merge(['telegram_id' => $telegramId]);
-
-        return $this->register($request);
+        return $this->registrationResponse($request->toDto($telegramId));
     }
 
     public function getVlessLink()
     {
-        $result = $this->resolveVlessLink();
-
-        if ($result instanceof Response) {
-            return $result;
-        }
-
-        return response($result);
+        return response($this->userService->getVlessLink(request()->user()));
     }
 
     public function getVlessQrCode()
     {
-        $result = $this->resolveVlessLink();
-
-        if ($result instanceof Response) {
-            return $result;
-        }
-
         try {
-            $png = QrCode::format('png')->margin(5)->size(512)->generate($result);
+            $png = QrCode::format('png')
+                ->margin(5)
+                ->size(512)
+                ->generate($this->userService->getVlessLink(request()->user()));
 
             return response($png)
                 ->header('Content-Type', 'image/png')
@@ -262,43 +147,15 @@ class UserController extends Controller
         }
     }
 
-    private function resolveVlessLink(): Response|string
+    private function registrationResponse(ApiUserRegistrationData $data)
     {
-        $user = request()->attributes->get('apiUser');
+        $result = $this->userService->register($data);
 
-        $link = route('vless.connect', [
-            'tg' => Crypt::encrypt($user->telegram_id),
-            'i' => Crypt::encrypt($user->id),
-        ], absolute: false);
-
-        return config('vless.domain') . $link;
-    }
-
-    private function normalizeTelegram(string $telegram): string
-    {
-        $telegram = trim($telegram);
-
-        if ($telegram === '') {
-            return '';
-        }
-
-        return '@' . ltrim($telegram, '@');
-    }
-
-    private function hasMoneyForNextSubscriptionMonth(User $user): bool
-    {
-        $activePaymentPeriod = PaymentPeriod::getActive();
-
-        if (! $activePaymentPeriod) {
-            return false;
-        }
-
-        $extraAmount = (float) $user->extraPayments()
-            ->where('current_payment_id', $activePaymentPeriod->id)
-            ->sum('amount');
-
-        $requiredAmount = (float) $activePaymentPeriod->amount + $extraAmount;
-
-        return $user->getStoredBalanceAmount() >= $requiredAmount;
+        return response()->json([
+            'message' => $result->created
+                ? 'Регистрация выполнена. Теперь можно пользоваться ботом.'
+                : 'Telegram успешно привязан.',
+            'user' => (new ApiRegisteredUserResource($result->user))->resolve(),
+        ], $result->created ? 201 : 200);
     }
 }

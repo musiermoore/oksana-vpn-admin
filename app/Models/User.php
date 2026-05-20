@@ -105,7 +105,7 @@ class User extends Authenticatable
         return $this->hasOne(UserSubscription::class)
             ->whereDate('start_date', '<=', now())
             ->whereDate('end_date', '>=', now())
-            ->ofMany('end_date', 'max');
+            ->orderByDesc('user_subscriptions.created_at');
     }
 
     public function latestSubscription(): HasOne

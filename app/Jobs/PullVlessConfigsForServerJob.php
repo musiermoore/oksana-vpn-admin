@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Entities\VlessConfig;
 use App\Models\Server;
 use App\Models\VlessConfig as VlessConfigModel;
 use App\Services\XuiConfigService;
@@ -43,10 +42,11 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
 
         $uuids = [];
 
-        $data = (new XuiConfigService($server))->getInbounds();
+        $service = new XuiConfigService($server);
+        $data = $service->getAllVlessInbounds();
 
         foreach ($data as $row) {
-            $this->handleInbound($row, $server, $uuids);
+            $this->handleInbound($row, $server, $uuids, $service);
         }
 
         if ($uuids !== []) {
@@ -62,18 +62,9 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
         report($exception);
     }
 
-    private function handleInbound(array $row, Server $server, array &$uuids): void
+    private function handleInbound(array $row, Server $server, array &$uuids, XuiConfigService $service): void
     {
-        try {
-            $settings = $this->decodeJsonField($row['settings'] ?? null);
-            $streamSettings = $this->decodeJsonField($row['streamSettings'] ?? $row['stream_settings'] ?? null);
-        } catch (Throwable) {
-            return;
-        }
-
-        if (($row['protocol'] ?? null) !== 'vless') {
-            return;
-        }
+        $settings = $row['settings'] ?? [];
 
         $clients = collect($settings['clients'] ?? []);
 
@@ -84,29 +75,14 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                 continue;
             }
 
-            $config = new VlessConfig(
-                $server->id,
-                null,
-                $client['email'] ?? null,
-                null,
-                true,
-                !empty($client['enable']),
-                $uuid,
-                $client['subId'] ?? null,
-                $row['port'] ?? null,
-                $streamSettings['network'] ?? null,
-                'none',
-                $streamSettings['security'] ?? null,
-                $client['flow'] ?? null,
-                $streamSettings['realitySettings']['settings']['publicKey'] ?? null,
-                $streamSettings['realitySettings']['settings']['fingerprint'] ?? null,
-                $streamSettings['realitySettings']['serverNames'][0] ?? null,
-                $streamSettings['realitySettings']['shortIds'][0] ?? null,
-                '/'
-            );
-
             $vlessConfig = [
-                ...$config->toArray(),
+                ...$service->buildLocalConfigAttributes($row, [
+                    'email' => $client['email'] ?? null,
+                    'enable' => ! empty($client['enable']),
+                    'id' => $uuid,
+                    'subId' => $client['subId'] ?? null,
+                    'flow' => $client['flow'] ?? null,
+                ]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
@@ -122,18 +98,4 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
         }
     }
 
-    private function decodeJsonField(mixed $value): array
-    {
-        if (is_array($value)) {
-            return $value;
-        }
-
-        if (! is_string($value) || trim($value) === '') {
-            return [];
-        }
-
-        $decoded = json_decode($value, true);
-
-        return is_array($decoded) ? $decoded : [];
-    }
 }

@@ -23,7 +23,7 @@ class DispatchDefaultConfigsForUserJob implements ShouldQueue
         $user = User::query()
             ->with([
                 'configs:id,user_id,server_id',
-                'vlessConfigs:id,user_id,server_id',
+                'vlessConfigs:id,user_id,server_id,inbound_id,type',
             ])
             ->find($this->userId);
 
@@ -37,14 +37,18 @@ class DispatchDefaultConfigsForUserJob implements ShouldQueue
             ->get();
 
         $existingWireGuardServerIds = $user->configs->pluck('server_id')->all();
-        $existingVlessServerIds = $user->vlessConfigs->pluck('server_id')->all();
-
         foreach ($servers as $server) {
-            $ids = $server->is_vless
-                ? $existingVlessServerIds
-                : $existingWireGuardServerIds;
+            if ($server->is_vless) {
+                if ($server->getAutoPullVlessTypes() === []) {
+                    continue;
+                }
 
-            if (in_array($server->id, $ids, true)) {
+                EnsureDefaultConfigForUserServerJob::dispatch($user->id, $server->id);
+
+                continue;
+            }
+
+            if (in_array($server->id, $existingWireGuardServerIds, true)) {
                 continue;
             }
 

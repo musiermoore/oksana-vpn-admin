@@ -6,6 +6,7 @@ class VlessConfig
 {
     public function __construct(
         private ?int $serverId = null,
+        private ?int $inboundId = null,
         private ?int $userId = null,
 
         private ?string $name = null,
@@ -26,6 +27,9 @@ class VlessConfig
         private ?string $pbk = null,
         private ?string $fp = null,
         private ?string $sni = null,
+        private ?string $host = null,
+        private ?string $path = null,
+        private ?string $serviceName = null,
         private ?string $sid = null,
         private ?string $spx = null,
     )
@@ -37,6 +41,7 @@ class VlessConfig
         $config = new self();
 
         $config->setServerId($data['server_id'] ?? null);
+        $config->setInboundId($data['inbound_id'] ?? null);
         $config->setUserId($data['user_id'] ?? null);
 
         $config->setName($data['name'] ?? null);
@@ -57,6 +62,9 @@ class VlessConfig
         $config->setPbk($data['pbk'] ?? null);
         $config->setFp($data['fp'] ?? null);
         $config->setSni($data['sni'] ?? null);
+        $config->setHost($data['host'] ?? null);
+        $config->setPath($data['path'] ?? null);
+        $config->setServiceName($data['service_name'] ?? null);
         $config->setSid($data['sid'] ?? null);
         $config->setSpx($data['spx'] ?? null);
 
@@ -67,6 +75,7 @@ class VlessConfig
     {
         return [
             'server_id' => $this->serverId,
+            'inbound_id' => $this->inboundId,
             'user_id' => $this->userId,
             'name' => $this->name,
             'description' => $this->description,
@@ -82,6 +91,9 @@ class VlessConfig
             'pbk' => $this->pbk,
             'fp' => $this->fp,
             'sni' => $this->sni,
+            'host' => $this->host,
+            'path' => $this->path,
+            'service_name' => $this->serviceName,
             'sid' => $this->sid,
             'spx' => $this->spx,
         ];
@@ -101,6 +113,18 @@ class VlessConfig
     public function getUserId(): ?int
     {
         return $this->userId;
+    }
+
+    public function getInboundId(): ?int
+    {
+        return $this->inboundId;
+    }
+
+    public function setInboundId(?int $inboundId): self
+    {
+        $this->inboundId = $inboundId;
+
+        return $this;
     }
 
     public function setUserId(?int $userId): self
@@ -260,6 +284,42 @@ class VlessConfig
     public function setSni(?string $sni): self
     {
         $this->sni = $sni;
+        return $this;
+    }
+
+    public function getHost(): ?string
+    {
+        return $this->host;
+    }
+
+    public function setHost(?string $host): self
+    {
+        $this->host = $host;
+
+        return $this;
+    }
+
+    public function getPath(): ?string
+    {
+        return $this->path;
+    }
+
+    public function setPath(?string $path): self
+    {
+        $this->path = $path;
+
+        return $this;
+    }
+
+    public function getServiceName(): ?string
+    {
+        return $this->serviceName;
+    }
+
+    public function setServiceName(?string $serviceName): self
+    {
+        $this->serviceName = $serviceName;
+
         return $this;
     }
 

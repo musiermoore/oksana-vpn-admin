@@ -33,6 +33,26 @@ class XuiConfigService
         return $this->normalizeResponseData($inboundsResponse->json());
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getVlessInbounds(): array
+    {
+        return $this->filterAllowedInbounds($this->getAllVlessInbounds());
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllVlessInbounds(): array
+    {
+        return collect($this->getInbounds())
+            ->map(fn (array $row) => $this->normalizeInbound($row))
+            ->filter(fn (array $row) => ($row['protocol'] ?? null) === 'vless' && ! empty($row['id']))
+            ->values()
+            ->all();
+    }
+
     public function addClient(int $inboundId, string $telegram, array $clientSettings = []): array
     {
         $settings = array_merge($this->getConfigSettings($telegram), $clientSettings);
@@ -42,7 +62,7 @@ class XuiConfigService
             ->post('/panel/api/inbounds/addClient', [
                 'id' => $inboundId,
                 'settings' => json_encode([
-                    'clients' => [$settings],
+                    'clients' => [array_filter($settings, fn (mixed $value) => $value !== null)],
                 ], JSON_UNESCAPED_SLASHES),
             ])
             ->throw();
@@ -54,29 +74,77 @@ class XuiConfigService
 
     public function createClientOnFirstAvailableInbound(User $user): VlessConfig
     {
-        $inbound = collect($this->getInbounds())
-            ->first(fn (array $row) => ($row['protocol'] ?? null) === 'vless');
+        $inbound = collect($this->getVlessInbounds())->first();
 
         if (! $inbound) {
             throw new RuntimeException("No VLESS inbound available for server [{$this->server->id}]");
         }
 
-        $inboundId = $inbound['id'] ?? null;
+        return $this->createClientOnInbound($user, $inbound);
+    }
 
-        if (! $inboundId) {
-            throw new RuntimeException("VLESS inbound does not contain id for server [{$this->server->id}]");
+    public function createClientOnInboundId(User $user, int $inboundId): VlessConfig
+    {
+        return $this->createClientOnInboundIdFromList($user, $inboundId, $this->getVlessInbounds());
+    }
+
+    public function createClientOnAnyInboundId(User $user, int $inboundId): VlessConfig
+    {
+        return $this->createClientOnInboundIdFromList($user, $inboundId, $this->getAllVlessInbounds());
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $inbounds
+     */
+    private function createClientOnInboundIdFromList(User $user, int $inboundId, array $inbounds): VlessConfig
+    {
+        $inbound = collect($inbounds)
+            ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
+
+        if (! $inbound) {
+            throw new RuntimeException("VLESS inbound [{$inboundId}] not found for server [{$this->server->id}]");
         }
 
-        $settings = $this->getConfigSettings((string) $user->telegram);
+        return $this->createClientOnInbound($user, $inbound);
+    }
 
-        $this->addClient((int) $inboundId, (string) $user->telegram, $settings);
+    /**
+     * @param  array<int, string>  $allowedTypes
+     * @return array<int, VlessConfig>
+     */
+    public function createClientsOnAllowedInbounds(User $user, array $allowedTypes): array
+    {
+        $normalizedTypes = collect($allowedTypes)
+            ->map(fn (mixed $type) => mb_strtolower(trim((string) $type)))
+            ->filter()
+            ->values();
 
-        $attributes = $this->buildLocalConfigAttributes($inbound, $settings, $user->id);
+        if ($normalizedTypes->isEmpty()) {
+            return [];
+        }
 
-        return VlessConfig::query()->updateOrCreate([
-            'server_id' => $this->server->id,
-            'uuid' => $attributes['uuid'],
-        ], $attributes);
+        $existingConfigs = $user->vlessConfigs()
+            ->where('server_id', $this->server->id)
+            ->get(['id', 'inbound_id', 'type']);
+
+        return collect($this->getVlessInbounds())
+            ->filter(function (array $inbound) use ($normalizedTypes) {
+                return $normalizedTypes->contains(mb_strtolower((string) ($inbound['type'] ?? '')));
+            })
+            ->reject(function (array $inbound) use ($existingConfigs) {
+                return $existingConfigs->contains(function (VlessConfig $config) use ($inbound) {
+                    $inboundId = (int) ($inbound['id'] ?? 0);
+
+                    if (! empty($config->inbound_id)) {
+                        return (int) $config->inbound_id === $inboundId;
+                    }
+
+                    return mb_strtolower((string) $config->type) === mb_strtolower((string) ($inbound['type'] ?? ''));
+                });
+            })
+            ->map(fn (array $inbound) => $this->createClientOnInbound($user, $inbound))
+            ->values()
+            ->all();
     }
 
     public function setClientEnabled(string $uuid, bool $enabled): array
@@ -127,6 +195,26 @@ class XuiConfigService
         $payload = $response->json();
 
         return is_array($payload) ? $payload : [];
+    }
+
+    private function createClientOnInbound(User $user, array $inbound): VlessConfig
+    {
+        $inboundId = (int) ($inbound['id'] ?? 0);
+
+        if ($inboundId <= 0) {
+            throw new RuntimeException("VLESS inbound does not contain id for server [{$this->server->id}]");
+        }
+
+        $settings = $this->getConfigSettings((string) $user->telegram, $inbound);
+
+        $this->addClient($inboundId, (string) $user->telegram, $settings);
+
+        $attributes = $this->buildLocalConfigAttributes($inbound, $settings, $user->id);
+
+        return VlessConfig::query()->updateOrCreate([
+            'server_id' => $this->server->id,
+            'uuid' => $attributes['uuid'],
+        ], $attributes);
     }
 
     private function setSession(): void
@@ -223,16 +311,18 @@ class XuiConfigService
         return is_array($data) ? array_values($data) : [];
     }
 
-    private function getConfigSettings(string $telegram): array
+    private function getConfigSettings(string $telegram, array $inbound = []): array
     {
         $nextConfigId = ((int) VlessConfig::query()
             ->whereServerId($this->server->id)
             ->latest('id')
             ->value('id')) + 1;
 
-        return [
+        $flow = $this->shouldUseVisionFlow($inbound) ? 'xtls-rprx-vision' : null;
+
+        return array_filter([
             'id' => (string) Str::uuid(),
-            'flow' => 'xtls-rprx-vision',
+            'flow' => $flow,
             'email' => sprintf(
                 '%s_%s_%d',
                 ltrim($telegram, '@'),
@@ -247,17 +337,79 @@ class XuiConfigService
             'subId' => Str::lower(Str::random(16)),
             'comment' => '',
             'reset' => 0,
+        ], fn (mixed $value) => $value !== null);
+    }
+
+    private function shouldUseVisionFlow(array $inbound): bool
+    {
+        return ($inbound['type'] ?? null) === 'tcp'
+            && ($inbound['security'] ?? null) === 'reality';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $inbounds
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterAllowedInbounds(array $inbounds): array
+    {
+        $allowedInboundIds = $this->server->getAllowedVlessInbounds();
+
+        if ($allowedInboundIds === []) {
+            return $inbounds;
+        }
+
+        return collect($inbounds)
+            ->filter(fn (array $row) => in_array((int) $row['id'], $allowedInboundIds, true))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    public function normalizeInbound(array $row): array
+    {
+        $settings = $this->decodeJsonField($row['settings'] ?? null);
+        $streamSettings = $this->decodeJsonField($row['streamSettings'] ?? $row['stream_settings'] ?? null);
+        $wsSettings = $this->decodeJsonField($streamSettings['wsSettings'] ?? $streamSettings['ws_settings'] ?? null);
+        $grpcSettings = $this->decodeJsonField($streamSettings['grpcSettings'] ?? $streamSettings['grpc_settings'] ?? null);
+        $tlsSettings = $this->decodeJsonField($streamSettings['tlsSettings'] ?? $streamSettings['tls_settings'] ?? null);
+        $realitySettings = $this->decodeJsonField(
+            $streamSettings['realitySettings'] ?? $streamSettings['reality_settings'] ?? null
+        );
+
+        $headers = $this->decodeJsonField($wsSettings['headers'] ?? null);
+        $type = mb_strtolower((string) ($streamSettings['network'] ?? 'tcp'));
+        $security = mb_strtolower((string) ($streamSettings['security'] ?? 'none'));
+
+        return [
+            'id' => isset($row['id']) ? (int) $row['id'] : null,
+            'protocol' => $row['protocol'] ?? null,
+            'port' => isset($row['port']) ? (int) $row['port'] : null,
+            'type' => $type,
+            'security' => $security,
+            'settings' => $settings,
+            'stream_settings' => $streamSettings,
+            'pbk' => $realitySettings['settings']['publicKey'] ?? null,
+            'fp' => $realitySettings['settings']['fingerprint'] ?? null,
+            'sni' => $realitySettings['serverNames'][0]
+                ?? $tlsSettings['serverName']
+                ?? $headers['Host']
+                ?? null,
+            'sid' => $realitySettings['shortIds'][0] ?? null,
+            'spx' => '/',
+            'host' => $headers['Host'] ?? null,
+            'path' => $wsSettings['path'] ?? null,
+            'service_name' => $grpcSettings['serviceName'] ?? $grpcSettings['service_name'] ?? null,
         ];
     }
 
-    private function buildLocalConfigAttributes(array $inbound, array $settings, ?int $userId = null): array
+    public function buildLocalConfigAttributes(array $inbound, array $settings, ?int $userId = null): array
     {
-        $streamSettings = $this->decodeJsonField(
-            $inbound['streamSettings'] ?? $inbound['stream_settings'] ?? null
-        );
-
         $config = new VlessConfigData(
             $this->server->id,
+            $inbound['id'] ?? null,
             $userId,
             $settings['email'] ?? null,
             null,
@@ -266,15 +418,18 @@ class XuiConfigService
             $settings['id'] ?? null,
             $settings['subId'] ?? null,
             $inbound['port'] ?? null,
-            $streamSettings['network'] ?? null,
+            $inbound['type'] ?? null,
             'none',
-            $streamSettings['security'] ?? null,
+            $inbound['security'] ?? null,
             $settings['flow'] ?? null,
-            $streamSettings['realitySettings']['settings']['publicKey'] ?? null,
-            $streamSettings['realitySettings']['settings']['fingerprint'] ?? null,
-            $streamSettings['realitySettings']['serverNames'][0] ?? null,
-            $streamSettings['realitySettings']['shortIds'][0] ?? null,
-            '/'
+            $inbound['pbk'] ?? null,
+            $inbound['fp'] ?? null,
+            $inbound['sni'] ?? null,
+            $inbound['host'] ?? null,
+            $inbound['path'] ?? null,
+            $inbound['service_name'] ?? null,
+            $inbound['sid'] ?? null,
+            $inbound['spx'] ?? '/'
         );
 
         return $config->toArray();
@@ -311,7 +466,7 @@ class XuiConfigService
 
         return [
             'inbound_id' => $inboundId,
-            'settings' => [
+            'settings' => array_filter([
                 'id' => $client['uuid'] ?? $config->uuid,
                 'flow' => $config->flow,
                 'email' => $client['email'] ?? $config->name,
@@ -323,7 +478,7 @@ class XuiConfigService
                 'subId' => $client['subId'] ?? $config->sub_id,
                 'comment' => '',
                 'reset' => $client['reset'] ?? 0,
-            ],
+            ], fn (mixed $value) => $value !== null),
         ];
     }
 

@@ -62,6 +62,94 @@ class VlessConnectTest extends TestCase
         ], $this->extractNames($decoded));
     }
 
+    public function test_deep_link_route_redirects_to_v2rayng_subscription_import(): void
+    {
+        Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+        $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
+
+        $response = $this->get(route('vless.deep-link', [
+            'client' => 'v2rayng',
+            'token' => Crypt::encrypt([
+                'tg' => '123456',
+                'i' => (string) $user->id,
+            ]),
+        ]));
+
+        $response->assertRedirect();
+
+        $location = $response->headers->get('Location');
+
+        $this->assertNotNull($location);
+        $this->assertStringStartsWith('v2rayng://install-sub?url=', $location);
+    }
+
+    public function test_deep_link_route_redirects_to_happ_encrypted_link(): void
+    {
+        Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+            'https://crypto.happ.su/api-v2.php' => Http::response('happ://crypt5/some-encrypted-value'),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+        $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
+
+        $response = $this->get(route('vless.deep-link', [
+            'client' => 'happ',
+            'token' => Crypt::encrypt([
+                'tg' => '123456',
+                'i' => (string) $user->id,
+            ]),
+        ]));
+
+        $response->assertRedirect('happ://crypt5/some-encrypted-value');
+    }
+
+    public function test_static_ws_link_contains_ws_transport_parameters(): void
+    {
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => null,
+            'name' => 'ws-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'ws-uuid',
+            'port' => 8443,
+            'type' => 'ws',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'sni' => 'ws.example.com',
+            'host' => 'cdn.example.com',
+            'path' => '/socket',
+        ]);
+
+        $this->assertSame(
+            'vless://ws-uuid@lv-1.example.com:8443?type=ws&encryption=none&security=tls&sni=ws.example.com&host=cdn.example.com&path=%2Fsocket#lv1-ws-config',
+            $config->getStaticLink()
+        );
+    }
+
     private function createServer(string $name, string $code, string $host): Server
     {
         return Server::query()->create([

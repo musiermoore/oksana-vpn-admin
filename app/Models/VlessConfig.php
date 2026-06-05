@@ -10,6 +10,7 @@ class VlessConfig extends Model
 {
     protected $fillable = [
         'server_id',
+        'inbound_id',
         'user_id',
         'name', // email in 3x-ui
         'description',
@@ -29,6 +30,9 @@ class VlessConfig extends Model
         'pbk',
         'fp',
         'sni',
+        'host',
+        'path',
+        'service_name',
         'sid',
         'spx',
     ];
@@ -72,12 +76,33 @@ class VlessConfig extends Model
             "type={$this->type}",
             "encryption={$this->encryption}",
             "security={$this->security}",
-            "pbk={$this->pbk}",
-            "fp={$this->fp}",
-            "sni={$this->sni}",
-            "sid={$this->sid}",
-            "spx=" . urlencode($this->spx),
         ];
+
+        if ($this->security === 'reality') {
+            $paramList[] = "pbk={$this->pbk}";
+            $paramList[] = "fp={$this->fp}";
+            $paramList[] = "sni={$this->sni}";
+            $paramList[] = "sid={$this->sid}";
+            $paramList[] = 'spx=' . urlencode($this->spx ?: '/');
+        } else {
+            if ($this->security && $this->sni) {
+                $paramList[] = "sni={$this->sni}";
+            }
+
+            if ($this->type === 'ws') {
+                if ($this->host) {
+                    $paramList[] = 'host=' . urlencode($this->host);
+                }
+
+                if ($this->path) {
+                    $paramList[] = 'path=' . urlencode($this->path);
+                }
+            }
+
+            if ($this->type === 'grpc' && $this->service_name) {
+                $paramList[] = 'serviceName=' . urlencode($this->service_name);
+            }
+        }
 
         if ($this->flow) {
             $paramList[] = "flow={$this->flow}";
@@ -87,7 +112,7 @@ class VlessConfig extends Model
 
         $label = str($this->server->code . '_' . $this->name)->slug();
 
-        return "vless://{$this->uuid}@{$this->server->getHost()}?{$params}#{$label}";
+        return "vless://{$this->uuid}@{$this->server->getHost()}:{$this->port}?{$params}#{$label}";
     }
 
     public function getBaseUrl(): string

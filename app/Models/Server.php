@@ -24,6 +24,8 @@ class Server extends Model
         'ssh_public_key',
         'is_vless',
         'is_ready',
+        'auto_pull_vless_types',
+        'allowed_vless_inbounds',
     ];
 
     protected function casts(): array
@@ -33,6 +35,8 @@ class Server extends Model
             'is_https' => 'boolean',
             'is_vless' => 'boolean',
             'is_ready' => 'boolean',
+            'auto_pull_vless_types' => 'array',
+            'allowed_vless_inbounds' => 'array',
         ];
     }
 
@@ -61,5 +65,29 @@ class Server extends Model
     public function getHost()
     {
         return $this->link_host ?: $this->ip;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getAutoPullVlessTypes(): array
+    {
+        return collect($this->auto_pull_vless_types ?? [])
+            ->map(fn (mixed $type) => mb_strtolower(trim((string) $type)))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function getAllowedVlessInbounds(): array
+    {
+        return collect($this->allowed_vless_inbounds ?? [])
+            ->map(fn (mixed $id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->values()
+            ->all();
     }
 }

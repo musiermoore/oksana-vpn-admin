@@ -9,6 +9,8 @@ const props = defineProps({
     submit_url: String,
     method: String,
     server: Object,
+    vless_type_options: Array,
+    vless_inbound_options: Array,
 });
 
 const form = useForm({
@@ -25,6 +27,8 @@ const form = useForm({
     ssh_public_key: props.server?.ssh_public_key ?? '',
     is_vless: props.server?.is_vless ?? false,
     is_ready: props.server?.is_ready ?? false,
+    auto_pull_vless_types: props.server?.auto_pull_vless_types ?? [],
+    allowed_vless_inbounds: props.server?.allowed_vless_inbounds ?? [],
 });
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
@@ -50,6 +54,25 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><textarea v-model="form.ssh_public_key" /></label>
             <label class="field"><span>Is Vless</span><input v-model="form.is_vless" type="checkbox"></label>
             <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
+            <label class="field" style="grid-column: 1 / -1;">
+                <span>Auto Pull VLESS Types</span>
+                <select v-model="form.auto_pull_vless_types" multiple :disabled="!form.is_vless">
+                    <option v-for="option in vless_type_options" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                    </option>
+                </select>
+            </label>
+            <label class="field" style="grid-column: 1 / -1;">
+                <span>Allowed VLESS Inbounds</span>
+                <select v-model="form.allowed_vless_inbounds" multiple :disabled="!form.is_vless || vless_inbound_options.length === 0">
+                    <option v-for="option in vless_inbound_options" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                    </option>
+                </select>
+                <small v-if="form.is_vless && vless_inbound_options.length === 0">
+                    Inbounds appear here after the server has panel access configured and saved.
+                </small>
+            </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
                 <button class="button" type="submit" :disabled="form.processing">Сохранить</button>

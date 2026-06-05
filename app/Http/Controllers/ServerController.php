@@ -8,6 +8,8 @@ use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
 use App\Services\Crud\ServerCrudService;
+use App\Services\XuiConfigService;
+use Exception;
 use Illuminate\Http\Request;
 use RuntimeException;
 
@@ -39,6 +41,8 @@ class ServerController extends Controller
             'submit_url' => route('servers.store'),
             'method' => 'post',
             'server' => null,
+            'vless_type_options' => $this->getVlessTypeOptions(),
+            'vless_inbound_options' => [],
         ]);
     }
 
@@ -63,6 +67,8 @@ class ServerController extends Controller
             'submit_url' => route('servers.update', $server),
             'method' => 'patch',
             'server' => (new ServerFormResource($server))->toArray(request()),
+            'vless_type_options' => $this->getVlessTypeOptions(),
+            'vless_inbound_options' => $this->getVlessInboundOptions($server),
         ]);
     }
 
@@ -91,5 +97,56 @@ class ServerController extends Controller
 
         return redirect()->route('servers.index')
             ->with('success', 'Сервер успешно удалён');
+    }
+
+    private function getVlessTypeOptions(): array
+    {
+        return [
+            ['value' => 'tcp', 'label' => 'TCP'],
+            ['value' => 'ws', 'label' => 'WebSocket'],
+            ['value' => 'grpc', 'label' => 'gRPC'],
+        ];
+    }
+
+    private function getVlessInboundOptions(Server $server): array
+    {
+        if (! $server->is_vless || blank($server->panel_link) || blank($server->panel_username) || blank($server->panel_password)) {
+            return [];
+        }
+
+        try {
+            return collect((new XuiConfigService($server))->getAllVlessInbounds())
+                ->map(function (array $inbound) {
+                    $parts = [
+                        '#'.$inbound['id'],
+                        strtoupper((string) ($inbound['type'] ?? 'unknown')),
+                        strtoupper((string) ($inbound['security'] ?? 'none')),
+                        'port '.$inbound['port'],
+                    ];
+
+                    if (! empty($inbound['host'])) {
+                        $parts[] = 'host '.$inbound['host'];
+                    }
+
+                    if (! empty($inbound['path'])) {
+                        $parts[] = 'path '.$inbound['path'];
+                    }
+
+                    if (! empty($inbound['service_name'])) {
+                        $parts[] = 'service '.$inbound['service_name'];
+                    }
+
+                    return [
+                        'value' => (int) $inbound['id'],
+                        'label' => implode(', ', array_filter($parts)),
+                    ];
+                })
+                ->values()
+                ->all();
+        } catch (Exception $exception) {
+            report($exception);
+
+            return [];
+        }
     }
 }

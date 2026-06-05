@@ -112,7 +112,7 @@ class VlessConfig extends Model
 
         $label = str($this->server->code . '_' . $this->name)->slug();
 
-        return "vless://{$this->uuid}@{$this->server->getHost()}:{$this->port}?{$params}#{$label}";
+        return "vless://{$this->uuid}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
     }
 
     public function getBaseUrl(): string

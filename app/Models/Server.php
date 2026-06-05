@@ -70,6 +70,31 @@ class Server extends Model
         return $this->link_host ?: $this->ip;
     }
 
+    public function getLinkAddressHost(): string
+    {
+        $host = trim((string) ($this->link_host ?: $this->ip));
+
+        if ($host === '') {
+            return '';
+        }
+
+        if (str_contains($host, '://')) {
+            $parsedHost = parse_url($host, PHP_URL_HOST);
+
+            return is_string($parsedHost) && $parsedHost !== '' ? $parsedHost : $host;
+        }
+
+        if (preg_match('/^\[[^\]]+\](?::\d+)?$/', $host) === 1) {
+            return (string) preg_replace('/:\d+$/', '', $host);
+        }
+
+        if (substr_count($host, ':') === 1 && preg_match('/:\d+$/', $host) === 1) {
+            return (string) preg_replace('/:\d+$/', '', $host);
+        }
+
+        return $host;
+    }
+
     /**
      * @return array<int, int>
      */

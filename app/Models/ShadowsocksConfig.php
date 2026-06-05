@@ -56,7 +56,7 @@ class ShadowsocksConfig extends Model
         $query = $this->buildQueryString();
         $label = rawurlencode((string) str($this->server->code.'_'.$this->name)->slug());
 
-        return "ss://{$credentials}@{$this->server->getHost()}:{$this->port}{$query}#{$label}";
+        return "ss://{$credentials}@{$this->server->getLinkAddressHost()}:{$this->port}{$query}#{$label}";
     }
 
     public function getQrCodeContent(): string

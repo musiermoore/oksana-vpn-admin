@@ -22,8 +22,7 @@ class ServerResource extends JsonResource
             'ssh_public_key' => $this->ssh_public_key,
             'is_vless' => (bool) $this->is_vless,
             'is_ready' => (bool) $this->is_ready,
-            'auto_pull_vless_types' => $this->auto_pull_vless_types,
-            'allowed_vless_inbounds' => $this->allowed_vless_inbounds,
+            'allowed_inbound_ids' => $this->allowed_inbound_ids,
             'links' => [
                 'edit' => route('servers.edit', $this->resource),
                 'destroy' => route('servers.destroy', $this->resource),

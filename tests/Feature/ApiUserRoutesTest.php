@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Config;
 use App\Models\CurrentPayment;
 use App\Models\Server;
+use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\UserSubscription;
 use App\Support\BotApiMessages;
@@ -101,6 +102,58 @@ class ApiUserRoutesTest extends TestCase
 
         $this->assertSame($user->telegram_id, $deepLinkCredentials['tg']);
         $this->assertSame((string) $user->id, (string) $deepLinkCredentials['i']);
+    }
+
+    public function test_shadowsocks_configs_route_returns_config_resource_payload(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = $this->createServer(code: 'SS');
+        $config = ShadowsocksConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'android-ss',
+            'description' => 'Primary Shadowsocks config',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 8388,
+            'method' => 'chacha20-ietf-poly1305',
+            'password' => 'secret',
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/shadowsocks/configs")
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [
+                    [
+                        'id' => $config->id,
+                        'name' => 'android-ss',
+                        'download_url' => "/api/users/{$user->telegram_id}/configs/shadowsocks/{$config->id}/download",
+                        'qr_code_url' => "/api/users/{$user->telegram_id}/configs/shadowsocks/{$config->id}/qr-code",
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_shadowsocks_download_route_returns_ss_link_for_active_user(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = $this->createServer(code: 'SS');
+        $config = ShadowsocksConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'android-ss',
+            'description' => null,
+            'is_active' => true,
+            'enable' => true,
+            'port' => 8388,
+            'method' => 'chacha20-ietf-poly1305',
+            'password' => 'secret',
+        ]);
+
+        $response = $this->get("/api/users/{$user->telegram_id}/configs/shadowsocks/{$config->id}/download");
+
+        $response->assertOk();
+        $this->assertStringStartsWith('ss://', $response->getContent());
     }
 
     private function createUser(float $balance): User

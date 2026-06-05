@@ -28,10 +28,8 @@ class StoreServerRequest extends FormRequest
             'ssh_public_key' => ['nullable', 'string'],
             'is_vless' => ['nullable', 'boolean'],
             'is_ready' => ['nullable', 'boolean'],
-            'auto_pull_vless_types' => ['nullable', 'array'],
-            'auto_pull_vless_types.*' => ['string', 'in:tcp,ws,grpc'],
-            'allowed_vless_inbounds' => ['nullable', 'array'],
-            'allowed_vless_inbounds.*' => ['integer', 'min:1'],
+            'allowed_inbound_ids' => ['nullable', 'array'],
+            'allowed_inbound_ids.*' => ['integer', 'min:1'],
         ];
     }
 
@@ -40,8 +38,6 @@ class StoreServerRequest extends FormRequest
         $data = $this->validated();
 
         return new ServerData(
-            autoPullVlessTypes: $this->normalizeAutoPullVlessTypes($data['auto_pull_vless_types'] ?? null),
-            allowedVlessInbounds: $this->normalizeAllowedVlessInbounds($data['allowed_vless_inbounds'] ?? null),
             name: $data['name'],
             code: $data['code'],
             ip: $data['ip'],
@@ -55,21 +51,11 @@ class StoreServerRequest extends FormRequest
             sshPublicKey: $data['ssh_public_key'] ?? null,
             isVless: (bool) ($data['is_vless'] ?? false),
             isReady: (bool) ($data['is_ready'] ?? false),
+            allowedInboundIds: $this->normalizeAllowedInboundIds($data['allowed_inbound_ids'] ?? null),
         );
     }
 
-    private function normalizeAutoPullVlessTypes(?array $value): ?array
-    {
-        $types = collect($value ?? [])
-            ->map(fn (mixed $type) => mb_strtolower(trim((string) $type)))
-            ->filter()
-            ->values()
-            ->all();
-
-        return $types === [] ? null : $types;
-    }
-
-    private function normalizeAllowedVlessInbounds(?array $value): ?array
+    private function normalizeAllowedInboundIds(?array $value): ?array
     {
         $inboundIds = collect($value ?? [])
             ->map(fn (mixed $id) => (int) $id)

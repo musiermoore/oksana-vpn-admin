@@ -9,6 +9,7 @@ use App\Http\Resources\Api\ApiBalanceResource;
 use App\Http\Resources\Api\ApiConfigResource;
 use App\Http\Resources\Api\ApiRegisteredUserResource;
 use App\Http\Resources\Api\ApiRegistrationStatusResource;
+use App\Http\Resources\Api\ApiShadowsocksConfigResource;
 use App\Http\Resources\Api\ApiVlessConfigResource;
 use App\Http\Resources\Api\ApiVlessDeepLinksResource;
 use App\Models\User;
@@ -68,9 +69,11 @@ class UserController extends Controller
 
         $configs = $this->userService->getUserConfigs($user, $type);
 
-        $resource = $this->userService->isVlessType($type)
-            ? ApiVlessConfigResource::collection($configs)
-            : ApiConfigResource::collection($configs);
+        $resource = match (true) {
+            $this->userService->isVlessType($type) => ApiVlessConfigResource::collection($configs),
+            $this->userService->isShadowsocksType($type) => ApiShadowsocksConfigResource::collection($configs),
+            default => ApiConfigResource::collection($configs),
+        };
 
         return response()->json([
             'configs' => $resource->resolve(),
@@ -94,7 +97,7 @@ class UserController extends Controller
         }
 
         try {
-            return $this->userService->isVlessType($type)
+            return $this->userService->isLinkConfigType($type)
                 ? response($config->getLink())
                 : response()->download($config->path, $config->name.'.conf');
         } catch (Exception $exception) {

@@ -7,6 +7,7 @@ use App\DTOs\User\ApiUserRegistrationResultData;
 use App\Models\PaymentPeriod;
 use App\Models\User;
 use App\Repositories\ConfigRepository;
+use App\Repositories\ShadowsocksConfigRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
 use App\Services\VlessDeepLinkService;
@@ -20,6 +21,7 @@ class ApiUserService
         private readonly UserRepository $users,
         private readonly ConfigRepository $configs,
         private readonly VlessConfigRepository $vlessConfigs,
+        private readonly ShadowsocksConfigRepository $shadowsocksConfigs,
         private readonly VlessDeepLinkService $vlessDeepLinks,
     ) {}
 
@@ -90,16 +92,20 @@ class ApiUserService
 
     public function getUserConfigs(User $user, string $type): Collection
     {
-        return $this->isVlessType($type)
-            ? $this->vlessConfigs->allForUser($user)
-            : $this->configs->allForUser($user);
+        return match (true) {
+            $this->isVlessType($type) => $this->vlessConfigs->allForUser($user),
+            $this->isShadowsocksType($type) => $this->shadowsocksConfigs->allForUser($user),
+            default => $this->configs->allForUser($user),
+        };
     }
 
     public function findUserConfig(User $user, string $type, string $configId): ?Model
     {
-        return $this->isVlessType($type)
-            ? $this->vlessConfigs->findForUser($user, $configId)
-            : $this->configs->findForUser($user, $configId);
+        return match (true) {
+            $this->isVlessType($type) => $this->vlessConfigs->findForUser($user, $configId),
+            $this->isShadowsocksType($type) => $this->shadowsocksConfigs->findForUser($user, $configId),
+            default => $this->configs->findForUser($user, $configId),
+        };
     }
 
     public function getVlessLink(User $user): string
@@ -138,6 +144,16 @@ class ApiUserService
     public function isVlessType(string $type): bool
     {
         return trim(mb_strtolower($type)) === 'vless';
+    }
+
+    public function isShadowsocksType(string $type): bool
+    {
+        return trim(mb_strtolower($type)) === 'shadowsocks';
+    }
+
+    public function isLinkConfigType(string $type): bool
+    {
+        return $this->isVlessType($type) || $this->isShadowsocksType($type);
     }
 
     private function normalizeTelegram(string $telegram): string

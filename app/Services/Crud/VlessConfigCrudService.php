@@ -19,8 +19,13 @@ class VlessConfigCrudService
 
     public function assign(VlessConfigStoreData $data): VlessConfig
     {
-        $user = User::query()->find($data->userId);
-        $server = Server::query()->find($data->serverId);
+        return $this->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
+    }
+
+    public function assignFromXrayData(int $userId, int $serverId, int $inboundId): VlessConfig
+    {
+        $user = User::query()->find($userId);
+        $server = Server::query()->find($serverId);
 
         if (! $user) {
             throw new RuntimeException('Пользователь не найден');
@@ -32,7 +37,7 @@ class VlessConfigCrudService
 
         $xui = new XuiConfigService($server);
         $inbound = collect($xui->getAllVlessInbounds())
-            ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $data->inboundId);
+            ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
 
         if (! $inbound) {
             throw new RuntimeException('Выбранный VLESS-вход не найден');
@@ -40,8 +45,8 @@ class VlessConfigCrudService
 
         $existingConfig = $user->vlessConfigs()
             ->where('server_id', $server->id)
-            ->where(function ($query) use ($data, $inbound) {
-                $query->where('inbound_id', $data->inboundId)
+            ->where(function ($query) use ($inboundId, $inbound) {
+                $query->where('inbound_id', $inboundId)
                     ->orWhere(function ($fallbackQuery) use ($inbound) {
                         $fallbackQuery
                             ->whereNull('inbound_id')
@@ -54,7 +59,7 @@ class VlessConfigCrudService
             throw new RuntimeException('Для этого входа у пользователя уже есть VLESS-конфиг');
         }
 
-        return $xui->createClientOnAnyInboundId($user, $data->inboundId);
+        return $xui->createClientOnAnyInboundId($user, $inboundId);
     }
 
     public function update(VlessConfig $config, VlessConfigUpdateData $data): VlessConfig

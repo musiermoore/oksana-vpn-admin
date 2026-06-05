@@ -38,7 +38,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => true,
-            'auto_pull_vless_types' => ['tcp'],
+            'allowed_inbound_ids' => [10],
         ]);
 
         $missingBothUser = User::query()->create([
@@ -152,7 +152,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => true,
-            'auto_pull_vless_types' => ['tcp'],
+            'allowed_inbound_ids' => [10],
         ]);
 
         Server::query()->create([
@@ -210,7 +210,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => true,
-            'auto_pull_vless_types' => ['tcp'],
+            'allowed_inbound_ids' => [10],
         ]);
 
         $finlandVlessServer = Server::query()->create([
@@ -220,7 +220,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => true,
-            'auto_pull_vless_types' => ['tcp'],
+            'allowed_inbound_ids' => [10],
         ]);
 
         $user = User::query()->create([
@@ -291,7 +291,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'app_path' => '/opt/app',
             'is_ready' => true,
             'is_vless' => true,
-            'auto_pull_vless_types' => ['tcp'],
+            'allowed_inbound_ids' => [10],
         ]);
 
         $user = User::query()->create([

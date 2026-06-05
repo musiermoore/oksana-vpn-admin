@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Entities\VlessConfig as VlessConfigData;
+use App\Models\ShadowsocksConfig;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
@@ -53,10 +54,32 @@ class XuiConfigService
             ->all();
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllShadowsocksInbounds(): array
+    {
+        return collect($this->getInbounds())
+            ->map(fn (array $row) => $this->normalizeInbound($row))
+            ->filter(fn (array $row) => ($row['protocol'] ?? null) === 'shadowsocks' && ! empty($row['id']))
+            ->values()
+            ->all();
+    }
+
     public function addClient(int $inboundId, string $telegram, array $clientSettings = []): array
     {
         $settings = array_merge($this->getConfigSettings($telegram), $clientSettings);
 
+        return $this->postClientSettings($inboundId, $settings);
+    }
+
+    public function addShadowsocksClient(int $inboundId, array $clientSettings): array
+    {
+        return $this->postClientSettings($inboundId, $clientSettings);
+    }
+
+    private function postClientSettings(int $inboundId, array $settings): array
+    {
         $response = $this->getRequest()
             ->asForm()
             ->post('/panel/api/inbounds/addClient', [
@@ -93,6 +116,41 @@ class XuiConfigService
         return $this->createClientOnInboundIdFromList($user, $inboundId, $this->getAllVlessInbounds());
     }
 
+    public function createShadowsocksClientOnAnyInboundId(User $user, int $inboundId): ShadowsocksConfig
+    {
+        $inbound = collect($this->getAllShadowsocksInbounds())
+            ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
+
+        if (! $inbound) {
+            throw new RuntimeException("Shadowsocks inbound [{$inboundId}] not found for server [{$this->server->id}]");
+        }
+
+        $settings = $this->getShadowsocksConfigSettings((string) $user->telegram, $inbound);
+
+        $this->addShadowsocksClient($inboundId, $settings);
+
+        $attributes = [
+            'server_id' => $this->server->id,
+            'inbound_id' => $inboundId,
+            'user_id' => $user->id,
+            'name' => $settings['email'],
+            'description' => null,
+            'is_active' => true,
+            'enable' => (bool) ($settings['enable'] ?? true),
+            'port' => $inbound['port'] ?? null,
+            'method' => $settings['method'] ?? $inbound['method'] ?? 'chacha20-ietf-poly1305',
+            'password' => $settings['password'] ?? null,
+            'plugin' => null,
+            'plugin_opts' => null,
+            'network' => $inbound['type'] ?? null,
+            'security' => $inbound['security'] ?? null,
+            'host' => $inbound['host'] ?? null,
+            'path' => $inbound['path'] ?? null,
+        ];
+
+        return ShadowsocksConfig::query()->create($attributes);
+    }
+
     /**
      * @param  array<int, array<string, mixed>>  $inbounds
      */
@@ -109,17 +167,13 @@ class XuiConfigService
     }
 
     /**
-     * @param  array<int, string>  $allowedTypes
      * @return array<int, VlessConfig>
      */
-    public function createClientsOnAllowedInbounds(User $user, array $allowedTypes): array
+    public function createClientsOnAllowedInbounds(User $user): array
     {
-        $normalizedTypes = collect($allowedTypes)
-            ->map(fn (mixed $type) => mb_strtolower(trim((string) $type)))
-            ->filter()
-            ->values();
+        $allowedInbounds = $this->getVlessInbounds();
 
-        if ($normalizedTypes->isEmpty()) {
+        if ($allowedInbounds === []) {
             return [];
         }
 
@@ -127,10 +181,7 @@ class XuiConfigService
             ->where('server_id', $this->server->id)
             ->get(['id', 'inbound_id', 'type']);
 
-        return collect($this->getVlessInbounds())
-            ->filter(function (array $inbound) use ($normalizedTypes) {
-                return $normalizedTypes->contains(mb_strtolower((string) ($inbound['type'] ?? '')));
-            })
+        return collect($allowedInbounds)
             ->reject(function (array $inbound) use ($existingConfigs) {
                 return $existingConfigs->contains(function (VlessConfig $config) use ($inbound) {
                     $inboundId = (int) ($inbound['id'] ?? 0);
@@ -340,6 +391,34 @@ class XuiConfigService
         ], fn (mixed $value) => $value !== null);
     }
 
+    private function getShadowsocksConfigSettings(string $telegram, array $inbound = []): array
+    {
+        $nextConfigId = ((int) ShadowsocksConfig::query()
+            ->whereServerId($this->server->id)
+            ->latest('id')
+            ->value('id')) + 1;
+
+        $method = $inbound['method']
+            ?? $inbound['settings']['method']
+            ?? $inbound['settings']['clients'][0]['method']
+            ?? 'chacha20-ietf-poly1305';
+
+        return [
+            'method' => $method,
+            'password' => Str::random(24),
+            'email' => sprintf(
+                '%s_%s_%d',
+                ltrim($telegram, '@'),
+                Str::slug(Str::snake($this->server->name), '_'),
+                $nextConfigId,
+            ),
+            'limitIp' => 0,
+            'totalGB' => 0,
+            'expiryTime' => 0,
+            'enable' => true,
+        ];
+    }
+
     private function shouldUseVisionFlow(array $inbound): bool
     {
         return ($inbound['type'] ?? null) === 'tcp'
@@ -352,10 +431,10 @@ class XuiConfigService
      */
     private function filterAllowedInbounds(array $inbounds): array
     {
-        $allowedInboundIds = $this->server->getAllowedVlessInbounds();
+        $allowedInboundIds = $this->server->getAllowedInboundIds();
 
         if ($allowedInboundIds === []) {
-            return $inbounds;
+            return [];
         }
 
         return collect($inbounds)
@@ -391,6 +470,7 @@ class XuiConfigService
             'security' => $security,
             'settings' => $settings,
             'stream_settings' => $streamSettings,
+            'method' => $settings['method'] ?? $settings['clients'][0]['method'] ?? null,
             'pbk' => $realitySettings['settings']['publicKey'] ?? null,
             'fp' => $realitySettings['settings']['fingerprint'] ?? null,
             'sni' => $realitySettings['serverNames'][0]

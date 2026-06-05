@@ -41,8 +41,7 @@ class ServerController extends Controller
             'submit_url' => route('servers.store'),
             'method' => 'post',
             'server' => null,
-            'vless_type_options' => $this->getVlessTypeOptions(),
-            'vless_inbound_options' => [],
+            'inbound_options' => [],
         ]);
     }
 
@@ -67,8 +66,7 @@ class ServerController extends Controller
             'submit_url' => route('servers.update', $server),
             'method' => 'patch',
             'server' => (new ServerFormResource($server))->toArray(request()),
-            'vless_type_options' => $this->getVlessTypeOptions(),
-            'vless_inbound_options' => $this->getVlessInboundOptions($server),
+            'inbound_options' => $this->getInboundOptions($server),
         ]);
     }
 
@@ -99,26 +97,22 @@ class ServerController extends Controller
             ->with('success', 'Сервер успешно удалён');
     }
 
-    private function getVlessTypeOptions(): array
-    {
-        return [
-            ['value' => 'tcp', 'label' => 'TCP'],
-            ['value' => 'ws', 'label' => 'WebSocket'],
-            ['value' => 'grpc', 'label' => 'gRPC'],
-        ];
-    }
-
-    private function getVlessInboundOptions(Server $server): array
+    private function getInboundOptions(Server $server): array
     {
         if (! $server->is_vless || blank($server->panel_link) || blank($server->panel_username) || blank($server->panel_password)) {
             return [];
         }
 
         try {
-            return collect((new XuiConfigService($server))->getAllVlessInbounds())
+            $service = new XuiConfigService($server);
+
+            return collect($service->getInbounds())
+                ->map(fn (array $row) => $service->normalizeInbound($row))
+                ->filter(fn (array $inbound) => ! empty($inbound['id']))
                 ->map(function (array $inbound) {
                     $parts = [
                         '#'.$inbound['id'],
+                        strtoupper((string) ($inbound['protocol'] ?? 'unknown')),
                         strtoupper((string) ($inbound['type'] ?? 'unknown')),
                         strtoupper((string) ($inbound['security'] ?? 'none')),
                         'port '.$inbound['port'],

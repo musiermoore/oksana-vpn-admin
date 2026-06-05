@@ -14,6 +14,7 @@ use App\Http\Controllers\UserSubscriptionController;
 use App\Http\Controllers\UserTokenController;
 use App\Http\Controllers\VlessConfigController;
 use App\Http\Controllers\WireGuardController;
+use App\Http\Controllers\XrayConfigController;
 use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -36,7 +37,6 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.store');
     Route::resource('user-tokens', UserTokenController::class)->except(['edit', 'update']);
     Route::resource('configs', ConfigController::class)->except(['show']);
-    Route::resource('vless-configs', VlessConfigController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
@@ -51,10 +51,14 @@ Route::middleware('auth')->group(function () {
         ->name('configs.enable');
     Route::post('configs/{config}/disable', [ConfigController::class, 'disable'])
         ->name('configs.disable');
-    Route::post('vless-configs/{vlessConfig}/enable', [VlessConfigController::class, 'enable'])
-        ->name('vless-configs.enable');
-    Route::post('vless-configs/{vlessConfig}/disable', [VlessConfigController::class, 'disable'])
-        ->name('vless-configs.disable');
+    Route::get('xray-configs', [XrayConfigController::class, 'index'])->name('xray-configs.index');
+    Route::get('xray-configs/create', [XrayConfigController::class, 'create'])->name('xray-configs.create');
+    Route::post('xray-configs', [XrayConfigController::class, 'store'])->name('xray-configs.store');
+    Route::get('xray-configs/{protocol}/{config}/edit', [XrayConfigController::class, 'edit'])->name('xray-configs.edit');
+    Route::put('xray-configs/{protocol}/{config}', [XrayConfigController::class, 'update'])->name('xray-configs.update');
+    Route::delete('xray-configs/{protocol}/{config}', [XrayConfigController::class, 'destroy'])->name('xray-configs.destroy');
+    Route::post('xray-configs/{protocol}/{config}/enable', [XrayConfigController::class, 'enable'])->name('xray-configs.enable');
+    Route::post('xray-configs/{protocol}/{config}/disable', [XrayConfigController::class, 'disable'])->name('xray-configs.disable');
 
     Route::post('transactions/{transaction}/approve', [TransactionController::class, 'approve'])
         ->name('transactions.approve');

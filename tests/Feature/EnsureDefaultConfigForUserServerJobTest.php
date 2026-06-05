@@ -59,7 +59,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'is_vless' => true,
-            'auto_pull_vless_types' => ['tcp'],
+            'allowed_inbound_ids' => [10],
         ]);
 
         $user = User::query()->create([
@@ -156,7 +156,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         $this->assertDatabaseCount('vless_configs', 0);
     }
 
-    public function test_job_creates_configs_for_all_allowed_vless_inbounds_including_ws(): void
+    public function test_job_creates_configs_for_all_allowed_inbounds_including_ws(): void
     {
         $server = Server::query()->create([
             'name' => 'Ready VLESS',
@@ -168,7 +168,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'is_vless' => true,
-            'auto_pull_vless_types' => ['tcp', 'ws'],
+            'allowed_inbound_ids' => [10, 11],
         ]);
 
         $user = User::query()->create([

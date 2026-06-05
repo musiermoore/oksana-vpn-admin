@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Server;
+use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -148,6 +149,112 @@ class VlessConnectTest extends TestCase
             'vless://ws-uuid@lv-1.example.com:8443?type=ws&encryption=none&security=tls&sni=ws.example.com&host=cdn.example.com&path=%2Fsocket#lv1-ws-config',
             $config->getStaticLink()
         );
+    }
+
+    public function test_connect_returns_mixed_vless_and_shadowsocks_links_sorted_by_type_server_and_config_id(): void
+    {
+        Http::fake([
+            'https://fi.example.com/sub/sub-fi' => Http::response(base64_encode(
+                "vless://uuid-fi@fi.example.com?type=tcp&security=reality#old-fi\nss://ignored@fi.example.com:8388#old-ss\n"
+            )),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $finland = $this->createServer('Финляндия', 'FI', 'fi.example.com');
+        $latvia = $this->createServer('Латвия', 'LV', 'lv.example.com');
+        $estonia = $this->createServer('Эстония', 'EE', 'ee.example.com');
+
+        $vlessFinland = VlessConfig::query()->create([
+            'server_id' => $finland->id,
+            'user_id' => $user->id,
+            'name' => 'vless-fi',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'uuid-fi',
+            'sub_id' => 'sub-fi',
+            'port' => 443,
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $vlessLatvia = VlessConfig::query()->create([
+            'server_id' => $latvia->id,
+            'user_id' => $user->id,
+            'name' => 'vless-lv',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'uuid-lv',
+            'port' => 443,
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $ssFinland = ShadowsocksConfig::query()->create([
+            'server_id' => $finland->id,
+            'user_id' => $user->id,
+            'name' => 'ss-fi',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 8388,
+            'method' => 'chacha20-ietf-poly1305',
+            'password' => 'secret-1',
+        ]);
+
+        $ssEstonia = ShadowsocksConfig::query()->create([
+            'server_id' => $estonia->id,
+            'user_id' => $user->id,
+            'name' => 'ss-ee',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 8388,
+            'method' => 'chacha20-ietf-poly1305',
+            'password' => 'secret-2',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+
+        $lines = collect(preg_split('/\r\n|\r|\n/', trim($decoded)))
+            ->filter()
+            ->values()
+            ->all();
+
+        $this->assertCount(5, $lines);
+        $this->assertStringStartsWith('vless://', $lines[0]);
+        $this->assertStringContainsString('#'.rawurlencode('Латвия'), $lines[0]);
+        $this->assertStringStartsWith('vless://', $lines[1]);
+        $this->assertStringContainsString('#'.rawurlencode('Финляндия - 1'), $lines[1]);
+        $this->assertStringStartsWith('ss://', $lines[2]);
+        $this->assertStringContainsString('#'.rawurlencode('Финляндия - 1'), $lines[2]);
+        $this->assertStringStartsWith('ss://', $lines[3]);
+        $this->assertStringContainsString('#'.rawurlencode('Финляндия - 2'), $lines[3]);
+        $this->assertStringStartsWith('ss://', $lines[4]);
+        $this->assertStringContainsString('#'.rawurlencode('Эстония'), $lines[4]);
     }
 
     private function createServer(string $name, string $code, string $host): Server

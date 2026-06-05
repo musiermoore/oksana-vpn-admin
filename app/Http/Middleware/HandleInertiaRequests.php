@@ -16,7 +16,7 @@ class HandleInertiaRequests extends Middleware
         $navigation = $user ? [
             ['label' => 'Участники', 'href' => route('users.index'), 'badge' => 'US'],
             ['label' => 'WireGuard', 'href' => route('configs.index'), 'badge' => 'WG'],
-            ['label' => 'VLESS', 'href' => route('vless-configs.index'), 'badge' => 'VL'],
+            ['label' => 'Xray Configs', 'href' => route('xray-configs.index'), 'badge' => 'XR'],
             ['label' => 'Транзакции', 'href' => route('transactions.index'), 'badge' => 'TR'],
             ['label' => 'Подписки', 'href' => route('subscriptions.index'), 'badge' => 'SB'],
             ['label' => 'Периоды оплаты', 'href' => route('current-payments.index'), 'badge' => 'PP'],

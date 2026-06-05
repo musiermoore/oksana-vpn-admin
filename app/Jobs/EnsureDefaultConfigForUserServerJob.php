@@ -63,12 +63,10 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
 
     private function assignVlessConfig(User $user, Server $server): void
     {
-        $allowedTypes = $server->getAutoPullVlessTypes();
-
-        if ($allowedTypes === []) {
+        if ($server->getAllowedInboundIds() === []) {
             return;
         }
 
-        (new XuiConfigService($server))->createClientsOnAllowedInbounds($user, $allowedTypes);
+        (new XuiConfigService($server))->createClientsOnAllowedInbounds($user);
     }
 }

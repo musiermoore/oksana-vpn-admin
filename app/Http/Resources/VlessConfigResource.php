@@ -22,10 +22,10 @@ class VlessConfigResource extends JsonResource
                 'is_active' => $this->user->is_active,
             ] : null,
             'links' => [
-                'edit' => route('vless-configs.edit', $this->resource),
-                'destroy' => route('vless-configs.destroy', $this->resource),
-                'enable' => route('vless-configs.enable', $this->resource),
-                'disable' => route('vless-configs.disable', $this->resource),
+                'edit' => route('xray-configs.edit', ['protocol' => 'vless', 'config' => $this->resource->getKey()]),
+                'destroy' => route('xray-configs.destroy', ['protocol' => 'vless', 'config' => $this->resource->getKey()]),
+                'enable' => route('xray-configs.enable', ['protocol' => 'vless', 'config' => $this->resource->getKey()]),
+                'disable' => route('xray-configs.disable', ['protocol' => 'vless', 'config' => $this->resource->getKey()]),
             ],
         ];
     }

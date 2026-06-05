@@ -6,6 +6,7 @@ readonly class VlessConfigStoreData
 {
     public function __construct(
         public int $userId,
-        public int $configId,
+        public int $serverId,
+        public int $inboundId,
     ) {}
 }

@@ -16,7 +16,8 @@ class StoreVlessConfigRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'exists:users,id'],
-            'config_id' => ['required', 'exists:vless_configs,id'],
+            'server_id' => ['required', 'exists:servers,id'],
+            'inbound_id' => ['required', 'integer', 'min:1'],
         ];
     }
 
@@ -26,7 +27,8 @@ class StoreVlessConfigRequest extends FormRequest
 
         return new VlessConfigStoreData(
             userId: (int) $data['user_id'],
-            configId: (int) $data['config_id'],
+            serverId: (int) $data['server_id'],
+            inboundId: (int) $data['inbound_id'],
         );
     }
 }

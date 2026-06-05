@@ -5,6 +5,7 @@ namespace App\Services\Crud;
 use App\DTOs\VlessConfig\VlessConfigStoreData;
 use App\DTOs\VlessConfig\VlessConfigUpdateData;
 use App\Models\Server;
+use App\Models\User;
 use App\Models\VlessConfig;
 use App\Repositories\VlessConfigRepository;
 use App\Services\XuiConfigService;
@@ -18,13 +19,42 @@ class VlessConfigCrudService
 
     public function assign(VlessConfigStoreData $data): VlessConfig
     {
-        $config = $this->configs->findOrFail($data->configId);
+        $user = User::query()->find($data->userId);
+        $server = Server::query()->find($data->serverId);
 
-        if ($config->user_id) {
-            throw new RuntimeException('Конфиг уже привязан к другому человеку');
+        if (! $user) {
+            throw new RuntimeException('Пользователь не найден');
         }
 
-        return $this->configs->update($config, ['user_id' => $data->userId]);
+        if (! $server || ! $server->is_vless) {
+            throw new RuntimeException('Сервер VLESS не найден');
+        }
+
+        $xui = new XuiConfigService($server);
+        $inbound = collect($xui->getAllVlessInbounds())
+            ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $data->inboundId);
+
+        if (! $inbound) {
+            throw new RuntimeException('Выбранный VLESS-вход не найден');
+        }
+
+        $existingConfig = $user->vlessConfigs()
+            ->where('server_id', $server->id)
+            ->where(function ($query) use ($data, $inbound) {
+                $query->where('inbound_id', $data->inboundId)
+                    ->orWhere(function ($fallbackQuery) use ($inbound) {
+                        $fallbackQuery
+                            ->whereNull('inbound_id')
+                            ->where('type', $inbound['type'] ?? null);
+                    });
+            })
+            ->first();
+
+        if ($existingConfig) {
+            throw new RuntimeException('Для этого входа у пользователя уже есть VLESS-конфиг');
+        }
+
+        return $xui->createClientOnAnyInboundId($user, $data->inboundId);
     }
 
     public function update(VlessConfig $config, VlessConfigUpdateData $data): VlessConfig

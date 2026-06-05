@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\UserResource;
-use App\Http\Resources\VlessConfigResource;
 use App\Http\Requests\VlessConfig\StoreVlessConfigRequest;
 use App\Http\Requests\VlessConfig\UpdateVlessConfigRequest;
+use App\Http\Resources\UserResource;
+use App\Http\Resources\VlessConfigResource;
 use App\Models\User;
 use App\Models\UserToken;
+use App\Models\Server;
 use App\Models\VlessConfig;
 use App\Services\Crud\VlessConfigCrudService;
+use App\Services\VlessDeepLinkService;
 use App\Services\VlessSubscriptionService;
+use App\Services\XuiConfigService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -57,19 +60,12 @@ class VlessConfigController extends Controller
             ->where('users.is_active', true)
             ->get();
 
-        $existingConfigs = VlessConfig::query()
-            ->selectRaw('vless_configs.id, CONCAT(servers.code, ": ", vless_configs.name) AS formatted_name')
-            ->join('servers', 'servers.id', '=', 'vless_configs.server_id')
-            ->whereNull('vless_configs.user_id')
-            ->get()
-            ->pluck('formatted_name', 'id');
-
         return $this->inertia('Configs/VlessForm', [
             'mode' => 'create',
             'submit_url' => route('vless-configs.store'),
             'config' => null,
             'users' => UserResource::collection($users)->toArray($request),
-            'existing_configs' => $existingConfigs->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values(),
+            'available_inbounds' => $this->getAvailableInbounds(),
         ]);
     }
 
@@ -98,7 +94,7 @@ class VlessConfigController extends Controller
             'submit_url' => route('vless-configs.update', $config),
             'config' => (new VlessConfigResource($config))->toArray($request),
             'users' => UserResource::collection($users)->toArray($request),
-            'existing_configs' => [],
+            'available_inbounds' => [],
         ]);
     }
 
@@ -177,22 +173,131 @@ class VlessConfigController extends Controller
 
     public function connect(Request $request)
     {
-        try {
-            $telegramId = Crypt::decrypt($request->tg);
-            $userId = Crypt::decrypt($request->i);
-        } catch (Exception $exception) {
+        $user = $this->resolveUserFromConnectionRequest($request);
+
+        if (! $user) {
             return null;
         }
-
-        if (empty($telegramId) || empty($userId)) {
-            return null;
-        }
-
-        $user = User::query()->whereTelegramId($telegramId)->find($userId);
 
         $service = new VlessSubscriptionService($user);
         $subscriptions = $service->getAllSubscriptions();
 
         return response($subscriptions);
+    }
+
+    public function deepLink(Request $request, string $client, VlessDeepLinkService $deepLinkService)
+    {
+        $user = $this->resolveUserFromConnectionRequest($request);
+
+        if (! $user) {
+            abort(404);
+        }
+
+        $redirectUrl = $deepLinkService->resolveRedirectUrl($client, $deepLinkService->getConnectUrl($user));
+
+        if ($redirectUrl === null) {
+            abort(404);
+        }
+
+        return redirect()->away($redirectUrl);
+    }
+
+    private function resolveUserFromConnectionRequest(Request $request): ?User
+    {
+        $credentials = $this->resolveConnectionCredentials($request);
+
+        if ($credentials === null) {
+            return null;
+        }
+
+        return User::query()
+            ->whereTelegramId($credentials['tg'])
+            ->find($credentials['i']);
+    }
+
+    /**
+     * @return array{tg: string, i: int}|null
+     */
+    private function resolveConnectionCredentials(Request $request): ?array
+    {
+        try {
+            if ($request->filled('token')) {
+                $payload = Crypt::decrypt($request->string('token')->toString());
+
+                if (! is_array($payload)) {
+                    return null;
+                }
+
+                $telegramId = (string) ($payload['tg'] ?? '');
+                $userId = (int) ($payload['i'] ?? 0);
+            } else {
+                $telegramId = (string) Crypt::decrypt($request->tg);
+                $userId = (int) Crypt::decrypt($request->i);
+            }
+        } catch (Exception) {
+            return null;
+        }
+
+        if ($telegramId === '' || $userId <= 0) {
+            return null;
+        }
+
+        return [
+            'tg' => $telegramId,
+            'i' => $userId,
+        ];
+    }
+
+    private function getAvailableInbounds(): array
+    {
+        return Server::query()
+            ->where('is_vless', true)
+            ->where('is_ready', true)
+            ->orderBy('name')
+            ->get()
+            ->flatMap(function (Server $server) {
+                try {
+                    $inbounds = (new XuiConfigService($server))->getAllVlessInbounds();
+                } catch (Exception $exception) {
+                    report($exception);
+
+                    return [];
+                }
+
+                return collect($inbounds)
+                    ->map(function (array $inbound) use ($server) {
+                        $parts = [
+                            strtoupper((string) ($inbound['type'] ?? 'unknown')),
+                            strtoupper((string) ($inbound['security'] ?? 'none')),
+                            'port '.$inbound['port'],
+                        ];
+
+                        if (! empty($inbound['host'])) {
+                            $parts[] = 'host '.$inbound['host'];
+                        }
+
+                        if (! empty($inbound['path'])) {
+                            $parts[] = 'path '.$inbound['path'];
+                        }
+
+                        if (! empty($inbound['service_name'])) {
+                            $parts[] = 'service '.$inbound['service_name'];
+                        }
+
+                        return [
+                            'server_id' => $server->id,
+                            'server_name' => $server->name,
+                            'server_code' => $server->code,
+                            'inbound_id' => $inbound['id'],
+                            'type' => $inbound['type'],
+                            'security' => $inbound['security'],
+                            'label' => $server->code.': '.implode(', ', array_filter($parts)),
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            })
+            ->values()
+            ->all();
     }
 }

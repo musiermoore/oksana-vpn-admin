@@ -69,18 +69,38 @@ class ApiUserRoutesTest extends TestCase
 
         $user = $this->createActiveUser(balance: 500);
 
-        $response = $this->get("/api/users/{$user->telegram_id}/vless/link");
+        $response = $this->getJson("/api/users/{$user->telegram_id}/vless/link");
 
         $response->assertOk();
 
-        $url = $response->getContent();
+        $payload = $response->json();
+        $url = $payload['link'];
 
         $this->assertStringStartsWith('https://vpn.example/connect?', $url);
 
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        $telegramId = Crypt::decrypt($query['tg']);
+        $userId = Crypt::decrypt($query['i']);
 
-        $this->assertSame($user->telegram_id, Crypt::decrypt($query['tg']));
-        $this->assertSame((string) $user->id, (string) Crypt::decrypt($query['i']));
+        $this->assertSame($user->telegram_id, $telegramId);
+        $this->assertSame((string) $user->id, (string) $userId);
+
+        $this->assertArrayHasKey('happ_deep_link', $payload);
+        $this->assertArrayHasKey('v2rayn_deeplink', $payload);
+        $this->assertArrayHasKey('v2rayng_deeplink', $payload);
+        $this->assertArrayHasKey('v2raybox_deeplink', $payload);
+        $this->assertArrayHasKey('sing_box_deeplink', $payload);
+        $this->assertArrayHasKey('hiddify_deeplink', $payload);
+        $this->assertArrayHasKey('v2raytun_deeplink', $payload);
+
+        $this->assertStringStartsWith('https://vpn.example/connect/deep-link/happ?', $payload['happ_deep_link']);
+        $this->assertStringStartsWith('https://vpn.example/connect/deep-link/v2rayn?', $payload['v2rayn_deeplink']);
+
+        parse_str((string) parse_url($payload['happ_deep_link'], PHP_URL_QUERY), $deepLinkQuery);
+        $deepLinkCredentials = Crypt::decrypt($deepLinkQuery['token']);
+
+        $this->assertSame($user->telegram_id, $deepLinkCredentials['tg']);
+        $this->assertSame((string) $user->id, (string) $deepLinkCredentials['i']);
     }
 
     private function createUser(float $balance): User

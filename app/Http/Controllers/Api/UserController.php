@@ -2,22 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\DTOs\User\ApiUserRegistrationData;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\RegisterApiUserRequest;
 use App\Http\Resources\Api\ApiBalanceResource;
 use App\Http\Resources\Api\ApiConfigResource;
 use App\Http\Resources\Api\ApiRegisteredUserResource;
 use App\Http\Resources\Api\ApiRegistrationStatusResource;
 use App\Http\Resources\Api\ApiVlessConfigResource;
+use App\Http\Resources\Api\ApiVlessDeepLinksResource;
 use App\Models\User;
-use App\Support\BotApiMessages;
 use App\Services\Api\ApiUserService;
+use App\Support\BotApiMessages;
 use Exception;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Request;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class UserController extends Controller
@@ -95,7 +96,7 @@ class UserController extends Controller
         try {
             return $this->userService->isVlessType($type)
                 ? response($config->getLink())
-                : response()->download($config->path, $config->name . '.conf');
+                : response()->download($config->path, $config->name.'.conf');
         } catch (Exception $exception) {
             report($exception);
 
@@ -156,7 +157,9 @@ class UserController extends Controller
             return $user;
         }
 
-        return response($this->userService->getVlessLink($user));
+        return response()->json(
+            (new ApiVlessDeepLinksResource($this->userService->getVlessLinks($user)))->resolve()
+        );
     }
 
     public function getVlessQrCode()

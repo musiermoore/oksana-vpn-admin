@@ -20,4 +20,5 @@ yarn-error.log
 /.vscode
 /configs
 /storage/app/wireguard
-
+.DS_Store
+**/.DS_Store

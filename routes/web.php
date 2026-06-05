@@ -1,12 +1,12 @@
 <?php
 
+use App\Http\Controllers\ApiRequestLogController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\ExtraPaymentController;
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ApiRequestLogController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -73,3 +73,5 @@ Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::clas
 
 Route::get('connect', [VlessConfigController::class, 'connect'])
     ->name('vless.connect');
+Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLink'])
+    ->name('vless.deep-link');

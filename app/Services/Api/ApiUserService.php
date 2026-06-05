@@ -9,9 +9,9 @@ use App\Models\User;
 use App\Repositories\ConfigRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
+use App\Services\VlessDeepLinkService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 class ApiUserService
@@ -20,6 +20,7 @@ class ApiUserService
         private readonly UserRepository $users,
         private readonly ConfigRepository $configs,
         private readonly VlessConfigRepository $vlessConfigs,
+        private readonly VlessDeepLinkService $vlessDeepLinks,
     ) {}
 
     public function findUserByTelegramId(string $telegramId): ?User
@@ -103,12 +104,18 @@ class ApiUserService
 
     public function getVlessLink(User $user): string
     {
-        $link = route('vless.connect', [
-            'tg' => Crypt::encrypt($user->telegram_id),
-            'i' => Crypt::encrypt($user->id),
-        ], absolute: false);
+        return $this->vlessDeepLinks->getConnectUrl($user);
+    }
 
-        return config('vless.domain') . $link;
+    /**
+     * @return array<string, string>
+     */
+    public function getVlessLinks(User $user): array
+    {
+        return [
+            'link' => $this->vlessDeepLinks->getConnectUrl($user),
+            ...$this->vlessDeepLinks->getRouteLinks($this->vlessDeepLinks->getDeepLinkRouteParameters($user)),
+        ];
     }
 
     public function hasMoneyForNextSubscriptionMonth(User $user): bool
@@ -141,7 +148,7 @@ class ApiUserService
             return '';
         }
 
-        return '@' . ltrim($telegram, '@');
+        return '@'.ltrim($telegram, '@');
     }
 
     private function resolveName(string $telegram, string $telegramId, ?string $name): string

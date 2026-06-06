@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\File;
 
 class Server extends Model
 {
@@ -59,9 +60,31 @@ class Server extends Model
 
     public function getSshCommandAttribute(): string
     {
-        $sshKeyPath = '/var/www/html/storage/ssh_key';
+        $sshKeyPath = $this->getSshPrivateKeyPath();
 
         return "ssh -i {$sshKeyPath} -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@{$this->ip} 2>&1";
+    }
+
+    public function getSshPrivateKeyPath(): string
+    {
+        $privateKey = trim((string) $this->ssh_private_key);
+
+        if ($privateKey === '') {
+            return '/var/www/html/storage/ssh_key';
+        }
+
+        $directory = storage_path('app/ssh');
+        $path = $directory . '/server-' . $this->id . '-key.pem';
+
+        File::ensureDirectoryExists($directory);
+
+        if (! File::exists($path) || trim((string) File::get($path)) !== $privateKey) {
+            File::put($path, $privateKey . PHP_EOL);
+        }
+
+        @chmod($path, 0600);
+
+        return $path;
     }
 
     public function getScheme(): string

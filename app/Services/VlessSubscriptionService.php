@@ -55,7 +55,6 @@ class VlessSubscriptionService
             ->values();
 
         $displayNames = $this->buildDisplayNames($items->all());
-        $hasMultipleServers = count($displayNames) > 1;
 
         $links = $items
             ->flatMap(function (array $item) use ($displayNames) {
@@ -90,21 +89,28 @@ class VlessSubscriptionService
             ->unique('line')
             ->groupBy(fn (array $item) => $this->getServerGroupingKey($item))
             ->sortKeys()
-            ->flatMap(fn ($group) => collect($group)->sortBy([
-                fn (array $item) => $this->getTypeSortOrder($item['type']),
-                fn (array $item) => (int) $item['config_id'],
-            ])->values())
-            ->values()
-            ->map(function (array $item, int $index) use ($displayNames, $hasMultipleServers) {
-                $serverDisplayName = $displayNames[$this->getServerGroupingKey($item)] ?? $item['server'];
+            ->flatMap(function ($group, string $serverKey) use ($displayNames) {
+                $serverDisplayName = $displayNames[$serverKey] ?? collect($group)->first()['server'] ?? '';
+                $sortedGroup = collect($group)
+                    ->sortBy([
+                        fn (array $item) => $this->getTypeSortOrder($item['type']),
+                        fn (array $item) => (int) $item['config_id'],
+                    ])
+                    ->values();
+                $shouldNumberGroup = $sortedGroup->count() > 1;
 
-                $item['line'] = $this->renameLink(
-                    $item['line'],
-                    $hasMultipleServers ? $serverDisplayName.' - '.($index + 1) : $serverDisplayName
-                );
+                return $sortedGroup
+                    ->values()
+                    ->map(function (array $item, int $index) use ($serverDisplayName, $shouldNumberGroup) {
+                        $item['line'] = $this->renameLink(
+                            $item['line'],
+                            $shouldNumberGroup ? $serverDisplayName.' - '.($index + 1) : $serverDisplayName
+                        );
 
-                return $item;
-            });
+                        return $item;
+                    });
+            })
+            ->values();
 
         $links = $links
             ->pluck('line')

@@ -257,4 +257,84 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'flow' => null,
         ]);
     }
+
+    public function test_job_falls_back_to_legacy_add_client_endpoint_when_modern_route_returns_404(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Legacy VLESS',
+            'code' => 'LVL',
+            'ip' => '10.0.0.3',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'is_vless' => true,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/inbounds/addClient' => Http::response([], 404),
+            'https://panel.test/panel/inbound/addClient' => Http::response([
+                'success' => true,
+            ]),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'inbound_id' => 10,
+            'security' => 'reality',
+        ]);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://panel.test/panel/api/inbounds/addClient';
+        });
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://panel.test/panel/inbound/addClient';
+        });
+    }
 }

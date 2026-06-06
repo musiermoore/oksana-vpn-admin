@@ -8,6 +8,7 @@ use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -80,15 +81,17 @@ class XuiConfigService
 
     private function postClientSettings(int $inboundId, array $settings): array
     {
-        $response = $this->getRequest()
-            ->asForm()
-            ->post('/panel/api/inbounds/addClient', [
-                'id' => $inboundId,
-                'settings' => json_encode([
-                    'clients' => [array_filter($settings, fn (mixed $value) => $value !== null)],
-                ], JSON_UNESCAPED_SLASHES),
-            ])
-            ->throw();
+        $payload = [
+            'id' => $inboundId,
+            'settings' => json_encode([
+                'clients' => [array_filter($settings, fn (mixed $value) => $value !== null)],
+            ], JSON_UNESCAPED_SLASHES),
+        ];
+
+        $response = $this->postWithFallback([
+            '/panel/api/inbounds/addClient',
+            '/panel/inbound/addClient',
+        ], $payload);
 
         $payload = $response->json();
 
@@ -214,13 +217,25 @@ class XuiConfigService
 
         $response = $this->getRequest()
             ->asForm()
-            ->post("/panel/api/inbounds/updateClient/{$uuid}", [
+            ->post('/panel/api/inbounds/updateClient/' . $uuid, [
                 'id' => $client['inbound_id'],
                 'settings' => json_encode([
                     'clients' => [$client['settings']],
                 ], JSON_UNESCAPED_SLASHES),
-            ])
-            ->throw();
+            ]);
+
+        if ($response->status() === 404) {
+            $response = $this->getRequest()
+                ->asForm()
+                ->post('/panel/inbound/updateClient/' . $uuid, [
+                    'id' => $client['inbound_id'],
+                    'settings' => json_encode([
+                        'clients' => [$client['settings']],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]);
+        }
+
+        $response->throw();
 
         $payload = $response->json();
 
@@ -240,8 +255,14 @@ class XuiConfigService
     public function getClientTraffics(string $email): array
     {
         $response = $this->getRequest()
-            ->get('/panel/api/inbounds/getClientTraffics/' . urlencode($email))
-            ->throw();
+            ->get('/panel/api/inbounds/getClientTraffics/' . urlencode($email));
+
+        if ($response->status() === 404) {
+            $response = $this->getRequest()
+                ->get('/panel/inbound/getClientTraffics/' . urlencode($email));
+        }
+
+        $response->throw();
 
         $payload = $response->json();
 
@@ -566,4 +587,27 @@ class XuiConfigService
     {
         return rtrim($this->server->panel_link, '/');
     }
+
+    private function postWithFallback(array $paths, array $payload): Response
+    {
+        $lastException = null;
+
+        foreach ($paths as $index => $path) {
+            try {
+                return $this->getRequest()
+                    ->asForm()
+                    ->post($path, $payload)
+                    ->throw();
+            } catch (RequestException $exception) {
+                $lastException = $exception;
+
+                if ($exception->response?->status() !== 404 || $index === array_key_last($paths)) {
+                    throw $exception;
+                }
+            }
+        }
+
+        throw $lastException ?? new RuntimeException('Unable to complete XUI request.');
+    }
+
 }

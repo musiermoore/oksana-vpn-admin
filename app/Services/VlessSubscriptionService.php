@@ -89,10 +89,25 @@ class VlessSubscriptionService
             ->unique('line')
             ->groupBy(fn (array $item) => $this->getServerGroupingKey($item))
             ->sortKeys()
-            ->flatMap(fn ($group) => collect($group)->sortBy([
-                fn (array $item) => $this->getTypeSortOrder($item['type']),
-                fn (array $item) => (int) $item['config_id'],
-            ])->values())
+            ->flatMap(function ($group, string $serverKey) use ($displayNames) {
+                $serverDisplayName = $displayNames[$serverKey] ?? null;
+
+                return collect($group)
+                    ->sortBy([
+                        fn (array $item) => $this->getTypeSortOrder($item['type']),
+                        fn (array $item) => (int) $item['config_id'],
+                    ])
+                    ->values()
+                    ->map(function (array $item, int $index) use ($serverDisplayName) {
+                        if ($serverDisplayName === null) {
+                            return $item;
+                        }
+
+                        $item['line'] = $this->renameLink($item['line'], $serverDisplayName.' - '.($index + 1));
+
+                        return $item;
+                    });
+            })
             ->values();
 
         $links = $links
@@ -149,7 +164,7 @@ class VlessSubscriptionService
                 return $servers
                     ->values()
                     ->mapWithKeys(fn (array $item, int $index) => [
-                        $this->getServerGroupingKey($item) => (string) $item['server'].' - '.($index + 1),
+                        $this->getServerGroupingKey($item) => (string) $item['server'].' '.($index + 1),
                     ]);
             })
             ->all();

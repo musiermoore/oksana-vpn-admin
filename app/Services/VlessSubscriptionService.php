@@ -23,6 +23,7 @@ class VlessSubscriptionService
             ->get()
             ->map(fn (VlessConfig $config) => [
                 'type' => 'vless',
+                'server_id' => (int) $config->server->getKey(),
                 'server' => $config->server->name,
                 'server_sort' => mb_strtolower((string) $config->server->name),
                 'config_id' => $config->getKey(),
@@ -36,6 +37,7 @@ class VlessSubscriptionService
             ->get()
             ->map(fn (ShadowsocksConfig $config) => [
                 'type' => 'shadowsocks',
+                'server_id' => (int) $config->server->getKey(),
                 'server' => $config->server->name,
                 'server_sort' => mb_strtolower((string) $config->server->name),
                 'config_id' => $config->getKey(),
@@ -44,12 +46,12 @@ class VlessSubscriptionService
 
         $items = $vlessConfigs
             ->concat($shadowsocksConfigs)
-            ->groupBy(fn (array $item) => (string) $item['server_sort'])
-            ->sortKeys()
-            ->flatMap(fn ($group) => collect($group)->sortBy([
+            ->sortBy([
+                fn (array $item) => (string) $item['server_sort'],
+                fn (array $item) => (int) $item['server_id'],
                 fn (array $item) => $this->getTypeSortOrder($item['type']),
                 fn (array $item) => (int) $item['config_id'],
-            ])->values())
+            ])
             ->values();
 
         $displayNames = $this->buildDisplayNames($items->all());
@@ -61,7 +63,12 @@ class VlessSubscriptionService
 
                 if ($config instanceof VlessConfig) {
                     return collect($this->getVlessSubscriptionData($config, $displayName))
-                        ->map(fn (string $line) => $this->buildLinkItem($line, $item['server'], $item['config_id']))
+                        ->map(fn (string $line) => $this->buildLinkItem(
+                            $line,
+                            $item['server'],
+                            $item['server_id'],
+                            $item['config_id']
+                        ))
                         ->all();
                 }
 
@@ -70,6 +77,7 @@ class VlessSubscriptionService
                         $this->buildLinkItem(
                             $this->renameLink($config->getLink(), $displayName),
                             $item['server'],
+                            $item['server_id'],
                             $item['config_id']
                         ),
                     ];
@@ -79,12 +87,15 @@ class VlessSubscriptionService
             })
             ->filter(fn (array $item) => ! empty($item['line']))
             ->unique('line')
-            ->groupBy(fn (array $item) => (string) ($item['server_sort'] ?? mb_strtolower((string) $item['server'])))
-            ->sortKeys()
-            ->flatMap(fn ($group) => collect($group)->sortBy([
+            ->sortBy([
+                fn (array $item) => (string) ($item['server_sort'] ?? mb_strtolower((string) $item['server'])),
+                fn (array $item) => (int) ($item['server_id'] ?? 0),
                 fn (array $item) => $this->getTypeSortOrder($item['type']),
                 fn (array $item) => (int) $item['config_id'],
-            ])->values())
+            ])
+            ->values();
+
+        $links = $links
             ->pluck('line')
             ->implode("\n");
 
@@ -128,24 +139,23 @@ class VlessSubscriptionService
      */
     private function buildDisplayNames(array $items): array
     {
+        $totalByServer = collect($items)
+            ->countBy(fn (array $item) => $this->getServerGroupingKey($item));
+
+        $currentIndexes = [];
+
         return collect($items)
-            ->groupBy(fn (array $item) => (string) $item['server'])
-            ->flatMap(function ($group, string $serverName) {
-                $itemsForServer = collect($group)->values();
+            ->mapWithKeys(function (array $item) use ($totalByServer, &$currentIndexes) {
+                $serverKey = $this->getServerGroupingKey($item);
+                $serverName = (string) $item['server'];
 
-                if ($itemsForServer->count() <= 1) {
-                    $item = $itemsForServer->first();
+                $currentIndexes[$serverKey] = ($currentIndexes[$serverKey] ?? 0) + 1;
 
-                    return $item === null
-                        ? []
-                        : [$this->getDisplayNameKey($item) => $serverName];
-                }
+                $displayName = ($totalByServer[$serverKey] ?? 0) > 1
+                    ? "{$serverName} - {$currentIndexes[$serverKey]}"
+                    : $serverName;
 
-                return $itemsForServer
-                    ->values()
-                    ->mapWithKeys(fn (array $item, int $index) => [
-                        $this->getDisplayNameKey($item) => "{$serverName} - ".($index + 1),
-                    ]);
+                return [$this->getDisplayNameKey($item) => $displayName];
             })
             ->all();
     }
@@ -175,17 +185,26 @@ class VlessSubscriptionService
     }
 
     /**
-     * @return array{type: string, server: string, server_sort: string, config_id: int, line: string}
+     * @return array{type: string, server: string, server_id: int, server_sort: string, config_id: int, line: string}
      */
-    private function buildLinkItem(string $line, string $server, int $configId): array
+    private function buildLinkItem(string $line, string $server, int $serverId, int $configId): array
     {
         return [
             'type' => $this->detectLinkType($line),
             'server' => $server,
+            'server_id' => $serverId,
             'server_sort' => mb_strtolower($server),
             'config_id' => $configId,
             'line' => $line,
         ];
+    }
+
+    /**
+     * @param  array{server: string, server_id?: int}  $item
+     */
+    private function getServerGroupingKey(array $item): string
+    {
+        return mb_strtolower((string) $item['server']).':'.(int) ($item['server_id'] ?? 0);
     }
 
     private function detectLinkType(string $line): string

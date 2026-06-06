@@ -227,8 +227,10 @@ class XrayConfigController extends Controller
      */
     private function mapInboundForForm(Server $server, array $inbound, string $protocol): array
     {
+        $displayProtocol = mb_strtoupper((string) ($inbound['protocol'] ?? $protocol));
+
         $parts = [
-            strtoupper($protocol),
+            $displayProtocol,
             strtoupper((string) ($inbound['type'] ?? 'unknown')),
             strtoupper((string) ($inbound['security'] ?? 'none')),
             'port '.$inbound['port'],

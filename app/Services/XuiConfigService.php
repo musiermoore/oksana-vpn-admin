@@ -50,7 +50,7 @@ class XuiConfigService
     {
         return collect($this->getInbounds())
             ->map(fn (array $row) => $this->normalizeInbound($row))
-            ->filter(fn (array $row) => ($row['protocol'] ?? null) === 'vless' && ! empty($row['id']))
+            ->filter(fn (array $row) => $this->isSupportedVlessInboundProtocol($row['protocol'] ?? null) && ! empty($row['id']))
             ->values()
             ->all();
     }
@@ -482,6 +482,11 @@ class XuiConfigService
     {
         return ($inbound['type'] ?? null) === 'tcp'
             && ($inbound['security'] ?? null) === 'reality';
+    }
+
+    private function isSupportedVlessInboundProtocol(?string $protocol): bool
+    {
+        return in_array(mb_strtolower((string) $protocol), ['vless', 'hysteria', 'hysteria2', 'hy2'], true);
     }
 
     /**

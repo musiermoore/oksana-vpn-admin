@@ -59,7 +59,7 @@ class VlessSubscriptionService
         $links = $items
             ->flatMap(function (array $item) use ($displayNames) {
                 $config = $item['config'];
-                $displayName = $displayNames[$this->getDisplayNameKey($item)] ?? $config->server->name;
+                $displayName = $displayNames[$this->getServerGroupingKey($item)] ?? $config->server->name;
 
                 if ($config instanceof VlessConfig) {
                     return collect($this->getVlessSubscriptionData($config, $displayName))
@@ -87,12 +87,12 @@ class VlessSubscriptionService
             })
             ->filter(fn (array $item) => ! empty($item['line']))
             ->unique('line')
-            ->sortBy([
-                fn (array $item) => (string) ($item['server_sort'] ?? mb_strtolower((string) $item['server'])),
-                fn (array $item) => (int) ($item['server_id'] ?? 0),
+            ->groupBy(fn (array $item) => $this->getServerGroupingKey($item))
+            ->sortKeys()
+            ->flatMap(fn ($group) => collect($group)->sortBy([
                 fn (array $item) => $this->getTypeSortOrder($item['type']),
                 fn (array $item) => (int) $item['config_id'],
-            ])
+            ])->values())
             ->values();
 
         $links = $links
@@ -134,28 +134,23 @@ class VlessSubscriptionService
     }
 
     /**
-     * @param  array<int, array{type: string, server: string, config_id: int, config: VlessConfig|ShadowsocksConfig}>  $items
-     * @return array<int, string>
+     * @param  array<int, array{server: string, server_id: int, server_sort: string}>  $items
+     * @return array<string, string>
      */
     private function buildDisplayNames(array $items): array
     {
-        $totalByServer = collect($items)
-            ->countBy(fn (array $item) => $this->getServerGroupingKey($item));
-
-        $currentIndexes = [];
-
         return collect($items)
-            ->mapWithKeys(function (array $item) use ($totalByServer, &$currentIndexes) {
-                $serverKey = $this->getServerGroupingKey($item);
-                $serverName = (string) $item['server'];
+            ->unique(fn (array $item) => $this->getServerGroupingKey($item))
+            ->values()
+            ->groupBy(fn (array $item) => (string) $item['server_sort'])
+            ->flatMap(function ($group) {
+                $servers = collect($group)->values();
 
-                $currentIndexes[$serverKey] = ($currentIndexes[$serverKey] ?? 0) + 1;
-
-                $displayName = ($totalByServer[$serverKey] ?? 0) > 1
-                    ? "{$serverName} - {$currentIndexes[$serverKey]}"
-                    : $serverName;
-
-                return [$this->getDisplayNameKey($item) => $displayName];
+                return $servers
+                    ->values()
+                    ->mapWithKeys(fn (array $item, int $index) => [
+                        $this->getServerGroupingKey($item) => (string) $item['server'].' - '.($index + 1),
+                    ]);
             })
             ->all();
     }
@@ -177,14 +172,6 @@ class VlessSubscriptionService
     }
 
     /**
-     * @param  array{type: string, server: string, config_id: int, config: VlessConfig|ShadowsocksConfig}  $item
-     */
-    private function getDisplayNameKey(array $item): string
-    {
-        return $item['type'].':'.$item['config_id'];
-    }
-
-    /**
      * @return array{type: string, server: string, server_id: int, server_sort: string, config_id: int, line: string}
      */
     private function buildLinkItem(string $line, string $server, int $serverId, int $configId): array
@@ -200,11 +187,11 @@ class VlessSubscriptionService
     }
 
     /**
-     * @param  array{server: string, server_id?: int}  $item
+     * @param  array{server: string, server_id?: int, server_sort?: string}  $item
      */
     private function getServerGroupingKey(array $item): string
     {
-        return mb_strtolower((string) $item['server']).':'.(int) ($item['server_id'] ?? 0);
+        return (string) ($item['server_sort'] ?? mb_strtolower((string) $item['server'])).':'.(int) ($item['server_id'] ?? 0);
     }
 
     private function detectLinkType(string $line): string

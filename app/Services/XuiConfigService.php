@@ -79,6 +79,24 @@ class XuiConfigService
         return $this->postClientSettings($inboundId, $clientSettings);
     }
 
+    /**
+     * Build a 3x-ui client payload that targets exactly one inbound.
+     *
+     * Newer panel versions accept a top-level `client` object with `inboundIds`,
+     * while older versions still expect the client nested under `settings.clients`.
+     * We keep the client shape shared so version-specific services only need to
+     * choose the transport endpoint.
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildSingleInboundClientPayload(int $inboundId, array $settings): array
+    {
+        return [
+            'client' => array_merge($this->getDefaultClientSettings(), array_filter($settings, fn (mixed $value) => $value !== null)),
+            'inboundIds' => [$inboundId],
+        ];
+    }
+
     protected function postClientSettings(int $inboundId, array $settings): array
     {
         $payload = [
@@ -392,7 +410,7 @@ class XuiConfigService
 
         $flow = $this->shouldUseVisionFlow($inbound) ? 'xtls-rprx-vision' : null;
 
-        return array_filter([
+        return array_filter(array_merge($this->getDefaultClientSettings(), [
             'id' => (string) Str::uuid(),
             'flow' => $flow,
             'email' => sprintf(
@@ -401,15 +419,35 @@ class XuiConfigService
                 Str::slug(Str::snake($this->server->name), '_'),
                 $nextConfigId,
             ),
-            'limitIp' => 0,
+            'enable' => true,
+            'subId' => Str::lower(Str::random(16)),
+            'password' => Str::lower(Str::random(16)),
+            'auth' => Str::lower(Str::random(16)),
+        ]), fn (mixed $value) => $value !== null);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getDefaultClientSettings(): array
+    {
+        return [
+            'email' => '',
+            'subId' => '',
+            'id' => '',
+            'password' => '',
+            'auth' => '',
+            'flow' => '',
+            'security' => 'auto',
             'totalGB' => 0,
             'expiryTime' => 0,
-            'enable' => true,
-            'tgId' => '',
-            'subId' => Str::lower(Str::random(16)),
-            'comment' => '',
             'reset' => 0,
-        ], fn (mixed $value) => $value !== null);
+            'limitIp' => 0,
+            'tgId' => 0,
+            'group' => '',
+            'comment' => '',
+            'enable' => true,
+        ];
     }
 
     private function getShadowsocksConfigSettings(string $telegram, array $inbound = []): array

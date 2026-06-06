@@ -43,8 +43,8 @@ class VlessSubscriptionService
         $items = $vlessConfigs
             ->concat($shadowsocksConfigs)
             ->sortBy([
-                fn (array $item) => $this->getTypeSortOrder($item['type']),
                 fn (array $item) => mb_strtolower((string) $item['server']),
+                fn (array $item) => $this->getTypeSortOrder($item['type']),
                 fn (array $item) => (int) $item['config_id'],
             ])
             ->values();
@@ -77,8 +77,8 @@ class VlessSubscriptionService
             ->filter(fn (array $item) => ! empty($item['line']))
             ->unique('line')
             ->sortBy([
-                fn (array $item) => $this->getTypeSortOrder($item['type']),
                 fn (array $item) => mb_strtolower((string) $item['server']),
+                fn (array $item) => $this->getTypeSortOrder($item['type']),
                 fn (array $item) => (int) $item['config_id'],
             ])
             ->pluck('line')

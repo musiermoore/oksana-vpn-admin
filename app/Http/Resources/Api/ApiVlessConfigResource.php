@@ -14,6 +14,8 @@ class ApiVlessConfigResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'password' => $this->password,
+            'auth' => $this->auth,
             'download_url' => route('api.users.configs.download', [
                 'telegramId' => $telegramId,
                 'type' => 'vless',

@@ -82,6 +82,8 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                     'enable' => ! empty($client['enable']),
                     'id' => $uuid,
                     'subId' => $client['subId'] ?? null,
+                    'password' => $client['password'] ?? null,
+                    'auth' => $client['auth'] ?? null,
                     'flow' => $client['flow'] ?? null,
                 ]),
                 'created_at' => now(),

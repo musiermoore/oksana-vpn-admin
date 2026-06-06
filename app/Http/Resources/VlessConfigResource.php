@@ -14,6 +14,8 @@ class VlessConfigResource extends JsonResource
             'name' => $this->name,
             'is_active' => (bool) $this->is_active,
             'enable' => (bool) $this->enable,
+            'password' => $this->password,
+            'auth' => $this->auth,
             'link' => $this->link,
             'server' => $this->server ? (new ServerResource($this->server))->toArray($request) : null,
             'user' => $this->user ? [

@@ -19,6 +19,8 @@ class VlessConfig extends Model
 
         'uuid',
         'sub_id',
+        'password',
+        'auth',
 
         'port',
 

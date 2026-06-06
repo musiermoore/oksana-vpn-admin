@@ -44,6 +44,8 @@ class XrayConfigResource
             'name' => $this->resource->name,
             'is_active' => (bool) $this->resource->is_active,
             'enable' => (bool) $this->resource->enable,
+            'password' => $this->resource instanceof VlessConfig ? $this->resource->password : null,
+            'auth' => $this->resource instanceof VlessConfig ? $this->resource->auth : null,
             'supports_toggle' => $this->resource instanceof VlessConfig,
             'link' => $this->resource->link,
             'server' => $this->resource->server ? (new ServerResource($this->resource->server))->toArray($request) : null,

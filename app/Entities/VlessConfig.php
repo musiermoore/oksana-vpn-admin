@@ -16,6 +16,8 @@ class VlessConfig
 
         private ?string $uuid = null,
         private ?string $subId = null,
+        private ?string $password = null,
+        private ?string $auth = null,
 
         private ?int $port = null,
 
@@ -51,6 +53,8 @@ class VlessConfig
 
         $config->setUuid($data['uuid'] ?? null);
         $config->setSubId($data['sub_id'] ?? null);
+        $config->setPassword($data['password'] ?? null);
+        $config->setAuth($data['auth'] ?? null);
 
         $config->setPort($data['port'] ?? null);
 
@@ -83,6 +87,8 @@ class VlessConfig
             'enable' => $this->enable,
             'uuid' => $this->uuid,
             'sub_id' => $this->subId,
+            'password' => $this->password,
+            'auth' => $this->auth,
             'port' => $this->port,
             'type' => $this->type,
             'encryption' => $this->encryption,
@@ -202,6 +208,30 @@ class VlessConfig
     public function getPort(): ?int
     {
         return $this->port;
+    }
+
+    public function getPassword(): ?string
+    {
+        return $this->password;
+    }
+
+    public function setPassword(?string $password): self
+    {
+        $this->password = $password;
+
+        return $this;
+    }
+
+    public function getAuth(): ?string
+    {
+        return $this->auth;
+    }
+
+    public function setAuth(?string $auth): self
+    {
+        $this->auth = $auth;
+
+        return $this;
     }
 
     public function setPort(?int $port): self

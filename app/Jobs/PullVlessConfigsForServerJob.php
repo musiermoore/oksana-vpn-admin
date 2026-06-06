@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Server;
 use App\Models\VlessConfig as VlessConfigModel;
+use App\Services\XuiConfigService;
 use App\Services\XuiConfigServiceFactory;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

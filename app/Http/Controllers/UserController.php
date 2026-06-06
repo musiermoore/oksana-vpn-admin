@@ -74,6 +74,10 @@ class UserController extends Controller
                 $query->with('type')->latest();
             },
             'configs',
+            'vlessConfigs.server',
+            'vlessConfigs.user',
+            'shadowsocksConfigs.server',
+            'shadowsocksConfigs.user',
         ]);
 
         return $this->inertia('Users/Form', [

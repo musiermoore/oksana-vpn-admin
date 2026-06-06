@@ -8,6 +8,7 @@ const props = defineProps({
     mode: String,
     submit_url: String,
     config: Object,
+    selected_user_id: Number,
     users: Array,
     available_inbounds: Array,
 });
@@ -16,7 +17,7 @@ const selectedInbound = props.available_inbounds[0] ?? null;
 
 const form = useForm({
     protocol: props.config?.protocol ?? selectedInbound?.protocol ?? '',
-    user_id: props.config?.user?.id ?? props.users[0]?.id ?? '',
+    user_id: props.config?.user?.id ?? props.selected_user_id ?? props.users[0]?.id ?? '',
     server_id: props.config?.server?.id ?? selectedInbound?.server_id ?? '',
     inbound_id: selectedInbound?.inbound_id ?? '',
 });

@@ -31,6 +31,14 @@ const submit = () => {
 
 const toggleConfig = (config) => router.post(config.is_active ? config.links.disable : config.links.enable);
 const destroyConfig = (config) => confirm(`Удалить конфиг ${config.name}?`) && router.delete(config.links.destroy);
+const unlinkXrayConfig = (config) => confirm(`Отвязать Xray-конфиг ${config.name}?`) && router.delete(config.links.destroy);
+const toggleXrayConfig = (config) => {
+    if (!config.supports_toggle) {
+        return;
+    }
+
+    router.post(config.enable ? config.links.disable : config.links.enable);
+};
 const approveTransaction = (transaction) => router.post(transaction.links.approve);
 const declineTransaction = (transaction) => confirm('Отклонить транзакцию?') && router.delete(transaction.links.decline);
 const destroyTransaction = (transaction) => confirm('Удалить транзакцию?') && router.delete(transaction.links.destroy);
@@ -117,6 +125,40 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                 </div>
             </div>
             <div v-else class="empty-state">У пользователя пока нет конфигов.</div>
+        </section>
+
+        <section class="page-card stack">
+            <div class="page-header">
+                <div>
+                    <h2 class="section-title">Xray конфиги</h2>
+                </div>
+                <div class="actions">
+                    <Link class="button" :href="`/xray-configs/create?user_id=${user.id}`">Создать</Link>
+                </div>
+            </div>
+
+            <div v-if="user.xray_configs?.length" class="list">
+                <div v-for="config in user.xray_configs" :key="`${config.protocol}-${config.id}`" class="item-row">
+                    <Link :href="config.links.edit">
+                        <strong>[{{ config.protocol_label }}]</strong>
+                        {{ config.server?.code }}: {{ config.name }}
+                    </Link>
+                    <div class="actions">
+                        <Link class="button button--secondary" :href="config.links.edit">Открыть</Link>
+                        <button
+                            v-if="config.supports_toggle"
+                            class="button"
+                            :class="config.enable ? 'button--danger' : 'button--success'"
+                            type="button"
+                            @click="toggleXrayConfig(config)"
+                        >
+                            {{ config.enable ? 'Отключить' : 'Включить' }}
+                        </button>
+                        <button class="button button--danger" type="button" @click="unlinkXrayConfig(config)">Отвязать</button>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="empty-state">У пользователя пока нет Xray-конфигов.</div>
         </section>
 
         <section class="page-card stack">

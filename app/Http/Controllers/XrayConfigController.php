@@ -67,6 +67,7 @@ class XrayConfigController extends Controller
             'mode' => 'create',
             'submit_url' => route('xray-configs.store'),
             'config' => null,
+            'selected_user_id' => $request->integer('user_id') ?: null,
             'users' => UserResource::collection($users)->toArray($request),
             'available_inbounds' => $this->getAvailableInbounds(),
         ]);

@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Jobs\DispatchDefaultConfigsForUserJob;
+use App\Models\Server;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 
 class CreateDefaultConfigsForActiveSubscribersCommand extends Command
 {
@@ -16,9 +18,42 @@ class CreateDefaultConfigsForActiveSubscribersCommand extends Command
     {
         $userId = $this->argument('user_id');
 
+        $servers = Server::query()
+            ->where('is_ready', true)
+            ->get();
+
         $users = User::query()
             ->whereHas('activeSubscription')
             ->when($userId, fn ($query) => $query->whereKey($userId))
+            ->where(function (Builder $query) use ($servers) {
+                $hasMissingRequirement = false;
+
+                foreach ($servers as $server) {
+                    if ($server->is_vless) {
+                        foreach ($server->getAllowedInboundIds() as $inboundId) {
+                            $hasMissingRequirement = true;
+
+                            $query->orWhereDoesntHave('vlessConfigs', function (Builder $configQuery) use ($server, $inboundId) {
+                                $configQuery
+                                    ->where('server_id', $server->id)
+                                    ->where('inbound_id', $inboundId);
+                            });
+                        }
+
+                        continue;
+                    }
+
+                    $hasMissingRequirement = true;
+
+                    $query->orWhereDoesntHave('configs', function (Builder $configQuery) use ($server) {
+                        $configQuery->where('server_id', $server->id);
+                    });
+                }
+
+                if (! $hasMissingRequirement) {
+                    $query->whereRaw('1 = 0');
+                }
+            })
             ->select('id')
             ->get();
 

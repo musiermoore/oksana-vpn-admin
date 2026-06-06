@@ -18,7 +18,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_command_dispatches_jobs_for_all_active_subscribers(): void
+    public function test_command_dispatches_jobs_only_for_active_subscribers_with_missing_required_configs(): void
     {
         Queue::fake();
 
@@ -70,6 +70,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $vlessServer->id,
             'user_id' => $hasOnlyVlessUser->id,
+            'inbound_id' => 10,
             'name' => 'vless-only',
             'is_active' => true,
             'enable' => true,
@@ -101,6 +102,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $vlessServer->id,
             'user_id' => $hasBothUser->id,
+            'inbound_id' => 10,
             'name' => 'vless-existing',
             'is_active' => true,
             'enable' => true,
@@ -125,11 +127,93 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             return $job->userId === $hasOnlyVlessUser->id;
         });
 
-        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($hasBothUser) {
+        Queue::assertNotPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($hasBothUser) {
             return $job->userId === $hasBothUser->id;
         });
 
-        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, 3);
+        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, 2);
+    }
+
+    public function test_command_dispatches_job_when_user_is_missing_one_required_vless_inbound(): void
+    {
+        Queue::fake();
+
+        $vlessServer = Server::query()->create([
+            'name' => 'Multi Inbound VLESS',
+            'code' => 'MVL',
+            'ip' => '10.0.0.12',
+            'app_path' => '/opt/app',
+            'is_ready' => true,
+            'is_vless' => true,
+            'allowed_inbound_ids' => [10, 11],
+        ]);
+
+        $completeUser = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        $partialUser = User::query()->create([
+            'name' => 'Bob',
+            'telegram' => '@bob',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        foreach ([$completeUser, $partialUser] as $user) {
+            UserSubscription::query()->create([
+                'user_id' => $user->id,
+                'start_date' => now()->subDay()->toDateString(),
+                'end_date' => now()->addDay()->toDateString(),
+                'price' => 10,
+            ]);
+        }
+
+        VlessConfig::query()->create([
+            'server_id' => $vlessServer->id,
+            'user_id' => $completeUser->id,
+            'inbound_id' => 10,
+            'name' => 'alice-10',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+            'port' => 443,
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $vlessServer->id,
+            'user_id' => $completeUser->id,
+            'inbound_id' => 11,
+            'name' => 'alice-11',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+            'port' => 443,
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $vlessServer->id,
+            'user_id' => $partialUser->id,
+            'inbound_id' => 10,
+            'name' => 'bob-10',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
+            'port' => 443,
+        ]);
+
+        $this->artisan('configs:create-default-for-active-subscribers')
+            ->assertSuccessful();
+
+        Queue::assertNotPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($completeUser) {
+            return $job->userId === $completeUser->id;
+        });
+
+        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($partialUser) {
+            return $job->userId === $partialUser->id;
+        });
+
+        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, 1);
     }
 
     public function test_user_job_dispatches_one_job_per_missing_server_config(): void
@@ -247,6 +331,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $finlandVlessServer->id,
             'user_id' => $user->id,
+            'inbound_id' => 10,
             'name' => 'finland-vless',
             'is_active' => true,
             'enable' => true,

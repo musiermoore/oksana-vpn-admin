@@ -55,6 +55,7 @@ class VlessSubscriptionService
             ->values();
 
         $displayNames = $this->buildDisplayNames($items->all());
+        $hasMultipleServers = count($displayNames) > 1;
 
         $links = $items
             ->flatMap(function (array $item) use ($displayNames) {
@@ -89,26 +90,21 @@ class VlessSubscriptionService
             ->unique('line')
             ->groupBy(fn (array $item) => $this->getServerGroupingKey($item))
             ->sortKeys()
-            ->flatMap(function ($group, string $serverKey) use ($displayNames) {
-                $serverDisplayName = $displayNames[$serverKey] ?? null;
+            ->flatMap(fn ($group) => collect($group)->sortBy([
+                fn (array $item) => $this->getTypeSortOrder($item['type']),
+                fn (array $item) => (int) $item['config_id'],
+            ])->values())
+            ->values()
+            ->map(function (array $item, int $index) use ($displayNames, $hasMultipleServers) {
+                $serverDisplayName = $displayNames[$this->getServerGroupingKey($item)] ?? $item['server'];
 
-                return collect($group)
-                    ->sortBy([
-                        fn (array $item) => $this->getTypeSortOrder($item['type']),
-                        fn (array $item) => (int) $item['config_id'],
-                    ])
-                    ->values()
-                    ->map(function (array $item, int $index) use ($serverDisplayName) {
-                        if ($serverDisplayName === null) {
-                            return $item;
-                        }
+                $item['line'] = $this->renameLink(
+                    $item['line'],
+                    $hasMultipleServers ? $serverDisplayName.' - '.($index + 1) : $serverDisplayName
+                );
 
-                        $item['line'] = $this->renameLink($item['line'], $serverDisplayName.' - '.($index + 1));
-
-                        return $item;
-                    });
-            })
-            ->values();
+                return $item;
+            });
 
         $links = $links
             ->pluck('line')
@@ -157,16 +153,9 @@ class VlessSubscriptionService
         return collect($items)
             ->unique(fn (array $item) => $this->getServerGroupingKey($item))
             ->values()
-            ->groupBy(fn (array $item) => (string) $item['server_sort'])
-            ->flatMap(function ($group) {
-                $servers = collect($group)->values();
-
-                return $servers
-                    ->values()
-                    ->mapWithKeys(fn (array $item, int $index) => [
-                        $this->getServerGroupingKey($item) => (string) $item['server'].' '.($index + 1),
-                    ]);
-            })
+            ->mapWithKeys(fn (array $item) => [
+                $this->getServerGroupingKey($item) => (string) $item['server'],
+            ])
             ->all();
     }
 

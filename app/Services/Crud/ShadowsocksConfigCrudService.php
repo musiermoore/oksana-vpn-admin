@@ -6,7 +6,7 @@ use App\Models\Server;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Repositories\ShadowsocksConfigRepository;
-use App\Services\XuiConfigService;
+use App\Services\XuiConfigServiceFactory;
 use RuntimeException;
 
 class ShadowsocksConfigCrudService
@@ -28,7 +28,7 @@ class ShadowsocksConfigCrudService
             throw new RuntimeException('Xray-сервер не найден');
         }
 
-        $xui = new XuiConfigService($server);
+        $xui = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $inbound = collect($xui->getAllShadowsocksInbounds())
             ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
 

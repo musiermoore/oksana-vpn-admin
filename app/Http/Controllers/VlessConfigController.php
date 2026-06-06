@@ -13,7 +13,7 @@ use App\Models\VlessConfig;
 use App\Services\Crud\VlessConfigCrudService;
 use App\Services\VlessDeepLinkService;
 use App\Services\VlessSubscriptionService;
-use App\Services\XuiConfigService;
+use App\Services\XuiConfigServiceFactory;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -257,7 +257,7 @@ class VlessConfigController extends Controller
             ->get()
             ->flatMap(function (Server $server) {
                 try {
-                    $inbounds = (new XuiConfigService($server))->getAllVlessInbounds();
+                    $inbounds = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server)->getAllVlessInbounds();
                 } catch (Exception $exception) {
                     report($exception);
 

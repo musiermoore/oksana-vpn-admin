@@ -18,6 +18,7 @@ class ServerResource extends JsonResource
             'link_host' => $this->link_host,
             'panel_link' => $this->panel_link,
             'panel_username' => $this->panel_username,
+            'panel_api_version' => $this->getPanelApiVersion(),
             'app_path' => $this->app_path,
             'ssh_public_key' => $this->ssh_public_key,
             'is_vless' => (bool) $this->is_vless,

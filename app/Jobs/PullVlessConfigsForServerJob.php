@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Server;
 use App\Models\VlessConfig as VlessConfigModel;
-use App\Services\XuiConfigService;
+use App\Services\XuiConfigServiceFactory;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,7 +42,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
 
         $uuids = [];
 
-        $service = new XuiConfigService($server);
+        $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $data = $service->getAllVlessInbounds();
 
         foreach ($data as $row) {

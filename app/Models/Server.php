@@ -10,6 +10,9 @@ class Server extends Model
 {
     use HasFactory;
 
+    public const PANEL_API_V2_9 = 'v2.9.*';
+    public const PANEL_API_V3_2_8 = 'v3.2.8';
+
     protected $fillable = [
         'name',
         'code',
@@ -19,6 +22,7 @@ class Server extends Model
         'panel_link',
         'panel_username',
         'panel_password',
+        'panel_api_version',
         'app_path',
         'ssh_private_key',
         'ssh_public_key',
@@ -105,5 +109,10 @@ class Server extends Model
             ->filter(fn (int $id) => $id > 0)
             ->values()
             ->all();
+    }
+
+    public function getPanelApiVersion(): string
+    {
+        return (string) ($this->panel_api_version ?: self::PANEL_API_V2_9);
     }
 }

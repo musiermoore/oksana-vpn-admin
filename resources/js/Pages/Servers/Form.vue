@@ -21,6 +21,7 @@ const form = useForm({
     panel_link: props.server?.panel_link ?? '',
     panel_username: props.server?.panel_username ?? '',
     panel_password: props.server?.panel_password ?? '',
+    panel_api_version: props.server?.panel_api_version ?? 'v2.9.*',
     app_path: props.server?.app_path ?? '',
     ssh_private_key: '',
     ssh_public_key: props.server?.ssh_public_key ?? '',
@@ -46,6 +47,12 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Link Host</span><input v-model="form.link_host"></label>
             <label class="field"><span>Panel Link</span><input v-model="form.panel_link"></label>
             <label class="field"><span>Panel Username</span><input v-model="form.panel_username"></label>
+            <label class="field"><span>Panel API Version</span>
+                <select v-model="form.panel_api_version">
+                    <option value="v2.9.*">v2.9.*</option>
+                    <option value="v3.2.8">v3.2.8</option>
+                </select>
+            </label>
             <label class="field" style="grid-column: 1 / -1;"><span>Panel Password</span><input v-model="form.panel_password" type="password"></label>
             <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><input v-model="form.app_path" required></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><textarea v-model="form.ssh_private_key" /></label>

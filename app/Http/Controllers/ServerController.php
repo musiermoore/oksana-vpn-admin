@@ -8,7 +8,7 @@ use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
 use App\Services\Crud\ServerCrudService;
-use App\Services\XuiConfigService;
+use App\Services\XuiConfigServiceFactory;
 use Exception;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -104,7 +104,7 @@ class ServerController extends Controller
         }
 
         try {
-            $service = new XuiConfigService($server);
+            $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
 
             return collect($service->getInbounds())
                 ->map(fn (array $row) => $service->normalizeInbound($row))

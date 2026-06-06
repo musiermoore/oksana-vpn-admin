@@ -20,7 +20,7 @@ class XuiConfigService
     private ?string $csrf = null;
 
     public function __construct(
-        private readonly Server $server,
+        protected readonly Server $server,
     )
     {
         $this->setSession();
@@ -79,7 +79,7 @@ class XuiConfigService
         return $this->postClientSettings($inboundId, $clientSettings);
     }
 
-    private function postClientSettings(int $inboundId, array $settings): array
+    protected function postClientSettings(int $inboundId, array $settings): array
     {
         $payload = [
             'id' => $inboundId,
@@ -340,7 +340,7 @@ class XuiConfigService
         return $matches[1] ?? null;
     }
 
-    private function getRequest(): PendingRequest
+    protected function getRequest(): PendingRequest
     {
         $headers = [
             'Accept' => 'application/json',
@@ -588,7 +588,7 @@ class XuiConfigService
         return rtrim($this->server->panel_link, '/');
     }
 
-    private function postWithFallback(array $paths, array $payload): Response
+    protected function postWithFallback(array $paths, array $payload): Response
     {
         $lastException = null;
 

@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Server;
 
 use App\DTOs\Server\ServerData;
+use App\Models\Server;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreServerRequest extends FormRequest
 {
@@ -23,6 +25,10 @@ class StoreServerRequest extends FormRequest
             'panel_link' => ['nullable', 'string', 'max:255'],
             'panel_username' => ['nullable', 'string', 'max:255'],
             'panel_password' => ['nullable', 'string', 'max:255'],
+            'panel_api_version' => ['nullable', 'string', Rule::in([
+                Server::PANEL_API_V2_9,
+                Server::PANEL_API_V3_2_8,
+            ])],
             'app_path' => ['required', 'string', 'max:255'],
             'ssh_private_key' => ['nullable', 'string'],
             'ssh_public_key' => ['nullable', 'string'],
@@ -46,6 +52,7 @@ class StoreServerRequest extends FormRequest
             panelLink: $data['panel_link'] ?? null,
             panelUsername: $data['panel_username'] ?? null,
             panelPassword: $data['panel_password'] ?? null,
+            panelApiVersion: $data['panel_api_version'] ?? Server::PANEL_API_V2_9,
             appPath: $data['app_path'],
             sshPrivateKey: $data['ssh_private_key'] ?? null,
             sshPublicKey: $data['ssh_public_key'] ?? null,

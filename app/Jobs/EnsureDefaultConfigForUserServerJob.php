@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Server;
 use App\Models\User;
-use App\Services\XuiConfigService;
+use App\Services\XuiConfigServiceFactory;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -67,6 +67,6 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
             return;
         }
 
-        (new XuiConfigService($server))->createClientsOnAllowedInbounds($user);
+        XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server)->createClientsOnAllowedInbounds($user);
     }
 }

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\VlessConfig;
 use App\Repositories\VlessConfigRepository;
 use App\Services\XuiConfigService;
+use App\Services\XuiConfigServiceFactory;
 use RuntimeException;
 
 class VlessConfigCrudService
@@ -35,7 +36,7 @@ class VlessConfigCrudService
             throw new RuntimeException('Сервер VLESS не найден');
         }
 
-        $xui = new XuiConfigService($server);
+        $xui = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $inbound = collect($xui->getAllVlessInbounds())
             ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
 
@@ -94,6 +95,6 @@ class VlessConfigCrudService
             throw new RuntimeException('Сервер для VLESS-конфига не найден');
         }
 
-        return new XuiConfigService($server);
+        return XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
     }
 }

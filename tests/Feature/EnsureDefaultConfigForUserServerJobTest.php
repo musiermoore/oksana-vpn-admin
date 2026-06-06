@@ -6,6 +6,7 @@ use App\Jobs\EnsureDefaultConfigForUserServerJob;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\UserSubscription;
+use Illuminate\Http\Client\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -335,6 +336,85 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         Http::assertSent(function ($request) {
             return $request->url() === 'https://panel.test/panel/inbound/addClient';
+        });
+    }
+
+    public function test_job_creates_vless_config_via_v3_client_api(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Modern VLESS',
+            'code' => 'MVL',
+            'ip' => '10.0.0.4',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'panel_api_version' => Server::PANEL_API_V3_2_8,
+            'is_ready' => true,
+            'is_vless' => true,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/add' => Http::response([
+                'success' => true,
+            ]),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'inbound_id' => 10,
+            'security' => 'reality',
+        ]);
+
+        Http::assertSent(function (Request $request) {
+            return $request->url() === 'https://panel.test/panel/api/clients/add'
+                && $request['inboundIds'] === [10]
+                && ($request['client']['flow'] ?? null) === 'xtls-rprx-vision'
+                && ($request['client']['security'] ?? null) === 'auto';
         });
     }
 }

@@ -12,7 +12,7 @@ use App\Models\User;
 use App\Models\VlessConfig;
 use App\Services\Crud\ShadowsocksConfigCrudService;
 use App\Services\Crud\VlessConfigCrudService;
-use App\Services\XuiConfigService;
+use App\Services\XuiConfigServiceFactory;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -203,7 +203,7 @@ class XrayConfigController extends Controller
             ->get()
             ->flatMap(function (Server $server) {
                 try {
-                    $service = new XuiConfigService($server);
+                    $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
                     $vless = collect($service->getAllVlessInbounds())
                         ->map(fn (array $inbound) => $this->mapInboundForForm($server, $inbound, 'vless'));
                     $shadowsocks = collect($service->getAllShadowsocksInbounds())

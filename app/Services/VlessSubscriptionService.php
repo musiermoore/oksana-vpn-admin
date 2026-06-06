@@ -24,6 +24,7 @@ class VlessSubscriptionService
             ->map(fn (VlessConfig $config) => [
                 'type' => 'vless',
                 'server' => $config->server->name,
+                'server_sort' => mb_strtolower((string) $config->server->name),
                 'config_id' => $config->getKey(),
                 'config' => $config,
             ]);
@@ -36,13 +37,14 @@ class VlessSubscriptionService
             ->map(fn (ShadowsocksConfig $config) => [
                 'type' => 'shadowsocks',
                 'server' => $config->server->name,
+                'server_sort' => mb_strtolower((string) $config->server->name),
                 'config_id' => $config->getKey(),
                 'config' => $config,
             ]);
 
         $items = $vlessConfigs
             ->concat($shadowsocksConfigs)
-            ->groupBy(fn (array $item) => mb_strtolower((string) $item['server']))
+            ->groupBy(fn (array $item) => (string) $item['server_sort'])
             ->sortKeys()
             ->flatMap(fn ($group) => collect($group)->sortBy([
                 fn (array $item) => $this->getTypeSortOrder($item['type']),
@@ -77,7 +79,7 @@ class VlessSubscriptionService
             })
             ->filter(fn (array $item) => ! empty($item['line']))
             ->unique('line')
-            ->groupBy(fn (array $item) => mb_strtolower((string) $item['server']))
+            ->groupBy(fn (array $item) => (string) ($item['server_sort'] ?? mb_strtolower((string) $item['server'])))
             ->sortKeys()
             ->flatMap(fn ($group) => collect($group)->sortBy([
                 fn (array $item) => $this->getTypeSortOrder($item['type']),
@@ -126,21 +128,24 @@ class VlessSubscriptionService
      */
     private function buildDisplayNames(array $items): array
     {
-        $totalByServerName = collect($items)
-            ->countBy(fn (array $item) => $item['server']);
-
-        $currentIndexes = [];
-
         return collect($items)
-            ->mapWithKeys(function (array $item) use ($totalByServerName, &$currentIndexes) {
-                $serverName = $item['server'];
-                $currentIndexes[$serverName] = ($currentIndexes[$serverName] ?? 0) + 1;
+            ->groupBy(fn (array $item) => (string) $item['server'])
+            ->flatMap(function ($group, string $serverName) {
+                $itemsForServer = collect($group)->values();
 
-                $displayName = $totalByServerName[$serverName] > 1
-                    ? "{$serverName} - {$currentIndexes[$serverName]}"
-                    : $serverName;
+                if ($itemsForServer->count() <= 1) {
+                    $item = $itemsForServer->first();
 
-                return [$this->getDisplayNameKey($item) => $displayName];
+                    return $item === null
+                        ? []
+                        : [$this->getDisplayNameKey($item) => $serverName];
+                }
+
+                return $itemsForServer
+                    ->values()
+                    ->mapWithKeys(fn (array $item, int $index) => [
+                        $this->getDisplayNameKey($item) => "{$serverName} - ".($index + 1),
+                    ]);
             })
             ->all();
     }
@@ -170,13 +175,14 @@ class VlessSubscriptionService
     }
 
     /**
-     * @return array{type: string, server: string, config_id: int, line: string}
+     * @return array{type: string, server: string, server_sort: string, config_id: int, line: string}
      */
     private function buildLinkItem(string $line, string $server, int $configId): array
     {
         return [
             'type' => $this->detectLinkType($line),
             'server' => $server,
+            'server_sort' => mb_strtolower($server),
             'config_id' => $configId,
             'line' => $line,
         ];

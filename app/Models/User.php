@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use RuntimeException;
 
 class User extends Authenticatable
 {
@@ -158,6 +159,33 @@ class User extends Authenticatable
             report($exception);
 
             return false;
+        }
+    }
+
+    public function createConfigOrFail(array $attributes): Config
+    {
+        DB::beginTransaction();
+
+        try {
+            $config = $this->configs()->create($attributes);
+            $config->createWgConfigOrFail();
+
+            DB::commit();
+
+            return $config;
+        } catch (Exception $exception) {
+            DB::rollBack();
+            report($exception);
+
+            throw new RuntimeException(
+                sprintf(
+                    'Failed to create WireGuard config [%s] for server [%s]: %s',
+                    $attributes['name'] ?? 'unknown',
+                    $attributes['server_id'] ?? 'unknown',
+                    $exception->getMessage()
+                ),
+                previous: $exception
+            );
         }
     }
 

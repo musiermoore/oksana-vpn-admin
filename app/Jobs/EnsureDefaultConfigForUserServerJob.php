@@ -47,13 +47,11 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
 
         $configName = $user->getDefaultConfigNameForServer($server);
 
-        if (! $user->createConfig([
+        $user->createConfigOrFail([
             'name' => $configName,
             'server_id' => $server->id,
             'is_active' => true,
-        ])) {
-            throw new RuntimeException("Failed to create WireGuard config [{$configName}]");
-        }
+        ]);
     }
 
     public function failed(Throwable $exception): void

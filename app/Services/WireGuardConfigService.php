@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Config;
 use App\Models\Server;
 use Exception;
+use RuntimeException;
 
 class WireGuardConfigService
 {
@@ -38,6 +39,11 @@ class WireGuardConfigService
             report($exception);
             return false;
         }
+    }
+
+    public function createOrFail(): bool
+    {
+        return $this->runFileOrFail(self::WG_CREATE_CONFIG_FILE, [$this->config->name]);
     }
 
     public function delete(): bool
@@ -112,5 +118,33 @@ class WireGuardConfigService
         exec($command, $output, $result);
 
         return $result === 0;
+    }
+
+    private function runFileOrFail(string $file, array $params = []): bool
+    {
+        if (config('app.env') !== 'production') {
+            return true;
+        }
+
+        $inlineParams = implode(' ', $params);
+        $command = "{$this->server->ssh_command} {$this->server->app_path}/$file $inlineParams";
+
+        exec($command, $output, $result);
+
+        if ($result !== 0) {
+            $message = trim(implode(PHP_EOL, $output));
+
+            throw new RuntimeException(
+                sprintf(
+                    'WireGuard command failed for config [%s] on server [%s] using script [%s]%s',
+                    $this->config->name,
+                    $this->server->id,
+                    $file,
+                    $message !== '' ? ': ' . $message : '.'
+                )
+            );
+        }
+
+        return true;
     }
 }

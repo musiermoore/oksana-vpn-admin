@@ -135,6 +135,11 @@ class Config extends Model
         return WireGuardConfigService::instance($this)->create();
     }
 
+    public function createWgConfigOrFail(): bool
+    {
+        return WireGuardConfigService::instance($this)->createOrFail();
+    }
+
     public function deleteWgConfig(): bool
     {
         return WireGuardConfigService::instance($this)->delete();

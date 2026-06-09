@@ -486,7 +486,7 @@ class XuiConfigService
 
     private function isSupportedVlessInboundProtocol(?string $protocol): bool
     {
-        return in_array(mb_strtolower((string) $protocol), ['vless', 'hysteria', 'hysteria2', 'hy2'], true);
+        return in_array(mb_strtolower((string) $protocol), ['vless', 'trojan', 'hysteria', 'hysteria2', 'hy2'], true);
     }
 
     /**
@@ -564,6 +564,7 @@ class XuiConfigService
             $settings['password'] ?? null,
             $settings['auth'] ?? null,
             $inbound['port'] ?? null,
+            $inbound['protocol'] ?? 'vless',
             $inbound['type'] ?? null,
             'none',
             $inbound['security'] ?? null,

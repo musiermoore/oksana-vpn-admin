@@ -151,6 +151,32 @@ class VlessConnectTest extends TestCase
         );
     }
 
+    public function test_static_trojan_link_uses_trojan_scheme_and_password(): void
+    {
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => null,
+            'name' => 'trojan-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'trojan-uuid',
+            'password' => 'trojan-password',
+            'port' => 443,
+            'protocol' => 'trojan',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'sni' => 'trojan.example.com',
+        ]);
+
+        $this->assertSame(
+            'trojan://trojan-password@lv-1.example.com:443?security=tls&type=tcp&sni=trojan.example.com#lv1-trojan-config',
+            $config->getStaticLink()
+        );
+    }
+
     public function test_connect_returns_mixed_vless_and_shadowsocks_links_sorted_by_type_server_and_config_id(): void
     {
         Http::fake([
@@ -257,6 +283,48 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('#'.rawurlencode('Эстония'), $lines[4]);
     }
 
+    public function test_connect_returns_static_trojan_links_for_local_trojan_configs(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $latvia = $this->createServer('Латвия', 'LV', 'lv.example.com');
+
+        VlessConfig::query()->create([
+            'server_id' => $latvia->id,
+            'user_id' => $user->id,
+            'name' => 'trojan-lv',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'trojan-uuid',
+            'password' => 'trojan-password',
+            'port' => 443,
+            'protocol' => 'trojan',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'sni' => 'trojan.example.com',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString(
+            'trojan://trojan-password@lv.example.com:443?security=tls&type=tcp&sni=trojan.example.com#'.rawurlencode('Латвия'),
+            $decoded
+        );
+    }
+
     private function createServer(string $name, string $code, string $host): Server
     {
         return Server::query()->create([
@@ -280,6 +348,7 @@ class VlessConnectTest extends TestCase
             'uuid' => $uuid,
             'sub_id' => $subId,
             'port' => 443,
+            'protocol' => 'vless',
             'type' => 'tcp',
             'encryption' => 'none',
             'security' => 'reality',

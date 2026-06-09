@@ -20,6 +20,7 @@ class VlessConfig
         private ?string $auth = null,
 
         private ?int $port = null,
+        private ?string $protocol = null,
 
         private ?string $type = null,
         private ?string $encryption = null,
@@ -57,6 +58,7 @@ class VlessConfig
         $config->setAuth($data['auth'] ?? null);
 
         $config->setPort($data['port'] ?? null);
+        $config->setProtocol($data['protocol'] ?? null);
 
         $config->setType($data['type'] ?? null);
         $config->setEncryption($data['encryption'] ?? null);
@@ -90,6 +92,7 @@ class VlessConfig
             'password' => $this->password,
             'auth' => $this->auth,
             'port' => $this->port,
+            'protocol' => $this->protocol,
             'type' => $this->type,
             'encryption' => $this->encryption,
             'security' => $this->security,
@@ -208,6 +211,18 @@ class VlessConfig
     public function getPort(): ?int
     {
         return $this->port;
+    }
+
+    public function getProtocol(): ?string
+    {
+        return $this->protocol;
+    }
+
+    public function setProtocol(?string $protocol): self
+    {
+        $this->protocol = $protocol;
+
+        return $this;
     }
 
     public function getPassword(): ?string

@@ -23,6 +23,7 @@ class VlessConfig extends Model
         'auth',
 
         'port',
+        'protocol',
 
         'type',
         'encryption',
@@ -74,6 +75,10 @@ class VlessConfig extends Model
 
     public function getStaticLink(): string
     {
+        if ($this->getNormalizedProtocol() === 'trojan') {
+            return $this->getTrojanStaticLink();
+        }
+
         $paramList = [
             "type={$this->type}",
             "encryption={$this->encryption}",
@@ -115,6 +120,43 @@ class VlessConfig extends Model
         $label = str($this->server->code . '_' . $this->name)->slug();
 
         return "vless://{$this->uuid}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+    }
+
+    private function getTrojanStaticLink(): string
+    {
+        $paramList = [
+            "security={$this->security}",
+            "type={$this->type}",
+        ];
+
+        if ($this->security && $this->sni) {
+            $paramList[] = "sni={$this->sni}";
+        }
+
+        if ($this->type === 'ws') {
+            if ($this->host) {
+                $paramList[] = 'host=' . urlencode($this->host);
+            }
+
+            if ($this->path) {
+                $paramList[] = 'path=' . urlencode($this->path);
+            }
+        }
+
+        if ($this->type === 'grpc' && $this->service_name) {
+            $paramList[] = 'serviceName=' . urlencode($this->service_name);
+        }
+
+        $params = implode('&', $paramList);
+        $label = str($this->server->code . '_' . $this->name)->slug();
+        $password = $this->password ?: $this->uuid;
+
+        return "trojan://{$password}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+    }
+
+    private function getNormalizedProtocol(): string
+    {
+        return mb_strtolower((string) ($this->protocol ?: 'vless'));
     }
 
     public function getBaseUrl(): string

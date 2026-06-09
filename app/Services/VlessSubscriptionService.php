@@ -167,16 +167,17 @@ class VlessSubscriptionService
 
     private function isSupportedSubscriptionLink(string $line): bool
     {
-        return in_array($this->detectLinkType($line), ['vless', 'shadowsocks', 'hysteria', 'hysteria2'], true);
+        return in_array($this->detectLinkType($line), ['vless', 'trojan', 'shadowsocks', 'hysteria', 'hysteria2'], true);
     }
 
     private function getTypeSortOrder(string $type): int
     {
         return match ($type) {
             'vless' => 0,
-            'shadowsocks' => 1,
-            'hysteria' => 2,
-            'hysteria2' => 3,
+            'trojan' => 1,
+            'shadowsocks' => 2,
+            'hysteria' => 3,
+            'hysteria2' => 4,
             default => 99,
         };
     }
@@ -208,6 +209,7 @@ class VlessSubscriptionService
     {
         return match (true) {
             str_starts_with($line, 'vless://') => 'vless',
+            str_starts_with($line, 'trojan://') => 'trojan',
             str_starts_with($line, 'ss://') => 'shadowsocks',
             str_starts_with($line, 'hysteria2://'),
             str_starts_with($line, 'hy2://') => 'hysteria2',

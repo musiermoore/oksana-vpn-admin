@@ -231,13 +231,7 @@ class XuiConfigService
         }
 
         $client = $this->resolveClientForEnableState($config, $enabled);
-
-        $response = $this->postWithFallback($this->getUpdateClientPaths($uuid), [
-            'id' => $client['inbound_id'],
-            'settings' => json_encode([
-                'clients' => [$client['settings']],
-            ], JSON_UNESCAPED_SLASHES),
-        ]);
+        $response = $this->updateClient($config, $client);
 
         $payload = $response->json();
 
@@ -640,6 +634,16 @@ class XuiConfigService
             '/panel/api/inbounds/updateClient/' . $uuid,
             '/panel/inbound/updateClient/' . $uuid,
         ];
+    }
+
+    protected function updateClient(VlessConfig $config, array $client): Response
+    {
+        return $this->postWithFallback($this->getUpdateClientPaths($config->uuid), [
+            'id' => $client['inbound_id'],
+            'settings' => json_encode([
+                'clients' => [$client['settings']],
+            ], JSON_UNESCAPED_SLASHES),
+        ]);
     }
 
     /**

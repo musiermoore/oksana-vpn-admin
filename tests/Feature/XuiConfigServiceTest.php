@@ -194,7 +194,7 @@ class XuiConfigServiceTest extends TestCase
                     ], JSON_UNESCAPED_SLASHES),
                 ]],
             ]),
-            'https://panel.test/panel/api/inbounds/updateClient/' . $config->uuid => Http::response([
+            'https://panel.test/panel/api/clients/update/' . $config->name . '?inboundIds=10' => Http::response([
                 'success' => true,
             ]),
             'https://panel.test/panel/api/inbounds/getClientTraffics/alice_modern_1' => Http::response([], 500),
@@ -207,5 +207,17 @@ class XuiConfigServiceTest extends TestCase
         $this->assertSame(['success' => true], $payload);
 
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'getClientTraffics'));
+        Http::assertSent(function (Request $request) use ($config) {
+            if ($request->url() !== 'https://panel.test/panel/api/clients/update/' . $config->name . '?inboundIds=10') {
+                return false;
+            }
+
+            return ($request['id'] ?? null) === $config->uuid
+                && ($request['email'] ?? null) === $config->name
+                && ($request['subId'] ?? null) === $config->sub_id
+                && ($request['password'] ?? null) === $config->password
+                && ($request['auth'] ?? null) === $config->auth
+                && ($request['enable'] ?? null) === true;
+        });
     }
 }

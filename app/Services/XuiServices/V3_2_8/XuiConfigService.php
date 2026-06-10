@@ -2,7 +2,9 @@
 
 namespace App\Services\XuiServices\V3_2_8;
 
+use App\Models\VlessConfig;
 use App\Services\XuiConfigService as BaseXuiConfigService;
+use Illuminate\Http\Client\Response;
 
 class XuiConfigService extends BaseXuiConfigService
 {
@@ -20,5 +22,17 @@ class XuiConfigService extends BaseXuiConfigService
     protected function usesTrafficEndpointForEnableState(): bool
     {
         return false;
+    }
+
+    protected function updateClient(VlessConfig $config, array $client): Response
+    {
+        return $this->getRequest()
+            ->withOptions([
+                'query' => [
+                    'inboundIds' => (string) $client['inbound_id'],
+                ],
+            ])
+            ->post('/panel/api/clients/update/' . urlencode($config->name), $client['settings'])
+            ->throw();
     }
 }

@@ -16,4 +16,9 @@ class XuiConfigService extends BaseXuiConfigService
 
         return is_array($payload) ? $payload : [];
     }
+
+    protected function usesTrafficEndpointForEnableState(): bool
+    {
+        return false;
+    }
 }

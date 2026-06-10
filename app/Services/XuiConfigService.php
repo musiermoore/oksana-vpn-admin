@@ -230,30 +230,14 @@ class XuiConfigService
             throw new RuntimeException("Client [{$uuid}] was not found in local configs for server [{$this->server->id}]");
         }
 
-        $traffic = $this->getClientTraffics($config->name);
-        $client = $this->extractClientFromTrafficPayload($traffic, $config, $enabled);
+        $client = $this->resolveClientForEnableState($config, $enabled);
 
-        $response = $this->getRequest()
-            ->asForm()
-            ->post('/panel/api/inbounds/updateClient/' . $uuid, [
-                'id' => $client['inbound_id'],
-                'settings' => json_encode([
-                    'clients' => [$client['settings']],
-                ], JSON_UNESCAPED_SLASHES),
-            ]);
-
-        if ($response->status() === 404) {
-            $response = $this->getRequest()
-                ->asForm()
-                ->post('/panel/inbound/updateClient/' . $uuid, [
-                    'id' => $client['inbound_id'],
-                    'settings' => json_encode([
-                        'clients' => [$client['settings']],
-                    ], JSON_UNESCAPED_SLASHES),
-                ]);
-        }
-
-        $response->throw();
+        $response = $this->postWithFallback($this->getUpdateClientPaths($uuid), [
+            'id' => $client['inbound_id'],
+            'settings' => json_encode([
+                'clients' => [$client['settings']],
+            ], JSON_UNESCAPED_SLASHES),
+        ]);
 
         $payload = $response->json();
 
@@ -272,15 +256,7 @@ class XuiConfigService
 
     public function getClientTraffics(string $email): array
     {
-        $response = $this->getRequest()
-            ->get('/panel/api/inbounds/getClientTraffics/' . urlencode($email));
-
-        if ($response->status() === 404) {
-            $response = $this->getRequest()
-                ->get('/panel/inbound/getClientTraffics/' . urlencode($email));
-        }
-
-        $response->throw();
+        $response = $this->getWithFallback($this->getClientTrafficPaths($email));
 
         $payload = $response->json();
 
@@ -631,6 +607,110 @@ class XuiConfigService
         ];
     }
 
+    protected function resolveClientForEnableState(VlessConfig $config, bool $enabled): array
+    {
+        if (! $this->usesTrafficEndpointForEnableState()) {
+            return $this->extractClientFromInboundsPayload($config, $enabled);
+        }
+
+        try {
+            $traffic = $this->getClientTraffics($config->name);
+
+            return $this->extractClientFromTrafficPayload($traffic, $config, $enabled);
+        } catch (RequestException $exception) {
+            if ($exception->response?->status() !== 404) {
+                throw $exception;
+            }
+
+            return $this->extractClientFromInboundsPayload($config, $enabled);
+        }
+    }
+
+    protected function usesTrafficEndpointForEnableState(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function getUpdateClientPaths(string $uuid): array
+    {
+        return [
+            '/panel/api/inbounds/updateClient/' . $uuid,
+            '/panel/inbound/updateClient/' . $uuid,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function getClientTrafficPaths(string $email): array
+    {
+        $encodedEmail = urlencode($email);
+
+        return [
+            '/panel/api/inbounds/getClientTraffics/' . $encodedEmail,
+            '/panel/inbound/getClientTraffics/' . $encodedEmail,
+        ];
+    }
+
+    protected function extractClientFromInboundsPayload(VlessConfig $config, bool $enabled): array
+    {
+        $inbounds = $this->getAllVlessInbounds();
+        $matchedInbound = null;
+        $matchedClient = null;
+
+        foreach ($inbounds as $inbound) {
+            if (! empty($config->inbound_id) && (int) ($inbound['id'] ?? 0) !== (int) $config->inbound_id) {
+                continue;
+            }
+
+            $clients = $inbound['settings']['clients'] ?? [];
+
+            if (! is_array($clients)) {
+                continue;
+            }
+
+            $matchedClient = collect($clients)->first(function (mixed $client) use ($config) {
+                if (! is_array($client)) {
+                    return false;
+                }
+
+                $clientId = (string) ($client['id'] ?? $client['password'] ?? '');
+
+                return $clientId === (string) $config->uuid
+                    || (string) ($client['email'] ?? '') === (string) $config->name;
+            });
+
+            if (is_array($matchedClient)) {
+                $matchedInbound = $inbound;
+                break;
+            }
+        }
+
+        if (! is_array($matchedInbound) || ! is_array($matchedClient)) {
+            throw new RuntimeException("Client [{$config->name}] was not found in inbound settings for server [{$this->server->id}]");
+        }
+
+        return [
+            'inbound_id' => (int) ($matchedInbound['id'] ?? $config->inbound_id),
+            'settings' => array_filter(array_merge(
+                $this->getDefaultClientSettings(),
+                $matchedClient,
+                [
+                    'id' => $matchedClient['id'] ?? $config->uuid,
+                    'email' => $matchedClient['email'] ?? $config->name,
+                    'subId' => $matchedClient['subId'] ?? $config->sub_id,
+                    'password' => $matchedClient['password'] ?? $config->password,
+                    'auth' => $matchedClient['auth'] ?? $config->auth,
+                    'flow' => $matchedClient['flow'] ?? $config->flow,
+                    'enable' => $enabled,
+                ],
+            ), fn (mixed $value) => $value !== null),
+        ];
+    }
+
     private function getBaseUrl(): string
     {
         return rtrim($this->server->panel_link, '/');
@@ -645,6 +725,27 @@ class XuiConfigService
                 return $this->getRequest()
                     ->asForm()
                     ->post($path, $payload)
+                    ->throw();
+            } catch (RequestException $exception) {
+                $lastException = $exception;
+
+                if ($exception->response?->status() !== 404 || $index === array_key_last($paths)) {
+                    throw $exception;
+                }
+            }
+        }
+
+        throw $lastException ?? new RuntimeException('Unable to complete XUI request.');
+    }
+
+    protected function getWithFallback(array $paths): Response
+    {
+        $lastException = null;
+
+        foreach ($paths as $index => $path) {
+            try {
+                return $this->getRequest()
+                    ->get($path)
                     ->throw();
             } catch (RequestException $exception) {
                 $lastException = $exception;

@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use Exception;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class User extends Authenticatable
@@ -31,7 +31,7 @@ class User extends Authenticatable
         'join_at',
         'balance',
         'is_admin',
-        'is_active'
+        'is_active',
     ];
 
     /**
@@ -127,11 +127,18 @@ class User extends Authenticatable
             ->ofMany('end_date', 'max');
     }
 
+    public function latestActiveOrFutureSubscription(): HasOne
+    {
+        return $this->hasOne(UserSubscription::class)
+            ->whereDate('end_date', '>=', now())
+            ->ofMany('end_date', 'max');
+    }
+
     public function getFullNameAttribute(): string
     {
         return $this->attributes['telegram']
-            . ' (' . $this->attributes['name'] . ')'
-            . ($this->is_active ? '' : ' - Удалён');
+            .' ('.$this->attributes['name'].')'
+            .($this->is_active ? '' : ' - Удалён');
     }
 
     public function getIsActiveAttribute(): bool
@@ -264,7 +271,7 @@ class User extends Authenticatable
     {
         $telegram = trim((string) $this->telegram, '@');
 
-        return ($telegram !== '' ? $telegram : 'user_' . $this->id) . '_' . $server->code;
+        return ($telegram !== '' ? $telegram : 'user_'.$this->id).'_'.$server->code;
     }
 
     public function createDefaultConfigs(?Collection $servers = null): bool

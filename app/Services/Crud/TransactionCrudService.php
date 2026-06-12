@@ -98,7 +98,7 @@ class TransactionCrudService
         if (($extraData['package_activation_processed'] ?? false) === true && is_string($subscriptionEndDate) && $subscriptionEndDate !== '') {
             $subscriptionStartDate = (string) data_get($extraData, 'subscription_start_date', '');
             $formattedEndDate = Carbon::parse($subscriptionEndDate)->format('d.m.Y');
-            $action = $subscriptionStartDate !== '' && Carbon::parse($subscriptionStartDate)->isFuture()
+            $action = $subscriptionStartDate !== '' && Carbon::parse($subscriptionStartDate)->toDateString() !== today()->toDateString()
                 ? 'продлена'
                 : 'активирована';
 

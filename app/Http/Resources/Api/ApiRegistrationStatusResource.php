@@ -24,7 +24,7 @@ class ApiRegistrationStatusResource extends JsonResource
 
         return [
             'registered' => true,
-            'active_subscription_end_date' => $this->activeSubscription?->end_date,
+            'active_subscription_end_date' => $this->latestActiveOrFutureSubscription?->end_date,
             'has_money_for_next_subscription_month' => $this->hasMoneyForNextSubscriptionMonth,
         ];
     }

@@ -195,6 +195,76 @@ class TransactionCrudServiceTest extends TestCase
         $this->assertSame(100.0, $user->fresh()->balance);
     }
 
+    public function test_approving_package_deposit_creates_next_subscription_record_when_current_subscription_is_active(): void
+    {
+        Queue::fake();
+
+        $telegram = Mockery::mock();
+        $telegram->shouldReceive('sendMessage')
+            ->once()
+            ->withArgs(function (array $payload): bool {
+                return $payload['chat_id'] === '654322'
+                    && $payload['text'] === 'Подписка успешно продлена до 13.07.2026.';
+            })
+            ->andReturnTrue();
+        Telegram::swap($telegram);
+
+        CurrentPayment::query()->create([
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30',
+            'amount' => 150,
+        ]);
+
+        $user = $this->createUser(balance: 0, telegramId: '654322');
+
+        $subscription = UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-05-12',
+            'end_date' => '2026-06-12',
+            'price' => 150,
+        ]);
+
+        $transaction = Transaction::query()->create([
+            'user_id' => $user->id,
+            'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
+            'amount' => 150,
+            'is_approved' => false,
+            'description' => 'Pending deposit',
+            'extra_data' => [
+                'subscription_months' => 1,
+                'base_month_price' => 150.0,
+                'discount_percent' => 0,
+                'package_full_price' => 150.0,
+                'package_price' => 150.0,
+                'balance_before' => 0.0,
+                'deposit_amount' => 150.0,
+            ],
+        ]);
+
+        app(TransactionCrudService::class)->approve($transaction);
+
+        $this->assertSame(2, UserSubscription::query()->count());
+
+        $subscription->refresh();
+        $this->assertSame('2026-05-12', $subscription->start_date);
+        $this->assertSame('2026-06-12', $subscription->end_date);
+        $this->assertSame(150.0, (float) $subscription->price);
+
+        $this->assertDatabaseHas('user_subscriptions', [
+            'user_id' => $user->id,
+            'start_date' => '2026-06-13',
+            'end_date' => '2026-07-13',
+            'price' => 150,
+        ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'user_id' => $user->id,
+            'amount' => -150,
+            'is_approved' => true,
+            'description' => 'Покупка подписки на 1 мес.',
+        ]);
+    }
+
     private function createUser(float $balance, string $telegramId = '100200'): User
     {
         return User::query()->create([

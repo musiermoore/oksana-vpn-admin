@@ -35,6 +35,24 @@ class SubscriptionService
         $this->renewOrCreateSubscription($user);
     }
 
+    public function getSupportedPackageMonths(): array
+    {
+        return array_keys(self::PACKAGE_DISCOUNTS);
+    }
+
+    public function getPackagePricingForUser(User $user): array
+    {
+        return array_map(function (int $months) use ($user): array {
+            $quote = $this->buildPurchaseQuote($user, $months);
+
+            return [
+                'month' => $months,
+                'price' => (float) $quote['package_price'],
+                'discount_percent' => (int) $quote['discount_percent'],
+            ];
+        }, $this->getSupportedPackageMonths());
+    }
+
     public function buildPurchaseQuote(User $user, int $months): array
     {
         $discountPercent = self::PACKAGE_DISCOUNTS[$months] ?? null;

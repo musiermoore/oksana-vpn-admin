@@ -10,6 +10,7 @@ use App\Http\Resources\Api\ApiConfigResource;
 use App\Http\Resources\Api\ApiRegisteredUserResource;
 use App\Http\Resources\Api\ApiRegistrationStatusResource;
 use App\Http\Resources\Api\ApiShadowsocksConfigResource;
+use App\Http\Resources\Api\ApiSubscriptionPackageResource;
 use App\Http\Resources\Api\ApiVlessConfigResource;
 use App\Http\Resources\Api\ApiVlessDeepLinksResource;
 use App\Models\User;
@@ -57,6 +58,21 @@ class UserController extends Controller
         }
 
         return response()->json((new ApiBalanceResource($user))->resolve());
+    }
+
+    public function subscriptionPackages(): JsonResponse
+    {
+        $user = $this->resolveApiUser();
+
+        if ($user instanceof JsonResponse) {
+            return $user;
+        }
+
+        return response()->json([
+            'data' => ApiSubscriptionPackageResource::collection(
+                $this->userService->getSubscriptionPackages($user)
+            )->resolve(),
+        ]);
     }
 
     public function getUserConfigs(Request $request, string $telegramId, string $type): JsonResponse

@@ -10,6 +10,7 @@ use App\Repositories\ConfigRepository;
 use App\Repositories\ShadowsocksConfigRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
+use App\Services\SubscriptionService;
 use App\Services\VlessDeepLinkService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,7 @@ class ApiUserService
         private readonly ConfigRepository $configs,
         private readonly VlessConfigRepository $vlessConfigs,
         private readonly ShadowsocksConfigRepository $shadowsocksConfigs,
+        private readonly SubscriptionService $subscriptionService,
         private readonly VlessDeepLinkService $vlessDeepLinks,
     ) {}
 
@@ -139,6 +141,11 @@ class ApiUserService
         $requiredAmount = (float) $activePaymentPeriod->amount + $extraAmount;
 
         return $user->getStoredBalanceAmount() >= $requiredAmount;
+    }
+
+    public function getSubscriptionPackages(User $user): array
+    {
+        return $this->subscriptionService->getPackagePricingForUser($user);
     }
 
     public function isVlessType(string $type): bool

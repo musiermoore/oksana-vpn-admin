@@ -26,6 +26,53 @@ class ApiUserRoutesTest extends TestCase
             ]);
     }
 
+    public function test_subscription_packages_route_returns_not_found_for_unknown_telegram_id(): void
+    {
+        $this->getJson('/api/users/missing-user/subscription-packages')
+            ->assertNotFound()
+            ->assertExactJson([
+                'message' => BotApiMessages::userNotFound(),
+            ]);
+    }
+
+    public function test_subscription_packages_route_returns_all_supported_packages_with_prices_and_discounts(): void
+    {
+        $user = $this->createUser(balance: 200);
+
+        CurrentPayment::query()->create([
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addMonth()->toDateString(),
+            'amount' => 400,
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/subscription-packages")
+            ->assertOk()
+            ->assertExactJson([
+                'data' => [
+                    [
+                        'month' => 1,
+                        'price' => 400.0,
+                        'discount_percent' => 0,
+                    ],
+                    [
+                        'month' => 3,
+                        'price' => 1080.0,
+                        'discount_percent' => 10,
+                    ],
+                    [
+                        'month' => 6,
+                        'price' => 1920.0,
+                        'discount_percent' => 20,
+                    ],
+                    [
+                        'month' => 12,
+                        'price' => 3360.0,
+                        'discount_percent' => 30,
+                    ],
+                ],
+            ]);
+    }
+
     public function test_configs_route_returns_access_error_for_user_without_active_access(): void
     {
         $user = $this->createUser(balance: 0);

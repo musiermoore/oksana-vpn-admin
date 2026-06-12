@@ -19,6 +19,8 @@ Route::name('api.')->middleware([BasicAuth::class, TrackApiRequests::class])->gr
         Route::middleware('api.user')->group(function () {
             Route::get('balance', [UserController::class, 'balance'])
                 ->name('balance');
+            Route::get('subscription-packages', [UserController::class, 'subscriptionPackages'])
+                ->name('subscription-packages');
             Route::post('transactions', [TransactionController::class, 'store'])
                 ->name('transactions.store');
 

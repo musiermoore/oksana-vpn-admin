@@ -13,6 +13,9 @@ RUN npm run build
 
 FROM musiermoore/oksana-vpn-app:latest
 
+WORKDIR /var/www/html
+ENTRYPOINT []
+
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
 

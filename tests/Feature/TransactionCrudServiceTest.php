@@ -97,7 +97,7 @@ class TransactionCrudServiceTest extends TestCase
             ->once()
             ->withArgs(function (array $payload): bool {
                 return $payload['chat_id'] === '654321'
-                    && $payload['text'] === 'Баланс был пополнен на 100';
+                    && $payload['text'] === 'Баланс был пополнен на 520';
             })
             ->andReturnTrue();
         Telegram::swap($telegram);
@@ -105,7 +105,7 @@ class TransactionCrudServiceTest extends TestCase
         CurrentPayment::query()->create([
             'start_date' => '2026-05-01',
             'end_date' => '2026-05-31',
-            'amount' => 100,
+            'amount' => 150,
         ]);
 
         Server::query()->create([
@@ -117,14 +117,23 @@ class TransactionCrudServiceTest extends TestCase
             'is_vless' => false,
         ]);
 
-        $user = $this->createUser(balance: 0, telegramId: '654321');
+        $user = $this->createUser(balance: 200, telegramId: '654321');
 
         $transaction = Transaction::query()->create([
             'user_id' => $user->id,
             'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
-            'amount' => 100,
+            'amount' => 520,
             'is_approved' => false,
             'description' => 'Pending deposit',
+            'extra_data' => [
+                'subscription_months' => 6,
+                'base_month_price' => 150.0,
+                'discount_percent' => 20,
+                'package_full_price' => 900.0,
+                'package_price' => 720.0,
+                'balance_before' => 200.0,
+                'deposit_amount' => 520.0,
+            ],
         ]);
 
         app(TransactionCrudService::class)->approve($transaction);
@@ -134,22 +143,24 @@ class TransactionCrudServiceTest extends TestCase
             ->sole();
 
         $this->assertSame('2026-05-18', $subscription->start_date);
-        $this->assertSame('2026-06-18', $subscription->end_date);
-        $this->assertSame(100.0, (float) $subscription->price);
+        $this->assertSame('2026-11-18', $subscription->end_date);
+        $this->assertSame(720.0, (float) $subscription->price);
 
         $this->assertDatabaseHas('transactions', [
             'id' => $transaction->id,
             'is_approved' => true,
-            'current_balance_amount' => 100,
+            'current_balance_amount' => 520,
         ]);
 
         $this->assertDatabaseHas('transactions', [
             'user_id' => $user->id,
-            'amount' => -100,
+            'amount' => -720,
             'is_approved' => true,
-            'description' => 'Продление подписки',
-            'current_balance_amount' => 0,
+            'description' => 'Покупка подписки на 6 мес.',
+            'current_balance_amount' => -200,
         ]);
+
+        $this->assertSame(0.0, $user->fresh()->balance);
 
         Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($user) {
             return $job->userId === $user->id;

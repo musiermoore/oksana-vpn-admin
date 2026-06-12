@@ -18,6 +18,7 @@ class Transaction extends Model
         'current_balance_amount',
         'is_approved',
         'description',
+        'extra_data',
     ];
 
     protected function casts(): array
@@ -26,6 +27,7 @@ class Transaction extends Model
             'amount' => 'float',
             'current_balance_amount' => 'float',
             'is_approved' => 'bool',
+            'extra_data' => 'array',
         ];
     }
 

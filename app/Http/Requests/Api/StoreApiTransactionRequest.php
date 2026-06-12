@@ -15,7 +15,7 @@ class StoreApiTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => ['required', 'numeric', 'gt:0'],
+            'month' => ['required', 'integer', 'in:1,3,6,12'],
             'bank' => ['required', 'string', 'max:255'],
         ];
     }
@@ -25,7 +25,7 @@ class StoreApiTransactionRequest extends FormRequest
         $data = $this->validated();
 
         return new ApiDepositTransactionData(
-            amount: (float) $data['amount'],
+            month: (int) $data['month'],
             bank: trim($data['bank']),
         );
     }

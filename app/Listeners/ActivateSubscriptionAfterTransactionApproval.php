@@ -29,7 +29,11 @@ class ActivateSubscriptionAfterTransactionApproval
             return;
         }
 
-        $this->subscriptionService->renewForUser($user);
+        $packageWasActivated = $this->subscriptionService->activatePurchasedMonthsForTransaction($user, $transaction);
+
+        if (! $packageWasActivated) {
+            $this->subscriptionService->renewForUser($user);
+        }
 
         $user->load('activeSubscription');
 

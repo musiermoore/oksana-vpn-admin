@@ -10,7 +10,7 @@ class ApiTransactionRequestTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_transaction_request_requires_bank_and_positive_amount(): void
+    public function test_transaction_request_requires_bank_and_supported_month_package(): void
     {
         User::query()->create([
             'name' => 'Alice',
@@ -20,10 +20,10 @@ class ApiTransactionRequestTest extends TestCase
         ]);
 
         $this->postJson('/api/users/123456789/transactions', [
-            'amount' => 0,
+            'month' => 2,
         ])->assertStatus(422)
             ->assertJsonValidationErrors([
-                'amount',
+                'month',
                 'bank',
             ]);
     }

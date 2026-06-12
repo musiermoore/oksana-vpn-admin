@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use App\Services\Api\ApiTransactionService;
 use App\Services\Crud\TransactionCrudService;
 use App\Support\BotApiMessages;
+use DomainException;
 use Throwable;
 
 class TransactionController
@@ -19,10 +20,14 @@ class TransactionController
     public function store(StoreApiTransactionRequest $request)
     {
         try {
-            $transaction = $this->apiTransactionService->createDepositRequest(
+            $result = $this->apiTransactionService->purchaseSubscription(
                 $request->attributes->get('apiUser'),
                 $request->toDto(),
             );
+        } catch (DomainException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
         } catch (Throwable $throwable) {
             report($throwable);
 
@@ -31,9 +36,7 @@ class TransactionController
             ], 500);
         }
 
-        return response()->json([
-            'message' => "Запрос на пополнение $transaction->amount ({$transaction->description}) отправлен.",
-        ]);
+        return response()->json($result);
     }
 
     public function approve(Transaction $transaction)

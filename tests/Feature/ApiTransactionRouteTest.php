@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\CurrentPayment;
+use App\Models\Invoice;
+use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
+use App\Services\Payments\YooKassaPaymentService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -31,31 +34,43 @@ class ApiTransactionRouteTest extends TestCase
 
     public function test_transactions_route_creates_pending_deposit_request(): void
     {
-        $telegram = Mockery::mock();
-        $telegram->shouldReceive('sendMessage')
+        $paymentService = Mockery::mock(YooKassaPaymentService::class);
+        $paymentService->shouldReceive('createPayment')
             ->once()
-            ->withArgs(function (array $payload): bool {
-                return $payload['chat_id'] === '777777'
-                    && str_contains($payload['text'], 'запросил пополнение на 520')
-                    && str_contains($payload['text'], '(T-Bank)')
-                    && str_contains($payload['text'], '6 мес.')
-                    && str_contains($payload['text'], 'Сумма подписки: 720')
-                    && str_contains($payload['text'], 'скидка: 20%');
+            ->withArgs(function (float $amount, string $description, array $metadata, ?string $returnUrl): bool {
+                return $amount === 520.0
+                    && $description === 'Подписка 6 мес. для @alice'
+                    && $metadata['subscription_months'] === '6'
+                    && $returnUrl === 'https://app.example/return';
             })
-            ->andReturnTrue();
+            ->andReturn([
+                'id' => '23d93cac-000f-5000-8000-126628f15141',
+                'status' => 'pending',
+                'paid' => false,
+                'amount' => [
+                    'value' => '520.00',
+                    'currency' => 'RUB',
+                ],
+                'confirmation' => [
+                    'type' => 'redirect',
+                    'confirmation_url' => 'https://yookassa.example/confirm',
+                ],
+                'description' => 'Заказ №1',
+                'raw' => [
+                    'id' => '23d93cac-000f-5000-8000-126628f15141',
+                    'status' => 'pending',
+                ],
+            ]);
+        $this->app->instance(YooKassaPaymentService::class, $paymentService);
+
+        $telegram = Mockery::mock();
+        $telegram->shouldNotReceive('sendMessage');
         Telegram::swap($telegram);
 
         CurrentPayment::query()->create([
             'start_date' => '2026-05-01',
             'end_date' => '2026-05-31',
             'amount' => 150,
-        ]);
-
-        User::query()->create([
-            'name' => 'Admin',
-            'telegram' => '@admin',
-            'telegram_id' => '777777',
-            'is_admin' => true,
         ]);
 
         $user = User::query()->create([
@@ -68,24 +83,34 @@ class ApiTransactionRouteTest extends TestCase
 
         $this->postJson("/api/users/{$user->telegram_id}/transactions", [
             'month' => 6,
-            'bank' => 'T-Bank',
+            'return_url' => 'https://app.example/return',
         ])->assertOk()
             ->assertExactJson([
                 'status' => 'deposit_required',
-                'message' => 'Для активации подписки нужно пополнить баланс на 520.',
+                'message' => 'Для активации подписки нужно оплатить 520 через YooKassa.',
                 'deposit_amount' => 520.0,
                 'transaction_id' => 1,
+                'invoice_id' => 1,
+                'payment_id' => '23d93cac-000f-5000-8000-126628f15141',
+                'payment_status' => 'pending',
+                'confirmation_url' => 'https://yookassa.example/confirm',
             ]);
 
         $this->assertDatabaseHas('transactions', [
             'user_id' => $user->id,
+            'invoice_id' => 1,
             'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
             'amount' => 520,
-            'description' => 'T-Bank',
+            'description' => 'YooKassa',
             'is_approved' => false,
         ]);
 
-        $transaction = \App\Models\Transaction::query()->sole();
+        $transaction = Transaction::query()->sole();
+        $invoice = Invoice::query()->sole();
+
+        $this->assertSame($invoice->id, $transaction->invoice_id);
+        $this->assertSame('23d93cac-000f-5000-8000-126628f15141', $invoice->provider_payment_id);
+        $this->assertSame('https://yookassa.example/confirm', $invoice->confirmation_url);
 
         $this->assertSame([
             'subscription_months' => 6,
@@ -120,7 +145,6 @@ class ApiTransactionRouteTest extends TestCase
 
         $this->postJson("/api/users/{$user->telegram_id}/transactions", [
             'month' => 6,
-            'bank' => 'T-Bank',
         ])->assertOk()
             ->assertExactJson([
                 'status' => 'activated',

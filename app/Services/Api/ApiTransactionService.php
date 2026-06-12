@@ -3,19 +3,21 @@
 namespace App\Services\Api;
 
 use App\DTOs\Transaction\ApiDepositTransactionData;
-use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
+use App\Repositories\InvoiceRepository;
 use App\Repositories\TransactionRepository;
+use App\Services\Payments\YooKassaPaymentService;
 use App\Services\SubscriptionService;
-use Telegram\Bot\Laravel\Facades\Telegram;
 use Carbon\Carbon;
 
 class ApiTransactionService
 {
     public function __construct(
+        private readonly InvoiceRepository $invoices,
         private readonly TransactionRepository $transactions,
         private readonly SubscriptionService $subscriptionService,
+        private readonly YooKassaPaymentService $yooKassaPaymentService,
     ) {}
 
     public function purchaseSubscription(User $user, ApiDepositTransactionData $data): array
@@ -39,11 +41,12 @@ class ApiTransactionService
             ];
         }
 
+        $description = $this->buildPaymentDescription($user, $data->month);
         $transaction = $this->transactions->createForUser($user, [
             'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
             'amount' => $quote['deposit_amount'],
             'is_approved' => false,
-            'description' => $data->bank,
+            'description' => 'YooKassa',
             'extra_data' => [
                 'subscription_months' => $data->month,
                 'base_month_price' => $quote['base_month_price'],
@@ -55,36 +58,59 @@ class ApiTransactionService
             ],
         ]);
 
-        $this->notifyAdmins($user, $transaction, $data->bank);
+        $payment = $this->yooKassaPaymentService->createPayment(
+            amount: (float) $transaction->amount,
+            description: $description,
+            metadata: [
+                'user_id' => (string) $user->id,
+                'transaction_id' => (string) $transaction->id,
+                'subscription_months' => (string) $data->month,
+            ],
+            returnUrl: $data->returnUrl,
+        );
+
+        $invoice = $this->invoices->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => (string) $payment['id'],
+            'status' => (string) $payment['status'],
+            'paid' => (bool) $payment['paid'],
+            'amount' => (float) data_get($payment, 'amount.value', 0),
+            'currency' => (string) data_get($payment, 'amount.currency', 'RUB'),
+            'description' => (string) ($payment['description'] ?? $description),
+            'confirmation_url' => data_get($payment, 'confirmation.confirmation_url'),
+            'payload' => $payment['raw'] ?? $payment,
+            'history' => [[
+                'type' => 'payment.created',
+                'status' => (string) $payment['status'],
+                'paid' => (bool) $payment['paid'],
+                'amount' => [
+                    'value' => (string) data_get($payment, 'amount.value', '0'),
+                    'currency' => (string) data_get($payment, 'amount.currency', 'RUB'),
+                ],
+                'occurred_at' => $payment['created_at'] ?? now()->toAtomString(),
+                'payload' => $payment['raw'] ?? $payment,
+            ]],
+        ]);
+
+        $this->transactions->update($transaction, [
+            'invoice_id' => $invoice->id,
+        ]);
 
         return [
             'status' => 'deposit_required',
-            'message' => "Для активации подписки нужно пополнить баланс на {$transaction->amount}.",
+            'message' => "Для активации подписки нужно оплатить {$transaction->amount} через YooKassa.",
             'deposit_amount' => (float) $transaction->amount,
             'transaction_id' => $transaction->id,
+            'invoice_id' => $invoice->id,
+            'payment_id' => $invoice->provider_payment_id,
+            'payment_status' => $invoice->status,
+            'confirmation_url' => $invoice->confirmation_url,
         ];
     }
 
-    private function notifyAdmins(User $user, Transaction $transaction, string $bank): void
+    private function buildPaymentDescription(User $user, int $months): string
     {
-        $adminUserIds = User::query()->whereIsAdmin(true)->pluck('telegram_id');
-        $subscriptionMonths = (int) data_get($transaction->extra_data, 'subscription_months');
-        $packagePrice = (float) data_get($transaction->extra_data, 'package_price');
-        $discountPercent = (int) data_get($transaction->extra_data, 'discount_percent');
-
-        foreach ($adminUserIds as $chatId) {
-            Telegram::sendMessage([
-                'chat_id' => $chatId,
-                'text' => "$user->full_name запросил пополнение на $transaction->amount ($bank) для подписки на $subscriptionMonths мес. Сумма подписки: $packagePrice, скидка: $discountPercent%.",
-                'reply_markup' => json_encode([
-                    'inline_keyboard' => [
-                        [
-                            ['text' => 'Принять', 'callback_data' => "approve_deposit|$transaction->id"],
-                            ['text' => 'Отклонить', 'callback_data' => "deny_deposit|$transaction->id"],
-                        ],
-                    ],
-                ]),
-            ]);
-        }
+        return "Подписка {$months} мес. для {$user->telegram}";
     }
 }

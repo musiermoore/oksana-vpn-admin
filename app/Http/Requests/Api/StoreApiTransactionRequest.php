@@ -16,7 +16,7 @@ class StoreApiTransactionRequest extends FormRequest
     {
         return [
             'month' => ['required', 'integer', 'in:1,3,6,12'],
-            'bank' => ['required', 'string', 'max:255'],
+            'return_url' => ['nullable', 'url', 'max:2048'],
         ];
     }
 
@@ -26,7 +26,7 @@ class StoreApiTransactionRequest extends FormRequest
 
         return new ApiDepositTransactionData(
             month: (int) $data['month'],
-            bank: trim($data['bank']),
+            returnUrl: isset($data['return_url']) ? trim($data['return_url']) : null,
         );
     }
 }

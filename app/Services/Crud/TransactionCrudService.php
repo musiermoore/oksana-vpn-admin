@@ -7,6 +7,7 @@ use App\Events\TransactionApproved;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Repositories\TransactionRepository;
+use Carbon\Carbon;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class TransactionCrudService
@@ -32,13 +33,19 @@ class TransactionCrudService
 
     public function approve(Transaction $transaction): void
     {
+        if ($transaction->is_approved) {
+            return;
+        }
+
         $transaction = $this->transactions->update($transaction, ['is_approved' => true]);
 
         event(new TransactionApproved($transaction));
 
+        $transaction = $transaction->refresh();
+
         Telegram::sendMessage([
             'chat_id' => $transaction->user->telegram_id,
-            'text' => $transaction->approval_message_text,
+            'text' => $this->buildApprovalTelegramMessage($transaction),
         ]);
     }
 
@@ -81,5 +88,23 @@ class TransactionCrudService
         }
 
         return $normalizedAmount;
+    }
+
+    private function buildApprovalTelegramMessage(Transaction $transaction): string
+    {
+        $extraData = $transaction->extra_data ?? [];
+        $subscriptionEndDate = data_get($extraData, 'subscription_end_date');
+
+        if (($extraData['package_activation_processed'] ?? false) === true && is_string($subscriptionEndDate) && $subscriptionEndDate !== '') {
+            $subscriptionStartDate = (string) data_get($extraData, 'subscription_start_date', '');
+            $formattedEndDate = Carbon::parse($subscriptionEndDate)->format('d.m.Y');
+            $action = $subscriptionStartDate !== '' && Carbon::parse($subscriptionStartDate)->isFuture()
+                ? 'продлена'
+                : 'активирована';
+
+            return "Подписка успешно {$action} до {$formattedEndDate}.";
+        }
+
+        return $transaction->approval_message_text;
     }
 }

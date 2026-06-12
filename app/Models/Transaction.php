@@ -13,6 +13,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'user_id',
+        'invoice_id',
         'type_id',
         'amount',
         'current_balance_amount',
@@ -99,6 +100,11 @@ class Transaction extends Model
     public function type(): BelongsTo
     {
         return $this->belongsTo(TransactionType::class, 'type_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     public function getFormattedCreatedAtAttribute()

@@ -39,4 +39,10 @@ return [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'dev_chat_id' => env('TELEGRAM_DEV_CHAT_ID'),
     ],
+
+    'yookassa' => [
+        'shop_id' => env('YOO_KASSA_SHOP_ID'),
+        'secret_key' => env('YOO_KASSA_SECRET_KEY'),
+        'return_url' => env('YOO_KASSA_RETURN_URL', env('APP_URL')),
+    ],
 ];

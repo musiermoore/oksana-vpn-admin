@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\Transaction\TransactionData;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Models\CurrentPayment;
 use App\Models\Server;
@@ -9,8 +10,8 @@ use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\UserSubscription;
-use Carbon\Carbon;
 use App\Services\Crud\TransactionCrudService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
@@ -39,7 +40,7 @@ class TransactionCrudServiceTest extends TestCase
     {
         $user = $this->createUser(balance: 0);
 
-        app(TransactionCrudService::class)->create(new \App\DTOs\Transaction\TransactionData(
+        app(TransactionCrudService::class)->create(new TransactionData(
             userId: $user->id,
             typeId: TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
             amount: 100,
@@ -60,7 +61,7 @@ class TransactionCrudServiceTest extends TestCase
     {
         $user = $this->createUser(balance: 200);
 
-        app(TransactionCrudService::class)->create(new \App\DTOs\Transaction\TransactionData(
+        app(TransactionCrudService::class)->create(new TransactionData(
             userId: $user->id,
             typeId: TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
             amount: 100,
@@ -97,7 +98,7 @@ class TransactionCrudServiceTest extends TestCase
             ->once()
             ->withArgs(function (array $payload): bool {
                 return $payload['chat_id'] === '654321'
-                    && $payload['text'] === 'Баланс был пополнен на 520';
+                    && $payload['text'] === 'Подписка успешно активирована до 18.11.2026.';
             })
             ->andReturnTrue();
         Telegram::swap($telegram);
@@ -165,6 +166,33 @@ class TransactionCrudServiceTest extends TestCase
         Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($user) {
             return $job->userId === $user->id;
         });
+    }
+
+    public function test_approving_regular_deposit_keeps_balance_top_up_message(): void
+    {
+        $telegram = Mockery::mock();
+        $telegram->shouldReceive('sendMessage')
+            ->once()
+            ->withArgs(function (array $payload): bool {
+                return $payload['chat_id'] === '777000'
+                    && $payload['text'] === 'Баланс был пополнен на 100';
+            })
+            ->andReturnTrue();
+        Telegram::swap($telegram);
+
+        $user = $this->createUser(balance: 0, telegramId: '777000');
+
+        $transaction = Transaction::query()->create([
+            'user_id' => $user->id,
+            'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
+            'amount' => 100,
+            'is_approved' => false,
+            'description' => 'Regular deposit',
+        ]);
+
+        app(TransactionCrudService::class)->approve($transaction);
+
+        $this->assertSame(100.0, $user->fresh()->balance);
     }
 
     private function createUser(float $balance, string $telegramId = '100200'): User

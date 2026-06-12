@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Middleware\BasicAuth;
 use App\Http\Middleware\TrackApiRequests;
 use Illuminate\Support\Facades\Route;
+
+Route::post('payment/webhook', PaymentWebhookController::class)
+    ->name('api.payment.webhook');
 
 Route::name('api.')->middleware([BasicAuth::class, TrackApiRequests::class])->group(function () {
     Route::post('users/register', [UserController::class, 'register'])

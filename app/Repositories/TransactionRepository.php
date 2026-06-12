@@ -28,4 +28,12 @@ class TransactionRepository
     {
         return $user->transactions()->create($attributes);
     }
+
+    public function findPendingByInvoiceId(int $invoiceId): ?Transaction
+    {
+        return Transaction::query()
+            ->where('invoice_id', $invoiceId)
+            ->where('is_approved', false)
+            ->first();
+    }
 }

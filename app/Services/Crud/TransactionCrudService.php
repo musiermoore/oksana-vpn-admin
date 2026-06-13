@@ -31,10 +31,10 @@ class TransactionCrudService
         $this->transactions->delete($transaction);
     }
 
-    public function approve(Transaction $transaction): void
+    public function approve(Transaction $transaction): Transaction
     {
         if ($transaction->is_approved) {
-            return;
+            return $transaction->refresh();
         }
 
         $transaction = $this->transactions->update($transaction, ['is_approved' => true]);
@@ -47,6 +47,8 @@ class TransactionCrudService
             'chat_id' => $transaction->user->telegram_id,
             'text' => $this->buildApprovalTelegramMessage($transaction),
         ]);
+
+        return $transaction;
     }
 
     public function decline(Transaction $transaction): void
@@ -60,6 +62,11 @@ class TransactionCrudService
             'chat_id' => $telegramId,
             'text' => "Пополнение баланса на $amount отклонено",
         ]);
+    }
+
+    public function getApprovalTelegramMessage(Transaction $transaction): string
+    {
+        return $this->buildApprovalTelegramMessage($transaction->refresh());
     }
 
     private function normalizeAttributes(TransactionData $data): array

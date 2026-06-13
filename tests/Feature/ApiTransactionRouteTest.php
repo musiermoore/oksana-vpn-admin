@@ -87,7 +87,7 @@ class ApiTransactionRouteTest extends TestCase
         ])->assertOk()
             ->assertExactJson([
                 'status' => 'deposit_required',
-                'message' => 'Для активации подписки нужно оплатить 520 через YooKassa.',
+                'message' => 'Для активации подписки необходимо оплатить 520 ₽.',
                 'deposit_amount' => 520.0,
                 'transaction_id' => 1,
                 'invoice_id' => 1,

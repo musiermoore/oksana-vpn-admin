@@ -3,6 +3,7 @@
 namespace App\Services\Api;
 
 use App\DTOs\Transaction\ApiDepositTransactionData;
+use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Repositories\InvoiceRepository;
@@ -99,7 +100,7 @@ class ApiTransactionService
 
         return [
             'status' => 'deposit_required',
-            'message' => "Для активации подписки нужно оплатить {$transaction->amount} через YooKassa.",
+            'message' => "Для активации подписки необходимо оплатить {$transaction->amount} ₽.",
             'deposit_amount' => (float) $transaction->amount,
             'transaction_id' => $transaction->id,
             'invoice_id' => $invoice->id,
@@ -107,6 +108,26 @@ class ApiTransactionService
             'payment_status' => $invoice->status,
             'confirmation_url' => $invoice->confirmation_url,
         ];
+    }
+
+    public function updateTelegramMessageMetadata(
+        User $user,
+        int $transactionId,
+        int $telegramChatId,
+        int $telegramMessageId,
+    ): bool {
+        $transaction = $this->transactions->findForUser($user, $transactionId);
+
+        if (! $transaction instanceof Transaction) {
+            return false;
+        }
+
+        $this->transactions->update($transaction, [
+            'telegram_chat_id' => $telegramChatId,
+            'telegram_message_id' => $telegramMessageId,
+        ]);
+
+        return true;
     }
 
     private function buildPaymentDescription(User $user, int $months): string

@@ -27,6 +27,8 @@ Route::name('api.')->middleware([BasicAuth::class, TrackApiRequests::class])->gr
                 ->name('subscription-packages');
             Route::post('transactions', [TransactionController::class, 'store'])
                 ->name('transactions.store');
+            Route::patch('transactions/{transactionId}/telegram-message', [TransactionController::class, 'updateTelegramMessage'])
+                ->name('transactions.telegram-message');
 
             Route::middleware('api.user.access')->group(function () {
                 Route::get('{type}/configs', [UserController::class, 'getUserConfigs'])

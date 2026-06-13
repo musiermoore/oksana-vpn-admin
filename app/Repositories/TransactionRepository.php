@@ -29,6 +29,13 @@ class TransactionRepository
         return $user->transactions()->create($attributes);
     }
 
+    public function findForUser(User $user, int|string $transactionId): ?Transaction
+    {
+        return $user->transactions()
+            ->whereKey($transactionId)
+            ->first();
+    }
+
     public function findPendingByInvoiceId(int $invoiceId): ?Transaction
     {
         return Transaction::query()

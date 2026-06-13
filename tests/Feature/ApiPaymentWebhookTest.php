@@ -38,6 +38,11 @@ class ApiPaymentWebhookTest extends TestCase
             ->once()
             ->withArgs(fn (array $payload): bool => $payload['chat_id'] === '123456789'
                 && $payload['text'] === 'Подписка успешно активирована до 12.12.2026.');
+        $telegram->shouldReceive('editMessageText')
+            ->once()
+            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === 777
+                && $payload['message_id'] === 999
+                && $payload['text'] === "Оплата получена.\n\nПодписка успешно активирована до 12.12.2026.");
         Telegram::swap($telegram);
 
         $user = User::query()->create([
@@ -76,6 +81,8 @@ class ApiPaymentWebhookTest extends TestCase
             'amount' => 520,
             'is_approved' => false,
             'description' => 'YooKassa',
+            'telegram_chat_id' => 777,
+            'telegram_message_id' => 999,
             'extra_data' => [
                 'subscription_months' => 6,
                 'package_price' => 720,
@@ -145,6 +152,11 @@ class ApiPaymentWebhookTest extends TestCase
             ->withArgs(fn (array $payload): bool => $payload['chat_id'] === '999999'
                 && str_contains($payload['text'], 'отменён после оплаты')
                 && str_contains($payload['text'], '23d93cac-000f-5000-8000-126628f15141'));
+        $telegram->shouldReceive('editMessageText')
+            ->once()
+            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === 777
+                && $payload['message_id'] === 999
+                && $payload['text'] === 'Платёж отменён. Ссылка на оплату больше не действует.');
         Telegram::swap($telegram);
 
         $user = User::query()->create([
@@ -183,6 +195,8 @@ class ApiPaymentWebhookTest extends TestCase
             'amount' => 520,
             'is_approved' => false,
             'description' => 'YooKassa',
+            'telegram_chat_id' => 777,
+            'telegram_message_id' => 999,
         ]);
 
         $this->postJson('/api/payment/webhook', [

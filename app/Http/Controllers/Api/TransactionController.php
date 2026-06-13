@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\Api\UpdateApiTransactionTelegramMessageRequest;
 use App\Http\Requests\Api\StoreApiTransactionRequest;
 use App\Models\Transaction;
 use App\Services\Api\ApiTransactionService;
@@ -9,6 +10,7 @@ use App\Services\Crud\TransactionCrudService;
 use App\Support\BotApiMessages;
 use DomainException;
 use Throwable;
+use Symfony\Component\HttpFoundation\Response;
 
 class TransactionController
 {
@@ -37,6 +39,27 @@ class TransactionController
         }
 
         return response()->json($result);
+    }
+
+    public function updateTelegramMessage(
+        UpdateApiTransactionTelegramMessageRequest $request,
+        string $telegramId,
+        string $transactionId,
+    ): Response {
+        $updated = $this->apiTransactionService->updateTelegramMessageMetadata(
+            $request->attributes->get('apiUser'),
+            (int) $transactionId,
+            (int) $request->integer('telegram_chat_id'),
+            (int) $request->integer('telegram_message_id'),
+        );
+
+        if (! $updated) {
+            return response()->json([
+                'message' => 'Transaction not found.',
+            ], 404);
+        }
+
+        return response()->noContent();
     }
 
     public function approve(Transaction $transaction)

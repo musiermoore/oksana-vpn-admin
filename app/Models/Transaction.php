@@ -20,6 +20,8 @@ class Transaction extends Model
         'is_approved',
         'description',
         'extra_data',
+        'telegram_chat_id',
+        'telegram_message_id',
     ];
 
     protected function casts(): array
@@ -29,6 +31,8 @@ class Transaction extends Model
             'current_balance_amount' => 'float',
             'is_approved' => 'bool',
             'extra_data' => 'array',
+            'telegram_chat_id' => 'integer',
+            'telegram_message_id' => 'integer',
         ];
     }
 

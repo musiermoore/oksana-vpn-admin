@@ -20,6 +20,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
 
 COPY . .
+RUN rm -rf ./public/build ./public/hot
 COPY --from=frontend /app/public/build ./public/build
 
 RUN mkdir -p storage/framework/views storage/framework/cache storage/framework/sessions storage/logs bootstrap/cache \

@@ -13,12 +13,16 @@ use App\Http\Resources\Api\ApiShadowsocksConfigResource;
 use App\Http\Resources\Api\ApiSubscriptionPackageResource;
 use App\Http\Resources\Api\ApiVlessConfigResource;
 use App\Http\Resources\Api\ApiVlessDeepLinksResource;
+use App\Models\Config;
 use App\Models\User;
 use App\Services\Api\ApiUserService;
+use App\Services\WireGuardAgentConfigService;
 use App\Support\BotApiMessages;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -104,6 +108,7 @@ class UserController extends Controller
             return $user;
         }
 
+        /** @var Config $config */
         $config = $this->userService->findUserConfig($user, $type, $configId);
 
         if (empty($config)) {
@@ -115,7 +120,7 @@ class UserController extends Controller
         try {
             return $this->userService->isLinkConfigType($type)
                 ? response($config->getLink())
-                : response()->download($config->path, $config->name.'.conf');
+                : $this->downloadWireGuardConfig($config);
         } catch (Exception $exception) {
             report($exception);
 
@@ -238,5 +243,25 @@ class UserController extends Controller
         return response()->json([
             'message' => BotApiMessages::userNotFound(),
         ], 404);
+    }
+
+    private function downloadWireGuardConfig(Config $config): Response
+    {
+        if (! $config->server->isModernWireGuardType()) {
+            return response()->download($config->path, $config->name.'.conf');
+        }
+
+        $directory = storage_path('app/tmp/wireguard-downloads');
+
+        File::ensureDirectoryExists($directory);
+
+        $temporaryPath = $directory.'/'.Str::uuid().'.conf';
+        $content = WireGuardAgentConfigService::instance($config)->getClientConfig();
+
+        File::put($temporaryPath, $content.PHP_EOL);
+
+        return response()
+            ->download($temporaryPath, $config->name.'.conf')
+            ->deleteFileAfterSend(true);
     }
 }

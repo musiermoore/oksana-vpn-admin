@@ -11,6 +11,7 @@ use App\Models\UserSubscription;
 use App\Support\BotApiMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ApiUserRoutesTest extends TestCase
@@ -109,6 +110,41 @@ class ApiUserRoutesTest extends TestCase
                     ],
                 ],
             ]);
+    }
+
+    public function test_wireguard_download_route_builds_temporary_file_for_modern_wireguard_server(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = Server::query()->create([
+            'name' => 'Modern WG',
+            'code' => 'MWG',
+            'ip' => '127.0.0.1',
+            'is_ready' => true,
+            'type' => Server::TYPE_WIREGUARD,
+            'panel_link' => 'https://agent.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+        ]);
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'ios-modern',
+            'description' => null,
+            'is_active' => true,
+        ]);
+
+        Http::fake([
+            'https://agent.test/clients/*/config' => Http::response('[Interface]'."\n".'Address = 10.10.0.2/32'),
+        ]);
+
+        $response = $this->get("/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/download");
+
+        $response->assertOk();
+        $response->assertDownload('ios-modern.conf');
+        $this->assertSame(
+            "[Interface]\nAddress = 10.10.0.2/32\n",
+            file_get_contents($response->baseResponse->getFile()->getPathname()),
+        );
     }
 
     public function test_vless_link_route_returns_connect_url_for_active_user(): void

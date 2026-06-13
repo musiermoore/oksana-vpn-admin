@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Vite;
 use Telegram\Bot\BotsManager;
 use Telegram\Bot\HttpClients\GuzzleHttpClient;
 
@@ -28,5 +29,12 @@ class AppServiceProvider extends ServiceProvider
 
             return (new BotsManager($config))->setContainer($app);
         });
+    }
+
+    public function boot(): void
+    {
+        if (! $this->app->isLocal()) {
+            Vite::useHotFile(storage_path('framework/vite.hot'));
+        }
     }
 }

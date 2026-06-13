@@ -76,6 +76,9 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://agent.test/status' => Http::response([
+                'installed' => true,
+            ]),
             'https://agent.test/clients' => Http::response([
                 'success' => true,
             ]),
@@ -88,7 +91,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         $this->assertNotNull($config);
         $this->assertTrue(file_exists($config->path));
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
     public function test_job_creates_one_vless_config_for_ready_server(): void

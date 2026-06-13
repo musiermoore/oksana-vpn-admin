@@ -40,6 +40,8 @@ class WireGuardAgentConfigService implements WireGuardConfigServiceContract
 
     public function createOrFail(): bool
     {
+        WireGuardAgentServerService::instance($this->server)->installOrFail();
+
         $response = $this->request()->post('/clients', $this->buildCreatePayload());
         $payload = $this->decodeJson($response);
 

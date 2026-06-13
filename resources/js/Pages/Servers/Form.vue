@@ -16,6 +16,7 @@ const form = useForm({
     name: props.server?.name ?? '',
     code: props.server?.code ?? '',
     ip: props.server?.ip ?? '',
+    type: props.server?.type ?? 'wireguard-old',
     is_https: props.server?.is_https ?? false,
     link_host: props.server?.link_host ?? '',
     panel_link: props.server?.panel_link ?? '',
@@ -25,7 +26,6 @@ const form = useForm({
     app_path: props.server?.app_path ?? '',
     ssh_private_key: '',
     ssh_public_key: props.server?.ssh_public_key ?? '',
-    is_vless: props.server?.is_vless ?? false,
     is_ready: props.server?.is_ready ?? false,
     allowed_inbound_ids: props.server?.allowed_inbound_ids ?? [],
 });
@@ -43,6 +43,13 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Имя</span><input v-model="form.name" required></label>
             <label class="field"><span>Сокращение</span><input v-model="form.code" required></label>
             <label class="field"><span>IP</span><input v-model="form.ip" required></label>
+            <label class="field"><span>Тип</span>
+                <select v-model="form.type">
+                    <option value="wireguard-old">WireGuard (legacy)</option>
+                    <option value="wireguard">WireGuard Agent API</option>
+                    <option value="vless">VLESS</option>
+                </select>
+            </label>
             <label class="field"><span>Is HTTPS</span><input v-model="form.is_https" type="checkbox"></label>
             <label class="field"><span>Link Host</span><input v-model="form.link_host"></label>
             <label class="field"><span>Panel Link</span><input v-model="form.panel_link"></label>
@@ -57,16 +64,15 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><input v-model="form.app_path" required></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><textarea v-model="form.ssh_private_key" /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><textarea v-model="form.ssh_public_key" /></label>
-            <label class="field"><span>Is Vless</span><input v-model="form.is_vless" type="checkbox"></label>
             <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Allowed Inbound IDs</span>
-                <select v-model="form.allowed_inbound_ids" multiple :disabled="!form.is_vless || inbound_options.length === 0">
+                <select v-model="form.allowed_inbound_ids" multiple :disabled="form.type !== 'vless' || inbound_options.length === 0">
                     <option v-for="option in inbound_options" :key="option.value" :value="option.value">
                         {{ option.label }}
                     </option>
                 </select>
-                <small v-if="form.is_vless && inbound_options.length === 0">
+                <small v-if="form.type === 'vless' && inbound_options.length === 0">
                     Inbounds appear here after the server has panel access configured and saved.
                 </small>
             </label>

@@ -23,7 +23,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'ip' => '10.0.0.1',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
         $user = User::query()->create([
@@ -48,6 +48,49 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
     }
 
+    public function test_job_creates_one_wireguard_agent_config_for_ready_server(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Ready WG Agent',
+            'code' => 'RWA',
+            'ip' => '10.0.0.9',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://agent.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_WIREGUARD,
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://agent.test/clients' => Http::response([
+                'success' => true,
+            ]),
+            'https://agent.test/clients/*/config' => Http::response('[Interface]'."\n".'Address = 10.0.0.2/32'),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $config = $user->configs()->where('server_id', $server->id)->first();
+
+        $this->assertNotNull($config);
+        $this->assertTrue(file_exists($config->path));
+        Http::assertSentCount(2);
+    }
+
     public function test_job_creates_one_vless_config_for_ready_server(): void
     {
         $server = Server::query()->create([
@@ -59,7 +102,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_username' => 'admin',
             'panel_password' => 'secret',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 
@@ -136,7 +179,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_username' => 'admin',
             'panel_password' => 'secret',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
         ]);
 
         $user = User::query()->create([
@@ -168,7 +211,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_username' => 'admin',
             'panel_password' => 'secret',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10, 11],
         ]);
 
@@ -270,7 +313,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_username' => 'admin',
             'panel_password' => 'secret',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [12],
         ]);
 
@@ -341,7 +384,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_username' => 'admin',
             'panel_password' => 'secret',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 
@@ -422,7 +465,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'panel_api_version' => Server::PANEL_API_V3_2_8,
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 

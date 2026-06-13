@@ -41,7 +41,7 @@ const submit = () => form.post(props.submit_url);
                     <label class="field">
                         <span>Сервер</span>
                         <select v-model="config.server_id">
-                            <option v-for="server in servers" :key="server.id" :value="server.id">{{ server.name }}</option>
+                            <option v-for="server in servers" :key="server.id" :value="server.id">{{ server.name }} ({{ server.type }})</option>
                         </select>
                     </label>
 

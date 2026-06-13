@@ -8,6 +8,7 @@ readonly class ServerData
         public string $name,
         public string $code,
         public string $ip,
+        public string $type,
         public bool $isHttps,
         public ?string $linkHost,
         public ?string $panelLink,
@@ -17,7 +18,6 @@ readonly class ServerData
         public string $appPath,
         public ?string $sshPrivateKey,
         public ?string $sshPublicKey,
-        public bool $isVless,
         public bool $isReady,
         public ?array $allowedInboundIds,
     ) {}
@@ -28,6 +28,7 @@ readonly class ServerData
             'name' => $this->name,
             'code' => $this->code,
             'ip' => $this->ip,
+            'type' => $this->type,
             'is_https' => $this->isHttps,
             'link_host' => $this->linkHost,
             'panel_link' => $this->panelLink,
@@ -37,7 +38,6 @@ readonly class ServerData
             'app_path' => $this->appPath,
             'ssh_private_key' => $this->sshPrivateKey,
             'ssh_public_key' => $this->sshPublicKey,
-            'is_vless' => $this->isVless,
             'is_ready' => $this->isReady,
             'allowed_inbound_ids' => $this->allowedInboundIds,
         ];

@@ -20,6 +20,7 @@ class StoreServerRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:255'],
             'ip' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'string', Rule::in(Server::allowedTypes())],
             'is_https' => ['nullable', 'boolean'],
             'link_host' => ['nullable', 'string', 'max:255'],
             'panel_link' => ['nullable', 'string', 'max:255'],
@@ -32,7 +33,6 @@ class StoreServerRequest extends FormRequest
             'app_path' => ['required', 'string', 'max:255'],
             'ssh_private_key' => ['nullable', 'string'],
             'ssh_public_key' => ['nullable', 'string'],
-            'is_vless' => ['nullable', 'boolean'],
             'is_ready' => ['nullable', 'boolean'],
             'allowed_inbound_ids' => ['nullable', 'array'],
             'allowed_inbound_ids.*' => ['integer', 'min:1'],
@@ -47,6 +47,7 @@ class StoreServerRequest extends FormRequest
             name: $data['name'],
             code: $data['code'],
             ip: $data['ip'],
+            type: (string) $data['type'],
             isHttps: (bool) ($data['is_https'] ?? false),
             linkHost: $data['link_host'] ?? null,
             panelLink: $data['panel_link'] ?? null,
@@ -56,9 +57,10 @@ class StoreServerRequest extends FormRequest
             appPath: $data['app_path'],
             sshPrivateKey: $data['ssh_private_key'] ?? null,
             sshPublicKey: $data['ssh_public_key'] ?? null,
-            isVless: (bool) ($data['is_vless'] ?? false),
             isReady: (bool) ($data['is_ready'] ?? false),
-            allowedInboundIds: $this->normalizeAllowedInboundIds($data['allowed_inbound_ids'] ?? null),
+            allowedInboundIds: $data['type'] === Server::TYPE_VLESS
+                ? $this->normalizeAllowedInboundIds($data['allowed_inbound_ids'] ?? null)
+                : null,
         );
     }
 

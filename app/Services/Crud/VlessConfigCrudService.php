@@ -32,7 +32,7 @@ class VlessConfigCrudService
             throw new RuntimeException('Пользователь не найден');
         }
 
-        if (! $server || ! $server->is_vless) {
+        if (! $server || ! $server->isVlessType()) {
             throw new RuntimeException('Сервер VLESS не найден');
         }
 

@@ -251,7 +251,7 @@ class VlessConfigController extends Controller
     private function getAvailableInbounds(): array
     {
         return Server::query()
-            ->where('is_vless', true)
+            ->vless()
             ->where('is_ready', true)
             ->orderBy('name')
             ->get()

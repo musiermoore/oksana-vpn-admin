@@ -55,7 +55,7 @@ class ConfigController extends Controller
     public function create(Request $request)
     {
         $users = User::get();
-        $servers = Server::whereIsVless(false)->get();
+        $servers = Server::query()->wireGuard()->get();
 
         return $this->inertia('Configs/Create', [
             'submit_url' => route('configs.store'),
@@ -79,7 +79,7 @@ class ConfigController extends Controller
 
     public function createBulk(Request $request)
     {
-        $servers = Server::get();
+        $servers = Server::query()->wireGuard()->get();
 
         return $this->inertia('Configs/BulkCreate', [
             'submit_url' => route('configs.store-bulk'),

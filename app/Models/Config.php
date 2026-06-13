@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\WireGuardConfigService;
+use App\Services\WireGuardConfigServiceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -132,37 +132,37 @@ class Config extends Model
 
     public function createWgConfig(): bool
     {
-        return WireGuardConfigService::instance($this)->create();
+        return WireGuardConfigServiceFactory::make($this)->create();
     }
 
     public function createWgConfigOrFail(): bool
     {
-        return WireGuardConfigService::instance($this)->createOrFail();
+        return WireGuardConfigServiceFactory::make($this)->createOrFail();
     }
 
     public function deleteWgConfig(): bool
     {
-        return WireGuardConfigService::instance($this)->delete();
+        return WireGuardConfigServiceFactory::make($this)->delete();
     }
 
     public function enableWgConfig(): bool
     {
-        return WireGuardConfigService::instance($this)->enable();
+        return WireGuardConfigServiceFactory::make($this)->enable();
     }
 
     public function disableWgConfig(): bool
     {
-        return WireGuardConfigService::instance($this)->disable();
+        return WireGuardConfigServiceFactory::make($this)->disable();
     }
 
     public function setSpeedLimit(int|string $limit): bool
     {
-        return WireGuardConfigService::instance($this)->setLimit($limit);
+        return WireGuardConfigServiceFactory::make($this)->setLimit($limit);
     }
 
     public function removeSpeedLimit(int|string $limit): bool
     {
-        return WireGuardConfigService::instance($this)->removeLimit($limit);
+        return WireGuardConfigServiceFactory::make($this)->removeLimit($limit);
     }
 
     public function getQrCodeContent(): string

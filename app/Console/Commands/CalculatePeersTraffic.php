@@ -30,7 +30,7 @@ class CalculatePeersTraffic extends Command
     public function handle(): void
     {
         $servers = Server::query()
-            ->where('is_vless', false)
+            ->legacyWireGuard()
             ->get();
 
         foreach ($servers as $server) {

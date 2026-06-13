@@ -242,7 +242,7 @@ class ApiUserRoutesTest extends TestCase
             'code' => $code,
             'ip' => '127.0.0.1',
             'is_ready' => true,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
             'is_https' => true,
             'link_host' => strtolower($code).'.example.com',
         ]);

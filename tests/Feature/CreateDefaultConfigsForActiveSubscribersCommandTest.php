@@ -28,7 +28,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.10',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
         $vlessServer = Server::query()->create([
@@ -37,7 +37,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.11',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 
@@ -144,7 +144,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.12',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10, 11],
         ]);
 
@@ -226,7 +226,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.1',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
         $readyVlessServer = Server::query()->create([
@@ -235,8 +235,17 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
+        ]);
+
+        $readyWireGuardAgentServer = Server::query()->create([
+            'name' => 'Ready WG Agent',
+            'code' => 'RWA',
+            'ip' => '10.0.0.4',
+            'app_path' => '/opt/app',
+            'is_ready' => true,
+            'type' => Server::TYPE_WIREGUARD,
         ]);
 
         Server::query()->create([
@@ -245,7 +254,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.3',
             'app_path' => '/opt/app',
             'is_ready' => false,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
         $user = User::query()->create([
@@ -271,7 +280,11 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             return $job->userId === $user->id && $job->serverId === $readyVlessServer->id;
         });
 
-        Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, 2);
+        Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, function (EnsureDefaultConfigForUserServerJob $job) use ($user, $readyWireGuardAgentServer) {
+            return $job->userId === $user->id && $job->serverId === $readyWireGuardAgentServer->id;
+        });
+
+        Queue::assertPushed(EnsureDefaultConfigForUserServerJob::class, 3);
     }
 
     public function test_user_job_dispatches_missing_server_pair_when_user_has_other_server_configs(): void
@@ -284,7 +297,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.1',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
         $latviaVlessServer = Server::query()->create([
@@ -293,7 +306,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 
@@ -303,7 +316,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.3',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 
@@ -366,7 +379,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.1',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
         $latviaVlessServer = Server::query()->create([
@@ -375,7 +388,7 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 

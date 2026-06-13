@@ -35,7 +35,7 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
             return;
         }
 
-        if ($server->is_vless) {
+        if ($server->isVlessType()) {
             $this->assignVlessConfig($user, $server);
 
             return;

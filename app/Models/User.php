@@ -285,7 +285,7 @@ class User extends Authenticatable
 
         $servers ??= Server::query()
             ->where('is_ready', true)
-            ->where('is_vless', false)
+            ->wireGuard()
             ->get();
 
         $existingServerIds = $this->configs()

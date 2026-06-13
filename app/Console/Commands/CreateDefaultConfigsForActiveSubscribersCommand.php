@@ -29,7 +29,7 @@ class CreateDefaultConfigsForActiveSubscribersCommand extends Command
                 $hasMissingRequirement = false;
 
                 foreach ($servers as $server) {
-                    if ($server->is_vless) {
+                    if ($server->isVlessType()) {
                         foreach ($server->getAllowedInboundIds() as $inboundId) {
                             $hasMissingRequirement = true;
 

@@ -33,7 +33,7 @@ class PullVlessConfigs extends Command
                 'panel_username',
                 'panel_password'
             ])
-            ->whereIsVless(true)
+            ->vless()
             ->get();
 
         foreach ($servers as $server) {

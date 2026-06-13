@@ -14,6 +14,7 @@ class ServerResource extends JsonResource
             'name' => $this->name,
             'code' => $this->code,
             'ip' => $this->ip,
+            'type' => $this->type,
             'is_https' => (bool) $this->is_https,
             'link_host' => $this->link_host,
             'panel_link' => $this->panel_link,

@@ -333,7 +333,7 @@ class VlessConnectTest extends TestCase
             'ip' => '127.0.0.1',
             'link_host' => $host,
             'is_https' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
         ]);
     }
 

@@ -29,7 +29,7 @@ const form = useForm({
             <label class="field">
                 <span>Сервер</span>
                 <select v-model="form.server_id">
-                    <option v-for="server in servers" :key="server.id" :value="server.id">{{ server.name }} ({{ server.ip }})</option>
+                    <option v-for="server in servers" :key="server.id" :value="server.id">{{ server.name }} ({{ server.type }}, {{ server.ip }})</option>
                 </select>
             </label>
 

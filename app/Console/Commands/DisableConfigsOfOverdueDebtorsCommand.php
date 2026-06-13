@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Config;
+use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
 use App\Services\Crud\VlessConfigCrudService;
@@ -55,12 +56,12 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->whereHas('configs', function ($query) {
                 $query
                     ->where('is_active', '=', true)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->whereIn('type', Server::wireGuardTypes()));
             })
             ->with(['configs' => function ($query) {
                 $query
                     ->where('is_active', '=', true)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->whereIn('type', Server::wireGuardTypes()));
             }])
             ->get()
             ->filter(fn (User $user) => $user->final_balance < 0 || ! $user->hasActiveSubscription());
@@ -83,12 +84,12 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->whereHas('configs', function ($query) {
                 $query
                     ->where('is_active', '=', false)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->whereIn('type', Server::wireGuardTypes()));
             })
             ->with(['configs' => function ($query) {
                 $query
                     ->where('is_active', '=', false)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', false));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->whereIn('type', Server::wireGuardTypes()));
             }])
             ->where('is_active', '=', true)
             ->get()
@@ -112,12 +113,12 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->whereHas('vlessConfigs', function ($query) {
                 $query
                     ->where('enable', '=', true)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('type', Server::TYPE_VLESS));
             })
             ->with(['vlessConfigs' => function ($query) {
                 $query
                     ->where('enable', '=', true)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('type', Server::TYPE_VLESS));
             }])
             ->get()
             ->filter(fn (User $user) => $user->final_balance < 0 || ! $user->hasActiveSubscription());
@@ -146,12 +147,12 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->whereHas('vlessConfigs', function ($query) {
                 $query
                     ->where('enable', '=', false)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('type', Server::TYPE_VLESS));
             })
             ->with(['vlessConfigs' => function ($query) {
                 $query
                     ->where('enable', '=', false)
-                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('is_vless', true));
+                    ->whereHas('server', fn ($serverQuery) => $serverQuery->where('type', Server::TYPE_VLESS));
             }])
             ->where('is_active', '=', true)
             ->get()

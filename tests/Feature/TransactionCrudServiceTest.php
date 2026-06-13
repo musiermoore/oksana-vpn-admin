@@ -115,7 +115,7 @@ class TransactionCrudServiceTest extends TestCase
             'ip' => '10.0.0.1',
             'app_path' => '/opt/app',
             'is_ready' => true,
-            'is_vless' => false,
+            'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
         $user = $this->createUser(balance: 200, telegramId: '654321');

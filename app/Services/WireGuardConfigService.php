@@ -4,10 +4,14 @@ namespace App\Services;
 
 use App\Models\Config;
 use App\Models\Server;
+use App\Services\Contracts\WireGuardConfigServiceContract;
 use Exception;
 use RuntimeException;
 
-class WireGuardConfigService
+/**
+ * @deprecated Legacy SSH/script-based WireGuard integration. Resolve through WireGuardConfigServiceFactory.
+ */
+class WireGuardConfigService implements WireGuardConfigServiceContract
 {
     public const WG_CREATE_CONFIG_FILE = 'create-wg-config.sh';
     public const WG_DELETE_CONFIG_FILE = 'delete-wg-config.sh';

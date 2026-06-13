@@ -26,7 +26,7 @@ class XuiConfigServiceTest extends TestCase
             'panel_username' => 'admin',
             'panel_password' => 'secret',
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 
@@ -132,7 +132,7 @@ class XuiConfigServiceTest extends TestCase
             'panel_password' => 'secret',
             'panel_api_version' => Server::PANEL_API_V3_2_8,
             'is_ready' => true,
-            'is_vless' => true,
+            'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],
         ]);
 

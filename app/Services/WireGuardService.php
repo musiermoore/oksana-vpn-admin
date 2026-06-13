@@ -61,7 +61,7 @@ class WireGuardService
 
     public function getWireguardHandshakes(Server $server)
     {
-        if ($server->is_vless) {
+        if (! $server->isLegacyWireGuardType()) {
             return [];
         }
 
@@ -145,7 +145,7 @@ class WireGuardService
     {
         $server = Server::find($serverId);
 
-        if (! $server || $server->is_vless) {
+        if (! $server || ! $server->isLegacyWireGuardType()) {
             return collect();
         }
 

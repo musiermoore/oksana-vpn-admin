@@ -36,6 +36,7 @@ const destroyServer = (server) => {
                     <th>Имя</th>
                     <th>Сокращение</th>
                     <th>IP</th>
+                    <th>Тип</th>
                     <th>HTTPS</th>
                     <th>Готов</th>
                     <th>Действия</th>
@@ -46,6 +47,7 @@ const destroyServer = (server) => {
                     <td>{{ server.name }}</td>
                     <td>{{ server.code }}</td>
                     <td>{{ server.ip }}</td>
+                    <td>{{ server.type }}</td>
                     <td>{{ server.is_https ? 'Да' : 'Нет' }}</td>
                     <td>{{ server.is_ready ? 'Да' : 'Нет' }}</td>
                     <td>

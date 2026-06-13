@@ -4,7 +4,9 @@ namespace App\Http\Requests\Config;
 
 use App\DTOs\Config\ConfigCreateItemData;
 use App\DTOs\Config\ConfigStoreData;
+use App\Models\Server;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreConfigRequest extends FormRequest
 {
@@ -18,7 +20,10 @@ class StoreConfigRequest extends FormRequest
         return [
             'user_id' => ['required', 'exists:users,id'],
             'configs' => ['required', 'array', 'min:1'],
-            'configs.*.server_id' => ['required', 'exists:servers,id'],
+            'configs.*.server_id' => [
+                'required',
+                Rule::exists('servers', 'id')->where(fn ($query) => $query->whereIn('type', Server::wireGuardTypes())),
+            ],
             'configs.*.description' => ['nullable', 'string'],
         ];
     }

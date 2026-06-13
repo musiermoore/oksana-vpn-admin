@@ -19,6 +19,7 @@ readonly class ServerData
         public ?string $sshPrivateKey,
         public ?string $sshPublicKey,
         public bool $isReady,
+        public bool $hideConfigsForNonAdmins,
         public ?array $allowedInboundIds,
     ) {}
 
@@ -39,6 +40,7 @@ readonly class ServerData
             'ssh_private_key' => $this->sshPrivateKey,
             'ssh_public_key' => $this->sshPublicKey,
             'is_ready' => $this->isReady,
+            'hide_configs_for_non_admins' => $this->hideConfigsForNonAdmins,
             'allowed_inbound_ids' => $this->allowedInboundIds,
         ];
     }

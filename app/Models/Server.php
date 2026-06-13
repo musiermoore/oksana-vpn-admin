@@ -34,6 +34,7 @@ class Server extends Model
         'type',
         'is_vless',
         'is_ready',
+        'hide_configs_for_non_admins',
         'allowed_inbound_ids',
     ];
 
@@ -44,6 +45,7 @@ class Server extends Model
             'is_https' => 'boolean',
             'is_vless' => 'boolean',
             'is_ready' => 'boolean',
+            'hide_configs_for_non_admins' => 'boolean',
             'allowed_inbound_ids' => 'array',
         ];
     }

@@ -28,11 +28,14 @@ class ConfigRepository
     public function allForUser(User $user): Collection
     {
         return $user->configs()
+            ->with('server:id,hide_configs_for_non_admins')
             ->get(['id', 'user_id', 'name']);
     }
 
     public function findForUser(User $user, int|string $id): ?Config
     {
-        return $user->configs()->find($id);
+        return $user->configs()
+            ->with('server')
+            ->find($id);
     }
 }

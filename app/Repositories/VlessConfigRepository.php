@@ -23,11 +23,14 @@ class VlessConfigRepository
     public function allForUser(User $user): Collection
     {
         return $user->vlessConfigs()
+            ->with('server:id,hide_configs_for_non_admins')
             ->get(['id', 'user_id', 'name']);
     }
 
     public function findForUser(User $user, int|string $id): ?VlessConfig
     {
-        return $user->vlessConfigs()->find($id);
+        return $user->vlessConfigs()
+            ->with('server')
+            ->find($id);
     }
 }

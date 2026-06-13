@@ -95,20 +95,34 @@ class ApiUserService
 
     public function getUserConfigs(User $user, string $type): Collection
     {
-        return match (true) {
+        $configs = match (true) {
             $this->isVlessType($type) => $this->vlessConfigs->allForUser($user),
             $this->isShadowsocksType($type) => $this->shadowsocksConfigs->allForUser($user),
             default => $this->configs->allForUser($user),
         };
+
+        return $user->is_admin
+            ? $configs
+            : $configs->filter(fn (Model $config) => ! (bool) $config->server?->hide_configs_for_non_admins)->values();
     }
 
     public function findUserConfig(User $user, string $type, string $configId): ?Model
     {
-        return match (true) {
+        $config = match (true) {
             $this->isVlessType($type) => $this->vlessConfigs->findForUser($user, $configId),
             $this->isShadowsocksType($type) => $this->shadowsocksConfigs->findForUser($user, $configId),
             default => $this->configs->findForUser($user, $configId),
         };
+
+        if (! $config instanceof Model) {
+            return null;
+        }
+
+        if ($user->is_admin) {
+            return $config;
+        }
+
+        return (bool) $config->server?->hide_configs_for_non_admins ? null : $config;
     }
 
     public function getVlessLink(User $user): string

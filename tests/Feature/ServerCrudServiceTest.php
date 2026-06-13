@@ -52,6 +52,7 @@ class ServerCrudServiceTest extends TestCase
             sshPrivateKey: null,
             sshPublicKey: null,
             isReady: false,
+            hideConfigsForNonAdmins: false,
             allowedInboundIds: $type === Server::TYPE_VLESS ? [10] : null,
         );
     }

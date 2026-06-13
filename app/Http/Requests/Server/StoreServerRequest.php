@@ -34,6 +34,7 @@ class StoreServerRequest extends FormRequest
             'ssh_private_key' => ['nullable', 'string'],
             'ssh_public_key' => ['nullable', 'string'],
             'is_ready' => ['nullable', 'boolean'],
+            'hide_configs_for_non_admins' => ['nullable', 'boolean'],
             'allowed_inbound_ids' => ['nullable', 'array'],
             'allowed_inbound_ids.*' => ['integer', 'min:1'],
         ];
@@ -58,6 +59,7 @@ class StoreServerRequest extends FormRequest
             sshPrivateKey: $data['ssh_private_key'] ?? null,
             sshPublicKey: $data['ssh_public_key'] ?? null,
             isReady: (bool) ($data['is_ready'] ?? false),
+            hideConfigsForNonAdmins: (bool) ($data['hide_configs_for_non_admins'] ?? false),
             allowedInboundIds: $data['type'] === Server::TYPE_VLESS
                 ? $this->normalizeAllowedInboundIds($data['allowed_inbound_ids'] ?? null)
                 : null,

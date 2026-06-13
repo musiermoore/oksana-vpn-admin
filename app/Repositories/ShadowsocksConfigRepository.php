@@ -23,11 +23,14 @@ class ShadowsocksConfigRepository
     public function allForUser(User $user): Collection
     {
         return $user->shadowsocksConfigs()
+            ->with('server:id,hide_configs_for_non_admins')
             ->get(['id', 'user_id', 'name']);
     }
 
     public function findForUser(User $user, int|string $id): ?ShadowsocksConfig
     {
-        return $user->shadowsocksConfigs()->find($id);
+        return $user->shadowsocksConfigs()
+            ->with('server')
+            ->find($id);
     }
 }

@@ -12,6 +12,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
 use App\Services\SubscriptionService;
 use App\Services\VlessDeepLinkService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -140,7 +141,8 @@ class ApiUserService
 
         $requiredAmount = (float) $activePaymentPeriod->amount + $extraAmount;
 
-        return $user->getStoredBalanceAmount() >= $requiredAmount;
+        return $user->hasActiveSubscription(Carbon::now()->addMonth())
+            || $user->getStoredBalanceAmount() >= $requiredAmount;
     }
 
     public function getSubscriptionPackages(User $user): array

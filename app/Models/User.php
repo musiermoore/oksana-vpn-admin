@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -113,11 +114,15 @@ class User extends Authenticatable
         return $this->hasMany(UserSubscription::class);
     }
 
-    public function activeSubscription(): HasOne
+    public function activeSubscription(?Carbon $date = null): HasOne
     {
+        if (empty($date)) {
+            $date = now();
+        }
+
         return $this->hasOne(UserSubscription::class)
-            ->whereDate('start_date', '<=', now())
-            ->whereDate('end_date', '>=', now())
+            ->whereDate('start_date', '<=', $date)
+            ->whereDate('end_date', '>=', $date)
             ->orderByDesc('user_subscriptions.created_at');
     }
 
@@ -206,13 +211,13 @@ class User extends Authenticatable
         return $this->hasActiveSubscription() && ! $this->hasDebt();
     }
 
-    public function hasActiveSubscription(): bool
+    public function hasActiveSubscription(?Carbon $date = null): bool
     {
         if ($this->relationLoaded('activeSubscription')) {
             return $this->activeSubscription !== null;
         }
 
-        return $this->activeSubscription()->exists();
+        return $this->activeSubscription($date)->exists();
     }
 
     public function getBalanceAmount(string $transactionsRelation = 'transactions'): float

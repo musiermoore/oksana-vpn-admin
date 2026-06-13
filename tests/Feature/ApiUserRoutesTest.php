@@ -12,6 +12,7 @@ use App\Support\BotApiMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Tests\TestCase;
 
 class ApiUserRoutesTest extends TestCase
@@ -112,6 +113,34 @@ class ApiUserRoutesTest extends TestCase
             ]);
     }
 
+    public function test_configs_route_hides_server_configs_for_non_admin_user(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = $this->createServer(code: 'HID', attributes: [
+            'hide_configs_for_non_admins' => true,
+        ]);
+
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'hidden-config',
+            'description' => null,
+            'is_active' => true,
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/wireguard/configs")
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [],
+            ]);
+
+        $this->get("/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/download")
+            ->assertNotFound()
+            ->assertExactJson([
+                'message' => BotApiMessages::configNotFound(),
+            ]);
+    }
+
     public function test_wireguard_download_route_builds_temporary_file_for_modern_wireguard_server(): void
     {
         $user = $this->createActiveUser(balance: 500);
@@ -145,6 +174,65 @@ class ApiUserRoutesTest extends TestCase
             "[Interface]\nAddress = 10.10.0.2/32\n",
             file_get_contents($response->baseResponse->getFile()->getPathname()),
         );
+    }
+
+    public function test_wireguard_qr_code_route_uses_agent_config_content_for_modern_wireguard_server(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = Server::query()->create([
+            'name' => 'Modern WG',
+            'code' => 'MWG',
+            'ip' => '127.0.0.1',
+            'is_ready' => true,
+            'type' => Server::TYPE_WIREGUARD,
+            'panel_link' => 'https://agent.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+        ]);
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'ios-modern',
+            'description' => null,
+            'is_active' => true,
+        ]);
+
+        Http::fake([
+            'https://agent.test/clients/*/config' => Http::response('[Interface]'."\n".'Address = 10.10.0.2/32'),
+        ]);
+
+        QrCode::swap(new class
+        {
+            public function format(string $format): self
+            {
+                return $this;
+            }
+
+            public function margin(int $margin): self
+            {
+                return $this;
+            }
+
+            public function size(int $size): self
+            {
+                return $this;
+            }
+
+            public function generate(string $content): string
+            {
+                return 'png-binary:' . $content;
+            }
+        });
+
+        $response = $this->get("/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/qr-code");
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'image/png');
+        $this->assertSame('png-binary:[Interface]' . "\n" . 'Address = 10.10.0.2/32', $response->getContent());
+        Http::assertSent(function ($request) use ($config) {
+            return $request->url() === 'https://agent.test/clients/' . rawurlencode($config->name) . '/config'
+                && $request->method() === 'GET';
+        });
     }
 
     public function test_vless_link_route_returns_connect_url_for_active_user(): void
@@ -271,7 +359,7 @@ class ApiUserRoutesTest extends TestCase
         return $user;
     }
 
-    private function createServer(string $code): Server
+    private function createServer(string $code, array $attributes = []): Server
     {
         return Server::query()->create([
             'name' => 'Server '.$code,
@@ -281,6 +369,6 @@ class ApiUserRoutesTest extends TestCase
             'type' => Server::TYPE_WIREGUARD_OLD,
             'is_https' => true,
             'link_host' => strtolower($code).'.example.com',
-        ]);
+        ] + $attributes);
     }
 }

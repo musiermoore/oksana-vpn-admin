@@ -147,7 +147,7 @@ class UserController extends Controller
         }
 
         try {
-            $configBody = $config->getQrCodeContent();
+            $configBody = $this->resolveQrCodeContent($config);
 
             $png = QrCode::format('png')->margin(5)->size(512)->generate($configBody);
 
@@ -263,5 +263,14 @@ class UserController extends Controller
         return response()
             ->download($temporaryPath, $config->name.'.conf')
             ->deleteFileAfterSend(true);
+    }
+
+    private function resolveQrCodeContent(mixed $config): string
+    {
+        if ($config instanceof Config && $config->server->isModernWireGuardType()) {
+            return WireGuardAgentConfigService::instance($config)->getClientConfig();
+        }
+
+        return $config->getQrCodeContent();
     }
 }

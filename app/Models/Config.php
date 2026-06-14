@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class Config extends Model
 {
@@ -168,5 +169,27 @@ class Config extends Model
     public function getQrCodeContent(): string
     {
         return (string) file_get_contents($this->path);
+    }
+
+    public function getDownloadFilenameAttribute(): string
+    {
+        $serverName = (string) ($this->server?->name ?? '');
+        $serverCode = (string) ($this->server?->code ?? '');
+
+        $normalized = Str::of($serverName !== '' ? $serverName : $serverCode)
+            ->slug()
+            ->replace('-', '')
+            ->replaceMatches('/\d+/', '')
+            ->value();
+
+        if ($normalized === '') {
+            $normalized = Str::of($this->name)
+                ->slug()
+                ->replace('-', '')
+                ->replaceMatches('/\d+/', '')
+                ->value();
+        }
+
+        return $normalized !== '' ? $normalized.'.conf' : 'wireguard.conf';
     }
 }

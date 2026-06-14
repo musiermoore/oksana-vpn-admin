@@ -185,7 +185,7 @@ class ConfigController extends Controller
         try {
             return response()->download(
                 $config->path,
-                preg_replace('/[^a-zA-Z0-9]/', '', $config->name).'.conf'
+                $config->download_filename
             );
         } catch (Exception $exception) {
             report($exception);

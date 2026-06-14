@@ -248,7 +248,7 @@ class UserController extends Controller
     private function downloadWireGuardConfig(Config $config): Response
     {
         if (! $config->server->isModernWireGuardType()) {
-            return response()->download($config->path, $config->name.'.conf');
+            return response()->download($config->path, $config->download_filename);
         }
 
         $directory = storage_path('app/tmp/wireguard-downloads');
@@ -261,7 +261,7 @@ class UserController extends Controller
         File::put($temporaryPath, $content.PHP_EOL);
 
         return response()
-            ->download($temporaryPath, $config->name.'.conf')
+            ->download($temporaryPath, $config->download_filename)
             ->deleteFileAfterSend(true);
     }
 

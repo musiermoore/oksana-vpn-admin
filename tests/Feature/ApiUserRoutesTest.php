@@ -145,7 +145,7 @@ class ApiUserRoutesTest extends TestCase
     {
         $user = $this->createActiveUser(balance: 500);
         $server = Server::query()->create([
-            'name' => 'Modern WG',
+            'name' => 'Modern_WG - RU 1',
             'code' => 'MWG',
             'ip' => '127.0.0.1',
             'is_ready' => true,
@@ -169,7 +169,7 @@ class ApiUserRoutesTest extends TestCase
         $response = $this->get("/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/download");
 
         $response->assertOk();
-        $response->assertDownload('ios-modern.conf');
+        $response->assertDownload('modernwgru.conf');
         $this->assertSame(
             "[Interface]\nAddress = 10.10.0.2/32\n",
             file_get_contents($response->baseResponse->getFile()->getPathname()),

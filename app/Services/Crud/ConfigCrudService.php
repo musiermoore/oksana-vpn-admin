@@ -12,6 +12,7 @@ use App\Repositories\ConfigRepository;
 use App\Repositories\ServerRepository;
 use App\Repositories\UserRepository;
 use Exception;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -69,15 +70,20 @@ class ConfigCrudService
             ->get();
 
         $failedConfigs = [];
+        $lastIndex = $users->count() - 1;
 
-        foreach ($users as $user) {
-            $configName = str_replace('@', '', $user->telegram).'_'.$server->code;
+        foreach ($users as $index => $user) {
+            $configName = $this->generateConfigName($user, $server);
 
             if (! $user->createConfig([
                 'name' => $configName,
                 'server_id' => $server->id,
             ])) {
                 $failedConfigs[] = $configName;
+            }
+
+            if ($index < $lastIndex) {
+                Sleep::sleep(5);
             }
         }
 

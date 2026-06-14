@@ -78,6 +78,7 @@ class UserRepository
                 'users.name',
                 'users.telegram_id',
                 'users.balance',
+                'users.is_admin',
             ])
             ->where('telegram_id', trim($telegramId))
             ->tap(fn (Builder $query) => User::applyBillingSummary($query))

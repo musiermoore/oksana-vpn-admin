@@ -33,6 +33,9 @@ class User extends Authenticatable
         'balance',
         'is_admin',
         'is_active',
+        'max_devices',
+        'traffic_limit_bytes',
+        'subscription_expires_at',
     ];
 
     /**
@@ -56,6 +59,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'balance' => 'float',
+            'subscription_expires_at' => 'datetime',
         ];
     }
 
@@ -96,6 +100,21 @@ class User extends Authenticatable
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function activeConnections(): HasMany
+    {
+        return $this->hasMany(ActiveConnection::class);
+    }
+
+    public function blockedConfigs(): HasMany
+    {
+        return $this->hasMany(BlockedConfig::class);
+    }
+
+    public function serverStats(): HasMany
+    {
+        return $this->hasMany(UserServerStat::class);
     }
 
     public function approvedTransactions()

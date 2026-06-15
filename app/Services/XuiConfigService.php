@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Entities\VlessConfig as VlessConfigData;
-use App\Models\ShadowsocksConfig;
 use App\Models\Server;
+use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Http\Client\PendingRequest;
@@ -17,12 +17,12 @@ use RuntimeException;
 class XuiConfigService
 {
     private ?string $session = null;
+
     private ?string $csrf = null;
 
     public function __construct(
         protected readonly Server $server,
-    )
-    {
+    ) {
         $this->setSession();
     }
 
@@ -257,6 +257,80 @@ class XuiConfigService
         return is_array($payload) ? $payload : [];
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getClientTrafficSummaries(): array
+    {
+        return collect($this->getInbounds())
+            ->flatMap(function (array $row): array {
+                $inbound = $this->normalizeInbound($row);
+                $stats = $this->normalizeClientStats($row['clientStats'] ?? $row['client_stats'] ?? $inbound['client_stats'] ?? []);
+
+                return collect($stats)
+                    ->map(function (array $stat) use ($inbound): array {
+                        return [
+                            'inbound_id' => (int) ($inbound['id'] ?? 0),
+                            'protocol' => (string) ($inbound['protocol'] ?? ''),
+                            'email' => (string) ($stat['email'] ?? ''),
+                            'upload_bytes' => (int) ($stat['up'] ?? $stat['upload'] ?? $stat['uploadBytes'] ?? 0),
+                            'download_bytes' => (int) ($stat['down'] ?? $stat['download'] ?? $stat['downloadBytes'] ?? 0),
+                        ];
+                    })
+                    ->filter(fn (array $row) => $row['email'] !== '')
+                    ->values()
+                    ->all();
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getOnlineClientEntries(): array
+    {
+        $response = $this->getWithFallback($this->getOnlineClientPaths());
+        $payload = $response->json();
+        $rows = $this->normalizeResponseData($payload);
+
+        if ($rows !== []) {
+            return collect($rows)
+                ->flatMap(fn (mixed $row) => $this->normalizeOnlineEntry($row))
+                ->values()
+                ->all();
+        }
+
+        return collect($payload['obj'] ?? $payload['data'] ?? [])
+            ->flatMap(fn (mixed $row) => $this->normalizeOnlineEntry($row))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    public function setClientEnabledByIdentifier(
+        string $identifier,
+        string $email,
+        int $inboundId,
+        bool $enabled,
+        array $context = [],
+    ): array {
+        $client = $this->extractClientFromInboundSettings(
+            inboundId: $inboundId,
+            identifier: $identifier,
+            email: $email,
+            enabled: $enabled,
+            context: $context,
+        );
+
+        $response = $this->postUpdateClientByIdentifier($identifier, $client);
+        $payload = $response->json();
+
+        return is_array($payload) ? $payload : [];
+    }
+
     private function createClientOnInbound(User $user, array $inbound): VlessConfig
     {
         $inboundId = (int) ($inbound['id'] ?? 0);
@@ -335,13 +409,13 @@ class XuiConfigService
             'Content-Type' => 'application/json',
             'X-Requested-With' => 'XMLHttpRequest',
             'Origin' => rtrim($this->server->panel_link, '/'),
-            'Referer' => rtrim($this->server->panel_link, '/') . '/',
+            'Referer' => rtrim($this->server->panel_link, '/').'/',
             'User-Agent' => 'Mozilla/5.0',
         ];
 
         if ($this->session) {
-            $headers['Cookie'] = '3x-ui=' . $this->session;
-            $headers['Set-Cookie'] = '3x-ui=' . $this->session;
+            $headers['Cookie'] = '3x-ui='.$this->session;
+            $headers['Set-Cookie'] = '3x-ui='.$this->session;
         }
 
         if ($this->csrf) {
@@ -631,8 +705,8 @@ class XuiConfigService
     protected function getUpdateClientPaths(string $uuid): array
     {
         return [
-            '/panel/api/inbounds/updateClient/' . $uuid,
-            '/panel/inbound/updateClient/' . $uuid,
+            '/panel/api/inbounds/updateClient/'.$uuid,
+            '/panel/inbound/updateClient/'.$uuid,
         ];
     }
 
@@ -654,65 +728,37 @@ class XuiConfigService
         $encodedEmail = urlencode($email);
 
         return [
-            '/panel/api/inbounds/getClientTraffics/' . $encodedEmail,
-            '/panel/inbound/getClientTraffics/' . $encodedEmail,
+            '/panel/api/inbounds/getClientTraffics/'.$encodedEmail,
+            '/panel/inbound/getClientTraffics/'.$encodedEmail,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function getOnlineClientPaths(): array
+    {
+        return [
+            '/panel/api/inbounds/onlines',
+            '/panel/inbound/onlines',
         ];
     }
 
     protected function extractClientFromInboundsPayload(VlessConfig $config, bool $enabled): array
     {
-        $inbounds = $this->getAllVlessInbounds();
-        $matchedInbound = null;
-        $matchedClient = null;
-
-        foreach ($inbounds as $inbound) {
-            if (! empty($config->inbound_id) && (int) ($inbound['id'] ?? 0) !== (int) $config->inbound_id) {
-                continue;
-            }
-
-            $clients = $inbound['settings']['clients'] ?? [];
-
-            if (! is_array($clients)) {
-                continue;
-            }
-
-            $matchedClient = collect($clients)->first(function (mixed $client) use ($config) {
-                if (! is_array($client)) {
-                    return false;
-                }
-
-                $clientId = (string) ($client['id'] ?? $client['password'] ?? '');
-
-                return $clientId === (string) $config->uuid
-                    || (string) ($client['email'] ?? '') === (string) $config->name;
-            });
-
-            if (is_array($matchedClient)) {
-                $matchedInbound = $inbound;
-                break;
-            }
-        }
-
-        if (! is_array($matchedInbound) || ! is_array($matchedClient)) {
-            throw new RuntimeException("Client [{$config->name}] was not found in inbound settings for server [{$this->server->id}]");
-        }
-
-        return [
-            'inbound_id' => (int) ($matchedInbound['id'] ?? $config->inbound_id),
-            'settings' => array_filter(array_merge(
-                $this->getDefaultClientSettings(),
-                $matchedClient,
-                [
-                    'id' => $matchedClient['id'] ?? $config->uuid,
-                    'email' => $matchedClient['email'] ?? $config->name,
-                    'subId' => $matchedClient['subId'] ?? $config->sub_id,
-                    'password' => $matchedClient['password'] ?? $config->password,
-                    'auth' => $matchedClient['auth'] ?? $config->auth,
-                    'flow' => $matchedClient['flow'] ?? $config->flow,
-                    'enable' => $enabled,
-                ],
-            ), fn (mixed $value) => $value !== null),
-        ];
+        return $this->extractClientFromInboundSettings(
+            inboundId: (int) $config->inbound_id,
+            identifier: (string) $config->uuid,
+            email: (string) $config->name,
+            enabled: $enabled,
+            context: [
+                'uuid' => $config->uuid,
+                'password' => $config->password,
+                'auth' => $config->auth,
+                'subId' => $config->sub_id,
+                'flow' => $config->flow,
+            ],
+        );
     }
 
     private function getBaseUrl(): string
@@ -763,4 +809,137 @@ class XuiConfigService
         throw $lastException ?? new RuntimeException('Unable to complete XUI request.');
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array{inbound_id:int, settings:array<string,mixed>}
+     */
+    protected function extractClientFromInboundSettings(
+        int $inboundId,
+        string $identifier,
+        string $email,
+        bool $enabled,
+        array $context = [],
+    ): array {
+        $inbounds = collect($this->getInbounds())
+            ->map(fn (array $row) => $this->normalizeInbound($row));
+
+        $matchedInbound = $inbounds->first(function (array $inbound) use ($inboundId): bool {
+            return $inboundId <= 0 || (int) ($inbound['id'] ?? 0) === $inboundId;
+        });
+
+        if (! is_array($matchedInbound)) {
+            throw new RuntimeException("Inbound [{$inboundId}] was not found for server [{$this->server->id}]");
+        }
+
+        $clients = $matchedInbound['settings']['clients'] ?? [];
+
+        if (! is_array($clients)) {
+            throw new RuntimeException("Inbound [{$inboundId}] does not contain clients for server [{$this->server->id}]");
+        }
+
+        $matchedClient = collect($clients)->first(function (mixed $client) use ($identifier, $email) {
+            if (! is_array($client)) {
+                return false;
+            }
+
+            return (string) ($client['id'] ?? $client['password'] ?? '') === $identifier
+                || (string) ($client['email'] ?? '') === $email;
+        });
+
+        if (! is_array($matchedClient)) {
+            throw new RuntimeException("Client [{$email}] was not found in inbound settings for server [{$this->server->id}]");
+        }
+
+        return [
+            'inbound_id' => (int) ($matchedInbound['id'] ?? $inboundId),
+            'settings' => array_filter(array_merge(
+                $this->getDefaultClientSettings(),
+                $matchedClient,
+                $context,
+                [
+                    'id' => $context['uuid'] ?? $matchedClient['id'] ?? null,
+                    'email' => $matchedClient['email'] ?? $email,
+                    'password' => $context['password'] ?? $matchedClient['password'] ?? null,
+                    'auth' => $context['auth'] ?? $matchedClient['auth'] ?? null,
+                    'subId' => $context['subId'] ?? $matchedClient['subId'] ?? null,
+                    'flow' => $context['flow'] ?? $matchedClient['flow'] ?? null,
+                    'method' => $context['method'] ?? $matchedClient['method'] ?? null,
+                    'enable' => $enabled,
+                ],
+            ), fn (mixed $value) => $value !== null),
+        ];
+    }
+
+    protected function postUpdateClientByIdentifier(string $identifier, array $client): Response
+    {
+        return $this->postWithFallback($this->getUpdateClientPaths($identifier), [
+            'id' => $client['inbound_id'],
+            'settings' => json_encode([
+                'clients' => [$client['settings']],
+            ], JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizeClientStats(mixed $value): array
+    {
+        if (is_array($value)) {
+            return array_values(array_filter($value, is_array(...)));
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? array_values(array_filter($decoded, is_array(...))) : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizeOnlineEntry(mixed $row): array
+    {
+        if (is_string($row)) {
+            return [[
+                'email' => $row,
+                'ip' => '',
+                'first_seen' => now(),
+                'last_seen' => now(),
+            ]];
+        }
+
+        if (! is_array($row)) {
+            return [];
+        }
+
+        $email = (string) ($row['email'] ?? $row['remark'] ?? $row['clientEmail'] ?? '');
+        $ips = $row['ips'] ?? $row['ip'] ?? $row['rawIp'] ?? [];
+
+        if (is_string($ips)) {
+            $ips = preg_split('/[\s,]+/', $ips) ?: [];
+        }
+
+        if (! is_array($ips)) {
+            $ips = [];
+        }
+
+        $firstSeen = $row['firstSeen'] ?? $row['first_seen'] ?? $row['since'] ?? now();
+        $lastSeen = $row['lastSeen'] ?? $row['last_seen'] ?? $row['time'] ?? now();
+
+        return collect($ips)
+            ->map(fn (mixed $ip) => trim((string) $ip))
+            ->filter()
+            ->map(fn (string $ip) => [
+                'email' => $email,
+                'ip' => $ip,
+                'first_seen' => $firstSeen,
+                'last_seen' => $lastSeen,
+            ])
+            ->values()
+            ->all();
+    }
 }

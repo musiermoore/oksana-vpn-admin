@@ -32,7 +32,19 @@ class XuiConfigService extends BaseXuiConfigService
                     'inboundIds' => (string) $client['inbound_id'],
                 ],
             ])
-            ->post('/panel/api/clients/update/' . urlencode($config->name), $client['settings'])
+            ->post('/panel/api/clients/update/'.urlencode($config->name), $client['settings'])
+            ->throw();
+    }
+
+    protected function postUpdateClientByIdentifier(string $identifier, array $client): Response
+    {
+        return $this->getRequest()
+            ->withOptions([
+                'query' => [
+                    'inboundIds' => (string) $client['inbound_id'],
+                ],
+            ])
+            ->post('/panel/api/clients/update/'.urlencode($identifier), $client['settings'])
             ->throw();
     }
 }

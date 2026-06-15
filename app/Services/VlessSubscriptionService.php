@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class VlessSubscriptionService
@@ -59,14 +60,14 @@ class VlessSubscriptionService
                 $displayName = $displayNames[$this->getServerGroupingKey($item)] ?? $config->server->name;
 
                 if ($config instanceof VlessConfig) {
-                    return [
-                        $this->buildLinkItem(
-                            $this->renameLink($config->getStaticLink(), $displayName),
+                    return collect($this->getVlessSubscriptionData($config, $displayName))
+                        ->map(fn (string $line) => $this->buildLinkItem(
+                            $line,
                             $item['server'],
                             $item['server_id'],
                             $item['config_id']
-                        ),
-                    ];
+                        ))
+                        ->all();
                 }
 
                 if ($config instanceof ShadowsocksConfig) {
@@ -116,6 +117,36 @@ class VlessSubscriptionService
         return base64_encode($links);
     }
 
+    private function getVlessSubscriptionData(VlessConfig $config, string $displayName): array
+    {
+        if (empty($config->sub_id)) {
+            return [$this->renameLink($config->getStaticLink(), $displayName)];
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->get($config->getSubscriptionLink())
+                ->body();
+
+            $decoded = base64_decode($response, true);
+
+            if ($decoded === false) {
+                $decoded = $response;
+            }
+
+            return collect(preg_split('/\r\n|\r|\n/', $decoded))
+                ->map(fn ($line) => trim((string) $line))
+                ->filter(fn ($line) => $line !== '' && $this->isSupportedSubscriptionLink($line))
+                ->map(fn ($line) => $this->renameLink($line, $displayName))
+                ->values()
+                ->all();
+        } catch (\Exception $exception) {
+            report($exception);
+
+            return [];
+        }
+    }
+
     /**
      * @param  array<int, array{server: string, server_id: int, server_sort: string}>  $items
      * @return array<string, string>
@@ -141,6 +172,11 @@ class VlessSubscriptionService
             'hysteria2' => 4,
             default => 99,
         };
+    }
+
+    private function isSupportedSubscriptionLink(string $line): bool
+    {
+        return in_array($this->detectLinkType($line), ['vless', 'trojan', 'shadowsocks', 'hysteria', 'hysteria2'], true);
     }
 
     /**

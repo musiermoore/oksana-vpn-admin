@@ -18,6 +18,18 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_rewrites_subscription_names_and_numbers_duplicate_servers(): void
     {
+        Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+            'https://lv-2.example.com/sub/sub-lv-2' => Http::response(
+                "vless://uuid-2@lv-2.example.com?type=tcp&security=reality#old-name-2\n"
+            ),
+            'https://fi.example.com/sub/sub-fi' => Http::response(base64_encode(
+                "vless://uuid-3@fi.example.com?type=tcp&security=reality#legacy-fi\n"
+            )),
+        ]);
+
         $user = User::query()->create([
             'name' => 'Test User',
             'telegram' => '@tester',
@@ -60,6 +72,12 @@ class VlessConnectTest extends TestCase
 
     public function test_deep_link_route_redirects_to_v2rayng_subscription_import(): void
     {
+        Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+        ]);
+
         $user = User::query()->create([
             'name' => 'Test User',
             'telegram' => '@tester',
@@ -88,6 +106,9 @@ class VlessConnectTest extends TestCase
     public function test_deep_link_route_redirects_to_happ_encrypted_link(): void
     {
         Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
             'https://crypto.happ.su/api-v2.php' => Http::response('happ://crypt5/some-encrypted-value'),
         ]);
 
@@ -165,6 +186,12 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_mixed_vless_and_shadowsocks_links_sorted_by_type_server_and_config_id(): void
     {
+        Http::fake([
+            'https://fi.example.com/sub/sub-fi' => Http::response(base64_encode(
+                "vless://uuid-fi@fi.example.com?type=tcp&security=reality#old-fi\nss://ignored@fi.example.com:8388#old-ss\n"
+            )),
+        ]);
+
         $user = User::query()->create([
             'name' => 'Test User',
             'telegram' => '@tester',
@@ -250,7 +277,7 @@ class VlessConnectTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertCount(4, $lines);
+        $this->assertCount(5, $lines);
         $names = $this->extractNames($decoded);
         sort($names);
 
@@ -258,13 +285,14 @@ class VlessConnectTest extends TestCase
             'Латвия',
             'Финляндия - 1',
             'Финляндия - 2',
+            'Финляндия - 3',
             'Эстония',
         ];
         sort($expectedNames);
 
         $this->assertSame($expectedNames, $names);
         $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'vless://')));
-        $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
+        $this->assertCount(3, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
     }
 
     public function test_connect_returns_static_trojan_links_for_local_trojan_configs(): void
@@ -365,6 +393,53 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('upload=1073741824', $userinfo);
         $this->assertStringContainsString('download=5368709120', $userinfo);
         $this->assertStringContainsString('total=107374182400', $userinfo);
+    }
+
+    public function test_connect_preserves_remote_xhttp_and_hysteria_links_from_subscription_source(): void
+    {
+        Http::fake([
+            'https://de.example.com/sub/sub-de' => Http::response(base64_encode(implode("\n", [
+                'vless://uuid-xhttp@de.example.com:443?type=xhttp&security=reality&path=%2Fxhttp&mode=auto&host=cdn.example.com&pbk=pk&fp=chrome&sni=example.com&sid=abcd&spx=%2F#legacy-xhttp',
+                'hy2://secret@de.example.com:8443?sni=hy.example.com#legacy-hy2',
+            ]))),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Германия', 'DE', 'de.example.com');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'remote-sub',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'uuid-remote',
+            'sub_id' => 'sub-de',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('type=xhttp', $decoded);
+        $this->assertStringContainsString('mode=auto', $decoded);
+        $this->assertStringContainsString('hy2://secret@de.example.com:8443?sni=hy.example.com#', $decoded);
     }
 
     private function createServer(string $name, string $code, string $host): Server

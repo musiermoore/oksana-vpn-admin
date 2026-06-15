@@ -18,7 +18,7 @@ const form = useForm({
     join_at: props.user?.join_at ?? props.payments[0]?.start_date ?? '',
     create_configs: true,
     is_active: props.user?.is_active ?? true,
-    max_devices: props.user?.max_devices ?? 0,
+    max_devices: props.user?.max_devices ?? 10,
     traffic_limit_bytes: props.user?.traffic_limit_bytes ?? 0,
 });
 

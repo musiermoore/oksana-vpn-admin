@@ -10,37 +10,39 @@ class XrayConfigResource
 {
     public function __construct(
         private readonly VlessConfig|ShadowsocksConfig $resource,
-        private readonly string $protocol,
+        private readonly string $routeProtocol,
     ) {}
 
     public function toArray(Request $request): array
     {
+        $protocol = $this->resolveDisplayProtocol();
+
         $links = [
             'edit' => route('xray-configs.edit', [
-                'protocol' => $this->protocol,
+                'protocol' => $this->routeProtocol,
                 'config' => $this->resource->getKey(),
             ]),
             'destroy' => route('xray-configs.destroy', [
-                'protocol' => $this->protocol,
+                'protocol' => $this->routeProtocol,
                 'config' => $this->resource->getKey(),
             ]),
         ];
 
         if ($this->resource instanceof VlessConfig) {
             $links['enable'] = route('xray-configs.enable', [
-                'protocol' => $this->protocol,
+                'protocol' => $this->routeProtocol,
                 'config' => $this->resource->getKey(),
             ]);
             $links['disable'] = route('xray-configs.disable', [
-                'protocol' => $this->protocol,
+                'protocol' => $this->routeProtocol,
                 'config' => $this->resource->getKey(),
             ]);
         }
 
         return [
             'id' => $this->resource->getKey(),
-            'protocol' => $this->protocol,
-            'protocol_label' => $this->protocol === 'vless' ? 'VLESS' : 'Shadowsocks',
+            'protocol' => $protocol,
+            'protocol_label' => $this->formatProtocolLabel($protocol),
             'name' => $this->resource->name,
             'is_active' => (bool) $this->resource->is_active,
             'enable' => (bool) $this->resource->enable,
@@ -56,5 +58,26 @@ class XrayConfigResource
             ] : null,
             'links' => $links,
         ];
+    }
+
+    private function resolveDisplayProtocol(): string
+    {
+        if ($this->resource instanceof ShadowsocksConfig) {
+            return 'shadowsocks';
+        }
+
+        return mb_strtolower((string) ($this->resource->protocol ?: 'vless'));
+    }
+
+    private function formatProtocolLabel(string $protocol): string
+    {
+        return match ($protocol) {
+            'vless' => 'VLESS',
+            'trojan' => 'Trojan',
+            'hysteria' => 'Hysteria',
+            'hysteria2', 'hy2' => 'Hysteria2',
+            'shadowsocks' => 'Shadowsocks',
+            default => mb_strtoupper($protocol),
+        };
     }
 }

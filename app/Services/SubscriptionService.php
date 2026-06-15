@@ -134,6 +134,8 @@ class SubscriptionService
                 ]);
             }
 
+            $this->syncUserSubscriptionExpiry($user);
+
             $extraData['package_activation_processed'] = true;
             $extraData['subscription_start_date'] = $startDate;
             $extraData['subscription_end_date'] = $endDate;
@@ -200,6 +202,8 @@ class SubscriptionService
             );
 
             if (! $subscription->wasRecentlyCreated) {
+                $this->syncUserSubscriptionExpiry($user);
+
                 return;
             }
 
@@ -209,6 +213,8 @@ class SubscriptionService
                 'is_approved' => true,
                 'description' => 'Продление подписки',
             ]);
+
+            $this->syncUserSubscriptionExpiry($user);
         });
     }
 
@@ -296,7 +302,20 @@ class SubscriptionService
                 ]);
             }
 
+            $this->syncUserSubscriptionExpiry($user);
+
             return $subscription;
         });
+    }
+
+    private function syncUserSubscriptionExpiry(User $user): void
+    {
+        $expiresAt = UserSubscription::query()
+            ->where('user_id', $user->id)
+            ->max('end_date');
+
+        $user->forceFill([
+            'subscription_expires_at' => $expiresAt ? Carbon::parse($expiresAt)->endOfDay() : null,
+        ])->save();
     }
 }

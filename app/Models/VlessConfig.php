@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VlessConfig extends Model
 {
@@ -75,10 +74,16 @@ class VlessConfig extends Model
 
     public function getStaticLink(): string
     {
-        if ($this->getNormalizedProtocol() === 'trojan') {
-            return $this->getTrojanStaticLink();
-        }
+        return match ($this->getNormalizedProtocol()) {
+            'trojan' => $this->getTrojanStaticLink(),
+            'hysteria', 'hy' => $this->getHysteriaStaticLink(),
+            'hysteria2', 'hy2' => $this->getHysteria2StaticLink(),
+            default => $this->getVlessStaticLink(),
+        };
+    }
 
+    private function getVlessStaticLink(): string
+    {
         $paramList = [
             "type={$this->type}",
             "encryption={$this->encryption}",
@@ -90,7 +95,7 @@ class VlessConfig extends Model
             $paramList[] = "fp={$this->fp}";
             $paramList[] = "sni={$this->sni}";
             $paramList[] = "sid={$this->sid}";
-            $paramList[] = 'spx=' . urlencode($this->spx ?: '/');
+            $paramList[] = 'spx='.urlencode($this->spx ?: '/');
         } else {
             if ($this->security && $this->sni) {
                 $paramList[] = "sni={$this->sni}";
@@ -98,16 +103,16 @@ class VlessConfig extends Model
 
             if ($this->type === 'ws') {
                 if ($this->host) {
-                    $paramList[] = 'host=' . urlencode($this->host);
+                    $paramList[] = 'host='.urlencode($this->host);
                 }
 
                 if ($this->path) {
-                    $paramList[] = 'path=' . urlencode($this->path);
+                    $paramList[] = 'path='.urlencode($this->path);
                 }
             }
 
             if ($this->type === 'grpc' && $this->service_name) {
-                $paramList[] = 'serviceName=' . urlencode($this->service_name);
+                $paramList[] = 'serviceName='.urlencode($this->service_name);
             }
         }
 
@@ -117,7 +122,7 @@ class VlessConfig extends Model
 
         $params = implode('&', $paramList);
 
-        $label = str($this->server->code . '_' . $this->name)->slug();
+        $label = str($this->server->code.'_'.$this->name)->slug();
 
         return "vless://{$this->uuid}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
     }
@@ -135,23 +140,52 @@ class VlessConfig extends Model
 
         if ($this->type === 'ws') {
             if ($this->host) {
-                $paramList[] = 'host=' . urlencode($this->host);
+                $paramList[] = 'host='.urlencode($this->host);
             }
 
             if ($this->path) {
-                $paramList[] = 'path=' . urlencode($this->path);
+                $paramList[] = 'path='.urlencode($this->path);
             }
         }
 
         if ($this->type === 'grpc' && $this->service_name) {
-            $paramList[] = 'serviceName=' . urlencode($this->service_name);
+            $paramList[] = 'serviceName='.urlencode($this->service_name);
         }
 
         $params = implode('&', $paramList);
-        $label = str($this->server->code . '_' . $this->name)->slug();
+        $label = str($this->server->code.'_'.$this->name)->slug();
         $password = $this->password ?: $this->uuid;
 
         return "trojan://{$password}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+    }
+
+    private function getHysteriaStaticLink(): string
+    {
+        $paramList = array_filter([
+            'protocol='.($this->type ?: 'udp'),
+            'auth='.urlencode((string) ($this->auth ?: $this->password ?: $this->uuid)),
+            $this->sni ? 'peer='.urlencode($this->sni) : null,
+            $this->security === 'none' ? 'insecure=1' : null,
+        ]);
+
+        $params = implode('&', $paramList);
+        $label = str($this->server->code.'_'.$this->name)->slug();
+
+        return "hysteria://{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+    }
+
+    private function getHysteria2StaticLink(): string
+    {
+        $secret = rawurlencode((string) ($this->password ?: $this->auth ?: $this->uuid));
+        $paramList = array_filter([
+            $this->sni ? 'sni='.urlencode($this->sni) : null,
+            $this->security === 'none' ? 'insecure=1' : null,
+        ]);
+        $params = implode('&', $paramList);
+        $label = str($this->server->code.'_'.$this->name)->slug();
+        $query = $params !== '' ? "?{$params}" : '';
+
+        return "hysteria2://{$secret}@{$this->server->getLinkAddressHost()}:{$this->port}{$query}#{$label}";
     }
 
     private function getNormalizedProtocol(): string

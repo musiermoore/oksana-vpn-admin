@@ -6,11 +6,12 @@ use App\Http\Requests\VlessConfig\StoreVlessConfigRequest;
 use App\Http\Requests\VlessConfig\UpdateVlessConfigRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\VlessConfigResource;
+use App\Models\Server;
 use App\Models\User;
 use App\Models\UserToken;
-use App\Models\Server;
 use App\Models\VlessConfig;
 use App\Services\Crud\VlessConfigCrudService;
+use App\Services\SubscriptionMetadataService;
 use App\Services\VlessDeepLinkService;
 use App\Services\VlessSubscriptionService;
 use App\Services\XuiConfigServiceFactory;
@@ -171,7 +172,7 @@ class VlessConfigController extends Controller
         }
     }
 
-    public function connect(Request $request)
+    public function connect(Request $request, SubscriptionMetadataService $metadataService)
     {
         $user = $this->resolveUserFromConnectionRequest($request);
 
@@ -182,7 +183,13 @@ class VlessConfigController extends Controller
         $service = new VlessSubscriptionService($user);
         $subscriptions = $service->getAllSubscriptions();
 
-        return response($subscriptions);
+        $response = response($subscriptions);
+
+        foreach ($metadataService->buildHeaders($user) as $name => $value) {
+            $response->header($name, $value);
+        }
+
+        return $response;
     }
 
     public function deepLink(Request $request, string $client, VlessDeepLinkService $deepLinkService)

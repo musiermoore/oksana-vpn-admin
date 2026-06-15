@@ -47,6 +47,7 @@ const destroyUser = (user) => {
                     <th>Описание</th>
                     <th>Баланс</th>
                     <th>Долг</th>
+                    <th>Устройства</th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -57,6 +58,7 @@ const destroyUser = (user) => {
                     <td>{{ user.description || '—' }}</td>
                     <td>{{ Math.max(0, user.balance) }}</td>
                     <td>{{ Math.max(0, -user.balance) }}</td>
+                    <td>{{ user.max_devices || '∞' }}</td>
                     <td>
                         <div class="actions">
                             <Link class="button button--secondary" :href="user.links.edit">Изменить</Link>

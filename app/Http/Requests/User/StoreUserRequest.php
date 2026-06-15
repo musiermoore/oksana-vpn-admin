@@ -20,6 +20,8 @@ class StoreUserRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'join_at' => ['required', 'date'],
             'create_configs' => ['nullable', 'boolean'],
+            'max_devices' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'traffic_limit_bytes' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -33,6 +35,8 @@ class StoreUserRequest extends FormRequest
             description: $data['description'] ?? null,
             joinAt: $data['join_at'],
             createConfigs: (bool) ($data['create_configs'] ?? false),
+            maxDevices: (int) ($data['max_devices'] ?? 0),
+            trafficLimitBytes: (int) ($data['traffic_limit_bytes'] ?? 0),
         );
     }
 }

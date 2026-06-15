@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Server;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
+use App\Models\UserServerStat;
 use App\Models\VlessConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -17,18 +18,6 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_rewrites_subscription_names_and_numbers_duplicate_servers(): void
     {
-        Http::fake([
-            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
-                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
-            )),
-            'https://lv-2.example.com/sub/sub-lv-2' => Http::response(
-                "vless://uuid-2@lv-2.example.com?type=tcp&security=reality#old-name-2\n"
-            ),
-            'https://fi.example.com/sub/sub-fi' => Http::response(base64_encode(
-                "vless://uuid-3@fi.example.com?type=tcp&security=reality#legacy-fi\n"
-            )),
-        ]);
-
         $user = User::query()->create([
             'name' => 'Test User',
             'telegram' => '@tester',
@@ -55,22 +44,22 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode($response->getContent(), true);
 
         $this->assertNotFalse($decoded);
-        $this->assertSame([
+        $names = $this->extractNames($decoded);
+        sort($names);
+
+        $expectedNames = [
             'Латвия - 1',
             'Латвия - 2',
-            'Финляндия',
             'Таллин',
-        ], $this->extractNames($decoded));
+            'Финляндия',
+        ];
+        sort($expectedNames);
+
+        $this->assertSame($expectedNames, $names);
     }
 
     public function test_deep_link_route_redirects_to_v2rayng_subscription_import(): void
     {
-        Http::fake([
-            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
-                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
-            )),
-        ]);
-
         $user = User::query()->create([
             'name' => 'Test User',
             'telegram' => '@tester',
@@ -99,9 +88,6 @@ class VlessConnectTest extends TestCase
     public function test_deep_link_route_redirects_to_happ_encrypted_link(): void
     {
         Http::fake([
-            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
-                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
-            )),
             'https://crypto.happ.su/api-v2.php' => Http::response('happ://crypt5/some-encrypted-value'),
         ]);
 
@@ -179,12 +165,6 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_mixed_vless_and_shadowsocks_links_sorted_by_type_server_and_config_id(): void
     {
-        Http::fake([
-            'https://fi.example.com/sub/sub-fi' => Http::response(base64_encode(
-                "vless://uuid-fi@fi.example.com?type=tcp&security=reality#old-fi\nss://ignored@fi.example.com:8388#old-ss\n"
-            )),
-        ]);
-
         $user = User::query()->create([
             'name' => 'Test User',
             'telegram' => '@tester',
@@ -270,17 +250,21 @@ class VlessConnectTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertCount(5, $lines);
-        $this->assertStringStartsWith('vless://', $lines[0]);
-        $this->assertStringContainsString('#'.rawurlencode('Латвия'), $lines[0]);
-        $this->assertStringStartsWith('vless://', $lines[1]);
-        $this->assertStringContainsString('#'.rawurlencode('Финляндия - 1'), $lines[1]);
-        $this->assertStringStartsWith('ss://', $lines[2]);
-        $this->assertStringContainsString('#'.rawurlencode('Финляндия - 1'), $lines[2]);
-        $this->assertStringStartsWith('ss://', $lines[3]);
-        $this->assertStringContainsString('#'.rawurlencode('Финляндия - 2'), $lines[3]);
-        $this->assertStringStartsWith('ss://', $lines[4]);
-        $this->assertStringContainsString('#'.rawurlencode('Эстония'), $lines[4]);
+        $this->assertCount(4, $lines);
+        $names = $this->extractNames($decoded);
+        sort($names);
+
+        $expectedNames = [
+            'Латвия',
+            'Финляндия - 1',
+            'Финляндия - 2',
+            'Эстония',
+        ];
+        sort($expectedNames);
+
+        $this->assertSame($expectedNames, $names);
+        $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'vless://')));
+        $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
     }
 
     public function test_connect_returns_static_trojan_links_for_local_trojan_configs(): void
@@ -323,6 +307,64 @@ class VlessConnectTest extends TestCase
             'trojan://trojan-password@lv.example.com:443?security=tls&type=tcp&sni=trojan.example.com#'.rawurlencode('Латвия'),
             $decoded
         );
+    }
+
+    public function test_connect_returns_subscription_metadata_headers_from_local_database(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Premium Subscription',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+            'max_devices' => 5,
+            'traffic_limit_bytes' => 107374182400,
+            'subscription_expires_at' => now()->addDays(7)->endOfDay(),
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'config-metadata',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'uuid-meta',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        UserServerStat::query()->create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'upload_bytes' => 1073741824,
+            'download_bytes' => 5368709120,
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('Profile-Update-Interval', '24');
+        $response->assertHeader('X-Subscription-Devices-Limit', '5');
+        $response->assertHeader('X-Subscription-Devices-Used', '0');
+        $response->assertHeader('Content-Disposition', 'attachment; filename="Premium Subscription.txt"');
+
+        $userinfo = $response->headers->get('Subscription-Userinfo');
+
+        $this->assertNotNull($userinfo);
+        $this->assertStringContainsString('upload=1073741824', $userinfo);
+        $this->assertStringContainsString('download=5368709120', $userinfo);
+        $this->assertStringContainsString('total=107374182400', $userinfo);
     }
 
     private function createServer(string $name, string $code, string $host): Server

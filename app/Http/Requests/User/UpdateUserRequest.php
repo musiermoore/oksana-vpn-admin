@@ -20,6 +20,8 @@ class UpdateUserRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'join_at' => ['required', 'date'],
             'is_active' => ['required', 'boolean'],
+            'max_devices' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'traffic_limit_bytes' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -33,6 +35,8 @@ class UpdateUserRequest extends FormRequest
             description: $data['description'] ?? null,
             joinAt: $data['join_at'],
             isActive: (bool) $data['is_active'],
+            maxDevices: (int) ($data['max_devices'] ?? 0),
+            trafficLimitBytes: (int) ($data['traffic_limit_bytes'] ?? 0),
         );
     }
 }

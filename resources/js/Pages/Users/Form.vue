@@ -18,6 +18,8 @@ const form = useForm({
     join_at: props.user?.join_at ?? props.payments[0]?.start_date ?? '',
     create_configs: true,
     is_active: props.user?.is_active ?? true,
+    max_devices: props.user?.max_devices ?? 0,
+    traffic_limit_bytes: props.user?.traffic_limit_bytes ?? 0,
 });
 
 const submit = () => {
@@ -79,6 +81,16 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                 </select>
             </label>
 
+            <label class="field">
+                <span>Лимит устройств</span>
+                <input v-model="form.max_devices" type="number" min="0" step="1">
+            </label>
+
+            <label class="field">
+                <span>Лимит трафика (байт)</span>
+                <input v-model="form.traffic_limit_bytes" type="number" min="0" step="1">
+            </label>
+
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
                 <textarea v-model="form.description" />
@@ -101,6 +113,9 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
             <div class="page-header">
                 <div>
                     <h2 class="section-title">Конфиги</h2>
+                    <p v-if="user.subscription_expires_at">
+                        Подписка активна до {{ new Date(user.subscription_expires_at).toLocaleString() }}
+                    </p>
                 </div>
                 <div class="actions">
                     <Link class="button" href="/configs/create">Создать</Link>

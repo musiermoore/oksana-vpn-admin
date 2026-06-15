@@ -5,14 +5,11 @@ namespace App\Services;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class VlessSubscriptionService
 {
-    public function __construct(private readonly User $user)
-    {
-    }
+    public function __construct(private readonly User $user) {}
 
     public function getAllSubscriptions(): string
     {
@@ -62,14 +59,14 @@ class VlessSubscriptionService
                 $displayName = $displayNames[$this->getServerGroupingKey($item)] ?? $config->server->name;
 
                 if ($config instanceof VlessConfig) {
-                    return collect($this->getVlessSubscriptionData($config, $displayName))
-                        ->map(fn (string $line) => $this->buildLinkItem(
-                            $line,
+                    return [
+                        $this->buildLinkItem(
+                            $this->renameLink($config->getStaticLink(), $displayName),
                             $item['server'],
                             $item['server_id'],
                             $item['config_id']
-                        ))
-                        ->all();
+                        ),
+                    ];
                 }
 
                 if ($config instanceof ShadowsocksConfig) {
@@ -119,37 +116,6 @@ class VlessSubscriptionService
         return base64_encode($links);
     }
 
-    private function getVlessSubscriptionData(VlessConfig $config, string $displayName): array
-    {
-        if (empty($config->sub_id)) {
-            return [$this->renameLink($config->getStaticLink(), $displayName)];
-        }
-
-        try {
-            $response = Http::timeout(10)
-                ->get($config->getSubscriptionLink())
-                ->body();
-
-            $decoded = base64_decode($response, true);
-
-            // Some providers return plain text instead of base64
-            if ($decoded === false) {
-                $decoded = $response;
-            }
-
-            return collect(preg_split('/\r\n|\r|\n/', $decoded))
-                ->map(fn ($line) => trim($line))
-                ->filter(fn ($line) => ! empty($line) && $this->isSupportedSubscriptionLink($line))
-                ->map(fn ($line) => $this->renameLink($line, $displayName))
-                ->values()
-                ->all();
-
-        } catch (\Exception $e) {
-            report($e);
-            return [];
-        }
-    }
-
     /**
      * @param  array<int, array{server: string, server_id: int, server_sort: string}>  $items
      * @return array<string, string>
@@ -163,11 +129,6 @@ class VlessSubscriptionService
                 $this->getServerGroupingKey($item) => (string) $item['server'],
             ])
             ->all();
-    }
-
-    private function isSupportedSubscriptionLink(string $line): bool
-    {
-        return in_array($this->detectLinkType($line), ['vless', 'trojan', 'shadowsocks', 'hysteria', 'hysteria2'], true);
     }
 
     private function getTypeSortOrder(string $type): int
@@ -202,7 +163,7 @@ class VlessSubscriptionService
      */
     private function getServerGroupingKey(array $item): string
     {
-        return (string) ($item['server_sort'] ?? mb_strtolower((string) $item['server'])).':'.(int) ($item['server_id'] ?? 0);
+        return (string) ($item['server_sort'] ?? mb_strtolower((string) $item['server']));
     }
 
     private function detectLinkType(string $line): string

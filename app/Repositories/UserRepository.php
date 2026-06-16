@@ -101,6 +101,7 @@ class UserRepository
                 'users.id',
                 'users.telegram_id',
                 'users.balance',
+                'users.welcome_text_seen_at',
             ])
             ->where('telegram_id', trim($telegramId))
             ->where('users.is_active', true)

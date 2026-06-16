@@ -36,6 +36,7 @@ class User extends Authenticatable
         'max_devices',
         'traffic_limit_bytes',
         'subscription_expires_at',
+        'welcome_text_seen_at',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'balance' => 'float',
             'subscription_expires_at' => 'datetime',
+            'welcome_text_seen_at' => 'datetime',
         ];
     }
 
@@ -232,7 +234,7 @@ class User extends Authenticatable
 
     public function hasActiveSubscription(?Carbon $date = null): bool
     {
-        if ($this->relationLoaded('activeSubscription')) {
+        if ($date === null && $this->relationLoaded('activeSubscription')) {
             return $this->activeSubscription !== null;
         }
 

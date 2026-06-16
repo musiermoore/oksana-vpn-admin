@@ -13,6 +13,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserSubscriptionController;
 use App\Http\Controllers\UserTokenController;
 use App\Http\Controllers\VlessConfigController;
+use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
 use App\Http\Middleware\BasicAuth;
@@ -35,6 +36,10 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.create');
     Route::post('notifications', [NotificationController::class, 'store'])
         ->name('notifications.store');
+    Route::get('messages/welcome', [WelcomeMessageController::class, 'edit'])
+        ->name('messages.welcome.edit');
+    Route::put('messages/welcome', [WelcomeMessageController::class, 'update'])
+        ->name('messages.welcome.update');
     Route::resource('user-tokens', UserTokenController::class)->except(['edit', 'update']);
     Route::resource('configs', ConfigController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class);

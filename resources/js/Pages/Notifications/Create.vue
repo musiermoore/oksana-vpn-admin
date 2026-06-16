@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import TelegramMessageEditor from '../../Shared/TelegramMessageEditor.vue';
 
 defineOptions({ layout: AppLayout });
 
@@ -9,7 +10,6 @@ const props = defineProps({
     users: Array,
 });
 
-const textareaRef = ref(null);
 const search = ref('');
 const imagePreviewUrl = ref(null);
 
@@ -57,45 +57,6 @@ const selectVisible = () => {
 
 const clearSelection = () => {
     form.user_ids = [];
-};
-
-const setSelection = (nextValue, start, end) => {
-    form.message_html = nextValue;
-
-    requestAnimationFrame(() => {
-        if (!textareaRef.value) {
-            return;
-        }
-
-        textareaRef.value.focus();
-        textareaRef.value.setSelectionRange(start, end);
-    });
-};
-
-const wrapSelection = (openTag, closeTag = openTag, fallback = 'текст') => {
-    const textarea = textareaRef.value;
-
-    if (!textarea) {
-        return;
-    }
-
-    const { selectionStart, selectionEnd, value } = textarea;
-    const selectedText = value.slice(selectionStart, selectionEnd) || fallback;
-    const nextValue = `${value.slice(0, selectionStart)}${openTag}${selectedText}${closeTag}${value.slice(selectionEnd)}`;
-    const cursorStart = selectionStart + openTag.length;
-    const cursorEnd = cursorStart + selectedText.length;
-
-    setSelection(nextValue, cursorStart, cursorEnd);
-};
-
-const insertLink = () => {
-    const href = window.prompt('Введите ссылку');
-
-    if (!href) {
-        return;
-    }
-
-    wrapSelection(`<a href="${href}">`, '</a>', href);
 };
 
 const updateImage = (event) => {
@@ -227,25 +188,12 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="actions">
-                    <button class="button button--secondary" type="button" @click="wrapSelection('<b>', '</b>')">Жирный</button>
-                    <button class="button button--secondary" type="button" @click="wrapSelection('<i>', '</i>')">Курсив</button>
-                    <button class="button button--secondary" type="button" @click="wrapSelection('<u>', '</u>')">Подчерк.</button>
-                    <button class="button button--secondary" type="button" @click="wrapSelection('<s>', '</s>')">Зачерк.</button>
-                    <button class="button button--secondary" type="button" @click="wrapSelection('<code>', '</code>')">Код</button>
-                    <button class="button button--secondary" type="button" @click="insertLink">Ссылка</button>
-                </div>
-
-                <label class="field">
-                    <span>Текст</span>
-                    <textarea
-                        ref="textareaRef"
-                        v-model="form.message_html"
-                        class="notification-editor"
-                        placeholder="Введите текст сообщения"
-                    />
-                    <small v-if="form.errors.message_html" class="field-error">{{ form.errors.message_html }}</small>
-                </label>
+                <TelegramMessageEditor
+                    v-model="form.message_html"
+                    label="Текст"
+                    :error="form.errors.message_html"
+                    preview-title="Предпросмотр сообщения"
+                />
 
                 <label class="field">
                     <span>Изображение</span>

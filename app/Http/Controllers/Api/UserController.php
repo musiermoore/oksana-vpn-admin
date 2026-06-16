@@ -16,6 +16,7 @@ use App\Http\Resources\Api\ApiVlessDeepLinksResource;
 use App\Models\Config;
 use App\Models\User;
 use App\Services\Api\ApiUserService;
+use App\Services\WelcomeMessageService;
 use App\Services\WireGuardAgentConfigService;
 use App\Support\BotApiMessages;
 use Exception;
@@ -31,6 +32,7 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly ApiUserService $userService,
+        private readonly WelcomeMessageService $welcomeMessages,
     ) {}
 
     public function registrationStatus(string $telegramId)
@@ -42,6 +44,7 @@ class UserController extends Controller
                 (new ApiRegistrationStatusResource(
                     $user,
                     $user ? $this->userService->hasMoneyForNextSubscriptionMonth($user) : false,
+                    $this->welcomeMessages->resolveWelcomeTextForRegistrationStatus($user),
                 ))->resolve()
             );
         } catch (Throwable $throwable) {

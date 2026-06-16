@@ -23,6 +23,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Доп. оплаты', 'href' => route('extra-payments.index'), 'badge' => 'DP'],
             ['label' => 'API лог', 'href' => route('api-request-logs.index'), 'badge' => 'LG'],
             ['label' => 'Рассылка', 'href' => route('notifications.create'), 'badge' => 'NT'],
+            ['label' => 'Welcome', 'href' => route('messages.welcome.edit'), 'badge' => 'WM'],
             ['label' => 'Сервера', 'href' => route('servers.index'), 'badge' => 'SV'],
         ] : [];
 

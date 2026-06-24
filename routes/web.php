@@ -18,6 +18,7 @@ use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
 use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
+use App\Http\Controllers\TelegramApp\PageController as TelegramAppPageController;
 use App\Http\Controllers\TelegramApp\PaymentController as TelegramAppPaymentController;
 use App\Http\Controllers\TelegramApp\SupportTicketController as TelegramAppSupportTicketController;
 use App\Http\Controllers\TelegramApp\UserController as TelegramAppUserController;
@@ -94,6 +95,7 @@ Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLin
     ->name('vless.deep-link');
 
 Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
+    Route::get('/', TelegramAppPageController::class)->name('home');
     Route::post('auth/telegram', [TelegramAppAuthController::class, 'authenticate'])
         ->name('auth.telegram');
 

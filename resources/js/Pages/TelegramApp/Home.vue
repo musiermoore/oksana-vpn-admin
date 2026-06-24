@@ -14,6 +14,18 @@ const error = ref('');
 const user = ref(null);
 const telegramProfile = ref(null);
 
+const formatSubscriptionDate = (value) => {
+    if (!value) {
+        return 'Неактивна';
+    }
+
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime())
+        ? 'Неактивна'
+        : `Активна до ${date.toLocaleDateString('ru-RU')}`;
+};
+
 onMounted(async () => {
     telegramProfile.value = getTelegramProfile();
 
@@ -65,17 +77,8 @@ onMounted(async () => {
                         </div>
                         <div class="tg-info-row">
                             <span>Подписка</span>
-                            <strong>{{ user?.subscription_expires_at ? 'Активна' : 'Неактивна' }}</strong>
+                            <strong>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</strong>
                         </div>
-                    </div>
-                </article>
-
-                <article class="tg-card tg-card--accent">
-                    <span class="tg-card__eyebrow">Быстрые действия</span>
-                    <h2>Что можно сделать</h2>
-                    <div class="tg-action-list">
-                        <a class="tg-action-link" :href="routes.payments">Оплатить подписку</a>
-                        <a class="tg-action-link" :href="routes.support">Написать в поддержку</a>
                     </div>
                 </article>
             </section>

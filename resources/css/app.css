@@ -27,9 +27,10 @@ body {
     margin: 0;
     color: var(--text);
     background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 26%),
-        radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 22%),
-        linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        radial-gradient(circle at 20% 15%, rgba(132, 72, 255, 0.22), transparent 24%),
+        radial-gradient(circle at 82% 10%, rgba(255, 214, 143, 0.08), transparent 18%),
+        linear-gradient(180deg, #08061c 0%, #100726 42%, #180a34 100%);
+    min-height: 100vh;
 }
 
 a {
@@ -50,6 +51,10 @@ textarea {
 
 .shell {
     min-height: 100vh;
+    background:
+        radial-gradient(circle at 20% 15%, rgba(132, 72, 255, 0.22), transparent 24%),
+        radial-gradient(circle at 82% 10%, rgba(255, 214, 143, 0.08), transparent 18%),
+        linear-gradient(180deg, #08061c 0%, #100726 42%, #180a34 100%);
 }
 
 .shell--app {
@@ -61,7 +66,7 @@ textarea {
 .shell__content {
     width: min(1180px, calc(100vw - 32px));
     margin: 0 auto;
-    padding: 28px 0 40px;
+    padding: 34px 0 52px;
 }
 
 .shell--app .shell__content {
@@ -811,8 +816,8 @@ tbody tr:hover {
 .tg-app {
     position: relative;
     display: grid;
-    gap: 18px;
-    padding-bottom: 24px;
+    gap: 14px;
+    padding: 8px 4px 28px;
 }
 
 .tg-app__backdrop {
@@ -828,13 +833,16 @@ tbody tr:hover {
 
 .tg-hero,
 .tg-card,
-.tg-nav {
+.tg-nav,
+.tg-profile-panel {
     position: relative;
     overflow: hidden;
 }
 
 .tg-hero,
-.tg-card {
+.tg-card,
+.tg-nav,
+.tg-profile-panel {
     border: 1px solid rgba(216, 188, 255, 0.16);
     background:
         linear-gradient(180deg, rgba(19, 12, 45, 0.92), rgba(12, 9, 35, 0.96)),
@@ -846,12 +854,13 @@ tbody tr:hover {
 }
 
 .tg-hero {
-    padding: 28px 22px 24px;
-    border-radius: 30px;
+    padding: 26px 20px 20px;
+    border-radius: 16px;
 }
 
 .tg-hero::after,
-.tg-card::after {
+.tg-card::after,
+.tg-profile-panel::after {
     content: "";
     position: absolute;
     inset: auto -40px -60px auto;
@@ -895,41 +904,37 @@ tbody tr:hover {
     text-transform: uppercase;
 }
 
-.tg-hero__meta {
+.tg-hero__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.tg-profile-button {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-top: 18px;
-}
-
-.tg-mini-stat {
-    padding: 14px 16px;
-    border-radius: 20px;
+    gap: 4px;
+    min-width: 136px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 220, 158, 0.16);
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(231, 206, 255, 0.12);
-}
-
-.tg-mini-stat span {
-    display: block;
-    color: rgba(229, 214, 255, 0.68);
-    font-size: 0.88rem;
-}
-
-.tg-mini-stat strong {
-    display: block;
-    margin-top: 6px;
     color: #fff6eb;
-    font-size: 1.02rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.tg-profile-button span {
+    color: rgba(229, 214, 255, 0.68);
+    font-size: 0.82rem;
 }
 
 .tg-nav {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
-    padding: 10px;
-    border-radius: 24px;
-    background: rgba(10, 8, 29, 0.88);
-    border: 1px solid rgba(216, 188, 255, 0.14);
+    padding: 8px;
+    border-radius: 14px;
 }
 
 .tg-nav__item {
@@ -938,7 +943,7 @@ tbody tr:hover {
     justify-content: center;
     min-height: 46px;
     padding: 0 14px;
-    border-radius: 18px;
+    border-radius: 10px;
     color: rgba(235, 223, 255, 0.82);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid transparent;
@@ -966,18 +971,11 @@ tbody tr:hover {
 }
 
 .tg-card {
-    padding: 22px 18px;
-    border-radius: 28px;
-}
-
-.tg-card--accent {
-    background:
-        linear-gradient(180deg, rgba(39, 18, 79, 0.96), rgba(17, 10, 43, 0.98)),
-        radial-gradient(circle at top right, rgba(255, 213, 143, 0.18), transparent 24%);
+    padding: 20px 18px;
+    border-radius: 14px;
 }
 
 .tg-info-list,
-.tg-action-list,
 .tg-ticket-list {
     display: grid;
     gap: 12px;
@@ -988,7 +986,7 @@ tbody tr:hover {
     justify-content: space-between;
     gap: 14px;
     padding: 12px 14px;
-    border-radius: 18px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(228, 208, 255, 0.10);
 }
@@ -1002,17 +1000,15 @@ tbody tr:hover {
     color: #fff1d9;
 }
 
-.tg-action-link,
 .tg-ticket-card {
     display: block;
     padding: 14px 16px;
-    border-radius: 20px;
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(228, 208, 255, 0.10);
     color: #f7ecff;
 }
 
-.tg-action-link:hover,
 .tg-ticket-card:hover {
     border-color: rgba(255, 220, 158, 0.24);
     color: #fff6eb;
@@ -1032,6 +1028,27 @@ tbody tr:hover {
     text-align: center;
 }
 
+.tg-profile-panel {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 14px;
+}
+
+.tg-profile-panel__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #f5edff;
+}
+
+.tg-profile-panel__row span {
+    color: rgba(229, 214, 255, 0.72);
+}
+
 .tg-ticket-card__top {
     display: flex;
     justify-content: space-between;
@@ -1046,7 +1063,7 @@ tbody tr:hover {
 
 .tg-chat__message {
     padding: 14px 16px;
-    border-radius: 20px 20px 20px 8px;
+    border-radius: 12px 12px 12px 6px;
     background: rgba(141, 83, 255, 0.14);
     border: 1px solid rgba(216, 188, 255, 0.18);
 }
@@ -1054,7 +1071,7 @@ tbody tr:hover {
 .tg-chat__message.is-admin {
     background: rgba(255, 220, 158, 0.10);
     border-color: rgba(255, 220, 158, 0.18);
-    border-radius: 20px 20px 8px 20px;
+    border-radius: 12px 12px 6px 12px;
 }
 
 .tg-chat__message p {
@@ -1092,9 +1109,12 @@ tbody tr:hover {
         padding: 22px 18px;
     }
 
-    .tg-hero__meta,
     .tg-grid--two,
     .tg-nav {
         grid-template-columns: 1fr;
+    }
+
+    .tg-hero__top {
+        flex-direction: column;
     }
 }

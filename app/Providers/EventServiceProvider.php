@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Events\SupportTicketCreated;
 use App\Events\TransactionApproved;
 use App\Events\UserBalanceDeltaRequested;
 use App\Listeners\ActivateSubscriptionAfterTransactionApproval;
+use App\Listeners\NotifyAdminsAboutSupportTicket;
 use App\Listeners\ApplyUserBalanceDelta;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -21,6 +23,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         UserBalanceDeltaRequested::class => [
             ApplyUserBalanceDelta::class,
+        ],
+        SupportTicketCreated::class => [
+            NotifyAdminsAboutSupportTicket::class,
         ],
     ];
 

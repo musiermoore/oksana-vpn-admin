@@ -100,7 +100,7 @@ class ApiTransactionService
 
         return [
             'status' => 'deposit_required',
-            'message' => "Для активации подписки необходимо оплатить {$transaction->amount} ₽.",
+            'message' => "Для активации подписки необходимо оплатить {$transaction->amount} ₽. Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».",
             'deposit_amount' => (float) $transaction->amount,
             'transaction_id' => $transaction->id,
             'invoice_id' => $invoice->id,

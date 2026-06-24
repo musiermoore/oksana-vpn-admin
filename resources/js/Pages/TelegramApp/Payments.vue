@@ -71,7 +71,7 @@ onMounted(async () => {
 <template>
     <TelegramMiniAppFrame
         title="Подписка"
-        description="Выберите удобный срок и перейдите к безопасной оплате через YooKassa."
+        description="Выберите удобный срок и перейдите к оплате картой или через СБП."
         :routes="routes"
         :user="user"
     >
@@ -94,6 +94,9 @@ onMounted(async () => {
                     <p class="tg-muted">
                         {{ item.discount_percent > 0 ? `Скидка ${item.discount_percent}%` : 'Базовая стоимость' }}
                     </p>
+                    <p class="tg-muted">
+                        Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».
+                    </p>
 
                     <button
                         class="button tg-button-full"
@@ -101,7 +104,7 @@ onMounted(async () => {
                         :disabled="payingMonth === item.month"
                         @click="buySubscription(item.month)"
                     >
-                        {{ payingMonth === item.month ? 'Переходим к оплате...' : 'Оплатить' }}
+                        {{ payingMonth === item.month ? 'Переходим к оплате...' : 'Перейти к оплате картой / СБП' }}
                     </button>
                 </article>
             </section>

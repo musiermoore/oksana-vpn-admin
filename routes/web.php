@@ -95,7 +95,12 @@ Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLin
     ->name('vless.deep-link');
 
 Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
-    Route::get('/', TelegramAppPageController::class)->name('home');
+    Route::get('/', [TelegramAppPageController::class, 'home'])->name('home');
+    Route::get('payments', [TelegramAppPageController::class, 'payments'])->name('pages.payments');
+    Route::get('support', [TelegramAppPageController::class, 'support'])->name('pages.support');
+    Route::get('support/{ticketId}', [TelegramAppPageController::class, 'supportShow'])
+        ->whereNumber('ticketId')
+        ->name('pages.support.show');
     Route::post('auth/telegram', [TelegramAppAuthController::class, 'authenticate'])
         ->name('auth.telegram');
 

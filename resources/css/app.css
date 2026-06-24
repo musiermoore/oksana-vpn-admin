@@ -807,3 +807,294 @@ tbody tr:hover {
         margin-left: 0;
     }
 }
+
+.tg-app {
+    position: relative;
+    display: grid;
+    gap: 18px;
+    padding-bottom: 24px;
+}
+
+.tg-app__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(circle at 20% 15%, rgba(132, 72, 255, 0.30), transparent 24%),
+        radial-gradient(circle at 82% 10%, rgba(255, 214, 143, 0.14), transparent 18%),
+        radial-gradient(circle at 50% 55%, rgba(102, 42, 230, 0.28), transparent 30%),
+        linear-gradient(180deg, #08061c 0%, #100726 42%, #180a34 100%);
+}
+
+.tg-hero,
+.tg-card,
+.tg-nav {
+    position: relative;
+    overflow: hidden;
+}
+
+.tg-hero,
+.tg-card {
+    border: 1px solid rgba(216, 188, 255, 0.16);
+    background:
+        linear-gradient(180deg, rgba(19, 12, 45, 0.92), rgba(12, 9, 35, 0.96)),
+        radial-gradient(circle at top right, rgba(157, 103, 255, 0.16), transparent 26%);
+    box-shadow:
+        0 22px 60px rgba(3, 1, 14, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    color: #f5edff;
+}
+
+.tg-hero {
+    padding: 28px 22px 24px;
+    border-radius: 30px;
+}
+
+.tg-hero::after,
+.tg-card::after {
+    content: "";
+    position: absolute;
+    inset: auto -40px -60px auto;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(154, 102, 255, 0.22), transparent 70%);
+    pointer-events: none;
+}
+
+.tg-hero h1,
+.tg-card h2 {
+    margin: 0;
+    color: #fff6ff;
+}
+
+.tg-hero h1 {
+    font-size: clamp(2.1rem, 9vw, 3.4rem);
+    line-height: 0.94;
+    letter-spacing: -0.04em;
+}
+
+.tg-hero p,
+.tg-muted,
+.tg-card p {
+    color: rgba(236, 225, 255, 0.78);
+}
+
+.tg-hero__badge,
+.tg-card__eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 220, 158, 0.12);
+    border: 1px solid rgba(255, 220, 158, 0.28);
+    color: #ffd999;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tg-hero__meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.tg-mini-stat {
+    padding: 14px 16px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(231, 206, 255, 0.12);
+}
+
+.tg-mini-stat span {
+    display: block;
+    color: rgba(229, 214, 255, 0.68);
+    font-size: 0.88rem;
+}
+
+.tg-mini-stat strong {
+    display: block;
+    margin-top: 6px;
+    color: #fff6eb;
+    font-size: 1.02rem;
+}
+
+.tg-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 10px;
+    border-radius: 24px;
+    background: rgba(10, 8, 29, 0.88);
+    border: 1px solid rgba(216, 188, 255, 0.14);
+}
+
+.tg-nav__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 14px;
+    border-radius: 18px;
+    color: rgba(235, 223, 255, 0.82);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid transparent;
+    transition: 0.2s ease;
+}
+
+.tg-nav__item.is-active,
+.tg-nav__item:hover {
+    color: #fffaf2;
+    background: linear-gradient(135deg, rgba(128, 68, 255, 0.44), rgba(255, 206, 136, 0.18));
+    border-color: rgba(255, 220, 158, 0.18);
+}
+
+.tg-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.tg-grid--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tg-grid--cards {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.tg-card {
+    padding: 22px 18px;
+    border-radius: 28px;
+}
+
+.tg-card--accent {
+    background:
+        linear-gradient(180deg, rgba(39, 18, 79, 0.96), rgba(17, 10, 43, 0.98)),
+        radial-gradient(circle at top right, rgba(255, 213, 143, 0.18), transparent 24%);
+}
+
+.tg-info-list,
+.tg-action-list,
+.tg-ticket-list {
+    display: grid;
+    gap: 12px;
+}
+
+.tg-info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(228, 208, 255, 0.10);
+}
+
+.tg-info-row span {
+    color: rgba(229, 214, 255, 0.72);
+}
+
+.tg-info-row strong,
+.tg-plan-card__price {
+    color: #fff1d9;
+}
+
+.tg-action-link,
+.tg-ticket-card {
+    display: block;
+    padding: 14px 16px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(228, 208, 255, 0.10);
+    color: #f7ecff;
+}
+
+.tg-action-link:hover,
+.tg-ticket-card:hover {
+    border-color: rgba(255, 220, 158, 0.24);
+    color: #fff6eb;
+}
+
+.tg-plan-card__price {
+    margin: 6px 0 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.tg-button-full {
+    width: 100%;
+}
+
+.tg-state-card {
+    text-align: center;
+}
+
+.tg-ticket-card__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 12px;
+}
+
+.tg-chat {
+    display: grid;
+    gap: 12px;
+}
+
+.tg-chat__message {
+    padding: 14px 16px;
+    border-radius: 20px 20px 20px 8px;
+    background: rgba(141, 83, 255, 0.14);
+    border: 1px solid rgba(216, 188, 255, 0.18);
+}
+
+.tg-chat__message.is-admin {
+    background: rgba(255, 220, 158, 0.10);
+    border-color: rgba(255, 220, 158, 0.18);
+    border-radius: 20px 20px 8px 20px;
+}
+
+.tg-chat__message p {
+    margin: 8px 0 0;
+}
+
+.tg-app .field span,
+.tg-app .field label,
+.tg-app .field strong {
+    color: #f5edff;
+}
+
+.tg-app .field input,
+.tg-app .field textarea,
+.tg-app .field select {
+    border-color: rgba(216, 188, 255, 0.14);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff8ff;
+}
+
+.tg-app .field input::placeholder,
+.tg-app .field textarea::placeholder {
+    color: rgba(228, 214, 255, 0.42);
+}
+
+.tg-app .empty-state,
+.tg-app .badge {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(216, 188, 255, 0.14);
+    color: #f4ecff;
+}
+
+@media (max-width: 720px) {
+    .tg-hero {
+        padding: 22px 18px;
+    }
+
+    .tg-hero__meta,
+    .tg-grid--two,
+    .tg-nav {
+        grid-template-columns: 1fr;
+    }
+}

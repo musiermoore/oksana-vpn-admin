@@ -1,7 +1,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
-import { ensureTelegramAppSession, normalizeTelegramAppError, telegramAppHeaders } from '../../lib/telegramMiniApp';
+import {
+    ensureTelegramAppSession,
+    normalizeTelegramAppError,
+    redirectFromTelegramStartParam,
+    telegramAppHeaders,
+} from '../../lib/telegramMiniApp';
 
 const props = defineProps({
     routes: Object,
@@ -105,6 +110,10 @@ const retry = () => {
 };
 
 onMounted(async () => {
+    if (redirectFromTelegramStartParam(props.routes)) {
+        return;
+    }
+
     try {
         await loadData();
         state.value = 'ready';

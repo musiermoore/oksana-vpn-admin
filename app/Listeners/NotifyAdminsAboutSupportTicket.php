@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\SupportTicketCreated;
 use App\Events\SupportTicketUserMessageCreated;
 use App\Models\User;
+use App\Services\TelegramMiniAppLinkService;
 use App\Services\TelegramBroadcastService;
 use App\Services\TelegramDevChatService;
 
@@ -13,13 +14,14 @@ class NotifyAdminsAboutSupportTicket
     public function __construct(
         private readonly TelegramBroadcastService $broadcastService,
         private readonly TelegramDevChatService $devChatService,
+        private readonly TelegramMiniAppLinkService $miniAppLinkService,
     ) {}
 
     public function handle(SupportTicketCreated|SupportTicketUserMessageCreated $event): void
     {
         $ticket = $event->ticket->loadMissing(['user', 'latestMessage']);
         $message = $this->buildMessage($event, $ticket);
-        $ticketUrl = route('telegram-app.pages.support.show', $ticket->id);
+        $ticketUrl = $this->miniAppLinkService->ticket((int) $ticket->id);
         $devChatId = (string) config('services.telegram.dev_chat_id', '');
 
         $admins = User::query()

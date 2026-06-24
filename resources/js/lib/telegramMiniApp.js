@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'telegram-mini-app-token';
+const START_PARAM_KEY = 'telegram-mini-app-last-start-param';
 
 export const telegramAppLabels = {
     open: 'Открыт',
@@ -36,6 +37,52 @@ export const prepareTelegramWebApp = () => {
 
 export const getTelegramProfile = () => {
     return window.Telegram?.WebApp?.initDataUnsafe?.user ?? null;
+};
+
+export const getTelegramStartParam = () => {
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+
+    if (typeof startParam === 'string' && startParam.trim() !== '') {
+        return startParam.trim();
+    }
+
+    const queryStartParam = new URLSearchParams(window.location.search).get('tgWebAppStartParam');
+
+    return queryStartParam?.trim() || '';
+};
+
+export const redirectFromTelegramStartParam = (routes) => {
+    const startParam = getTelegramStartParam();
+
+    if (startParam === '') {
+        return false;
+    }
+
+    const lastConsumedStartParam = window.sessionStorage.getItem(START_PARAM_KEY) ?? '';
+    const ticketMatch = startParam.match(/^ticket_(\d+)$/);
+
+    if (!ticketMatch) {
+        window.sessionStorage.setItem(START_PARAM_KEY, startParam);
+        return false;
+    }
+
+    const targetUrl = `${routes?.support}/${ticketMatch[1]}`;
+    const currentPath = window.location.pathname.replace(/\/+$/, '');
+    const targetPath = new URL(targetUrl, window.location.origin).pathname.replace(/\/+$/, '');
+
+    if (currentPath === targetPath) {
+        window.sessionStorage.setItem(START_PARAM_KEY, startParam);
+        return false;
+    }
+
+    if (lastConsumedStartParam === startParam) {
+        return false;
+    }
+
+    window.sessionStorage.setItem(START_PARAM_KEY, startParam);
+    window.location.replace(targetUrl);
+
+    return true;
 };
 
 export const requireTelegramInitData = () => {

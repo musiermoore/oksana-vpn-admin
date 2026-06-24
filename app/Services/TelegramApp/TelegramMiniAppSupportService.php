@@ -12,6 +12,7 @@ use App\Models\SupportTicket;
 use App\Models\User;
 use App\Repositories\SupportTicketMessageRepository;
 use App\Repositories\SupportTicketRepository;
+use App\Services\TelegramMiniAppLinkService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Telegram\Bot\Laravel\Facades\Telegram;
@@ -21,6 +22,7 @@ class TelegramMiniAppSupportService
     public function __construct(
         private readonly SupportTicketRepository $tickets,
         private readonly SupportTicketMessageRepository $messages,
+        private readonly TelegramMiniAppLinkService $miniAppLinkService,
     ) {}
 
     public function listForUser(User $user): Collection
@@ -123,7 +125,7 @@ class TelegramMiniAppSupportService
         }
 
         rescue(function () use ($telegramId, $ticket, $message) {
-            $ticketUrl = route('telegram-app.pages.support.show', $ticket->id);
+            $ticketUrl = $this->miniAppLinkService->ticket((int) $ticket->id);
 
             Telegram::sendMessage([
                 'chat_id' => $telegramId,

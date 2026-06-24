@@ -5,6 +5,7 @@ import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
+    redirectFromTelegramStartParam,
     telegramAppHeaders,
     telegramAppLabels,
 } from '../../lib/telegramMiniApp';
@@ -86,6 +87,10 @@ const retry = () => {
 };
 
 onMounted(async () => {
+    if (redirectFromTelegramStartParam(props.routes)) {
+        return;
+    }
+
     try {
         user.value = await ensureTelegramAppSession({
             authUrl: props.auth_url,

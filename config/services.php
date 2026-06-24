@@ -37,6 +37,7 @@ return [
 
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'bot_username' => env('TELEGRAM_BOT_USERNAME'),
         'dev_chat_id' => env('TELEGRAM_DEV_CHAT_ID'),
         'mini_app_token_ttl_minutes' => env('TELEGRAM_MINI_APP_TOKEN_TTL_MINUTES', 43200),
         'mini_app_init_data_ttl_seconds' => env('TELEGRAM_MINI_APP_INIT_DATA_TTL_SECONDS', 3600),

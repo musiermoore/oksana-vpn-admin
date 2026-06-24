@@ -59,6 +59,8 @@ const formatTime = (value) => {
     });
 };
 
+const authorLabel = (item) => (item.sender_type === 'admin' ? 'Оператор' : 'Вы');
+
 const loadTicket = async () => {
     const response = await window.axios.get(ticketUrl.value, {
         headers: telegramAppHeaders(),
@@ -177,9 +179,7 @@ onBeforeUnmount(() => {
                         class="tg-chat__message"
                         :class="{ 'is-admin': item.sender_type === 'admin', 'is-user': item.sender_type !== 'admin' }"
                     >
-                        <span class="tg-chat__author">
-                            {{ item.sender_name || (item.sender_type === 'admin' ? 'Администратор' : 'Вы') }}
-                        </span>
+                        <span class="tg-chat__author">{{ authorLabel(item) }}</span>
                         <p>{{ item.message }}</p>
                         <span class="tg-chat__time">{{ formatTime(item.created_at) }}</span>
                     </article>

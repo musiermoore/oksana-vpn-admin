@@ -65,18 +65,6 @@ const toggleProfile = () => {
             </div>
         </section>
 
-        <nav class="tg-nav">
-            <Link
-                v-for="item in navItems"
-                :key="item.hrefKey"
-                :href="routes?.[item.hrefKey]"
-                class="tg-nav__item"
-                :class="{ 'is-active': isActive(routes?.[item.hrefKey]) }"
-            >
-                {{ item.label }}
-            </Link>
-        </nav>
-
         <section v-if="user && isProfileOpen" class="tg-profile-panel">
             <div class="tg-profile-panel__row">
                 <span>Имя</span>
@@ -99,5 +87,17 @@ const toggleProfile = () => {
         </section>
 
         <slot />
+
+        <nav class="tg-nav tg-nav--bottom">
+            <Link
+                v-for="item in navItems"
+                :key="item.hrefKey"
+                :href="routes?.[item.hrefKey]"
+                class="tg-nav__item"
+                :class="{ 'is-active': isActive(routes?.[item.hrefKey]) }"
+            >
+                {{ item.label }}
+            </Link>
+        </nav>
     </div>
 </template>

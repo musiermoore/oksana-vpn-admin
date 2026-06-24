@@ -26,7 +26,7 @@ class NotifyAdminsAboutSupportTicket
             ->get();
 
         if ($admins->isNotEmpty()) {
-            $this->broadcastService->send($admins, nl2br(e($message)));
+            $this->broadcastService->send($admins, e($message));
         }
 
         $this->devChatService->send($message);

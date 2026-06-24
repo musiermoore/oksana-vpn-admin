@@ -817,7 +817,7 @@ tbody tr:hover {
     position: relative;
     display: grid;
     gap: 14px;
-    padding: 8px 4px 28px;
+    padding: 10px 6px 98px;
 }
 
 .tg-app__backdrop {
@@ -855,7 +855,7 @@ tbody tr:hover {
 
 .tg-hero {
     padding: 26px 20px 20px;
-    border-radius: 16px;
+    border-radius: 8px;
 }
 
 .tg-hero::after,
@@ -916,7 +916,7 @@ tbody tr:hover {
     gap: 4px;
     min-width: 136px;
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 220, 158, 0.16);
     background: rgba(255, 255, 255, 0.05);
     color: #fff6eb;
@@ -932,9 +932,22 @@ tbody tr:hover {
 .tg-nav {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
     padding: 8px;
-    border-radius: 14px;
+    border-radius: 8px;
+}
+
+.tg-nav--bottom {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 20;
+    backdrop-filter: blur(16px);
+    background:
+        linear-gradient(180deg, rgba(16, 10, 40, 0.94), rgba(9, 8, 28, 0.98)),
+        radial-gradient(circle at top right, rgba(157, 103, 255, 0.12), transparent 26%);
+    box-shadow: 0 12px 40px rgba(3, 1, 14, 0.45);
 }
 
 .tg-nav__item {
@@ -943,7 +956,7 @@ tbody tr:hover {
     justify-content: center;
     min-height: 46px;
     padding: 0 14px;
-    border-radius: 10px;
+    border-radius: 8px;
     color: rgba(235, 223, 255, 0.82);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid transparent;
@@ -972,7 +985,7 @@ tbody tr:hover {
 
 .tg-card {
     padding: 20px 18px;
-    border-radius: 14px;
+    border-radius: 8px;
 }
 
 .tg-info-list,
@@ -986,7 +999,7 @@ tbody tr:hover {
     justify-content: space-between;
     gap: 14px;
     padding: 12px 14px;
-    border-radius: 10px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(228, 208, 255, 0.10);
 }
@@ -1003,7 +1016,7 @@ tbody tr:hover {
 .tg-ticket-card {
     display: block;
     padding: 14px 16px;
-    border-radius: 10px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(228, 208, 255, 0.10);
     color: #f7ecff;
@@ -1032,7 +1045,7 @@ tbody tr:hover {
     display: grid;
     gap: 8px;
     padding: 14px;
-    border-radius: 14px;
+    border-radius: 8px;
 }
 
 .tg-profile-panel__row {
@@ -1040,7 +1053,7 @@ tbody tr:hover {
     justify-content: space-between;
     gap: 12px;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
     color: #f5edff;
 }
@@ -1063,7 +1076,7 @@ tbody tr:hover {
 
 .tg-chat__message {
     padding: 14px 16px;
-    border-radius: 12px 12px 12px 6px;
+    border-radius: 8px;
     background: rgba(141, 83, 255, 0.14);
     border: 1px solid rgba(216, 188, 255, 0.18);
 }
@@ -1071,7 +1084,7 @@ tbody tr:hover {
 .tg-chat__message.is-admin {
     background: rgba(255, 220, 158, 0.10);
     border-color: rgba(255, 220, 158, 0.18);
-    border-radius: 12px 12px 6px 12px;
+    border-radius: 8px;
 }
 
 .tg-chat__message p {
@@ -1116,5 +1129,10 @@ tbody tr:hover {
 
     .tg-hero__top {
         flex-direction: column;
+    }
+
+    .tg-nav--bottom {
+        left: 8px;
+        right: 8px;
     }
 }

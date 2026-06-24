@@ -13,9 +13,9 @@ const props = defineProps({
 });
 
 const navItems = [
-    { hrefKey: 'home', label: 'Главная' },
-    { hrefKey: 'payments', label: 'Оплата' },
-    { hrefKey: 'support', label: 'Поддержка' },
+    { hrefKey: 'home', label: 'Главная', icon: '✦' },
+    { hrefKey: 'payments', label: 'Подписка', icon: '◈' },
+    { hrefKey: 'support', label: 'Поддержка', icon: '✉' },
 ];
 
 const currentPath = window.location.pathname.replace(/\/+$/, '') || '/telegram-app';
@@ -52,7 +52,7 @@ const toggleProfile = () => {
 
         <section class="tg-hero">
             <div class="tg-hero__top">
-                <div>
+                <div class="tg-hero__copy">
                     <div class="tg-hero__badge">OksanaVPN</div>
                     <h1>{{ title }}</h1>
                     <p>{{ description }}</p>
@@ -96,7 +96,8 @@ const toggleProfile = () => {
                 class="tg-nav__item"
                 :class="{ 'is-active': isActive(routes?.[item.hrefKey]) }"
             >
-                {{ item.label }}
+                <span class="tg-nav__icon" aria-hidden="true">{{ item.icon }}</span>
+                <span class="tg-nav__label">{{ item.label }}</span>
             </Link>
         </nav>
     </div>

@@ -817,7 +817,7 @@ tbody tr:hover {
     position: relative;
     display: grid;
     gap: 14px;
-    padding: 10px 6px 98px;
+    padding: 10px 6px calc(64px + env(safe-area-inset-bottom));
 }
 
 .tg-app__backdrop {
@@ -854,7 +854,7 @@ tbody tr:hover {
 }
 
 .tg-hero {
-    padding: 26px 20px 20px;
+    padding: 18px 16px;
     border-radius: 8px;
 }
 
@@ -878,15 +878,20 @@ tbody tr:hover {
 }
 
 .tg-hero h1 {
-    font-size: clamp(2.1rem, 9vw, 3.4rem);
-    line-height: 0.94;
-    letter-spacing: -0.04em;
+    font-size: clamp(1.6rem, 7vw, 2.2rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
 }
 
 .tg-hero p,
 .tg-muted,
 .tg-card p {
     color: rgba(236, 225, 255, 0.78);
+}
+
+.tg-hero__copy {
+    display: grid;
+    gap: 8px;
 }
 
 .tg-hero__badge,
@@ -898,7 +903,7 @@ tbody tr:hover {
     background: rgba(255, 220, 158, 0.12);
     border: 1px solid rgba(255, 220, 158, 0.28);
     color: #ffd999;
-    font-size: 0.76rem;
+    font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -906,7 +911,7 @@ tbody tr:hover {
 
 .tg-hero__top {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
 }
@@ -915,7 +920,7 @@ tbody tr:hover {
     display: grid;
     gap: 4px;
     min-width: 136px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid rgba(255, 220, 158, 0.16);
     background: rgba(255, 255, 255, 0.05);
@@ -929,11 +934,16 @@ tbody tr:hover {
     font-size: 0.82rem;
 }
 
+.tg-profile-button strong {
+    font-size: 0.92rem;
+    line-height: 1.15;
+}
+
 .tg-nav {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    padding: 8px;
+    gap: 6px;
+    padding: 6px;
     border-radius: 8px;
 }
 
@@ -948,19 +958,34 @@ tbody tr:hover {
         linear-gradient(180deg, rgba(16, 10, 40, 0.94), rgba(9, 8, 28, 0.98)),
         radial-gradient(circle at top right, rgba(157, 103, 255, 0.12), transparent 26%);
     box-shadow: 0 12px 40px rgba(3, 1, 14, 0.45);
+    align-items: stretch;
 }
 
 .tg-nav__item {
-    display: inline-flex;
+    display: inline-grid;
+    grid-auto-flow: column;
     align-items: center;
     justify-content: center;
-    min-height: 46px;
-    padding: 0 14px;
+    gap: 6px;
+    min-height: 40px;
+    max-height: 40px;
+    padding: 0 10px;
     border-radius: 8px;
     color: rgba(235, 223, 255, 0.82);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid transparent;
     transition: 0.2s ease;
+}
+
+.tg-nav__icon {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.tg-nav__label {
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .tg-nav__item.is-active,
@@ -980,11 +1005,11 @@ tbody tr:hover {
 }
 
 .tg-grid--cards {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .tg-card {
-    padding: 20px 18px;
+    padding: 16px 14px;
     border-radius: 8px;
 }
 
@@ -1028,13 +1053,18 @@ tbody tr:hover {
 }
 
 .tg-plan-card__price {
-    margin: 6px 0 0;
-    font-size: 2rem;
+    margin: 4px 0 0;
+    font-size: 1.55rem;
     font-weight: 700;
 }
 
 .tg-button-full {
     width: 100%;
+}
+
+.tg-plan-card .button {
+    min-height: 38px;
+    padding: 0 12px;
 }
 
 .tg-state-card {
@@ -1119,7 +1149,7 @@ tbody tr:hover {
 
 @media (max-width: 720px) {
     .tg-hero {
-        padding: 22px 18px;
+        padding: 16px 14px;
     }
 
     .tg-grid--two,
@@ -1134,5 +1164,14 @@ tbody tr:hover {
     .tg-nav--bottom {
         left: 8px;
         right: 8px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .tg-nav__item {
+        padding: 0 8px;
+    }
+
+    .tg-nav__label {
+        font-size: 0.72rem;
     }
 }

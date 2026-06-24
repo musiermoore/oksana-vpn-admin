@@ -79,7 +79,7 @@ onMounted(async () => {
 
 <template>
     <TelegramMiniAppFrame
-        title="Поддержка"
+        title="Поддержка / Предложения"
         description="Если что-то не работает или нужен совет, напишите нам прямо здесь."
         :routes="routes"
         :user="user"

@@ -70,7 +70,7 @@ onMounted(async () => {
 
 <template>
     <TelegramMiniAppFrame
-        title="Оплата подписки"
+        title="Подписка"
         description="Выберите удобный срок и перейдите к безопасной оплате через YooKassa."
         :routes="routes"
         :user="user"

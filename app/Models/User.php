@@ -99,6 +99,11 @@ class User extends Authenticatable
         return $this->hasMany(UserToken::class);
     }
 
+    public function telegramAppTokens(): HasMany
+    {
+        return $this->hasMany(TelegramAppToken::class);
+    }
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
@@ -133,6 +138,11 @@ class User extends Authenticatable
     public function subscriptions(): HasMany
     {
         return $this->hasMany(UserSubscription::class);
+    }
+
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
     }
 
     public function activeSubscription(?Carbon $date = null): HasOne

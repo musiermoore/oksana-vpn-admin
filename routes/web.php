@@ -8,6 +8,7 @@ use App\Http\Controllers\ExtraPaymentController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ServerController;
+use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserSubscriptionController;
@@ -16,6 +17,10 @@ use App\Http\Controllers\VlessConfigController;
 use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
+use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
+use App\Http\Controllers\TelegramApp\PaymentController as TelegramAppPaymentController;
+use App\Http\Controllers\TelegramApp\SupportTicketController as TelegramAppSupportTicketController;
+use App\Http\Controllers\TelegramApp\UserController as TelegramAppUserController;
 use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +52,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('servers', ServerController::class);
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
+    Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');
+    Route::get('support-tickets/{ticketId}', [SupportTicketController::class, 'show'])->name('support-tickets.show');
+    Route::post('support-tickets/{ticketId}/reply', [SupportTicketController::class, 'reply'])->name('support-tickets.reply');
 
     Route::get('configs/create-bulk', [ConfigController::class, 'createBulk'])
         ->name('configs.create-bulk');
@@ -84,3 +92,26 @@ Route::get('connect', [VlessConfigController::class, 'connect'])
     ->name('vless.connect');
 Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLink'])
     ->name('vless.deep-link');
+
+Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
+    Route::post('auth/telegram', [TelegramAppAuthController::class, 'authenticate'])
+        ->name('auth.telegram');
+
+    Route::middleware('telegram.app')->group(function () {
+        Route::get('me', [TelegramAppUserController::class, 'show'])->name('me');
+        Route::post('logout', [TelegramAppAuthController::class, 'logout'])->name('logout');
+        Route::get('subscription-packages', [TelegramAppUserController::class, 'subscriptionPackages'])
+            ->name('subscription-packages');
+        Route::post('payments/subscriptions', [TelegramAppPaymentController::class, 'purchaseSubscription'])
+            ->name('payments.subscriptions');
+
+        Route::get('support/tickets', [TelegramAppSupportTicketController::class, 'index'])
+            ->name('support.tickets.index');
+        Route::post('support/tickets', [TelegramAppSupportTicketController::class, 'store'])
+            ->name('support.tickets.store');
+        Route::get('support/tickets/{ticketId}', [TelegramAppSupportTicketController::class, 'show'])
+            ->name('support.tickets.show');
+        Route::post('support/tickets/{ticketId}/messages', [TelegramAppSupportTicketController::class, 'addMessage'])
+            ->name('support.tickets.messages.store');
+    });
+});

@@ -128,14 +128,14 @@ class TelegramMiniAppSupportService
             Telegram::sendMessage([
                 'chat_id' => $telegramId,
                 'text' => "Ответ по тикету #{$ticket->id}\n\n{$message}\n\nОткрыть тикет: {$ticketUrl}",
-                'reply_markup' => [
+                'reply_markup' => json_encode([
                     'inline_keyboard' => [[
                         [
                             'text' => 'Открыть тикет',
                             'url' => $ticketUrl,
                         ],
                     ]],
-                ],
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ]);
         }, report: false);
     }

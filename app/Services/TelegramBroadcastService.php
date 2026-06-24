@@ -73,6 +73,8 @@ class TelegramBroadcastService
 
     private function sendToUser(string $chatId, string $messageHtml, ?InputFile $photo, array $extra = []): void
     {
+        $extra = $this->normalizeExtra($extra);
+
         if ($photo) {
             if ($messageHtml !== '' && $this->visibleLength($messageHtml) <= 1024) {
                 Telegram::sendPhoto([
@@ -101,6 +103,15 @@ class TelegramBroadcastService
                 ...$extra,
             ]);
         }
+    }
+
+    private function normalizeExtra(array $extra): array
+    {
+        if (array_key_exists('reply_markup', $extra) && is_array($extra['reply_markup'])) {
+            $extra['reply_markup'] = json_encode($extra['reply_markup'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        return $extra;
     }
 
     private function renderNodes(\DOMNodeList $nodes): string

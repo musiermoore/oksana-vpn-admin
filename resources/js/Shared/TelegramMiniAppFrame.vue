@@ -1,9 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
-import PublicLayout from '../Layouts/PublicLayout.vue';
-
-defineOptions({ layout: PublicLayout });
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     title: String,
@@ -13,34 +10,52 @@ const props = defineProps({
 });
 
 const navItems = [
-    { hrefKey: 'home', label: 'Главная', icon: '✦' },
-    { hrefKey: 'payments', label: 'Подписка', icon: '◈' },
-    { hrefKey: 'support', label: 'Поддержка', icon: '✉' },
+    { hrefKey: 'home', label: 'Главная', icon: 'home' },
+    { hrefKey: 'payments', label: 'Подписка', icon: 'crown' },
+    { hrefKey: 'support', label: 'Поддержка', icon: 'chat' },
 ];
 
-const currentPath = window.location.pathname.replace(/\/+$/, '') || '/telegram-app';
+const currentPath = computed(() => window.location.pathname.replace(/\/+$/, '') || '/telegram-app');
 const isProfileOpen = ref(false);
 
 const formatSubscriptionDate = (value) => {
     if (!value) {
-        return 'Неактивна';
+        return 'Подписка не активна';
     }
 
     const date = new Date(value);
 
     return Number.isNaN(date.getTime())
-        ? 'Неактивна'
-        : date.toLocaleDateString('ru-RU');
+        ? 'Подписка не активна'
+        : `Подписка активна до ${date.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        })}`;
 };
+
+const profileName = computed(() => props.user?.name || props.user?.telegram || 'Пользователь');
 
 const isActive = (href) => {
     const normalized = (href ?? '').replace(/\/+$/, '');
 
-    return normalized === currentPath;
+    if (normalized === '') {
+        return false;
+    }
+
+    return currentPath.value === normalized || currentPath.value.startsWith(`${normalized}/`);
 };
 
-const toggleProfile = () => {
-    isProfileOpen.value = !isProfileOpen.value;
+const iconPath = (name) => {
+    if (name === 'home') {
+        return 'M3.75 10.5 12 4l8.25 6.5v8.25a.75.75 0 0 1-.75.75h-4.5V14.25h-6V19.5H4.5a.75.75 0 0 1-.75-.75Z';
+    }
+
+    if (name === 'crown') {
+        return 'M4 17.25h16l-1.4-8.25-4.6 3.6L12 6.75 8 12.6 3.4 9zM6.25 19.5h11.5';
+    }
+
+    return 'M6.75 8.25h10.5A2.25 2.25 0 0 1 19.5 10.5v5.25A2.25 2.25 0 0 1 17.25 18H11.5l-3.75 2.25V18H6.75A2.25 2.25 0 0 1 4.5 15.75V10.5a2.25 2.25 0 0 1 2.25-2.25Z';
 };
 </script>
 
@@ -49,44 +64,51 @@ const toggleProfile = () => {
 
     <div class="tg-app">
         <div class="tg-app__backdrop"></div>
+        <div class="tg-app__stars"></div>
 
-        <section class="tg-hero">
-            <div class="tg-hero__top">
-                <div class="tg-hero__copy">
-                    <div class="tg-hero__badge">OksanaVPN</div>
-                    <h1>{{ title }}</h1>
-                    <p>{{ description }}</p>
+        <header class="tg-shell">
+            <section class="tg-hero">
+                <div class="tg-hero__brand">
+                    <div class="tg-brand-mark" aria-hidden="true">
+                        <span class="tg-brand-mark__core"></span>
+                    </div>
+
+                    <div class="tg-hero__copy">
+                        <span class="tg-hero__eyebrow">Telegram Mini App</span>
+                        <h1>{{ title }}</h1>
+                        <p>{{ description }}</p>
+                    </div>
                 </div>
 
-                <button v-if="user" class="tg-profile-button" type="button" @click="toggleProfile">
+                <button v-if="user" class="tg-profile-button" type="button" @click="isProfileOpen = !isProfileOpen">
                     <span>Профиль</span>
-                    <strong>{{ user.telegram || user.name || 'Пользователь' }}</strong>
+                    <strong>{{ profileName }}</strong>
                 </button>
-            </div>
-        </section>
+            </section>
 
-        <section v-if="user && isProfileOpen" class="tg-profile-panel">
-            <div class="tg-profile-panel__row">
-                <span>Имя</span>
-                <strong>{{ user.name || 'Пользователь' }}</strong>
-            </div>
-            <div class="tg-profile-panel__row">
-                <span>Telegram</span>
-                <strong>{{ user.telegram || 'Не указан' }}</strong>
-            </div>
-            <div class="tg-profile-panel__row">
-                <span>Баланс</span>
-                <strong>{{ user.balance ?? 0 }} ₽</strong>
-            </div>
-            <div class="tg-profile-panel__row">
-                <span>Подписка</span>
-                <strong>
-                    {{ user.subscription_expires_at ? `Активна до ${formatSubscriptionDate(user.subscription_expires_at)}` : 'Неактивна' }}
-                </strong>
-            </div>
-        </section>
+            <section v-if="user && isProfileOpen" class="tg-profile-panel">
+                <div class="tg-profile-panel__row">
+                    <span>Имя</span>
+                    <strong>{{ user.name || 'Пользователь' }}</strong>
+                </div>
+                <div class="tg-profile-panel__row">
+                    <span>Telegram</span>
+                    <strong>{{ user.telegram || 'Не указан' }}</strong>
+                </div>
+                <div class="tg-profile-panel__row">
+                    <span>Баланс</span>
+                    <strong>{{ user.balance ?? 0 }} ₽</strong>
+                </div>
+                <div class="tg-profile-panel__row">
+                    <span>Статус</span>
+                    <strong>{{ formatSubscriptionDate(user.subscription_expires_at) }}</strong>
+                </div>
+            </section>
 
-        <slot />
+            <main class="tg-main">
+                <slot />
+            </main>
+        </header>
 
         <nav class="tg-nav tg-nav--bottom">
             <Link
@@ -96,7 +118,9 @@ const toggleProfile = () => {
                 class="tg-nav__item"
                 :class="{ 'is-active': isActive(routes?.[item.hrefKey]) }"
             >
-                <span class="tg-nav__icon" aria-hidden="true">{{ item.icon }}</span>
+                <svg class="tg-nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path :d="iconPath(item.icon)" />
+                </svg>
                 <span class="tg-nav__label">{{ item.label }}</span>
             </Link>
         </nav>

@@ -20,6 +20,7 @@ class NotifyAdminsAboutSupportTicket
         $ticket = $event->ticket->loadMissing(['user', 'latestMessage']);
         $message = $this->buildMessage($event, $ticket);
         $ticketUrl = route('telegram-app.pages.support.show', $ticket->id);
+        $devChatId = (string) config('services.telegram.dev_chat_id', '');
 
         $admins = User::query()
             ->select(['id', 'telegram', 'telegram_id'])
@@ -40,7 +41,15 @@ class NotifyAdminsAboutSupportTicket
             ]);
         }
 
-        $this->devChatService->send($message);
+        $adminChatIds = $admins
+            ->pluck('telegram_id')
+            ->filter()
+            ->map(fn ($chatId) => (string) $chatId)
+            ->all();
+
+        if ($devChatId !== '' && ! in_array($devChatId, $adminChatIds, true)) {
+            $this->devChatService->send($message);
+        }
     }
 
     private function buildMessage(

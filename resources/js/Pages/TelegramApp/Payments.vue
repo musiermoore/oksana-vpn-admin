@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import { ensureTelegramAppSession, normalizeTelegramAppError, telegramAppHeaders } from '../../lib/telegramMiniApp';
 
@@ -15,7 +15,42 @@ const state = ref('loading');
 const error = ref('');
 const user = ref(null);
 const packages = ref([]);
+const selectedMonth = ref(null);
 const payingMonth = ref(null);
+
+const durationText = (months) => {
+    if (months === 1) {
+        return '30 дней доступа';
+    }
+
+    if (months === 3) {
+        return '90 дней доступа';
+    }
+
+    if (months === 12) {
+        return '365 дней доступа';
+    }
+
+    return `${months * 30} дней доступа`;
+};
+
+const formatSubscriptionDate = (value) => {
+    if (!value) {
+        return 'Подписка не активна';
+    }
+
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime())
+        ? 'Подписка не активна'
+        : `Подписка активна до ${date.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        })}`;
+};
+
+const selectedPackage = computed(() => packages.value.find((item) => item.month === selectedMonth.value) ?? packages.value[0] ?? null);
 
 const loadData = async () => {
     user.value = await ensureTelegramAppSession({
@@ -28,15 +63,23 @@ const loadData = async () => {
     });
 
     packages.value = response.data?.data ?? [];
+    selectedMonth.value = packages.value.find((item) => item.month === 12)?.month
+        ?? packages.value[0]?.month
+        ?? null;
 };
 
-const buySubscription = async (months) => {
-    payingMonth.value = months;
+const buySubscription = async () => {
+    if (!selectedPackage.value) {
+        error.value = 'Выберите тариф.';
+        return;
+    }
+
+    payingMonth.value = selectedPackage.value.month;
     error.value = '';
 
     try {
         const response = await window.axios.post(props.payment_url, {
-            month: months,
+            month: selectedPackage.value.month,
             return_url: window.location.href,
         }, {
             headers: telegramAppHeaders(),
@@ -51,10 +94,14 @@ const buySubscription = async (months) => {
             window.alert(response.data.message);
         }
     } catch (requestError) {
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось создать оплату.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось перейти к оплате.');
     } finally {
         payingMonth.value = null;
     }
+};
+
+const retry = () => {
+    window.location.reload();
 };
 
 onMounted(async () => {
@@ -71,46 +118,88 @@ onMounted(async () => {
 <template>
     <TelegramMiniAppFrame
         title="Подписка"
-        description="Выберите удобный срок и перейдите к оплате картой или через СБП."
+        description="Выберите удобный тариф и перейдите к оплате картой или через СБП."
         :routes="routes"
         :user="user"
     >
-        <section v-if="state === 'loading'" class="tg-card tg-state-card">
-            <h2>Загружаем тарифы</h2>
-            <p>Считаем стоимость подписки с учётом вашего текущего баланса.</p>
+        <section v-if="state === 'loading'" class="tg-state-panel">
+            <div class="tg-state-orbit">
+                <span class="tg-state-orbit__core"></span>
+            </div>
+            <h2>Загружаем данные...</h2>
+            <p>Пожалуйста, подождите</p>
+
+            <div class="tg-skeleton-list">
+                <div class="tg-skeleton-card"></div>
+                <div class="tg-skeleton-card"></div>
+                <div class="tg-skeleton-card"></div>
+            </div>
         </section>
 
-        <section v-else-if="state === 'error'" class="tg-card tg-state-card">
-            <h2>Не удалось открыть оплату</h2>
-            <p>{{ error }}</p>
+        <section v-else-if="state === 'error'" class="tg-state-panel">
+            <div class="tg-state-orbit tg-state-orbit--danger">
+                <span class="tg-state-orbit__core">!</span>
+            </div>
+            <h2>Не удалось загрузить данные</h2>
+            <p>{{ error || 'Пожалуйста, попробуйте ещё раз через пару секунд' }}</p>
+            <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
         </section>
 
         <template v-else>
-            <section class="tg-grid tg-grid--cards">
-                <article v-for="item in packages" :key="item.month" class="tg-card tg-plan-card">
-                    <span class="tg-card__eyebrow">Тариф</span>
-                    <h2>{{ item.month }} мес.</h2>
-                    <p class="tg-plan-card__price">{{ item.price }} ₽</p>
-                    <p class="tg-muted">
-                        {{ item.discount_percent > 0 ? `Скидка ${item.discount_percent}%` : 'Базовая стоимость' }}
-                    </p>
-                    <p class="tg-muted">
-                        Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».
-                    </p>
+            <section class="tg-panel tg-plan-summary">
+                <span class="tg-section-label">Текущий план</span>
 
-                    <button
-                        class="button tg-button-full"
-                        type="button"
-                        :disabled="payingMonth === item.month"
-                        @click="buySubscription(item.month)"
-                    >
-                        {{ payingMonth === item.month ? 'Переходим к оплате...' : 'Перейти к оплате картой / СБП' }}
-                    </button>
-                </article>
+                <div class="tg-plan-summary__row">
+                    <div>
+                        <strong>{{ user?.subscription_expires_at ? '12 месяцев' : 'План не выбран' }}</strong>
+                        <p>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</p>
+                    </div>
+
+                    <span v-if="user?.subscription_expires_at" class="badge badge--success">Активен</span>
+                </div>
             </section>
 
-            <section v-if="error" class="tg-card tg-state-card">
-                <p>{{ error }}</p>
+            <section class="tg-panel">
+                <span class="tg-section-label">Выберите тариф</span>
+
+                <div class="tg-plan-list">
+                    <button
+                        v-for="item in packages"
+                        :key="item.month"
+                        class="tg-plan-option"
+                        :class="{ 'is-selected': selectedMonth === item.month }"
+                        type="button"
+                        @click="selectedMonth = item.month"
+                    >
+                        <span class="tg-plan-option__radio" aria-hidden="true"></span>
+
+                        <div class="tg-plan-option__copy">
+                            <strong>{{ item.month }} {{ item.month === 1 ? 'месяц' : item.month < 5 ? 'месяца' : 'месяцев' }}</strong>
+                            <span>{{ durationText(item.month) }}</span>
+                        </div>
+
+                        <div class="tg-plan-option__meta">
+                            <strong>{{ item.price }} ₽</strong>
+                            <span v-if="item.discount_percent > 0" class="tg-discount-badge">-{{ item.discount_percent }}%</span>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="tg-payment-hint">
+                    <strong>Перейти к оплате картой / СБП</strong>
+                    <p>Чтобы перейти к оплате нажмите на кнопку "Оплатить"</p>
+                </div>
+
+                <button
+                    class="button tg-button-full"
+                    type="button"
+                    :disabled="!selectedPackage || payingMonth !== null"
+                    @click="buySubscription"
+                >
+                    {{ payingMonth ? 'Переходим к оплате...' : 'Оплатить' }}
+                </button>
+
+                <p v-if="error" class="field-error">{{ error }}</p>
             </section>
         </template>
     </TelegramMiniAppFrame>

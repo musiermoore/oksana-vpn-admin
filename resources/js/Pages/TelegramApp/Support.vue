@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
@@ -26,6 +26,7 @@ const form = ref({
     message: '',
 });
 const sending = ref(false);
+let pollTimer = null;
 
 const loadTickets = async () => {
     const response = await window.axios.get(props.support_tickets_url, {
@@ -69,10 +70,19 @@ onMounted(async () => {
             profileUrl: props.profile_url,
         });
         await loadTickets();
+        pollTimer = window.setInterval(() => {
+            void loadTickets();
+        }, 5000);
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';
         error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить поддержку.');
+    }
+});
+
+onBeforeUnmount(() => {
+    if (pollTimer) {
+        window.clearInterval(pollTimer);
     }
 });
 </script>

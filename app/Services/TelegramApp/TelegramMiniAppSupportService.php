@@ -7,6 +7,7 @@ use App\Enums\SupportTicketStatus;
 use App\DTOs\SupportTicket\SupportTicketReplyData;
 use App\DTOs\SupportTicket\SupportTicketStoreData;
 use App\Events\SupportTicketCreated;
+use App\Events\SupportTicketUserMessageCreated;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Repositories\SupportTicketMessageRepository;
@@ -81,7 +82,10 @@ class TelegramMiniAppSupportService
                 'closed_at' => null,
             ]);
 
-            return $this->tickets->findForAdmin((int) $ticket->id) ?? $ticket;
+            $ticket = $this->tickets->findForAdmin((int) $ticket->id) ?? $ticket;
+            event(new SupportTicketUserMessageCreated($ticket));
+
+            return $ticket;
         });
     }
 
@@ -119,9 +123,19 @@ class TelegramMiniAppSupportService
         }
 
         rescue(function () use ($telegramId, $ticket, $message) {
+            $ticketUrl = route('telegram-app.pages.support.show', $ticket->id);
+
             Telegram::sendMessage([
                 'chat_id' => $telegramId,
-                'text' => "Ответ по тикету #{$ticket->id}\n\n{$message}",
+                'text' => "Ответ по тикету #{$ticket->id}\n\n{$message}\n\nОткрыть тикет: {$ticketUrl}",
+                'reply_markup' => [
+                    'inline_keyboard' => [[
+                        [
+                            'text' => 'Открыть тикет',
+                            'url' => $ticketUrl,
+                        ],
+                    ]],
+                ],
             ]);
         }, report: false);
     }

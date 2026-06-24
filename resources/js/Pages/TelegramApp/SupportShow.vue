@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
@@ -23,6 +23,7 @@ const user = ref(null);
 const ticket = ref(null);
 const message = ref('');
 const sending = ref(false);
+let pollTimer = null;
 
 const ticketUrl = computed(() => `${props.support_tickets_url}/${props.ticket_id}`);
 const messageUrl = computed(() => `${props.support_tickets_url}/${props.ticket_id}/messages`);
@@ -67,10 +68,21 @@ onMounted(async () => {
             profileUrl: props.profile_url,
         });
         await loadTicket();
+        pollTimer = window.setInterval(() => {
+            if (!sending.value) {
+                void loadTicket();
+            }
+        }, 5000);
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';
         error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть обращение.');
+    }
+});
+
+onBeforeUnmount(() => {
+    if (pollTimer) {
+        window.clearInterval(pollTimer);
     }
 });
 </script>

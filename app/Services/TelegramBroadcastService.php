@@ -38,7 +38,7 @@ class TelegramBroadcastService
         return trim($message);
     }
 
-    public function send(Collection $users, string $messageHtml, ?UploadedFile $image = null): array
+    public function send(Collection $users, string $messageHtml, ?UploadedFile $image = null, array $extra = []): array
     {
         $sent = 0;
         $skipped = 0;
@@ -54,7 +54,7 @@ class TelegramBroadcastService
             }
 
             try {
-                $this->sendToUser((string) $user->telegram_id, $messageHtml, $photo);
+                $this->sendToUser((string) $user->telegram_id, $messageHtml, $photo, $extra);
                 $sent++;
             } catch (\Throwable $exception) {
                 report($exception);
@@ -71,7 +71,7 @@ class TelegramBroadcastService
         ];
     }
 
-    private function sendToUser(string $chatId, string $messageHtml, ?InputFile $photo): void
+    private function sendToUser(string $chatId, string $messageHtml, ?InputFile $photo, array $extra = []): void
     {
         if ($photo) {
             if ($messageHtml !== '' && $this->visibleLength($messageHtml) <= 1024) {
@@ -80,6 +80,7 @@ class TelegramBroadcastService
                     'photo' => $photo,
                     'caption' => $messageHtml,
                     'parse_mode' => 'HTML',
+                    ...$extra,
                 ]);
 
                 return;
@@ -88,6 +89,7 @@ class TelegramBroadcastService
             Telegram::sendPhoto([
                 'chat_id' => $chatId,
                 'photo' => $photo,
+                ...$extra,
             ]);
         }
 
@@ -96,6 +98,7 @@ class TelegramBroadcastService
                 'chat_id' => $chatId,
                 'text' => $messageHtml,
                 'parse_mode' => 'HTML',
+                ...$extra,
             ]);
         }
     }

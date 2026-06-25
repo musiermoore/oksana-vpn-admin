@@ -12,6 +12,7 @@ use App\Models\UserToken;
 use App\Models\VlessConfig;
 use App\Services\Crud\VlessConfigCrudService;
 use App\Services\SubscriptionMetadataService;
+use App\Services\Subscriptions\UserSubscriptionService;
 use App\Services\VlessDeepLinkService;
 use App\Services\VlessSubscriptionService;
 use App\Services\XuiConfigServiceFactory;
@@ -172,7 +173,11 @@ class VlessConfigController extends Controller
         }
     }
 
-    public function connect(Request $request, SubscriptionMetadataService $metadataService)
+    public function connect(
+        Request $request,
+        SubscriptionMetadataService $metadataService,
+        UserSubscriptionService $subscriptionService
+    )
     {
         $user = $this->resolveUserFromConnectionRequest($request);
 
@@ -180,12 +185,15 @@ class VlessConfigController extends Controller
             return null;
         }
 
-        $service = new VlessSubscriptionService($user);
-        $subscriptions = $service->getAllSubscriptions();
+        $subscription = $subscriptionService->build($user, $request->query('format'));
 
-        $response = response($subscriptions);
+        $response = response($subscription->content);
 
-        foreach ($metadataService->buildHeaders($user) as $name => $value) {
+        foreach ($metadataService->buildHeaders(
+            $user,
+            $subscription->fileExtension,
+            $subscription->contentType,
+        ) as $name => $value) {
             $response->header($name, $value);
         }
 

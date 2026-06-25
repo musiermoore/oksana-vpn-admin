@@ -60,10 +60,10 @@ class VlessConnectTest extends TestCase
         sort($names);
 
         $expectedNames = [
-            'Латвия - 1',
-            'Латвия - 2',
-            'Таллин',
-            'Финляндия',
+            'Латвия • VLESS • TCP #1',
+            'Латвия • VLESS • TCP #2',
+            'Таллин • VLESS • TCP',
+            'Финляндия • VLESS • TCP',
         ];
         sort($expectedNames);
 
@@ -188,7 +188,7 @@ class VlessConnectTest extends TestCase
     {
         Http::fake([
             'https://fi.example.com/sub/sub-fi' => Http::response(base64_encode(
-                "vless://uuid-fi@fi.example.com?type=tcp&security=reality#old-fi\nss://ignored@fi.example.com:8388#old-ss\n"
+                "vless://uuid-fi@fi.example.com?type=tcp&security=reality#old-fi\nss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpzZWNyZXQtcmVtb3Rl@fi.example.com:8388#old-ss\n"
             )),
         ]);
 
@@ -282,11 +282,11 @@ class VlessConnectTest extends TestCase
         sort($names);
 
         $expectedNames = [
-            'Латвия',
-            'Финляндия - 1',
-            'Финляндия - 2',
-            'Финляндия - 3',
-            'Эстония',
+            'Латвия • VLESS • TCP',
+            'Финляндия • SHADOWSOCKS • TCP #1',
+            'Финляндия • SHADOWSOCKS • TCP #2',
+            'Финляндия • VLESS • TCP',
+            'Эстония • SHADOWSOCKS • TCP',
         ];
         sort($expectedNames);
 
@@ -332,7 +332,7 @@ class VlessConnectTest extends TestCase
 
         $this->assertNotFalse($decoded);
         $this->assertStringContainsString(
-            'trojan://trojan-password@lv.example.com:443?security=tls&type=tcp&sni=trojan.example.com#'.rawurlencode('Латвия'),
+            'trojan://trojan-password@lv.example.com:443?security=tls&type=tcp&sni=trojan.example.com#'.rawurlencode('Латвия • TROJAN • TCP'),
             $decoded
         );
     }
@@ -440,6 +440,107 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('type=xhttp', $decoded);
         $this->assertStringContainsString('mode=auto', $decoded);
         $this->assertStringContainsString('hy2://secret@de.example.com:8443?sni=hy.example.com#', $decoded);
+    }
+
+    public function test_connect_returns_clash_subscription_with_auto_and_manual_groups(): void
+    {
+        Http::fake([
+            'https://de.example.com/sub/sub-de' => Http::response(base64_encode(implode("\n", [
+                'vless://uuid-xhttp@de.example.com:443?type=xhttp&security=reality&path=%2Fxhttp&mode=auto&host=cdn.example.com&pbk=pk&fp=chrome&sni=example.com&sid=abcd&spx=%2F#legacy-xhttp',
+                'hy2://secret@de.example.com:8443?sni=hy.example.com#legacy-hy2',
+            ]))),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Clash User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Германия', 'DE', 'de.example.com');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'remote-sub',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'uuid-remote',
+            'sub_id' => 'sub-de',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'clash',
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Disposition', 'attachment; filename="Clash User.yaml"');
+
+        $content = $response->getContent();
+
+        $this->assertIsString($content);
+        $this->assertStringContainsString("name: 'Auto'", $content);
+        $this->assertStringContainsString("type: 'url-test'", $content);
+        $this->assertStringContainsString("name: 'Manual'", $content);
+        $this->assertStringContainsString("xhttp-opts:", $content);
+        $this->assertStringContainsString("type: 'hysteria2'", $content);
+        $this->assertStringContainsString("name: 'Германия • VLESS • XHTTP'", $content);
+        $this->assertStringContainsString("name: 'Германия • HYSTERIA2 • QUIC'", $content);
+    }
+
+    public function test_connect_returns_sing_box_subscription_with_auto_and_manual_outbounds(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Sing User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'grpc-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'grpc-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'grpc',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'sni' => 'example.com',
+            'service_name' => 'edge',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'sing-box',
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Disposition', 'attachment; filename="Sing User.json"');
+
+        $payload = json_decode((string) $response->getContent(), true);
+
+        $this->assertIsArray($payload);
+        $this->assertSame('urltest', data_get($payload, 'outbounds.1.type'));
+        $this->assertSame('Auto', data_get($payload, 'outbounds.1.tag'));
+        $this->assertSame('selector', data_get($payload, 'outbounds.2.type'));
+        $this->assertSame('Manual', data_get($payload, 'outbounds.2.tag'));
+        $this->assertSame('grpc', data_get($payload, 'outbounds.0.transport.type'));
+        $this->assertSame('edge', data_get($payload, 'outbounds.0.transport.service_name'));
+        $this->assertSame('Латвия • VLESS • GRPC', data_get($payload, 'outbounds.0.tag'));
+        $this->assertSame('Manual', data_get($payload, 'route.final'));
     }
 
     private function createServer(string $name, string $code, string $host): Server

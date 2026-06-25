@@ -45,11 +45,11 @@ class SubscriptionMetadataService
     /**
      * @return array<string, string>
      */
-    public function buildHeaders(User $user): array
+    public function buildHeaders(User $user, string $fileExtension = 'txt', ?string $contentType = null): array
     {
         $payload = $this->payload($user);
 
-        return [
+        $headers = [
             'Subscription-Userinfo' => sprintf(
                 'upload=%d; download=%d; total=%d; expire=%d',
                 $payload['upload'],
@@ -60,8 +60,14 @@ class SubscriptionMetadataService
             'Profile-Update-Interval' => '24',
             'X-Subscription-Devices-Limit' => (string) $payload['max_devices'],
             'X-Subscription-Devices-Used' => (string) $payload['active_devices'],
-            'Content-Disposition' => 'attachment; filename="'.$payload['filename'].'"',
+            'Content-Disposition' => 'attachment; filename="'.$this->replaceExtension($payload['filename'], $fileExtension).'"',
         ];
+
+        if ($contentType !== null && $contentType !== '') {
+            $headers['Content-Type'] = $contentType;
+        }
+
+        return $headers;
     }
 
     public function forgetCache(int $userId): void
@@ -124,5 +130,13 @@ class SubscriptionMetadataService
     private function cacheKey(int $userId): string
     {
         return 'subscription-metadata:'.$userId;
+    }
+
+    private function replaceExtension(string $filename, string $extension): string
+    {
+        $name = pathinfo($filename, PATHINFO_FILENAME);
+        $safeExtension = trim($extension, '.');
+
+        return ($name !== '' ? $name : 'subscription').'.'.$safeExtension;
     }
 }

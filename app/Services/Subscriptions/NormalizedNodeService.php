@@ -50,8 +50,8 @@ class NormalizedNodeService
         $items = $vlessConfigs
             ->concat($shadowsocksConfigs)
             ->sortBy([
-                fn (array $item) => (string) $item['server_sort'],
                 fn (array $item) => (int) $item['server_id'],
+                fn (array $item) => (string) $item['server_sort'],
                 fn (array $item) => $this->getTypeSortOrder((string) $item['type']),
                 fn (array $item) => (int) $item['config_id'],
             ])
@@ -61,8 +61,8 @@ class NormalizedNodeService
             ->flatMap(fn (array $item) => $this->buildNodesForItem($item))
             ->unique(fn (NormalizedNode $node) => $node->uri)
             ->sortBy([
-                fn (NormalizedNode $node) => $node->sortServerName,
                 fn (NormalizedNode $node) => $node->serverId,
+                fn (NormalizedNode $node) => $node->sortServerName,
                 fn (NormalizedNode $node) => $this->getTypeSortOrder($node->protocol),
                 fn (NormalizedNode $node) => $node->configId,
                 fn (NormalizedNode $node) => mb_strtolower($node->transport),

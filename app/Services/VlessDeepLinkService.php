@@ -37,9 +37,16 @@ class VlessDeepLinkService
         return $links;
     }
 
-    public function getConnectUrl(User $user): string
+    public function getConnectUrl(User $user, ?string $client = null): string
     {
-        return $this->buildUrl('vless.connect', $this->getConnectRouteParameters($user));
+        $parameters = $this->getConnectRouteParameters($user);
+        $format = $this->resolveClientFormat($client);
+
+        if ($format !== null) {
+            $parameters['format'] = $format;
+        }
+
+        return $this->buildUrl('vless.connect', $parameters);
     }
 
     /**
@@ -104,6 +111,15 @@ class VlessDeepLinkService
         }
 
         return $deepLink;
+    }
+
+    private function resolveClientFormat(?string $client): ?string
+    {
+        return match ($client) {
+            'hiddify' => 'clash',
+            'sing-box' => 'sing-box',
+            default => null,
+        };
     }
 
     /**

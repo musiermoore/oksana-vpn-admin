@@ -103,6 +103,74 @@ class VlessConnectTest extends TestCase
         $this->assertStringStartsWith('v2rayng://install-sub?url=', $location);
     }
 
+    public function test_deep_link_route_redirects_hiddify_to_clash_subscription(): void
+    {
+        Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+        $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
+
+        $response = $this->get(route('vless.deep-link', [
+            'client' => 'hiddify',
+            'token' => Crypt::encrypt([
+                'tg' => '123456',
+                'i' => (string) $user->id,
+            ]),
+        ]));
+
+        $response->assertRedirect();
+
+        $location = $response->headers->get('Location');
+
+        $this->assertNotNull($location);
+        $this->assertStringStartsWith('hiddify://import/', $location);
+        $this->assertStringContainsString('format=clash', $location);
+    }
+
+    public function test_deep_link_route_redirects_sing_box_to_sing_box_subscription(): void
+    {
+        Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+        $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
+
+        $response = $this->get(route('vless.deep-link', [
+            'client' => 'sing-box',
+            'token' => Crypt::encrypt([
+                'tg' => '123456',
+                'i' => (string) $user->id,
+            ]),
+        ]));
+
+        $response->assertRedirect();
+
+        $location = $response->headers->get('Location');
+
+        $this->assertNotNull($location);
+        $this->assertStringStartsWith('sing-box://import-remote-profile?url=', $location);
+        $this->assertStringContainsString('format=sing-box', urldecode($location));
+    }
+
     public function test_deep_link_route_redirects_to_happ_encrypted_link(): void
     {
         Http::fake([
@@ -293,6 +361,46 @@ class VlessConnectTest extends TestCase
         $this->assertSame($expectedNames, $names);
         $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'vless://')));
         $this->assertCount(3, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
+    }
+
+    public function test_connect_keeps_server_id_priority_for_same_named_servers(): void
+    {
+        Http::fake([
+            'https://lv-2.example.com/sub/sub-lv-2' => Http::response(base64_encode(
+                "vless://uuid-2@lv-2.example.com?type=tcp&security=reality#old-name-2\n"
+            )),
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Sort User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $firstServer = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+        $secondServer = $this->createServer('Латвия', 'LV2', 'lv-2.example.com');
+
+        $this->createConfig($user->id, $secondServer->id, 'uuid-2', 'sub-lv-2');
+        $this->createConfig($user->id, $firstServer->id, 'uuid-1', 'sub-lv-1');
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+
+        $names = $this->extractNames($decoded);
+
+        $this->assertSame('Латвия • VLESS • TCP #1', $names[0] ?? null);
+        $this->assertSame('Латвия • VLESS • TCP #2', $names[1] ?? null);
     }
 
     public function test_connect_returns_static_trojan_links_for_local_trojan_configs(): void

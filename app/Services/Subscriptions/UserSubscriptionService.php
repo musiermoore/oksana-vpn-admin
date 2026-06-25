@@ -35,8 +35,39 @@ class UserSubscriptionService
             $nodes
         );
 
+        usort($namedNodes, function (NormalizedNode $left, NormalizedNode $right): int {
+            $comparisons = [
+                $left->serverId <=> $right->serverId,
+                $left->sortServerName <=> $right->sortServerName,
+                $this->getTypeSortOrder($left->protocol) <=> $this->getTypeSortOrder($right->protocol),
+                $left->configId <=> $right->configId,
+                mb_strtolower($left->transport) <=> mb_strtolower($right->transport),
+                $left->uri <=> $right->uri,
+            ];
+
+            foreach ($comparisons as $comparison) {
+                if ($comparison !== 0) {
+                    return $comparison;
+                }
+            }
+
+            return 0;
+        });
+
         return $this->builderFactory
             ->make((string) $format)
             ->build($namedNodes);
+    }
+
+    private function getTypeSortOrder(string $type): int
+    {
+        return match ($type) {
+            'vless' => 0,
+            'trojan' => 1,
+            'shadowsocks' => 2,
+            'hysteria' => 3,
+            'hysteria2' => 4,
+            default => 99,
+        };
     }
 }

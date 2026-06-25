@@ -208,7 +208,7 @@ class VlessConfigController extends Controller
             abort(404);
         }
 
-        $redirectUrl = $deepLinkService->resolveRedirectUrl($client, $deepLinkService->getConnectUrl($user));
+        $redirectUrl = $deepLinkService->resolveRedirectUrl($client, $deepLinkService->getConnectUrl($user, $client));
 
         if ($redirectUrl === null) {
             abort(404);

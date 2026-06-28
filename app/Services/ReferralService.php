@@ -113,7 +113,7 @@ class ReferralService
             return null;
         }
 
-        return sprintf('https://t.me/%s?start=%s', ltrim($botUsername, '@'), 'ref_'.$user->id);
+        return sprintf('https://t.me/%s?startapp=%s', ltrim($botUsername, '@'), 'ref_'.$user->id);
     }
 
     public function countActiveReferrals(User $user): int

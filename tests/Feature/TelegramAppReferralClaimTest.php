@@ -53,7 +53,7 @@ class TelegramAppReferralClaimTest extends TestCase
         ])->save();
 
         $response = $this->withToken($token)->postJson('/telegram-app/referrals/claim', [
-            'referral' => 'https://t.me/test_bot?start=ref_'.$referrer->id,
+            'referral' => 'https://t.me/test_bot?startapp=ref_'.$referrer->id,
         ]);
 
         $response->assertOk()

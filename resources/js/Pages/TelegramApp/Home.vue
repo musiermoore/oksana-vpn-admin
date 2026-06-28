@@ -303,11 +303,11 @@ onMounted(async () => {
                     </div>
                 </section>
 
-                <section class="tg-referral-claim">
+                <section v-if="referral.can_claim || referral.has_referrer" class="tg-referral-claim">
                     <div class="tg-referral-claim__head">
                         <strong>Вас уже приглашали?</strong>
                         <p v-if="referral.can_claim">Введите код или ссылку приглашения, чтобы привязать реферера к аккаунту.</p>
-                        <p v-else>Реферер уже привязан</p>
+                        <p v-else-if="referral.has_referrer">Реферер уже привязан</p>
                     </div>
 
                     <div v-if="referral.can_claim" class="tg-referral-claim__form">

@@ -29,6 +29,10 @@ class ReferralController extends Controller
                 throw new DomainException('Реферер уже привязан и не может быть изменён.');
             }
 
+            if (! $this->referrals->canClaimManually($user)) {
+                throw new DomainException('Привязать реферера вручную можно только в течение первого месяца после регистрации.');
+            }
+
             $referral = $this->referrals->attachReferral($user, $request->referralInput());
 
             if ($referral === null) {

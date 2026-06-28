@@ -87,15 +87,40 @@ class TelegramAppReferralClaimTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_authenticated_user_cannot_claim_referrer_manually_after_first_month(): void
+    {
+        [$user, $token] = $this->createAuthorizedUser([
+            'join_at' => now()->subDays(32),
+        ]);
+
+        $referrer = User::query()->create([
+            'name' => 'Referrer',
+            'telegram' => '@referrer',
+            'telegram_id' => '555',
+        ]);
+
+        $this->withToken($token)->postJson('/telegram-app/referrals/claim', [
+            'referral' => 'ref_'.$referrer->id,
+        ])->assertStatus(422)
+            ->assertJsonPath('message', 'Привязать реферера вручную можно только в течение первого месяца после регистрации.');
+
+        $this->assertDatabaseMissing('users', [
+            'id' => $user->id,
+            'referrer_id' => $referrer->id,
+        ]);
+    }
+
     /**
+     * @param array<string, mixed> $attributes
      * @return array{0: User, 1: string}
      */
-    private function createAuthorizedUser(): array
+    private function createAuthorizedUser(array $attributes = []): array
     {
-        $user = User::factory()->create([
+        $user = User::factory()->create(array_merge([
             'telegram' => '@alice',
             'telegram_id' => '123456789',
-        ]);
+            'join_at' => now()->toDateString(),
+        ], $attributes));
 
         $plainTextToken = str_repeat('c', 80);
 

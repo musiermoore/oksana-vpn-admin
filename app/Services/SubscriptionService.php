@@ -52,6 +52,9 @@ class SubscriptionService
             return [
                 'month' => $months,
                 'price' => (float) $quote['package_price'],
+                'payable_now' => (float) $quote['deposit_amount'],
+                'balance_before' => (float) $quote['balance_before'],
+                'balance_applied' => (float) round(max(0, $quote['package_price'] - $quote['deposit_amount']), 2),
                 'discount_percent' => (int) $quote['discount_percent'],
             ];
         }, $this->getSupportedPackageMonths());

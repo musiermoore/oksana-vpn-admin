@@ -57,6 +57,18 @@ const formatSubscriptionDate = (value) => {
 
 const selectedPackage = computed(() => packages.value.find((item) => item.month === selectedMonth.value) ?? packages.value[0] ?? null);
 
+const paymentBreakdown = (item) => {
+    const payableNow = Number(item.payable_now ?? item.price ?? 0);
+    const totalPrice = Number(item.price ?? 0);
+    const balanceApplied = Number(item.balance_applied ?? 0);
+
+    if (balanceApplied <= 0 || payableNow >= totalPrice) {
+        return `К оплате ${payableNow} ₽`;
+    }
+
+    return `Полная стоимость ${totalPrice} ₽ · с баланса спишется ${balanceApplied} ₽`;
+};
+
 const loadData = async () => {
     user.value = await ensureTelegramAppSession({
         authUrl: props.auth_url,
@@ -196,10 +208,11 @@ onMounted(async () => {
                         <div class="tg-plan-option__copy">
                             <strong>{{ item.month }} {{ item.month === 1 ? 'месяц' : item.month < 5 ? 'месяца' : 'месяцев' }}</strong>
                             <span>{{ durationText(item.month) }}</span>
+                            <span>{{ paymentBreakdown(item) }}</span>
                         </div>
 
                         <div class="tg-plan-option__meta">
-                            <strong>{{ item.price }} ₽</strong>
+                            <strong>{{ item.payable_now }} ₽</strong>
                             <span v-if="item.discount_percent > 0" class="tg-discount-badge">-{{ item.discount_percent }}%</span>
                         </div>
                     </button>
@@ -207,7 +220,7 @@ onMounted(async () => {
 
                 <div class="tg-payment-hint">
                     <strong>Перейти к оплате картой / СБП</strong>
-                    <p>Чтобы перейти к оплате нажмите на кнопку "Оплатить"</p>
+                    <p>Показываем сумму к оплате с учётом уже доступного баланса на аккаунте.</p>
                 </div>
 
                 <button

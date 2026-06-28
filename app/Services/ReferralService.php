@@ -6,6 +6,7 @@ use App\Models\Referral;
 use App\Models\User;
 use App\Repositories\ReferralRepository;
 use App\Repositories\UserRepository;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReferralService
@@ -94,7 +95,8 @@ class ReferralService
         return [
             'referral_link' => $this->buildReferralLink($user),
             'referral_code' => 'ref_'.$user->id,
-            'can_claim' => $user->referrer_id === null,
+            'has_referrer' => $user->referrer_id !== null,
+            'can_claim' => $this->canClaimManually($user),
             'invited_count' => $invitedCount,
             'active_referrals_count' => $activeReferralsCount,
             'accumulated_discount_percent' => $accumulatedDiscountPercent,
@@ -119,6 +121,15 @@ class ReferralService
     public function countActiveReferrals(User $user): int
     {
         return $this->referrals->countActiveReferrals($user);
+    }
+
+    public function canClaimManually(User $user): bool
+    {
+        if ($user->referrer_id !== null || empty($user->join_at)) {
+            return false;
+        }
+
+        return Carbon::parse($user->join_at)->greaterThanOrEqualTo(now()->subMonth());
     }
 
     public function resolvePermanentDiscountPercent(int $activeReferralsCount): int

@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'telegram-mini-app-token';
 const START_PARAM_KEY = 'telegram-mini-app-last-start-param';
+const START_PARAM_AUTH_KEY = 'telegram-mini-app-last-auth-start-param';
 
 export const telegramAppLabels = {
     open: 'Открыт',
@@ -50,6 +51,8 @@ export const getTelegramStartParam = () => {
 
     return queryStartParam?.trim() || '';
 };
+
+export const isReferralStartParam = (value) => /^ref_\d+$/.test((value ?? '').trim());
 
 export const redirectFromTelegramStartParam = (routes) => {
     const startParam = getTelegramStartParam();
@@ -122,9 +125,16 @@ export const fetchTelegramAppProfile = async (profileUrl) => {
 
 export const ensureTelegramAppSession = async ({ authUrl, profileUrl }) => {
     prepareTelegramWebApp();
+    const startParam = getTelegramStartParam();
+    const lastAuthStartParam = window.sessionStorage.getItem(START_PARAM_AUTH_KEY) ?? '';
+    const shouldRefreshForReferral = isReferralStartParam(startParam) && lastAuthStartParam !== startParam;
 
-    if (getTelegramAppToken() === '') {
+    if (getTelegramAppToken() === '' || shouldRefreshForReferral) {
         await loginTelegramApp(authUrl);
+
+        if (shouldRefreshForReferral) {
+            window.sessionStorage.setItem(START_PARAM_AUTH_KEY, startParam);
+        }
     }
 
     try {
@@ -132,6 +142,10 @@ export const ensureTelegramAppSession = async ({ authUrl, profileUrl }) => {
     } catch (error) {
         if (error?.response?.status === 401) {
             await loginTelegramApp(authUrl);
+
+            if (isReferralStartParam(startParam)) {
+                window.sessionStorage.setItem(START_PARAM_AUTH_KEY, startParam);
+            }
 
             return await fetchTelegramAppProfile(profileUrl);
         }

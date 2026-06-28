@@ -78,6 +78,44 @@ class TelegramAppAuthTest extends TestCase
         ]);
     }
 
+    public function test_telegram_app_auth_allows_existing_user_to_attach_referrer_once_from_start_param(): void
+    {
+        config()->set('services.telegram.bot_token', 'test-bot-token');
+
+        $referrer = User::query()->create([
+            'name' => 'Referrer',
+            'telegram' => '@referrer',
+            'telegram_id' => '555',
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Bob',
+            'telegram' => '@bob',
+            'telegram_id' => '777888999',
+        ]);
+
+        $response = $this->postJson('/telegram-app/auth/telegram', [
+            'init_data' => $this->buildInitData([
+                'auth_date' => (string) now()->timestamp,
+                'query_id' => 'AAHdF6IQAAAAAN0XohDhrOrc',
+                'start_param' => 'ref_'.$referrer->id,
+                'user' => json_encode([
+                    'id' => 777888999,
+                    'first_name' => 'Bob',
+                    'username' => 'bob',
+                ], JSON_THROW_ON_ERROR),
+            ]),
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.telegram_id', '777888999');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'referrer_id' => $referrer->id,
+        ]);
+    }
+
     public function test_authorized_user_can_load_profile_via_bearer_token(): void
     {
         $user = User::factory()->create([

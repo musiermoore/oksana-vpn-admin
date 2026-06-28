@@ -54,12 +54,16 @@ class ApiUserService
                     $this->users->clearTelegramForOthers($telegram, (int) $user->id);
                 }
 
+                $user = $this->users->update($user, [
+                    'telegram' => $telegram !== '' ? $telegram : $user->telegram,
+                    'name' => $name,
+                    'join_at' => $user->join_at ?: now()->toDateString(),
+                ]);
+
+                $this->referrals->attachReferral($user, $data->startParam);
+
                 return [
-                    $this->users->update($user, [
-                        'telegram' => $telegram !== '' ? $telegram : $user->telegram,
-                        'name' => $name,
-                        'join_at' => $user->join_at ?: now()->toDateString(),
-                    ]),
+                    $user->fresh(),
                     false,
                 ];
             }
@@ -70,12 +74,16 @@ class ApiUserService
                 if ($user) {
                     $this->users->clearTelegramIdForOthers($telegramId, (int) $user->id);
 
+                    $user = $this->users->update($user, [
+                        'telegram_id' => $telegramId,
+                        'name' => $name,
+                        'join_at' => $user->join_at ?: now()->toDateString(),
+                    ]);
+
+                    $this->referrals->attachReferral($user, $data->startParam);
+
                     return [
-                        $this->users->update($user, [
-                            'telegram_id' => $telegramId,
-                            'name' => $name,
-                            'join_at' => $user->join_at ?: now()->toDateString(),
-                        ]),
+                        $user->fresh(),
                         false,
                     ];
                 }

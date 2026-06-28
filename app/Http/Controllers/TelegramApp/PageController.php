@@ -59,6 +59,7 @@ class PageController extends Controller
             'wireguard_configs_url' => route('telegram-app.wireguard.configs.index'),
             'vless_link_url' => route('telegram-app.vless.link'),
             'vless_qr_url' => route('telegram-app.vless.qr-code'),
+            'vless_send_qr_url' => route('telegram-app.vless.send-qr'),
             'support_tickets_url' => route('telegram-app.support.tickets.index'),
             'support_ticket_store_url' => route('telegram-app.support.tickets.store'),
             'subscription_packages_url' => route('telegram-app.subscription-packages'),

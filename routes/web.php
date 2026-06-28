@@ -129,10 +129,18 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
         Route::get('wireguard/configs/{configId}/qr-code', [TelegramAppConnectionController::class, 'wireGuardQrCode'])
             ->whereNumber('configId')
             ->name('wireguard.configs.qr-code');
+        Route::post('wireguard/configs/{configId}/send-file', [TelegramAppConnectionController::class, 'wireGuardSendFile'])
+            ->whereNumber('configId')
+            ->name('wireguard.configs.send-file');
+        Route::post('wireguard/configs/{configId}/send-qr', [TelegramAppConnectionController::class, 'wireGuardSendQr'])
+            ->whereNumber('configId')
+            ->name('wireguard.configs.send-qr');
         Route::get('vless/link', [TelegramAppConnectionController::class, 'vlessLinks'])
             ->name('vless.link');
         Route::get('vless/qr-code', [TelegramAppConnectionController::class, 'vlessQrCode'])
             ->name('vless.qr-code');
+        Route::post('vless/send-qr', [TelegramAppConnectionController::class, 'vlessSendQr'])
+            ->name('vless.send-qr');
 
         Route::get('support/tickets', [TelegramAppSupportTicketController::class, 'index'])
             ->name('support.tickets.index');

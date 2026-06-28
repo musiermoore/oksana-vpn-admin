@@ -17,6 +17,7 @@ const props = defineProps({
     profile_url: String,
     vless_link_url: String,
     vless_qr_url: String,
+    vless_send_qr_url: String,
 });
 
 const state = ref('loading');
@@ -29,6 +30,8 @@ const links = ref(null);
 const qrImageUrl = ref('');
 const copied = ref('');
 const loadingQr = ref(false);
+const sendingQrToBot = ref(false);
+const qrStatus = ref('');
 
 const preferredLinks = computed(() => ([
     {
@@ -103,6 +106,7 @@ const openQrResult = async () => {
     loadingQr.value = true;
     actionError.value = '';
     copied.value = '';
+    qrStatus.value = '';
     revokeQrUrl();
 
     try {
@@ -113,6 +117,23 @@ const openQrResult = async () => {
         actionError.value = normalizeTelegramAppError(requestError, 'Не удалось получить QR-код.');
     } finally {
         loadingQr.value = false;
+    }
+};
+
+const sendQrToBot = async () => {
+    sendingQrToBot.value = true;
+    actionError.value = '';
+    qrStatus.value = '';
+
+    try {
+        const response = await window.axios.post(props.vless_send_qr_url, {}, {
+            headers: telegramAppHeaders(),
+        });
+        qrStatus.value = response.data?.message ?? 'QR-код отправлен в бот.';
+    } catch (requestError) {
+        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код в бота.');
+    } finally {
+        sendingQrToBot.value = false;
     }
 };
 
@@ -253,11 +274,17 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="tg-stack-actions">
+                    <button class="button tg-button-full" type="button" :disabled="sendingQrToBot" @click="sendQrToBot">
+                        {{ sendingQrToBot ? 'Отправляем...' : 'Отправить в бота' }}
+                    </button>
                     <button class="button button--secondary tg-button-full" type="button" @click="step = 'menu'">
                         Назад
                     </button>
                     <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
+
+                <p v-if="qrStatus" class="tg-muted">{{ qrStatus }}</p>
+                <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
         </template>
     </TelegramMiniAppFrame>

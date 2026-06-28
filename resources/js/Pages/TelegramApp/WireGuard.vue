@@ -5,11 +5,9 @@ import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
     fetchTelegramBinary,
-    getFilenameFromDisposition,
     isTelegramDebtError,
     normalizeTelegramAppError,
     telegramAppHeaders,
-    triggerBrowserDownload,
 } from '../../lib/telegramMiniApp';
 
 const props = defineProps({
@@ -28,8 +26,9 @@ const user = ref(null);
 const configs = ref([]);
 const selectedConfig = ref(null);
 const loadingAction = ref(false);
+const sendingToBot = ref(false);
 const qrImageUrl = ref('');
-const downloadedFilename = ref('');
+const actionStatus = ref('');
 
 const revokeQrUrl = () => {
     if (qrImageUrl.value) {
@@ -44,6 +43,7 @@ const retry = () => {
 
 const resetToList = () => {
     actionError.value = '';
+    actionStatus.value = '';
     selectedConfig.value = null;
     step.value = 'list';
     revokeQrUrl();
@@ -66,6 +66,7 @@ const loadConfigs = async () => {
 const selectConfig = (config) => {
     selectedConfig.value = config;
     actionError.value = '';
+    actionStatus.value = '';
     step.value = 'actions';
 };
 
@@ -76,6 +77,7 @@ const showQrCode = async () => {
 
     loadingAction.value = true;
     actionError.value = '';
+    actionStatus.value = '';
     revokeQrUrl();
 
     try {
@@ -89,28 +91,46 @@ const showQrCode = async () => {
     }
 };
 
-const downloadConfig = async () => {
+const sendConfigToBot = async () => {
     if (!selectedConfig.value) {
         return;
     }
 
-    loadingAction.value = true;
+    sendingToBot.value = true;
     actionError.value = '';
+    actionStatus.value = '';
 
     try {
-        const response = await fetchTelegramBinary(selectedConfig.value.download_url);
-        const filename = getFilenameFromDisposition(
-            response.headers['content-disposition'],
-            `${selectedConfig.value.name || 'wireguard'}.conf`,
-        );
-
-        triggerBrowserDownload(response.data, filename);
-        downloadedFilename.value = filename;
+        const response = await window.axios.post(selectedConfig.value.send_file_to_bot_url, {}, {
+            headers: telegramAppHeaders(),
+        });
+        actionStatus.value = response.data?.message ?? 'Файл отправлен в бот.';
         step.value = 'file';
     } catch (requestError) {
-        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось скачать конфиг.');
+        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить файл в бота.');
     } finally {
-        loadingAction.value = false;
+        sendingToBot.value = false;
+    }
+};
+
+const sendQrToBot = async () => {
+    if (!selectedConfig.value) {
+        return;
+    }
+
+    sendingToBot.value = true;
+    actionError.value = '';
+    actionStatus.value = '';
+
+    try {
+        const response = await window.axios.post(selectedConfig.value.send_qr_to_bot_url, {}, {
+            headers: telegramAppHeaders(),
+        });
+        actionStatus.value = response.data?.message ?? 'QR-код отправлен в бот.';
+    } catch (requestError) {
+        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код в бота.');
+    } finally {
+        sendingToBot.value = false;
     }
 };
 
@@ -137,7 +157,7 @@ onBeforeUnmount(() => {
 <template>
     <TelegramMiniAppFrame
         title="WireGuard"
-        description="Выберите конфиг, получите QR-код или скачайте готовый файл."
+        description="Выберите конфиг, сразу покажите QR-код или отправьте файл в Telegram-бота."
         :routes="routes"
         :user="user"
     >
@@ -211,14 +231,14 @@ onBeforeUnmount(() => {
             <section v-else-if="step === 'actions'" class="tg-panel">
                 <span class="tg-section-label">Конфиг</span>
                 <h2>{{ selectedConfig?.name }}</h2>
-                <p>Выберите, как удобнее получить WireGuard-конфиг.</p>
+                <p>QR-код можно сразу показать на экране, а файл отправить прямо в бота.</p>
 
                 <div class="tg-stack-actions">
                     <button class="button tg-button-full" type="button" :disabled="loadingAction" @click="showQrCode">
                         {{ loadingAction ? 'Загружаем...' : 'QR Code' }}
                     </button>
-                    <button class="button tg-button-full" type="button" :disabled="loadingAction" @click="downloadConfig">
-                        {{ loadingAction ? 'Подготавливаем...' : 'Файл' }}
+                    <button class="button tg-button-full" type="button" :disabled="sendingToBot" @click="sendConfigToBot">
+                        {{ sendingToBot ? 'Отправляем...' : 'Отправить файл в бота' }}
                     </button>
                     <button class="button button--secondary tg-button-full" type="button" @click="resetToList">
                         WireGuard Конфиги
@@ -239,28 +259,39 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="tg-stack-actions">
+                    <button class="button tg-button-full" type="button" :disabled="sendingToBot" @click="sendQrToBot">
+                        {{ sendingToBot ? 'Отправляем...' : 'Отправить в бота' }}
+                    </button>
                     <button class="button button--secondary tg-button-full" type="button" @click="resetToList">
                         Конфиги
                     </button>
                     <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
+
+                <p v-if="actionStatus" class="tg-muted">{{ actionStatus }}</p>
+                <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 
             <section v-else class="tg-panel">
                 <span class="tg-section-label">Файл</span>
-                <h2>Файл отправлен</h2>
-                <p>Конфиг уже скачан на устройство. Если браузер спросил путь, сохраните файл и откройте его в клиенте WireGuard.</p>
+                <h2>Файл отправлен в бота</h2>
+                <p>Откройте диалог с ботом в Telegram и заберите конфиг оттуда.</p>
                 <div class="tg-inline-callout">
-                    <span>Файл</span>
-                    <strong>{{ downloadedFilename }}</strong>
+                    <span>Статус</span>
+                    <strong>{{ actionStatus || 'Файл отправлен в бот.' }}</strong>
                 </div>
 
                 <div class="tg-stack-actions">
+                    <button class="button tg-button-full" type="button" :disabled="sendingToBot" @click="sendConfigToBot">
+                        {{ sendingToBot ? 'Отправляем...' : 'Отправить ещё раз в бота' }}
+                    </button>
                     <button class="button button--secondary tg-button-full" type="button" @click="resetToList">
                         Конфиги
                     </button>
                     <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
+
+                <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
         </template>
     </TelegramMiniAppFrame>

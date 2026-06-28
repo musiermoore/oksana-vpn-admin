@@ -11,8 +11,10 @@ const props = defineProps({
 
 const navItems = [
     { hrefKey: 'home', label: 'Главная', icon: 'home' },
+    { hrefKey: 'wireguard', label: 'WG', icon: 'shield' },
+    { hrefKey: 'vless', label: 'VLESS', icon: 'spark' },
     { hrefKey: 'payments', label: 'Подписка', icon: 'crown' },
-    { hrefKey: 'support', label: 'Поддержка', icon: 'chat' },
+    { hrefKey: 'help', label: 'Помощь', icon: 'help' },
 ];
 
 const currentPath = computed(() => window.location.pathname.replace(/\/+$/, '') || '/telegram-app');
@@ -55,7 +57,15 @@ const iconPath = (name) => {
         return 'M4 17.25h16l-1.4-8.25-4.6 3.6L12 6.75 8 12.6 3.4 9zM6.25 19.5h11.5';
     }
 
-    return 'M6.75 8.25h10.5A2.25 2.25 0 0 1 19.5 10.5v5.25A2.25 2.25 0 0 1 17.25 18H11.5l-3.75 2.25V18H6.75A2.25 2.25 0 0 1 4.5 15.75V10.5a2.25 2.25 0 0 1 2.25-2.25Z';
+    if (name === 'shield') {
+        return 'M12 3.75 18.75 6v5.07c0 4.16-2.6 7.92-6.75 9.43C7.85 18.99 5.25 15.23 5.25 11.07V6Z';
+    }
+
+    if (name === 'spark') {
+        return 'm12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z';
+    }
+
+    return 'M12 17.25h.01M9.1 9.3a2.9 2.9 0 1 1 4.84 2.16c-.74.67-1.44 1.13-1.44 2.29';
 };
 </script>
 

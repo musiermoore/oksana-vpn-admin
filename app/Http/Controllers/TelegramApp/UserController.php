@@ -23,6 +23,10 @@ class UserController extends Controller
         /** @var User $user */
         $user = $request->user();
         $user->setAttribute('referral_summary', $this->referrals->getSummary($user));
+        $user->setAttribute(
+            'has_money_for_next_subscription_month',
+            $this->users->hasMoneyForNextSubscriptionMonth($user)
+        );
 
         return response()->json([
             'user' => (new TelegramAppUserResource($user))->resolve(),

@@ -11,6 +11,7 @@ use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
+use App\Http\Controllers\TelegramApp\ConnectionController as TelegramAppConnectionController;
 use App\Http\Controllers\TelegramApp\PageController as TelegramAppPageController;
 use App\Http\Controllers\TelegramApp\PaymentController as TelegramAppPaymentController;
 use App\Http\Controllers\TelegramApp\ReferralController as TelegramAppReferralController;
@@ -100,7 +101,10 @@ Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLin
 
 Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
     Route::get('/', [TelegramAppPageController::class, 'home'])->name('home');
+    Route::get('wireguard', [TelegramAppPageController::class, 'wireGuard'])->name('pages.wireguard');
+    Route::get('vless', [TelegramAppPageController::class, 'vless'])->name('pages.vless');
     Route::get('payments', [TelegramAppPageController::class, 'payments'])->name('pages.payments');
+    Route::get('help', [TelegramAppPageController::class, 'help'])->name('pages.help');
     Route::get('support', [TelegramAppPageController::class, 'support'])->name('pages.support');
     Route::get('support/{ticketId}', [TelegramAppPageController::class, 'supportShow'])
         ->whereNumber('ticketId')
@@ -117,6 +121,18 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
             ->name('referrals.claim');
         Route::post('payments/subscriptions', [TelegramAppPaymentController::class, 'purchaseSubscription'])
             ->name('payments.subscriptions');
+        Route::get('wireguard/configs', [TelegramAppConnectionController::class, 'wireGuardConfigs'])
+            ->name('wireguard.configs.index');
+        Route::get('wireguard/configs/{configId}/download', [TelegramAppConnectionController::class, 'wireGuardDownload'])
+            ->whereNumber('configId')
+            ->name('wireguard.configs.download');
+        Route::get('wireguard/configs/{configId}/qr-code', [TelegramAppConnectionController::class, 'wireGuardQrCode'])
+            ->whereNumber('configId')
+            ->name('wireguard.configs.qr-code');
+        Route::get('vless/link', [TelegramAppConnectionController::class, 'vlessLinks'])
+            ->name('vless.link');
+        Route::get('vless/qr-code', [TelegramAppConnectionController::class, 'vlessQrCode'])
+            ->name('vless.qr-code');
 
         Route::get('support/tickets', [TelegramAppSupportTicketController::class, 'index'])
             ->name('support.tickets.index');

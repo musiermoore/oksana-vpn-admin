@@ -1,9 +1,11 @@
 <script setup>
+import { Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
+    openTelegramExternalLink,
     redirectFromTelegramStartParam,
     telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
@@ -17,11 +19,23 @@ const props = defineProps({
 });
 
 const state = ref('loading');
+const screen = ref('overview');
 const error = ref('');
 const user = ref(null);
 const packages = ref([]);
 const selectedMonth = ref(null);
 const payingMonth = ref(null);
+const paymentResult = ref(null);
+const packageLoadError = ref('');
+
+const selectedPackage = computed(() => (
+    packages.value.find((item) => item.month === selectedMonth.value)
+    ?? packages.value[0]
+    ?? null
+));
+
+const hasDebt = computed(() => Number(user.value?.debt ?? 0) > 0);
+const hasMoneyForNextMonth = computed(() => Boolean(user.value?.has_money_for_next_subscription_month));
 
 const durationText = (months) => {
     if (months === 1) {
@@ -55,8 +69,6 @@ const formatSubscriptionDate = (value) => {
         })}`;
 };
 
-const selectedPackage = computed(() => packages.value.find((item) => item.month === selectedMonth.value) ?? packages.value[0] ?? null);
-
 const paymentBreakdown = (item) => {
     const payableNow = Number(item.payable_now ?? item.price ?? 0);
     const totalPrice = Number(item.price ?? 0);
@@ -69,12 +81,18 @@ const paymentBreakdown = (item) => {
     return `Полная стоимость ${totalPrice} ₽ · с баланса спишется ${balanceApplied} ₽`;
 };
 
-const loadData = async () => {
+const retry = () => {
+    window.location.reload();
+};
+
+const loadProfile = async () => {
     user.value = await ensureTelegramAppSession({
         authUrl: props.auth_url,
         profileUrl: props.profile_url,
     });
+};
 
+const loadPackages = async () => {
     const response = await window.axios.get(props.subscription_packages_url, {
         headers: telegramAppHeaders(),
     });
@@ -83,6 +101,27 @@ const loadData = async () => {
     selectedMonth.value = packages.value.find((item) => item.month === 12)?.month
         ?? packages.value[0]?.month
         ?? null;
+};
+
+const openPackageSelect = async () => {
+    packageLoadError.value = '';
+
+    try {
+        await loadPackages();
+        screen.value = 'packages';
+    } catch (requestError) {
+        packageLoadError.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить тарифы.');
+    }
+};
+
+const cancelPackageSelect = () => {
+    packageLoadError.value = '';
+    payingMonth.value = null;
+    screen.value = 'overview';
+};
+
+const refreshAfterPayment = async () => {
+    await loadProfile();
 };
 
 const buySubscription = async () => {
@@ -102,23 +141,25 @@ const buySubscription = async () => {
             headers: telegramAppHeaders(),
         });
 
-        if (response.data?.confirmation_url) {
-            window.location.href = response.data.confirmation_url;
+        paymentResult.value = response.data ?? null;
+
+        if (response.data?.status === 'activated') {
+            await refreshAfterPayment();
+            screen.value = 'activated';
             return;
         }
 
-        if (response.data?.message) {
-            window.alert(response.data.message);
+        if (response.data?.confirmation_url) {
+            screen.value = 'payment-link';
+            return;
         }
+
+        error.value = 'Не удалось получить ссылку на оплату.';
     } catch (requestError) {
         error.value = normalizeTelegramAppError(requestError, 'Не удалось перейти к оплате.');
     } finally {
         payingMonth.value = null;
     }
-};
-
-const retry = () => {
-    window.location.reload();
 };
 
 onMounted(async () => {
@@ -127,11 +168,11 @@ onMounted(async () => {
     }
 
     try {
-        await loadData();
+        await loadProfile();
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить тарифы.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить подписку.');
     }
 });
 </script>
@@ -139,7 +180,7 @@ onMounted(async () => {
 <template>
     <TelegramMiniAppFrame
         title="Подписка"
-        description="Выберите удобный тариф и перейдите к оплате картой или через СБП."
+        description="Баланс, срок действия и пошаговая покупка подписки внутри mini-app."
         :routes="routes"
         :user="user"
     >
@@ -148,53 +189,85 @@ onMounted(async () => {
                 <span class="tg-state-orbit__core"></span>
             </div>
             <h2>Загружаем данные...</h2>
-            <p>Пожалуйста, подождите</p>
-
-            <div class="tg-skeleton-list">
-                <div class="tg-skeleton-card"></div>
-                <div class="tg-skeleton-card"></div>
-                <div class="tg-skeleton-card"></div>
-            </div>
+            <p>Сейчас подтянем ваш баланс и активную подписку.</p>
         </section>
 
         <section v-else-if="state === 'error'" class="tg-state-panel">
             <div class="tg-state-orbit tg-state-orbit--danger">
                 <span class="tg-state-orbit__core">!</span>
             </div>
-            <h2>Не удалось загрузить данные</h2>
+            <h2>Не удалось загрузить подписку</h2>
             <p>{{ error || 'Пожалуйста, попробуйте ещё раз через пару секунд' }}</p>
             <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
         </section>
 
         <template v-else>
-            <section class="tg-panel tg-plan-summary">
-                <span class="tg-section-label">Текущий план</span>
+            <section v-if="screen === 'overview'" class="tg-panel tg-plan-summary">
+                <span class="tg-section-label">Подписка</span>
 
                 <div class="tg-plan-summary__row">
                     <div>
-                        <strong>{{ user?.subscription_expires_at ? '12 месяцев' : 'План не выбран' }}</strong>
+                        <strong>{{ user?.subscription_expires_at ? 'Подписка активна' : 'Подписка не активна' }}</strong>
                         <p>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</p>
                     </div>
 
-                    <span v-if="user?.subscription_expires_at" class="badge badge--success">Активен</span>
+                    <span v-if="user?.subscription_expires_at" class="badge badge--success">Активна</span>
                 </div>
-            </section>
 
-            <section v-if="user?.referral" class="tg-panel">
-                <span class="tg-section-label">Реферальная скидка</span>
-                <div class="tg-payment-hint">
-                    <strong>{{ user.referral.total_discount_percent }}% будет учтено при покупке</strong>
+                <div class="tg-rows">
+                    <div class="tg-row-link">
+                        <div class="tg-row-link__icon" aria-hidden="true">₽</div>
+                        <div class="tg-row-link__copy">
+                            <strong>Баланс</strong>
+                            <span>{{ user?.balance ?? 0 }} ₽</span>
+                        </div>
+                    </div>
+
+                    <div class="tg-row-link">
+                        <div class="tg-row-link__icon" aria-hidden="true">!</div>
+                        <div class="tg-row-link__copy">
+                            <strong>Долг</strong>
+                            <span>{{ user?.debt ?? 0 }} ₽</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="hasDebt" class="tg-payment-hint tg-payment-hint--danger">
+                    <strong>На аккаунте есть долг</strong>
+                    <p>Пока долг не закрыт, доступ к конфигам и VLESS будет ограничен.</p>
+                </div>
+
+                <div v-else-if="!hasMoneyForNextMonth" class="tg-payment-hint">
+                    <strong>На следующий месяц средств не хватает</strong>
+                    <p>Рекомендуем пополнить подписку заранее, чтобы доступ не прерывался.</p>
+                </div>
+
+                <div v-if="user?.referral" class="tg-payment-hint">
+                    <strong>{{ user.referral.total_discount_percent }}% скидки будет учтено при покупке</strong>
                     <p>
                         Накопительная скидка {{ user.referral.accumulated_discount_percent }}%.
                         После успешной оплаты она сбросится, постоянная {{ user.referral.permanent_discount_percent }}% останется.
                     </p>
                 </div>
+
+                <div class="tg-stack-actions">
+                    <button class="button tg-button-full" type="button" @click="openPackageSelect">Купить подписку</button>
+                    <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
+                </div>
+
+                <p v-if="packageLoadError" class="field-error">{{ packageLoadError }}</p>
             </section>
 
-            <section class="tg-panel">
-                <span class="tg-section-label">Выберите тариф</span>
+            <section v-else-if="screen === 'packages'" class="tg-panel">
+                <span class="tg-section-label">Выбор тарифа</span>
+                <h2>Выберите срок подписки</h2>
 
-                <div class="tg-plan-list">
+                <div v-if="packages.length === 0" class="tg-empty-panel">
+                    <h2>Нет доступных тарифов</h2>
+                    <p>Сейчас пакеты временно недоступны. Попробуйте чуть позже.</p>
+                </div>
+
+                <div v-else class="tg-plan-list">
                     <button
                         v-for="item in packages"
                         :key="item.month"
@@ -223,16 +296,56 @@ onMounted(async () => {
                     <p>Показываем сумму к оплате с учётом уже доступного баланса на аккаунте.</p>
                 </div>
 
-                <button
-                    class="button tg-button-full"
-                    type="button"
-                    :disabled="!selectedPackage || payingMonth !== null"
-                    @click="buySubscription"
-                >
-                    {{ payingMonth ? 'Переходим к оплате...' : 'Оплатить' }}
-                </button>
+                <div class="tg-stack-actions">
+                    <button
+                        class="button tg-button-full"
+                        type="button"
+                        :disabled="!selectedPackage || payingMonth !== null || packages.length === 0"
+                        @click="buySubscription"
+                    >
+                        {{ payingMonth ? 'Создаём оплату...' : 'Оплатить' }}
+                    </button>
+                    <button class="button button--secondary tg-button-full" type="button" @click="cancelPackageSelect">
+                        Отменить
+                    </button>
+                </div>
 
                 <p v-if="error" class="field-error">{{ error }}</p>
+            </section>
+
+            <section v-else-if="screen === 'activated'" class="tg-panel">
+                <span class="tg-section-label">Готово</span>
+                <h2>Подписка активирована</h2>
+                <p>{{ paymentResult?.message || 'Оплата завершена, доступ продлён.' }}</p>
+
+                <div class="tg-inline-callout">
+                    <span>Новый срок</span>
+                    <strong>{{ paymentResult?.formatted_end_date || formatSubscriptionDate(user?.subscription_expires_at) }}</strong>
+                </div>
+
+                <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
+            </section>
+
+            <section v-else class="tg-panel">
+                <span class="tg-section-label">Оплата</span>
+                <h2>Нужно завершить оплату</h2>
+                <p>{{ paymentResult?.message || 'Для активации подписки перейдите к оплате.' }}</p>
+
+                <div class="tg-inline-callout">
+                    <span>К оплате</span>
+                    <strong>{{ paymentResult?.deposit_amount ?? selectedPackage?.payable_now ?? 0 }} ₽</strong>
+                </div>
+
+                <div class="tg-stack-actions">
+                    <button
+                        class="button tg-button-full"
+                        type="button"
+                        @click="openTelegramExternalLink(paymentResult?.confirmation_url)"
+                    >
+                        Перейти к оплате картой / СБП
+                    </button>
+                    <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
+                </div>
             </section>
         </template>
     </TelegramMiniAppFrame>

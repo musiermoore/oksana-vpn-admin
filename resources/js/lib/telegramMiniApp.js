@@ -157,3 +157,51 @@ export const ensureTelegramAppSession = async ({ authUrl, profileUrl }) => {
 export const normalizeTelegramAppError = (error, fallback = 'Что-то пошло не так.') => {
     return error?.response?.data?.message ?? error?.message ?? fallback;
 };
+
+export const isTelegramDebtError = (error) => error?.response?.data?.type === 'debt';
+
+export const fetchTelegramBinary = async (url) => {
+    return await window.axios.get(url, {
+        headers: telegramAppHeaders(),
+        responseType: 'blob',
+    });
+};
+
+export const getFilenameFromDisposition = (headerValue, fallback = 'download.bin') => {
+    const header = String(headerValue ?? '');
+    const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+
+    if (utf8Match?.[1]) {
+        return decodeURIComponent(utf8Match[1]);
+    }
+
+    const simpleMatch = header.match(/filename="?([^"]+)"?/i);
+
+    return simpleMatch?.[1] ?? fallback;
+};
+
+export const triggerBrowserDownload = (blob, filename) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = objectUrl;
+    link.download = filename;
+    link.click();
+
+    window.setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+    }, 1000);
+};
+
+export const openTelegramExternalLink = (url) => {
+    if (!url) {
+        return;
+    }
+
+    if (window.Telegram?.WebApp?.openLink && /^https?:\/\//i.test(url)) {
+        window.Telegram.WebApp.openLink(url);
+        return;
+    }
+
+    window.location.href = url;
+};

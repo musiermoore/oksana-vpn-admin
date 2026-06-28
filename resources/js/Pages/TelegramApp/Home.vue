@@ -1,4 +1,5 @@
 <script setup>
+import { Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
@@ -23,6 +24,33 @@ const telegramProfile = ref(null);
 const referralStatus = ref('');
 const referralInput = ref('');
 const claimingReferral = ref(false);
+
+const primaryNavItems = [
+    {
+        key: 'wireguard',
+        title: 'WireGuard',
+        description: 'Конфиги, QR-код и файл для быстрого подключения.',
+        glyph: 'WG',
+    },
+    {
+        key: 'vless',
+        title: 'VLESS',
+        description: 'Deep links для клиентов, raw-ссылка и QR-код.',
+        glyph: 'VL',
+    },
+    {
+        key: 'payments',
+        title: 'Подписка',
+        description: 'Баланс, срок действия и переход к оплате.',
+        glyph: '₽',
+    },
+    {
+        key: 'help',
+        title: 'Помощь',
+        description: 'Инструкции, клиенты и полезные ссылки.',
+        glyph: '?',
+    },
+];
 
 const referral = computed(() => user.value?.referral ?? null);
 const nextLevelTarget = computed(() => {
@@ -203,13 +231,36 @@ onMounted(async () => {
             </section>
 
             <section class="tg-panel">
+                <span class="tg-section-label">Главное меню</span>
+
+                <div class="tg-menu-grid">
+                    <Link
+                        v-for="item in primaryNavItems"
+                        :key="item.key"
+                        :href="routes?.[item.key]"
+                        class="tg-menu-card"
+                    >
+                        <div class="tg-menu-card__badge" aria-hidden="true">{{ item.glyph }}</div>
+                        <div class="tg-menu-card__copy">
+                            <strong>{{ item.title }}</strong>
+                            <span>{{ item.description }}</span>
+                        </div>
+                    </Link>
+                </div>
+
+                <Link :href="routes?.support" class="button button--secondary tg-button-full">
+                    Поддержка
+                </Link>
+            </section>
+
+            <section class="tg-panel">
                 <span class="tg-section-label">Статус подключения</span>
 
-                <div class="tg-status-row tg-status-row--success">
-                    <div class="tg-status-icon" aria-hidden="true">✓</div>
+                <div class="tg-status-row" :class="user?.has_active_access ? 'tg-status-row--success' : 'tg-status-row--danger'">
+                    <div class="tg-status-icon" aria-hidden="true">{{ user?.has_active_access ? '✓' : '!' }}</div>
                     <div class="tg-status-copy">
-                        <strong>Ваш доступ активен</strong>
-                        <span>Подключение готово к использованию</span>
+                        <strong>{{ user?.has_active_access ? 'Ваш доступ активен' : 'Доступ требует продления' }}</strong>
+                        <span>{{ user?.has_active_access ? 'Подключение готово к использованию' : 'Откройте подписку, чтобы восстановить доступ' }}</span>
                     </div>
                 </div>
 

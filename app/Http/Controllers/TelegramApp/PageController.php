@@ -16,6 +16,21 @@ class PageController extends Controller
         return $this->page('TelegramApp/Payments');
     }
 
+    public function wireGuard()
+    {
+        return $this->page('TelegramApp/WireGuard');
+    }
+
+    public function vless()
+    {
+        return $this->page('TelegramApp/Vless');
+    }
+
+    public function help()
+    {
+        return $this->page('TelegramApp/Help');
+    }
+
     public function support()
     {
         return $this->page('TelegramApp/Support');
@@ -33,11 +48,17 @@ class PageController extends Controller
         return $this->inertia($component, [
             'routes' => [
                 'home' => route('telegram-app.home'),
+                'wireguard' => route('telegram-app.pages.wireguard'),
+                'vless' => route('telegram-app.pages.vless'),
                 'payments' => route('telegram-app.pages.payments'),
+                'help' => route('telegram-app.pages.help'),
                 'support' => route('telegram-app.pages.support'),
             ],
             'auth_url' => route('telegram-app.auth.telegram'),
             'profile_url' => route('telegram-app.me'),
+            'wireguard_configs_url' => route('telegram-app.wireguard.configs.index'),
+            'vless_link_url' => route('telegram-app.vless.link'),
+            'vless_qr_url' => route('telegram-app.vless.qr-code'),
             'support_tickets_url' => route('telegram-app.support.tickets.index'),
             'support_ticket_store_url' => route('telegram-app.support.tickets.store'),
             'subscription_packages_url' => route('telegram-app.subscription-packages'),

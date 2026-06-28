@@ -467,6 +467,240 @@
     text-align: center;
 }
 
+.tg-referral-card {
+    display: grid;
+    gap: 12px;
+}
+
+.tg-referral-head {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 4px;
+}
+
+.tg-referral-head h2 {
+    font-size: 1.1rem;
+    line-height: 1.15;
+    color: var(--tg-gold);
+    font-weight: 600;
+}
+
+.tg-referral-head p {
+    color: rgba(210, 197, 255, 0.72);
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.tg-referral-stats-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.tg-referral-stat,
+.tg-referral-progress,
+.tg-referral-link-box,
+.tg-referral-claim {
+    position: relative;
+    z-index: 1;
+    border: 1px solid rgba(178, 139, 255, 0.16);
+    border-radius: var(--tg-radius);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02)),
+        radial-gradient(circle at top right, rgba(143, 92, 255, 0.12), transparent 28%);
+    box-shadow:
+        0 0 0 1px rgba(143, 92, 255, 0.04),
+        0 0 24px rgba(82, 43, 166, 0.12);
+}
+
+.tg-referral-stat {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    min-width: 0;
+}
+
+.tg-referral-stat__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tg-referral-stat__top span {
+    min-width: 0;
+    color: rgba(214, 202, 246, 0.8);
+    font-size: 0.77rem;
+    line-height: 1.2;
+}
+
+.tg-referral-stat strong {
+    color: #fff8ff;
+    font-size: 1.45rem;
+    line-height: 1;
+    font-weight: 600;
+}
+
+.tg-referral-stat p {
+    color: var(--tg-text-muted);
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+
+.tg-referral-progress,
+.tg-referral-link-box,
+.tg-referral-claim {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+}
+
+.tg-referral-progress__head,
+.tg-referral-link-box__head,
+.tg-referral-claim__head {
+    display: grid;
+    gap: 4px;
+}
+
+.tg-referral-progress__head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.tg-referral-progress__head strong,
+.tg-referral-link-box__head strong,
+.tg-referral-claim__head strong {
+    color: #fff3dd;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.tg-referral-progress__head span,
+.tg-referral-claim__head p {
+    color: var(--tg-text-muted);
+    font-size: 0.76rem;
+}
+
+.tg-referral-progress__track {
+    height: 7px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(178, 139, 255, 0.12);
+}
+
+.tg-referral-progress__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(128, 76, 255, 0.92), rgba(186, 116, 255, 0.96));
+    box-shadow: 0 0 16px rgba(143, 92, 255, 0.34);
+}
+
+.tg-referral-progress p,
+.tg-referral-link-box p {
+    color: var(--tg-text-muted);
+    font-size: 0.76rem;
+    line-height: 1.4;
+}
+
+.tg-referral-link-box__value {
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: var(--tg-radius);
+    border: 1px solid rgba(178, 139, 255, 0.14);
+    background: rgba(3, 6, 20, 0.42);
+    color: #f4efff;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tg-referral-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.tg-app .button.button--secondary {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(178, 139, 255, 0.24);
+    color: #eedfff;
+    box-shadow: none;
+}
+
+.tg-referral-claim__form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.tg-referral-claim__input {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: var(--tg-radius);
+    border: 1px solid rgba(178, 139, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+    color: #fff8ff;
+    outline: none;
+}
+
+.tg-referral-claim__input::placeholder {
+    color: rgba(228, 214, 255, 0.42);
+}
+
+.tg-referral-claim__form .button {
+    min-height: 38px;
+    padding: 0 14px;
+    width: auto;
+    min-width: 104px;
+}
+
+.tg-referral-toast {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: var(--tg-radius);
+    border: 1px solid rgba(143, 92, 255, 0.22);
+    background: rgba(143, 92, 255, 0.10);
+    color: #f6ecff;
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+.tg-referral-toast.is-error {
+    border-color: rgba(251, 113, 133, 0.24);
+    background: rgba(120, 30, 56, 0.22);
+    color: #ffd3dc;
+}
+
+.tg-referral-toast.is-success {
+    border-color: rgba(143, 92, 255, 0.24);
+    background: rgba(76, 41, 152, 0.22);
+}
+
+.tg-skeleton-card--compact {
+    height: 92px;
+}
+
+.tg-skeleton-card--progress {
+    height: 64px;
+}
+
+.tg-skeleton-card--link {
+    height: 86px;
+}
+
 .tg-payment-hint strong {
     color: #fff3dd;
     font-weight: 600;
@@ -824,5 +1058,15 @@
 
     .tg-nav--bottom {
         width: min(calc(100vw - 16px), 430px);
+    }
+
+    .tg-referral-stats-grid,
+    .tg-referral-actions,
+    .tg-referral-claim__form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tg-referral-claim__form .button {
+        width: 100%;
     }
 }

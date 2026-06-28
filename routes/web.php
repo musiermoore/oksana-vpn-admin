@@ -105,6 +105,7 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
     Route::get('vless', [TelegramAppPageController::class, 'vless'])->name('pages.vless');
     Route::get('payments', [TelegramAppPageController::class, 'payments'])->name('pages.payments');
     Route::get('help', [TelegramAppPageController::class, 'help'])->name('pages.help');
+    Route::get('chats', [TelegramAppPageController::class, 'chats'])->name('pages.chats');
     Route::get('support', [TelegramAppPageController::class, 'support'])->name('pages.support');
     Route::get('support/{ticketId}', [TelegramAppPageController::class, 'supportShow'])
         ->whereNumber('ticketId')

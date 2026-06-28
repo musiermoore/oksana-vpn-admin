@@ -15,7 +15,7 @@
     position: relative;
     min-height: 100vh;
     overflow-x: hidden;
-    padding: 12px 10px calc(84px + env(safe-area-inset-bottom));
+    padding: 12px 10px calc(132px + env(safe-area-inset-bottom));
     color: var(--tg-text);
 }
 
@@ -969,7 +969,7 @@
 
 .tg-nav {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     padding: 6px;
 }
@@ -982,6 +982,7 @@
     width: min(calc(100vw - 20px), 430px);
     transform: translateX(-50%);
     backdrop-filter: blur(16px);
+    align-items: stretch;
 }
 
 .tg-nav__item {
@@ -990,7 +991,6 @@
     align-content: center;
     gap: 2px;
     min-height: 42px;
-    max-height: 42px;
     padding: 2px 6px;
     border-radius: var(--tg-radius);
     color: rgba(235, 223, 255, 0.78);

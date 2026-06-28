@@ -15,6 +15,7 @@ const navItems = [
     { hrefKey: 'vless', label: 'VLESS', icon: 'spark' },
     { hrefKey: 'payments', label: 'Подписка', icon: 'crown' },
     { hrefKey: 'help', label: 'Помощь', icon: 'help' },
+    { hrefKey: 'chats', label: 'Чаты', icon: 'chat' },
 ];
 
 const currentPath = computed(() => window.location.pathname.replace(/\/+$/, '') || '/telegram-app');
@@ -63,6 +64,10 @@ const iconPath = (name) => {
 
     if (name === 'spark') {
         return 'm12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z';
+    }
+
+    if (name === 'chat') {
+        return 'M6.75 8.25h10.5A2.25 2.25 0 0 1 19.5 10.5v5.25A2.25 2.25 0 0 1 17.25 18H11.5l-3.75 2.25V18H6.75A2.25 2.25 0 0 1 4.5 15.75V10.5a2.25 2.25 0 0 1 2.25-2.25Z';
     }
 
     return 'M12 17.25h.01M9.1 9.3a2.9 2.9 0 1 1 4.84 2.16c-.74.67-1.44 1.13-1.44 2.29';

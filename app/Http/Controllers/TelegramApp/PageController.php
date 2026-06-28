@@ -31,6 +31,11 @@ class PageController extends Controller
         return $this->page('TelegramApp/Help');
     }
 
+    public function chats()
+    {
+        return $this->page('TelegramApp/Chats');
+    }
+
     public function support()
     {
         return $this->page('TelegramApp/Support');
@@ -52,6 +57,7 @@ class PageController extends Controller
                 'vless' => route('telegram-app.pages.vless'),
                 'payments' => route('telegram-app.pages.payments'),
                 'help' => route('telegram-app.pages.help'),
+                'chats' => route('telegram-app.pages.chats'),
                 'support' => route('telegram-app.pages.support'),
             ],
             'auth_url' => route('telegram-app.auth.telegram'),

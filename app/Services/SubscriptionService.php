@@ -19,6 +19,10 @@ class SubscriptionService
         12 => 30,
     ];
 
+    public function __construct(
+        private readonly ReferralService $referrals,
+    ) {}
+
     public function renewEligibleSubscriptions(): void
     {
         $users = User::query()
@@ -68,7 +72,11 @@ class SubscriptionService
 
         $baseMonthPrice = $this->getRenewalAmount($user, $activePeriod->id, (float) $activePeriod->amount);
         $packageFullPrice = round($baseMonthPrice * $months, 2);
-        $packagePrice = round($packageFullPrice * ((100 - $discountPercent) / 100), 2);
+        $packagePriceBeforeReferral = round($packageFullPrice * ((100 - $discountPercent) / 100), 2);
+        $referralSummary = $this->referrals->getSummary($user);
+        $referralTotalDiscountPercent = (int) $referralSummary['total_discount_percent'];
+        $referralDiscountAmount = round($packagePriceBeforeReferral * ($referralTotalDiscountPercent / 100), 2);
+        $packagePrice = round(max(0, $packagePriceBeforeReferral - $referralDiscountAmount), 2);
         $balanceBefore = round($user->getStoredBalanceAmount(), 2);
         $depositAmount = round(max(0, $packagePrice - $balanceBefore), 2);
 
@@ -77,9 +85,14 @@ class SubscriptionService
             'discount_percent' => $discountPercent,
             'base_month_price' => round($baseMonthPrice, 2),
             'package_full_price' => $packageFullPrice,
+            'price_before_referral_discount' => $packagePriceBeforeReferral,
             'package_price' => $packagePrice,
             'balance_before' => $balanceBefore,
             'deposit_amount' => $depositAmount,
+            'referral_accumulated_discount_percent' => (int) $referralSummary['accumulated_discount_percent'],
+            'referral_permanent_discount_percent' => (int) $referralSummary['permanent_discount_percent'],
+            'referral_total_discount_percent' => $referralTotalDiscountPercent,
+            'referral_discount_amount' => $referralDiscountAmount,
         ];
     }
 
@@ -148,13 +161,49 @@ class SubscriptionService
         return true;
     }
 
-    public function activatePackageForUser(User $user, int $months, float $packagePrice): UserSubscription
-    {
+    public function activatePackageForUser(
+        User $user,
+        int $months,
+        float $packagePrice,
+        array $purchaseMeta = [],
+    ): UserSubscription {
         return $this->createPackageSubscription(
             user: $user,
             months: $months,
             packagePrice: $packagePrice,
+            purchaseMeta: $purchaseMeta,
         );
+    }
+
+    public function grantBonusDays(
+        User $user,
+        int $days,
+        ?Transaction $transaction = null,
+        array $meta = [],
+    ): UserSubscription {
+        return DB::transaction(function () use ($user, $days, $transaction, $meta) {
+            $user->loadMissing('latestSubscription');
+
+            $latestSubscription = $user->latestSubscription;
+            $startDate = $latestSubscription
+                ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
+                : today()->toDateString();
+            $endDate = Carbon::parse($startDate)->addDays($days)->toDateString();
+
+            $subscription = UserSubscription::query()->create([
+                'user_id' => $user->id,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'price' => 0,
+                'source' => 'referral_bonus',
+                'transaction_id' => $transaction?->id,
+                'meta' => $meta,
+            ]);
+
+            $this->syncUserSubscriptionExpiry($user);
+
+            return $subscription;
+        });
     }
 
     private function renewOrCreateSubscription(User $user): void
@@ -242,8 +291,9 @@ class SubscriptionService
         int $months,
         float $packagePrice,
         ?Transaction $transaction = null,
+        array $purchaseMeta = [],
     ): UserSubscription {
-        return DB::transaction(function () use ($user, $months, $packagePrice, $transaction) {
+        return DB::transaction(function () use ($user, $months, $packagePrice, $transaction, $purchaseMeta) {
             $lockedTransaction = $transaction
                 ? Transaction::query()->lockForUpdate()->find($transaction->id)
                 : null;
@@ -252,7 +302,7 @@ class SubscriptionService
                 throw new \RuntimeException('Не удалось заблокировать транзакцию для активации подписки.');
             }
 
-            $extraData = $lockedTransaction?->extra_data ?? [];
+            $extraData = $lockedTransaction?->extra_data ?? $purchaseMeta;
             if (($extraData['package_activation_processed'] ?? false) === true) {
                 $subscriptionStartDate = $extraData['subscription_start_date'] ?? null;
                 $subscriptionEndDate = $extraData['subscription_end_date'] ?? null;
@@ -280,22 +330,48 @@ class SubscriptionService
                 ],
                 [
                     'price' => $packagePrice,
+                    'source' => 'purchase',
+                    'transaction_id' => $lockedTransaction?->id,
+                    'meta' => [
+                        'subscription_months' => $months,
+                    ],
                 ]
             );
 
             if ($subscription->wasRecentlyCreated) {
-                $user->transactions()->create([
+                $subscriptionTransaction = $user->transactions()->create([
                     'type_id' => TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
                     'amount' => -$packagePrice,
                     'is_approved' => true,
                     'description' => $this->buildPackageTransactionDescription($months),
+                    'extra_data' => [
+                        'subscription_months' => $months,
+                        'package_price' => $packagePrice,
+                        'referral_accumulated_discount_percent_used' => (int) data_get($extraData, 'referral_accumulated_discount_percent', 0),
+                        'referral_permanent_discount_percent_used' => (int) data_get($extraData, 'referral_permanent_discount_percent', 0),
+                        'referral_total_discount_percent_used' => (int) data_get($extraData, 'referral_total_discount_percent', 0),
+                        'referral_discount_amount' => (float) data_get($extraData, 'referral_discount_amount', 0),
+                    ],
                 ]);
+
+                $subscription->forceFill([
+                    'transaction_id' => $subscriptionTransaction->id,
+                ])->save();
+
+                if ((int) data_get($extraData, 'referral_accumulated_discount_percent', 0) > 0) {
+                    $user->forceFill([
+                        'referral_accumulated_discount_percent' => 0,
+                    ])->save();
+                }
+
+                app(ReferralRewardService::class)->scheduleForSubscriptionPurchase($user, $subscriptionTransaction);
             }
 
             if ($lockedTransaction) {
                 $extraData['package_activation_processed'] = true;
                 $extraData['subscription_start_date'] = $startDate;
                 $extraData['subscription_end_date'] = $endDate;
+                $extraData['subscription_transaction_id'] = $subscription->transaction_id;
 
                 $lockedTransaction->update([
                     'extra_data' => $extraData,

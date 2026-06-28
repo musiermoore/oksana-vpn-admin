@@ -7,6 +7,7 @@ use App\Http\Resources\Api\ApiSubscriptionPackageResource;
 use App\Http\Resources\TelegramApp\TelegramAppUserResource;
 use App\Models\User;
 use App\Services\Api\ApiUserService;
+use App\Services\ReferralService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,12 +15,14 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly ApiUserService $users,
+        private readonly ReferralService $referrals,
     ) {}
 
     public function show(Request $request): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
+        $user->setAttribute('referral_summary', $this->referrals->getSummary($user));
 
         return response()->json([
             'user' => (new TelegramAppUserResource($user))->resolve(),

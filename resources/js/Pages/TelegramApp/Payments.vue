@@ -168,6 +168,17 @@ onMounted(async () => {
                 </div>
             </section>
 
+            <section v-if="user?.referral" class="tg-panel">
+                <span class="tg-section-label">Реферальная скидка</span>
+                <div class="tg-payment-hint">
+                    <strong>{{ user.referral.total_discount_percent }}% будет учтено при покупке</strong>
+                    <p>
+                        Накопительная скидка {{ user.referral.accumulated_discount_percent }}%.
+                        После успешной оплаты она сбросится, постоянная {{ user.referral.permanent_discount_percent }}% останется.
+                    </p>
+                </div>
+            </section>
+
             <section class="tg-panel">
                 <span class="tg-section-label">Выберите тариф</span>
 

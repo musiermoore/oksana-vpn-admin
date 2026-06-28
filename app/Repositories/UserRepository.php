@@ -29,6 +29,21 @@ class UserRepository
         return User::query()->findOrFail($id);
     }
 
+    public function findActiveById(int $id): ?User
+    {
+        return User::query()
+            ->whereKey($id)
+            ->whereNull('deleted_at')
+            ->first();
+    }
+
+    public function lockById(int $id): ?User
+    {
+        return User::query()
+            ->lockForUpdate()
+            ->find($id);
+    }
+
     public function findByTelegramId(string $telegramId): ?User
     {
         return User::query()
@@ -79,6 +94,9 @@ class UserRepository
                 'users.telegram_id',
                 'users.balance',
                 'users.is_admin',
+                'users.referrer_id',
+                'users.referral_accumulated_discount_percent',
+                'users.subscription_expires_at',
             ])
             ->where('telegram_id', trim($telegramId))
             ->tap(fn (Builder $query) => User::applyBillingSummary($query))
@@ -102,6 +120,9 @@ class UserRepository
                 'users.telegram_id',
                 'users.balance',
                 'users.welcome_text_seen_at',
+                'users.referrer_id',
+                'users.referral_accumulated_discount_percent',
+                'users.subscription_expires_at',
             ])
             ->where('telegram_id', trim($telegramId))
             ->where('users.is_active', true)

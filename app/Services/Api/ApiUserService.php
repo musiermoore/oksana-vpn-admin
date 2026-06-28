@@ -10,6 +10,7 @@ use App\Repositories\ConfigRepository;
 use App\Repositories\ShadowsocksConfigRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
+use App\Services\ReferralService;
 use App\Services\SubscriptionService;
 use App\Services\VlessDeepLinkService;
 use Carbon\Carbon;
@@ -26,6 +27,7 @@ class ApiUserService
         private readonly ShadowsocksConfigRepository $shadowsocksConfigs,
         private readonly SubscriptionService $subscriptionService,
         private readonly VlessDeepLinkService $vlessDeepLinks,
+        private readonly ReferralService $referrals,
     ) {}
 
     public function findUserByTelegramId(string $telegramId): ?User
@@ -44,7 +46,7 @@ class ApiUserService
         $telegramId = trim($data->telegramId);
         $name = $this->resolveName($telegram, $telegramId, $data->name);
 
-        [$user, $created] = DB::transaction(function () use ($telegram, $telegramId, $name) {
+        [$user, $created] = DB::transaction(function () use ($telegram, $telegramId, $name, $data) {
             $user = $this->users->findByTelegramId($telegramId);
 
             if ($user) {
@@ -79,15 +81,16 @@ class ApiUserService
                 }
             }
 
-            return [
-                $this->users->create([
-                    'telegram' => $telegram !== '' ? $telegram : null,
-                    'telegram_id' => $telegramId,
-                    'name' => $name,
-                    'join_at' => now()->toDateString(),
-                ]),
-                true,
-            ];
+            $user = $this->users->create([
+                'telegram' => $telegram !== '' ? $telegram : null,
+                'telegram_id' => $telegramId,
+                'name' => $name,
+                'join_at' => now()->toDateString(),
+            ]);
+
+            $this->referrals->attachReferral($user, $data->startParam);
+
+            return [$user->fresh(), true];
         });
 
         return new ApiUserRegistrationResultData($user, $created);

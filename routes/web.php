@@ -7,8 +7,15 @@ use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\ExtraPaymentController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SupportTicketController;
+use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
+use App\Http\Controllers\TelegramApp\PageController as TelegramAppPageController;
+use App\Http\Controllers\TelegramApp\PaymentController as TelegramAppPaymentController;
+use App\Http\Controllers\TelegramApp\ReferralController as TelegramAppReferralController;
+use App\Http\Controllers\TelegramApp\SupportTicketController as TelegramAppSupportTicketController;
+use App\Http\Controllers\TelegramApp\UserController as TelegramAppUserController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserSubscriptionController;
@@ -17,11 +24,6 @@ use App\Http\Controllers\VlessConfigController;
 use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
-use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
-use App\Http\Controllers\TelegramApp\PageController as TelegramAppPageController;
-use App\Http\Controllers\TelegramApp\PaymentController as TelegramAppPaymentController;
-use App\Http\Controllers\TelegramApp\SupportTicketController as TelegramAppSupportTicketController;
-use App\Http\Controllers\TelegramApp\UserController as TelegramAppUserController;
 use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +37,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [WireGuardController::class, 'activePeers'])->name('wireguard.active-peers');
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
     Route::get('api-request-logs', [ApiRequestLogController::class, 'index'])->name('api-request-logs.index');
+    Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
+    Route::get('referrals/{user}', [ReferralController::class, 'show'])->name('referrals.show');
 
     Route::resource('users', UserController::class);
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);
@@ -109,6 +113,8 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
         Route::post('logout', [TelegramAppAuthController::class, 'logout'])->name('logout');
         Route::get('subscription-packages', [TelegramAppUserController::class, 'subscriptionPackages'])
             ->name('subscription-packages');
+        Route::post('referrals/claim', [TelegramAppReferralController::class, 'claim'])
+            ->name('referrals.claim');
         Route::post('payments/subscriptions', [TelegramAppPaymentController::class, 'purchaseSubscription'])
             ->name('payments.subscriptions');
 

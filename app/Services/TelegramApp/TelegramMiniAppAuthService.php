@@ -42,11 +42,13 @@ class TelegramMiniAppAuthService
         $firstName = trim((string) ($userData['first_name'] ?? ''));
         $lastName = trim((string) ($userData['last_name'] ?? ''));
         $displayName = trim(trim($firstName.' '.$lastName));
+        $startParam = trim((string) ($payload['start_param'] ?? $data->startParam ?? ''));
 
         $result = $this->apiUserService->register(new ApiUserRegistrationData(
             telegramId: $telegramId,
             telegram: $username,
             name: $displayName !== '' ? $displayName : ($username !== '' ? $username : $telegramId),
+            startParam: $startParam !== '' ? $startParam : null,
         ));
 
         $plainTextToken = Str::random(80);

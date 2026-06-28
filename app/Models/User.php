@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -28,6 +29,8 @@ class User extends Authenticatable
         'name',
         'telegram',
         'telegram_id',
+        'referrer_id',
+        'referral_accumulated_discount_percent',
         'description',
         'join_at',
         'balance',
@@ -60,9 +63,39 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'balance' => 'float',
+            'referral_accumulated_discount_percent' => 'integer',
             'subscription_expires_at' => 'datetime',
             'welcome_text_seen_at' => 'datetime',
         ];
+    }
+
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'referrer_id')
+            ->withTrashed();
+    }
+
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(self::class, 'referrer_id');
+    }
+
+    public function activeReferrals(): HasMany
+    {
+        return $this->referrals()
+            ->whereNull('users.deleted_at')
+            ->whereNotNull('users.subscription_expires_at')
+            ->where('users.subscription_expires_at', '>=', now());
+    }
+
+    public function referralLinkages(): HasMany
+    {
+        return $this->hasMany(Referral::class, 'referrer_id');
+    }
+
+    public function referralRelationship(): HasOne
+    {
+        return $this->hasOne(Referral::class, 'referral_user_id');
     }
 
     public function configs()

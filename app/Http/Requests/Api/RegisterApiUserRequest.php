@@ -27,6 +27,7 @@ class RegisterApiUserRequest extends FormRequest
             'telegram' => ['nullable', 'string', 'max:255'],
             'telegram_id' => ['required', 'string', 'max:255'],
             'name' => ['nullable', 'string', 'max:255'],
+            'start_param' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -38,6 +39,7 @@ class RegisterApiUserRequest extends FormRequest
             telegramId: trim($telegramId ?? $data['telegram_id']),
             telegram: trim((string) ($data['telegram'] ?? '')),
             name: isset($data['name']) ? trim((string) $data['name']) : null,
+            startParam: isset($data['start_param']) ? trim((string) $data['start_param']) : null,
         );
     }
 }

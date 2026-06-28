@@ -6,18 +6,23 @@ import {
     getTelegramProfile,
     normalizeTelegramAppError,
     redirectFromTelegramStartParam,
+    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
 
 const props = defineProps({
     routes: Object,
     auth_url: String,
     profile_url: String,
+    claim_referral_url: String,
 });
 
 const state = ref('loading');
 const error = ref('');
 const user = ref(null);
 const telegramProfile = ref(null);
+const referralStatus = ref('');
+const referralInput = ref('');
+const claimingReferral = ref(false);
 
 const formatSubscriptionDate = (value) => {
     if (!value) {
@@ -37,6 +42,66 @@ const formatSubscriptionDate = (value) => {
 
 const retry = () => {
     window.location.reload();
+};
+
+const copyReferralLink = async () => {
+    const link = user.value?.referral?.referral_link;
+
+    if (!link) {
+        referralStatus.value = 'Ссылка пока недоступна.';
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(link);
+        referralStatus.value = 'Ссылка скопирована.';
+    } catch {
+        referralStatus.value = 'Не удалось скопировать ссылку.';
+    }
+};
+
+const shareReferralLink = () => {
+    const link = user.value?.referral?.referral_link;
+
+    if (!link) {
+        referralStatus.value = 'Ссылка пока недоступна.';
+        return;
+    }
+
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Присоединяйся к VPN по моей ссылке')}`;
+
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+        window.Telegram.WebApp.openTelegramLink(shareUrl);
+        return;
+    }
+
+    window.open(shareUrl, '_blank', 'noopener');
+};
+
+const claimReferral = async () => {
+    if (!referralInput.value.trim()) {
+        referralStatus.value = 'Введите ссылку или код.';
+        return;
+    }
+
+    claimingReferral.value = true;
+    referralStatus.value = '';
+
+    try {
+        const response = await window.axios.post(props.claim_referral_url, {
+            referral: referralInput.value.trim(),
+        }, {
+            headers: telegramAppHeaders(),
+        });
+
+        user.value = response.data?.user ?? user.value;
+        referralInput.value = '';
+        referralStatus.value = response.data?.message ?? 'Реферер сохранён.';
+    } catch (requestError) {
+        referralStatus.value = normalizeTelegramAppError(requestError, 'Не удалось сохранить реферальную ссылку.');
+    } finally {
+        claimingReferral.value = false;
+    }
 };
 
 onMounted(async () => {
@@ -139,6 +204,72 @@ onMounted(async () => {
                         </div>
                     </div>
                 </div>
+            </section>
+
+            <section class="tg-panel" v-if="user?.referral">
+                <span class="tg-section-label">Реферальная программа</span>
+
+                <div class="tg-rows">
+                    <div class="tg-row-link">
+                        <div class="tg-row-link__icon" aria-hidden="true">∞</div>
+                        <div class="tg-row-link__copy">
+                            <strong>{{ user.referral.total_discount_percent }}% скидки</strong>
+                            <span>
+                                Накопительная {{ user.referral.accumulated_discount_percent }}%,
+                                постоянная {{ user.referral.permanent_discount_percent }}%
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="tg-row-link">
+                        <div class="tg-row-link__icon" aria-hidden="true">↗</div>
+                        <div class="tg-row-link__copy">
+                            <strong>{{ user.referral.active_referrals_count }} активных рефералов</strong>
+                            <span>
+                                До следующего уровня:
+                                {{ user.referral.remaining_to_next_level > 0 ? user.referral.remaining_to_next_level : 'уровень достигнут' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tg-payment-hint">
+                    <strong>Ваша реферальная ссылка</strong>
+                    <p>{{ user.referral.referral_link || 'Укажите TELEGRAM_BOT_USERNAME, чтобы показывать ссылку.' }}</p>
+                </div>
+
+                <div class="tg-plan-list">
+                    <button class="button tg-button-full" type="button" @click="copyReferralLink">
+                        Скопировать ссылку
+                    </button>
+                    <button class="button button--secondary tg-button-full" type="button" @click="shareReferralLink">
+                        Поделиться в Telegram
+                    </button>
+                </div>
+
+                <div v-if="user.referral.can_claim" class="tg-payment-hint">
+                    <strong>Уже были приглашены раньше?</strong>
+                    <p>Можно один раз вручную ввести `ref_...` или полную ссылку, чтобы сохранить реферера для существующего аккаунта.</p>
+                </div>
+
+                <div v-if="user.referral.can_claim" class="field-group">
+                    <input
+                        v-model="referralInput"
+                        class="input"
+                        type="text"
+                        placeholder="ref_123 или https://t.me/..."
+                    >
+                    <button
+                        class="button tg-button-full"
+                        type="button"
+                        :disabled="claimingReferral"
+                        @click="claimReferral"
+                    >
+                        {{ claimingReferral ? 'Сохраняем...' : 'Привязать реферера' }}
+                    </button>
+                </div>
+
+                <p v-if="referralStatus" class="field-error">{{ referralStatus }}</p>
             </section>
         </template>
     </TelegramMiniAppFrame>

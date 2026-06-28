@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TelegramApp\AuthenticateTelegramAppRequest;
 use App\Http\Resources\TelegramApp\TelegramAppUserResource;
 use App\Models\User;
+use App\Services\ReferralService;
 use App\Services\TelegramApp\TelegramMiniAppAuthService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly TelegramMiniAppAuthService $authService,
+        private readonly ReferralService $referrals,
     ) {}
 
     public function authenticate(AuthenticateTelegramAppRequest $request): JsonResponse
@@ -33,6 +35,8 @@ class AuthController extends Controller
                 'message' => 'Authentication failed.',
             ], 500);
         }
+
+        $result['user']->setAttribute('referral_summary', $this->referrals->getSummary($result['user']));
 
         return response()->json([
             'token' => $result['token'],

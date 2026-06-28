@@ -41,6 +41,7 @@ class PageController extends Controller
             'support_tickets_url' => route('telegram-app.support.tickets.index'),
             'support_ticket_store_url' => route('telegram-app.support.tickets.store'),
             'subscription_packages_url' => route('telegram-app.subscription-packages'),
+            'claim_referral_url' => route('telegram-app.referrals.claim'),
             'payment_url' => route('telegram-app.payments.subscriptions'),
             ...$extra,
         ]);

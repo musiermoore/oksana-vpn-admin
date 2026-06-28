@@ -30,6 +30,13 @@ class ApiTransactionService
                 user: $user,
                 months: $data->month,
                 packagePrice: (float) $quote['package_price'],
+                purchaseMeta: [
+                    'subscription_months' => $data->month,
+                    'referral_accumulated_discount_percent' => $quote['referral_accumulated_discount_percent'],
+                    'referral_permanent_discount_percent' => $quote['referral_permanent_discount_percent'],
+                    'referral_total_discount_percent' => $quote['referral_total_discount_percent'],
+                    'referral_discount_amount' => $quote['referral_discount_amount'],
+                ],
             );
 
             $formattedEndDate = Carbon::parse($subscription->end_date)->format('d.m.Y');
@@ -53,9 +60,14 @@ class ApiTransactionService
                 'base_month_price' => $quote['base_month_price'],
                 'discount_percent' => $quote['discount_percent'],
                 'package_full_price' => $quote['package_full_price'],
+                'price_before_referral_discount' => $quote['price_before_referral_discount'],
                 'package_price' => $quote['package_price'],
                 'balance_before' => $quote['balance_before'],
                 'deposit_amount' => $quote['deposit_amount'],
+                'referral_accumulated_discount_percent' => $quote['referral_accumulated_discount_percent'],
+                'referral_permanent_discount_percent' => $quote['referral_permanent_discount_percent'],
+                'referral_total_discount_percent' => $quote['referral_total_discount_percent'],
+                'referral_discount_amount' => $quote['referral_discount_amount'],
             ],
         ]);
 

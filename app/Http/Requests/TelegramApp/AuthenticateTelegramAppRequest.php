@@ -23,6 +23,7 @@ class AuthenticateTelegramAppRequest extends FormRequest
     {
         return new TelegramAppAuthData(
             initData: trim((string) $this->validated('init_data')),
+            startParam: null,
         );
     }
 }

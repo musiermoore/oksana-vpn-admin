@@ -8,5 +8,6 @@ readonly class ApiUserRegistrationData
         public string $telegramId,
         public string $telegram,
         public ?string $name,
+        public ?string $startParam = null,
     ) {}
 }

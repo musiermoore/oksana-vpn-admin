@@ -12,10 +12,27 @@ class UserSubscription extends Model
         'start_date',
         'end_date',
         'price',
+        'source',
+        'transaction_id',
+        'meta',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'price' => 'float',
+            'transaction_id' => 'integer',
+            'meta' => 'array',
+        ];
+    }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function transaction(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class);
     }
 }

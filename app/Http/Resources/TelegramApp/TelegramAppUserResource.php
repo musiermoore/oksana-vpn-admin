@@ -18,6 +18,10 @@ class TelegramAppUserResource extends JsonResource
             'is_admin' => (bool) $this->is_admin,
             'has_active_access' => $this->hasActiveAccess(),
             'subscription_expires_at' => optional($this->subscription_expires_at)?->toAtomString(),
+            'referral' => $this->when(
+                isset($this->referral_summary),
+                fn () => $this->referral_summary
+            ),
         ];
     }
 }

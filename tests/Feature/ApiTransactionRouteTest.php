@@ -87,7 +87,7 @@ class ApiTransactionRouteTest extends TestCase
         ])->assertOk()
             ->assertExactJson([
                 'status' => 'deposit_required',
-                'message' => 'Для активации подписки необходимо оплатить 520 ₽.',
+                'message' => 'Для активации подписки необходимо оплатить 520 ₽. Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».',
                 'deposit_amount' => 520.0,
                 'transaction_id' => 1,
                 'invoice_id' => 1,
@@ -117,9 +117,14 @@ class ApiTransactionRouteTest extends TestCase
             'base_month_price' => 150,
             'discount_percent' => 20,
             'package_full_price' => 900,
+            'price_before_referral_discount' => 720,
             'package_price' => 720,
             'balance_before' => 200,
             'deposit_amount' => 520,
+            'referral_accumulated_discount_percent' => 0,
+            'referral_permanent_discount_percent' => 0,
+            'referral_total_discount_percent' => 0,
+            'referral_discount_amount' => 0,
         ], $transaction->extra_data);
     }
 

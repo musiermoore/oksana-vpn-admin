@@ -739,8 +739,8 @@ class XuiConfigService
     protected function getOnlineClientPaths(): array
     {
         return [
-            '/panel/api/inbounds/onlines',
-            '/panel/inbound/onlines',
+            '/panel/api/clients/onlines',
+            '/panel/clients/onlines',
         ];
     }
 

@@ -24,6 +24,16 @@ class XuiConfigService extends BaseXuiConfigService
         return false;
     }
 
+    /**
+     * @return array<int, string>
+     */
+    protected function getClientTrafficPaths(string $email): array
+    {
+        return [
+            '/panel/api/clients/traffic/'.urlencode($email),
+        ];
+    }
+
     protected function updateClient(VlessConfig $config, array $client): Response
     {
         return $this->getRequest()

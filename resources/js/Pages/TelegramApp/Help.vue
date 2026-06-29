@@ -110,9 +110,8 @@ onMounted(async () => {
         </section>
 
         <template v-else>
-            <section v-if="section === 'menu'" class="tg-panel">
-                <span class="tg-section-label">Help Menu</span>
-                <h2>Чем помочь?</h2>
+            <section v-if="section === 'menu'" class="tg-panel tg-panel-stack">
+                <h2 class="tg-help-menu-title">Чем помочь?</h2>
 
                 <div class="tg-stack-actions">
                     <button class="button tg-button-full" type="button" @click="openSection('wg')">WG</button>
@@ -123,7 +122,7 @@ onMounted(async () => {
                 </div>
             </section>
 
-            <section v-else-if="section === 'wg'" class="tg-panel">
+            <section v-else-if="section === 'wg'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">WG</span>
                 <h2>Как подключить WireGuard</h2>
                 <p>Установите клиент, откройте экран WireGuard в mini-app и выберите один из способов импорта: QR Code или файл конфигурации.</p>
@@ -136,7 +135,7 @@ onMounted(async () => {
                 </div>
             </section>
 
-            <section v-else-if="section === 'vless'" class="tg-panel">
+            <section v-else-if="section === 'vless'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">VLESS</span>
                 <h2>Как подключить VLESS</h2>
                 <p>Откройте экран VLESS, нажмите `Link` и импортируйте подписку в поддерживаемый клиент через deep link.</p>
@@ -149,7 +148,7 @@ onMounted(async () => {
                 </div>
             </section>
 
-            <section v-else-if="section === 'clients'" class="tg-panel">
+            <section v-else-if="section === 'clients'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Клиенты</span>
                 <h2>Выберите тип клиента</h2>
                 <p>Здесь собраны приложения для обеих схем подключения.</p>
@@ -162,7 +161,7 @@ onMounted(async () => {
                 </div>
             </section>
 
-            <section v-else-if="section === 'wg-clients'" class="tg-panel">
+            <section v-else-if="section === 'wg-clients'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">WG клиенты</span>
                 <h2>Приложения для WireGuard</h2>
 
@@ -188,7 +187,7 @@ onMounted(async () => {
                 </div>
             </section>
 
-            <section v-else class="tg-panel">
+            <section v-else class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">VLESS клиенты</span>
                 <h2>Приложения для VLESS</h2>
 

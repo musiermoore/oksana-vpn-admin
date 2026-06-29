@@ -72,7 +72,7 @@ onMounted(async () => {
             <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
         </section>
 
-        <section v-else class="tg-panel">
+        <section v-else class="tg-panel tg-panel-stack">
             <span class="tg-section-label">Сообщество</span>
             <h2>Беседы и каналы</h2>
             <p>Здесь собраны Telegram-ссылки на основные каналы и чаты проекта.</p>

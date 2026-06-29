@@ -12,6 +12,7 @@
     --tg-success: #4ade80;
     --tg-danger: #fb7185;
     --tg-radius: 8px;
+    --tg-stack-gap: 12px;
     position: relative;
     min-height: 100vh;
     overflow-x: hidden;
@@ -86,12 +87,12 @@
     margin: 0 auto;
     padding: 14px;
     display: grid;
-    gap: 14px;
+    gap: var(--tg-stack-gap);
 }
 
 .tg-main {
     display: grid;
-    gap: 14px;
+    gap: var(--tg-stack-gap);
     min-width: 0;
 }
 
@@ -238,9 +239,10 @@
 }
 
 .tg-profile-button {
-    flex: 0 1 148px;
+    flex: 0 0 auto;
     min-width: 0;
-    max-width: 148px;
+    max-width: none;
+    width: fit-content;
     flex-direction: column;
     align-items: flex-start;
     padding: 8px 10px;
@@ -248,13 +250,13 @@
 }
 
 .tg-profile-button span {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     color: rgba(226, 214, 255, 0.68);
 }
 
 .tg-profile-button strong,
 .tg-link-button {
-    font-size: 0.82rem;
+    font-size: 0.9rem;
 }
 
 .tg-profile-button strong,
@@ -278,7 +280,7 @@
 
 .tg-profile-panel {
     display: grid;
-    gap: 8px;
+    gap: var(--tg-stack-gap);
     padding: 10px;
 }
 
@@ -351,6 +353,13 @@
     padding: 14px;
 }
 
+.tg-panel-stack,
+.tg-menu-sections,
+.tg-notice-stack {
+    display: grid;
+    gap: var(--tg-stack-gap);
+}
+
 .tg-home-intro {
     padding-top: 18px;
     padding-bottom: 18px;
@@ -370,13 +379,11 @@
 }
 
 .tg-status-row--success {
-    margin-top: 10px;
     border-color: rgba(74, 222, 128, 0.22);
     background: linear-gradient(180deg, rgba(18, 38, 33, 0.72), rgba(12, 26, 24, 0.82));
 }
 
 .tg-status-row--danger {
-    margin-top: 10px;
     border-color: rgba(251, 113, 133, 0.22);
     background: linear-gradient(180deg, rgba(50, 20, 30, 0.72), rgba(30, 12, 20, 0.82));
 }
@@ -399,11 +406,7 @@
 .tg-plan-list,
 .tg-skeleton-list {
     display: grid;
-    gap: 10px;
-}
-
-.tg-plan-summary__row {
-    margin-top: 8px;
+    gap: var(--tg-stack-gap);
 }
 
 .tg-plan-option {
@@ -469,13 +472,12 @@
 .tg-payment-hint {
     display: grid;
     gap: 4px;
-    margin: 12px 0 0;
-    text-align: center;
+    text-align: left;
 }
 
 .tg-referral-card {
     display: grid;
-    gap: 12px;
+    gap: var(--tg-stack-gap);
 }
 
 .tg-referral-head {
@@ -530,17 +532,17 @@
 }
 
 .tg-referral-stat__top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: grid;
+    gap: 6px;
     min-width: 0;
 }
 
 .tg-referral-stat__top span {
     min-width: 0;
-    color: rgba(214, 202, 246, 0.8);
-    font-size: 0.77rem;
+    color: #fff7ea;
+    font-size: 0.92rem;
     line-height: 1.2;
+    font-weight: 700;
 }
 
 .tg-referral-stat strong {
@@ -560,7 +562,7 @@
 .tg-referral-link-box,
 .tg-referral-claim {
     display: grid;
-    gap: 10px;
+    gap: var(--tg-stack-gap);
     padding: 12px;
 }
 
@@ -740,7 +742,7 @@
 .tg-empty-panel {
     text-align: center;
     display: grid;
-    gap: 12px;
+    gap: var(--tg-stack-gap);
     justify-items: center;
     padding-top: 24px;
     padding-bottom: 24px;
@@ -848,7 +850,7 @@
 
 .tg-chat {
     display: grid;
-    gap: 10px;
+    gap: var(--tg-stack-gap);
 }
 
 .tg-chat__message {
@@ -1022,7 +1024,7 @@
 .tg-stack-actions,
 .tg-link-list {
     display: grid;
-    gap: 12px;
+    gap: var(--tg-stack-gap);
 }
 
 .tg-menu-grid {
@@ -1102,6 +1104,54 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--tg-radius);
     background: rgba(255, 255, 255, 0.03);
+}
+
+.tg-raw-link-box {
+    display: grid;
+    gap: var(--tg-stack-gap);
+}
+
+.tg-section-head--compact {
+    align-items: center;
+}
+
+.tg-section-head--compact > div {
+    display: grid;
+    gap: 4px;
+}
+
+.tg-row-link--plain,
+.tg-status-row--plain {
+    justify-content: flex-start;
+}
+
+.tg-row-link--plain .tg-row-link__copy,
+.tg-status-row--plain .tg-status-copy {
+    flex: 1 1 auto;
+    text-align: left;
+}
+
+.tg-status-copy--centered {
+    width: 100%;
+    justify-items: center;
+    text-align: center;
+}
+
+.tg-plan-summary__status {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    text-align: center;
+}
+
+.tg-plan-summary__status strong {
+    font-size: 1.25rem;
+    line-height: 1.1;
+    font-weight: 700;
+}
+
+.tg-help-menu-title {
+    text-align: center;
 }
 
 .tg-qr-card {

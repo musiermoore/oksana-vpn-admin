@@ -38,6 +38,9 @@ const primaryNavItems = [
         description: 'Deep links для клиентов, raw-ссылка и QR-код.',
         glyph: 'VL',
     },
+];
+
+const secondaryNavItems = [
     {
         key: 'payments',
         title: 'Подписка',
@@ -189,13 +192,7 @@ onMounted(async () => {
         :user="user"
     >
         <section v-if="state === 'loading'" class="tg-panel tg-referral-card tg-referral-card--loading">
-            <div class="tg-referral-head">
-                <div>
-                    <span class="tg-section-label">Реферальная программа</span>
-                    <h2>Реферальная программа</h2>
-                    <p>Загружаем реферальную программу…</p>
-                </div>
-            </div>
+            <p>Загружаем реферальную программу…</p>
 
             <div class="tg-referral-stats-grid">
                 <div class="tg-skeleton-card tg-skeleton-card--compact"></div>
@@ -217,47 +214,47 @@ onMounted(async () => {
         </section>
 
         <template v-else>
-            <section class="tg-panel tg-home-intro">
-                <div class="tg-home-intro__brand">
-                    <div class="tg-brand-mark tg-brand-mark--large" aria-hidden="true">
-                        <span class="tg-brand-mark__core"></span>
+            <section class="tg-panel">
+                <div class="tg-menu-sections">
+                    <div class="tg-menu-grid">
+                        <Link
+                            v-for="item in primaryNavItems"
+                            :key="item.key"
+                            :href="routes?.[item.key]"
+                            class="tg-menu-card"
+                        >
+                            <div class="tg-menu-card__badge" aria-hidden="true">{{ item.glyph }}</div>
+                            <div class="tg-menu-card__copy">
+                                <strong>{{ item.title }}</strong>
+                                <span>{{ item.description }}</span>
+                            </div>
+                        </Link>
                     </div>
 
-                    <div class="tg-home-intro__copy">
-                        <h2>OksanaVPN</h2>
-                        <p>Ваш безопасный доступ к интернету</p>
+                    <div class="tg-menu-grid">
+                        <Link
+                            v-for="item in secondaryNavItems"
+                            :key="item.key"
+                            :href="routes?.[item.key]"
+                            class="tg-menu-card"
+                        >
+                            <div class="tg-menu-card__badge" aria-hidden="true">{{ item.glyph }}</div>
+                            <div class="tg-menu-card__copy">
+                                <strong>{{ item.title }}</strong>
+                                <span>{{ item.description }}</span>
+                            </div>
+                        </Link>
                     </div>
                 </div>
             </section>
 
-            <section class="tg-panel">
-                <span class="tg-section-label">Главное меню</span>
-
-                <div class="tg-menu-grid">
-                    <Link
-                        v-for="item in primaryNavItems"
-                        :key="item.key"
-                        :href="routes?.[item.key]"
-                        class="tg-menu-card"
-                    >
-                        <div class="tg-menu-card__badge" aria-hidden="true">{{ item.glyph }}</div>
-                        <div class="tg-menu-card__copy">
-                            <strong>{{ item.title }}</strong>
-                            <span>{{ item.description }}</span>
-                        </div>
-                    </Link>
-                </div>
-
-                <Link :href="routes?.support" class="button button--secondary tg-button-full">
-                    Поддержка
-                </Link>
-            </section>
-
-            <section class="tg-panel">
+            <section class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Статус подключения</span>
 
-                <div class="tg-status-row" :class="user?.has_active_access ? 'tg-status-row--success' : 'tg-status-row--danger'">
-                    <div class="tg-status-icon" aria-hidden="true">{{ user?.has_active_access ? '✓' : '!' }}</div>
+                <div
+                    class="tg-status-row tg-status-row--plain"
+                    :class="user?.has_active_access ? 'tg-status-row--success' : 'tg-status-row--danger'"
+                >
                     <div class="tg-status-copy">
                         <strong>{{ user?.has_active_access ? 'Ваш доступ активен' : 'Доступ требует продления' }}</strong>
                         <span>{{ user?.has_active_access ? 'Подключение готово к использованию' : 'Откройте подписку, чтобы восстановить доступ' }}</span>
@@ -265,15 +262,14 @@ onMounted(async () => {
                 </div>
 
                 <div class="tg-rows">
-                    <div class="tg-row-link">
-                        <div class="tg-row-link__icon" aria-hidden="true">✦</div>
+                    <div class="tg-row-link tg-row-link--plain">
                         <div class="tg-row-link__copy">
-                            <strong>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</strong>
-                            <span>Текущий период доступа</span>
+                            <strong>Срок подписки</strong>
+                            <span>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</span>
                         </div>
                     </div>
 
-                    <div class="tg-row-link">
+                    <div class="tg-row-link tg-row-link--plain">
                         <div class="tg-row-link__icon" aria-hidden="true">@</div>
                         <div class="tg-row-link__copy">
                             <strong>Профиль</strong>
@@ -281,7 +277,7 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <div class="tg-row-link">
+                    <div class="tg-row-link tg-row-link--plain">
                         <div class="tg-row-link__icon" aria-hidden="true">₽</div>
                         <div class="tg-row-link__copy">
                             <strong>Баланс</strong>
@@ -292,18 +288,11 @@ onMounted(async () => {
             </section>
 
             <section class="tg-panel tg-referral-card" v-if="referral">
-                <div class="tg-referral-head">
-                    <div>
-                        <span class="tg-section-label">Реферальная программа</span>
-                        <h2>Реферальная программа</h2>
-                        <p>Приглашайте друзей и получайте скидку на подписку.</p>
-                    </div>
-                </div>
+                <p>Приглашайте друзей и получайте скидку на подписку.</p>
 
                 <div class="tg-referral-stats-grid">
                     <article class="tg-referral-stat">
                         <div class="tg-referral-stat__top">
-                            <div class="tg-row-link__icon" aria-hidden="true">∞</div>
                             <span>Ваша скидка</span>
                         </div>
                         <strong>{{ referral.total_discount_percent }}%</strong>
@@ -312,7 +301,6 @@ onMounted(async () => {
 
                     <article class="tg-referral-stat">
                         <div class="tg-referral-stat__top">
-                            <div class="tg-row-link__icon" aria-hidden="true">↗</div>
                             <span>Активные рефералы</span>
                         </div>
                         <strong>{{ referral.active_referrals_count }}</strong>

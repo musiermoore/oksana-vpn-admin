@@ -202,20 +202,18 @@ onMounted(async () => {
         </section>
 
         <template v-else>
-            <section v-if="screen === 'overview'" class="tg-panel tg-plan-summary">
+            <section v-if="screen === 'overview'" class="tg-panel tg-plan-summary tg-panel-stack">
                 <span class="tg-section-label">Подписка</span>
 
-                <div class="tg-plan-summary__row">
+                <div class="tg-plan-summary__status">
                     <div>
                         <strong>{{ user?.subscription_expires_at ? 'Подписка активна' : 'Подписка не активна' }}</strong>
                         <p>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</p>
                     </div>
-
-                    <span v-if="user?.subscription_expires_at" class="badge badge--success">Активна</span>
                 </div>
 
                 <div class="tg-rows">
-                    <div class="tg-row-link">
+                    <div class="tg-row-link tg-row-link--plain">
                         <div class="tg-row-link__icon" aria-hidden="true">₽</div>
                         <div class="tg-row-link__copy">
                             <strong>Баланс</strong>
@@ -223,7 +221,7 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <div class="tg-row-link">
+                    <div class="tg-row-link tg-row-link--plain">
                         <div class="tg-row-link__icon" aria-hidden="true">!</div>
                         <div class="tg-row-link__copy">
                             <strong>Долг</strong>
@@ -232,22 +230,24 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <div v-if="hasDebt" class="tg-payment-hint tg-payment-hint--danger">
-                    <strong>На аккаунте есть долг</strong>
-                    <p>Пока долг не закрыт, доступ к конфигам и VLESS будет ограничен.</p>
-                </div>
+                <div class="tg-notice-stack">
+                    <div v-if="hasDebt" class="tg-payment-hint tg-payment-hint--danger">
+                        <strong>На аккаунте есть долг</strong>
+                        <p>Пока долг не закрыт, доступ к конфигам и VLESS будет ограничен.</p>
+                    </div>
 
-                <div v-else-if="!hasMoneyForNextMonth" class="tg-payment-hint">
-                    <strong>На следующий месяц средств не хватает</strong>
-                    <p>Рекомендуем пополнить подписку заранее, чтобы доступ не прерывался.</p>
-                </div>
+                    <div v-else-if="!hasMoneyForNextMonth" class="tg-payment-hint">
+                        <strong>На следующий месяц средств не хватает</strong>
+                        <p>Рекомендуем пополнить подписку заранее, чтобы доступ не прерывался.</p>
+                    </div>
 
-                <div v-if="user?.referral" class="tg-payment-hint">
-                    <strong>{{ user.referral.total_discount_percent }}% скидки будет учтено при покупке</strong>
-                    <p>
-                        Накопительная скидка {{ user.referral.accumulated_discount_percent }}%.
-                        После успешной оплаты она сбросится, постоянная {{ user.referral.permanent_discount_percent }}% останется.
-                    </p>
+                    <div v-if="user?.referral" class="tg-payment-hint">
+                        <strong>{{ user.referral.total_discount_percent }}% скидки будет учтено при покупке</strong>
+                        <p>
+                            Накопительная скидка {{ user.referral.accumulated_discount_percent }}%.
+                            После успешной оплаты она сбросится, постоянная {{ user.referral.permanent_discount_percent }}% останется.
+                        </p>
+                    </div>
                 </div>
 
                 <div class="tg-stack-actions">
@@ -258,7 +258,7 @@ onMounted(async () => {
                 <p v-if="packageLoadError" class="field-error">{{ packageLoadError }}</p>
             </section>
 
-            <section v-else-if="screen === 'packages'" class="tg-panel">
+            <section v-else-if="screen === 'packages'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Выбор тарифа</span>
                 <h2>Выберите срок подписки</h2>
 
@@ -313,7 +313,7 @@ onMounted(async () => {
                 <p v-if="error" class="field-error">{{ error }}</p>
             </section>
 
-            <section v-else-if="screen === 'activated'" class="tg-panel">
+            <section v-else-if="screen === 'activated'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Готово</span>
                 <h2>Подписка активирована</h2>
                 <p>{{ paymentResult?.message || 'Оплата завершена, доступ продлён.' }}</p>
@@ -326,7 +326,7 @@ onMounted(async () => {
                 <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
             </section>
 
-            <section v-else class="tg-panel">
+            <section v-else class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Оплата</span>
                 <h2>Нужно завершить оплату</h2>
                 <p>{{ paymentResult?.message || 'Для активации подписки перейдите к оплате.' }}</p>

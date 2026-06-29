@@ -194,7 +194,7 @@ onBeforeUnmount(() => {
         </section>
 
         <template v-else>
-            <section v-if="step === 'menu'" class="tg-panel">
+            <section v-if="step === 'menu'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">VLESS</span>
                 <h2>Выберите действие</h2>
                 <p>Можно сразу открыть ссылку в клиенте или показать QR-код.</p>
@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 
-            <section v-else-if="step === 'links'" class="tg-panel">
+            <section v-else-if="step === 'links'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Link</span>
                 <h2>Подключение к VLESS</h2>
                 <p>Выберите клиент или скопируйте raw-ссылку.</p>
@@ -264,7 +264,7 @@ onBeforeUnmount(() => {
                 </div>
             </section>
 
-            <section v-else class="tg-panel">
+            <section v-else class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">QR-Code</span>
                 <h2>QR для VLESS</h2>
                 <p>Отсканируйте код в совместимом VLESS-клиенте.</p>

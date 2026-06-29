@@ -197,8 +197,8 @@ onBeforeUnmount(() => {
         </section>
 
         <template v-else>
-            <section v-if="step === 'list'" class="tg-panel">
-                <div class="tg-section-head">
+            <section v-if="step === 'list'" class="tg-panel tg-panel-stack">
+                <div class="tg-section-head tg-section-head--compact">
                     <div>
                         <span class="tg-section-label">WireGuard Configs</span>
                         <h2>Выберите конфиг</h2>
@@ -228,7 +228,7 @@ onBeforeUnmount(() => {
                 <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
             </section>
 
-            <section v-else-if="step === 'actions'" class="tg-panel">
+            <section v-else-if="step === 'actions'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Конфиг</span>
                 <h2>{{ selectedConfig?.name }}</h2>
                 <p>QR-код можно сразу показать на экране, а файл отправить прямо в бота.</p>
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 
-            <section v-else-if="step === 'qr'" class="tg-panel">
+            <section v-else-if="step === 'qr'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">QR Code</span>
                 <h2>{{ selectedConfig?.name }}</h2>
                 <p>Отсканируйте QR-код в приложении WireGuard.</p>
@@ -272,7 +272,7 @@ onBeforeUnmount(() => {
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 
-            <section v-else class="tg-panel">
+            <section v-else class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Файл</span>
                 <h2>Файл отправлен в бота</h2>
                 <p>Откройте диалог с ботом в Telegram и заберите конфиг оттуда.</p>

@@ -28,15 +28,21 @@ const selectedMonth = ref(null);
 const payingMonth = ref(null);
 const paymentResult = ref(null);
 const packageLoadError = ref('');
-const purchaseMode = ref('personal');
+const purchaseMode = ref('PERSONAL');
 const activationCode = ref('');
 const activationError = ref('');
 const activationStatus = ref('');
 const activatingCode = ref(false);
 
+const availablePackages = computed(() => (
+    purchaseMode.value === 'GIFT'
+        ? packages.value.filter((item) => !item.is_trial)
+        : packages.value
+));
+
 const selectedPackage = computed(() => (
-    packages.value.find((item) => item.month === selectedMonth.value)
-    ?? packages.value[0]
+    availablePackages.value.find((item) => item.month === selectedMonth.value)
+    ?? availablePackages.value[0]
     ?? null
 ));
 const purchasedCodes = computed(() => user.value?.subscription_codes ?? []);
@@ -48,7 +54,13 @@ const hasMoneyForNextMonth = computed(() => Boolean(user.value?.has_money_for_ne
 const totalDiscountPercent = computed(() => Number(user.value?.referral?.total_discount_percent ?? 0));
 const hasReferralDiscount = computed(() => totalDiscountPercent.value > 0);
 
-const durationText = (months) => {
+const durationText = (item) => {
+    if (item?.is_trial && Number(item?.days ?? 0) > 0) {
+        return `${item.days} дня пробного доступа`;
+    }
+
+    const months = Number(item?.month ?? 0);
+
     if (months === 1) {
         return '30 дней доступа';
     }
@@ -84,6 +96,10 @@ const paymentBreakdown = (item) => {
     const payableNow = Number(item.payable_now ?? item.price ?? 0);
     const totalPrice = Number(item.price ?? 0);
     const balanceApplied = Number(item.balance_applied ?? 0);
+
+    if (Boolean(item.is_trial)) {
+        return 'Бесплатно';
+    }
 
     if (balanceApplied <= 0 || payableNow >= totalPrice) {
         return `К оплате ${payableNow} ₽`;
@@ -125,8 +141,11 @@ const loadPackages = async () => {
     });
 
     packages.value = response.data?.data ?? [];
-    selectedMonth.value = packages.value.find((item) => item.month === 12)?.month
-        ?? packages.value[0]?.month
+};
+
+const chooseDefaultPackage = () => {
+    selectedMonth.value = availablePackages.value.find((item) => item.month === 12)?.month
+        ?? availablePackages.value[0]?.month
         ?? null;
 };
 
@@ -137,6 +156,7 @@ const openPackageSelectFor = async (mode) => {
 
     try {
         await loadPackages();
+        chooseDefaultPackage();
         screen.value = 'packages';
     } catch (requestError) {
         packageLoadError.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить тарифы.');
@@ -333,8 +353,8 @@ onMounted(async () => {
                 </div>
 
                 <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" @click="openPackageSelectFor('personal')">Купить подписку</button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="openPackageSelectFor('gift')">
+                    <button class="button tg-button-full" type="button" @click="openPackageSelectFor('PERSONAL')">Купить подписку</button>
+                    <button class="button button--secondary tg-button-full" type="button" @click="openPackageSelectFor('GIFT')">
                         Купить код в подарок
                     </button>
                     <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
@@ -404,16 +424,16 @@ onMounted(async () => {
 
             <section v-else-if="screen === 'packages'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Выбор тарифа</span>
-                <h2>{{ purchaseMode === 'gift' ? 'Выберите срок подарочного кода' : 'Выберите срок подписки' }}</h2>
+                <h2>{{ purchaseMode === 'GIFT' ? 'Выберите срок подарочного кода' : 'Выберите срок подписки' }}</h2>
 
-                <div v-if="packages.length === 0" class="tg-empty-panel">
+                <div v-if="availablePackages.length === 0" class="tg-empty-panel">
                     <h2>Нет доступных тарифов</h2>
                     <p>Сейчас пакеты временно недоступны. Попробуйте чуть позже.</p>
                 </div>
 
                 <div v-else class="tg-plan-list">
                     <button
-                        v-for="item in packages"
+                        v-for="item in availablePackages"
                         :key="item.month"
                         class="tg-plan-option"
                         :class="{ 'is-selected': selectedMonth === item.month }"
@@ -423,23 +443,25 @@ onMounted(async () => {
                         <span class="tg-plan-option__radio" aria-hidden="true"></span>
 
                         <div class="tg-plan-option__copy">
-                            <strong>{{ item.month }} {{ item.month === 1 ? 'месяц' : item.month < 5 ? 'месяца' : 'месяцев' }}</strong>
-                            <span>{{ durationText(item.month) }}</span>
+                            <strong>
+                                {{ item.is_trial ? 'Пробная подписка' : `${item.month} ${item.month === 1 ? 'месяц' : item.month < 5 ? 'месяца' : 'месяцев'}` }}
+                            </strong>
+                            <span>{{ durationText(item) }}</span>
                             <span>{{ paymentBreakdown(item) }}</span>
                         </div>
 
                         <div class="tg-plan-option__meta">
-                            <strong>{{ item.payable_now }} ₽</strong>
+                            <strong>{{ item.is_trial ? '0 ₽' : `${item.payable_now} ₽` }}</strong>
                             <span v-if="item.discount_percent > 0" class="tg-discount-badge">-{{ item.discount_percent }}%</span>
                         </div>
                     </button>
                 </div>
 
                 <div class="tg-payment-hint">
-                    <strong>{{ purchaseMode === 'gift' ? 'После оплаты получите код' : 'Перейти к оплате картой / СБП' }}</strong>
+                    <strong>{{ purchaseMode === 'GIFT' ? 'После оплаты получите код' : 'Перейти к оплате картой / СБП' }}</strong>
                     <p>
                         {{
-                            purchaseMode === 'gift'
+                            purchaseMode === 'GIFT'
                                 ? 'Код можно будет передать другому человеку, а он активирует его в mini-app.'
                                 : 'Показываем сумму к оплате с учётом уже доступного баланса на аккаунте.'
                         }}
@@ -450,10 +472,10 @@ onMounted(async () => {
                     <button
                         class="button tg-button-full"
                         type="button"
-                        :disabled="!selectedPackage || payingMonth !== null || packages.length === 0"
+                        :disabled="!selectedPackage || payingMonth !== null || availablePackages.length === 0"
                         @click="buySubscription"
                     >
-                        {{ payingMonth ? 'Создаём оплату...' : purchaseMode === 'gift' ? 'Получить подарочный код' : 'Оплатить' }}
+                        {{ payingMonth ? 'Создаём оплату...' : purchaseMode === 'GIFT' ? 'Получить подарочный код' : selectedPackage?.is_trial ? 'Активировать пробный доступ' : 'Оплатить' }}
                     </button>
                     <button class="button button--secondary tg-button-full" type="button" @click="cancelPackageSelect">
                         Отменить
@@ -514,7 +536,7 @@ onMounted(async () => {
 
             <section v-else class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Оплата</span>
-                <h2>{{ purchaseMode === 'gift' ? 'Нужно оплатить подарочный код' : 'Нужно завершить оплату' }}</h2>
+                <h2>{{ purchaseMode === 'GIFT' ? 'Нужно оплатить подарочный код' : 'Нужно завершить оплату' }}</h2>
                 <p>{{ paymentResult?.message || 'Для активации подписки перейдите к оплате.' }}</p>
 
                 <div class="tg-inline-callout">

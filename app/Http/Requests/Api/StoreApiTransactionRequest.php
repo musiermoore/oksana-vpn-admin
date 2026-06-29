@@ -17,7 +17,7 @@ class StoreApiTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'month' => ['required', 'integer', 'in:1,3,6,12'],
+            'month' => ['required', 'integer', 'in:0,1,3,6,12'],
             'return_url' => ['nullable', 'url', 'max:2048'],
             'purchase_type' => ['nullable', Rule::enum(SubscriptionPurchaseType::class)],
         ];

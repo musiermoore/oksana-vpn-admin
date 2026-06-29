@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 
 class SubscriptionService
 {
+    private const TRIAL_PACKAGE_MONTHS = 0;
+    private const TRIAL_PACKAGE_DAYS = 2;
+
     private const PACKAGE_DISCOUNTS = [
         1 => 0,
         3 => 10,
@@ -47,22 +50,62 @@ class SubscriptionService
 
     public function getPackagePricingForUser(User $user): array
     {
-        return array_map(function (int $months) use ($user): array {
+        $packages = array_map(function (int $months) use ($user): array {
             $quote = $this->buildPurchaseQuote($user, $months);
 
             return [
                 'month' => $months,
+                'days' => null,
                 'price' => (float) $quote['package_price'],
                 'payable_now' => (float) $quote['deposit_amount'],
                 'balance_before' => (float) $quote['balance_before'],
                 'balance_applied' => (float) round(max(0, $quote['package_price'] - $quote['deposit_amount']), 2),
                 'discount_percent' => (int) $quote['discount_percent'],
+                'is_trial' => false,
             ];
         }, $this->getSupportedPackageMonths());
+
+        if ($this->isTrialAvailableForUser($user)) {
+            array_unshift($packages, [
+                'month' => self::TRIAL_PACKAGE_MONTHS,
+                'days' => self::TRIAL_PACKAGE_DAYS,
+                'price' => 0.0,
+                'payable_now' => 0.0,
+                'balance_before' => (float) round($user->getStoredBalanceAmount(), 2),
+                'balance_applied' => 0.0,
+                'discount_percent' => 0,
+                'is_trial' => true,
+            ]);
+        }
+
+        return $packages;
     }
 
     public function buildPurchaseQuote(User $user, int $months): array
     {
+        if ($months === self::TRIAL_PACKAGE_MONTHS) {
+            if (! $this->isTrialAvailableForUser($user)) {
+                throw new \DomainException('Пробная подписка больше недоступна для этого аккаунта.');
+            }
+
+            return [
+                'months' => self::TRIAL_PACKAGE_MONTHS,
+                'days' => self::TRIAL_PACKAGE_DAYS,
+                'discount_percent' => 0,
+                'base_month_price' => 0.0,
+                'package_full_price' => 0.0,
+                'price_before_referral_discount' => 0.0,
+                'package_price' => 0.0,
+                'balance_before' => round($user->getStoredBalanceAmount(), 2),
+                'deposit_amount' => 0.0,
+                'referral_accumulated_discount_percent' => 0,
+                'referral_permanent_discount_percent' => 0,
+                'referral_total_discount_percent' => 0,
+                'referral_discount_amount' => 0.0,
+                'is_trial' => true,
+            ];
+        }
+
         $discountPercent = self::PACKAGE_DISCOUNTS[$months] ?? null;
         $activePeriod = PaymentPeriod::getActive();
 
@@ -97,7 +140,54 @@ class SubscriptionService
             'referral_permanent_discount_percent' => (int) $referralSummary['permanent_discount_percent'],
             'referral_total_discount_percent' => $referralTotalDiscountPercent,
             'referral_discount_amount' => $referralDiscountAmount,
+            'is_trial' => false,
         ];
+    }
+
+    public function activateTrialForUser(User $user): UserSubscription
+    {
+        if (! $this->isTrialAvailableForUser($user)) {
+            throw new \DomainException('Пробная подписка больше недоступна для этого аккаунта.');
+        }
+
+        return DB::transaction(function () use ($user) {
+            $startDate = today()->toDateString();
+            $endDate = Carbon::parse($startDate)->addDays(self::TRIAL_PACKAGE_DAYS)->toDateString();
+
+            $transaction = $user->transactions()->create([
+                'type_id' => TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
+                'amount' => 0,
+                'is_approved' => true,
+                'description' => 'Пробная подписка на 2 дня',
+                'extra_data' => [
+                    'subscription_days' => self::TRIAL_PACKAGE_DAYS,
+                    'package_price' => 0,
+                    'is_trial' => true,
+                ],
+            ]);
+
+            $subscription = UserSubscription::query()->create([
+                'user_id' => $user->id,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'price' => 0,
+                'source' => 'trial',
+                'transaction_id' => $transaction->id,
+                'meta' => [
+                    'subscription_days' => self::TRIAL_PACKAGE_DAYS,
+                    'is_trial' => true,
+                ],
+            ]);
+
+            $this->syncUserSubscriptionExpiry($user);
+
+            return $subscription;
+        });
+    }
+
+    public function isTrialAvailableForUser(User $user): bool
+    {
+        return ! $user->subscriptions()->exists();
     }
 
     public function activatePurchasedMonthsForTransaction(User $user, Transaction $transaction): bool

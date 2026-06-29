@@ -13,6 +13,7 @@ use App\Services\Payments\YooKassaPaymentService;
 use App\Services\SubscriptionCodeService;
 use App\Services\SubscriptionService;
 use Carbon\Carbon;
+use DomainException;
 
 class ApiTransactionService
 {
@@ -28,6 +29,18 @@ class ApiTransactionService
     {
         if ($data->purchaseType->isGift()) {
             return $this->purchaseGiftSubscriptionCode($user, $data);
+        }
+
+        if ($data->month === 0) {
+            $subscription = $this->subscriptionService->activateTrialForUser($user);
+            $formattedEndDate = Carbon::parse($subscription->end_date)->format('d.m.Y');
+
+            return [
+                'status' => 'activated',
+                'message' => "Пробная подписка активирована до $formattedEndDate.",
+                'end_date' => $subscription->end_date,
+                'formatted_end_date' => $formattedEndDate,
+            ];
         }
 
         $quote = $this->subscriptionService->buildPurchaseQuote($user, $data->month);
@@ -156,6 +169,10 @@ class ApiTransactionService
 
     private function purchaseGiftSubscriptionCode(User $user, ApiDepositTransactionData $data): array
     {
+        if ($data->month === 0) {
+            throw new DomainException('Пробную подписку нельзя отправить в подарок.');
+        }
+
         $quote = $this->subscriptionCodes->buildPurchaseQuote($user, $data->month);
 
         if ($quote['deposit_amount'] <= 0) {

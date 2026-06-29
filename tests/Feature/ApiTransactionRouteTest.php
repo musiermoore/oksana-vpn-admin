@@ -223,4 +223,77 @@ class ApiTransactionRouteTest extends TestCase
 
         $this->assertDatabaseCount('user_subscriptions', 0);
     }
+
+    public function test_transactions_route_activates_trial_subscription_without_yookassa(): void
+    {
+        $paymentService = Mockery::mock(YooKassaPaymentService::class);
+        $paymentService->shouldNotReceive('createPayment');
+        $this->app->instance(YooKassaPaymentService::class, $paymentService);
+
+        $telegram = Mockery::mock();
+        $telegram->shouldNotReceive('sendMessage');
+        Telegram::swap($telegram);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'join_at' => '2026-05-01',
+            'balance' => 0,
+        ]);
+
+        $this->postJson("/api/users/{$user->telegram_id}/transactions", [
+            'month' => 0,
+        ])->assertOk()
+            ->assertExactJson([
+                'status' => 'activated',
+                'message' => 'Пробная подписка активирована до 20.05.2026.',
+                'end_date' => '2026-05-20',
+                'formatted_end_date' => '20.05.2026',
+            ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'user_id' => $user->id,
+            'amount' => 0,
+            'is_approved' => true,
+            'description' => 'Пробная подписка на 2 дня',
+        ]);
+
+        $this->assertDatabaseHas('user_subscriptions', [
+            'user_id' => $user->id,
+            'start_date' => '2026-05-18',
+            'end_date' => '2026-05-20',
+            'price' => 0,
+            'source' => 'trial',
+        ]);
+    }
+
+    public function test_transactions_route_rejects_trial_when_user_had_subscriptions_before(): void
+    {
+        $telegram = Mockery::mock();
+        $telegram->shouldNotReceive('sendMessage');
+        Telegram::swap($telegram);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'join_at' => '2026-05-01',
+            'balance' => 0,
+        ]);
+
+        $user->subscriptions()->create([
+            'start_date' => '2026-05-01',
+            'end_date' => '2026-05-10',
+            'price' => 150,
+            'source' => 'purchase',
+        ]);
+
+        $this->postJson("/api/users/{$user->telegram_id}/transactions", [
+            'month' => 0,
+        ])->assertStatus(422)
+            ->assertExactJson([
+                'message' => 'Пробная подписка больше недоступна для этого аккаунта.',
+            ]);
+    }
 }

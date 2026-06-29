@@ -3,6 +3,7 @@
 namespace App\Services\Crud;
 
 use App\DTOs\Transaction\TransactionData;
+use App\Enums\SubscriptionPurchaseType;
 use App\Events\TransactionApproved;
 use App\Models\Transaction;
 use App\Models\TransactionType;
@@ -100,6 +101,15 @@ class TransactionCrudService
     private function buildApprovalTelegramMessage(Transaction $transaction): string
     {
         $extraData = $transaction->extra_data ?? [];
+        $giftCode = (string) data_get($extraData, 'gift_code', '');
+
+        if (SubscriptionPurchaseType::tryFrom((string) data_get($extraData, 'purchase_type'))?->isGift() && $giftCode !== '') {
+            $months = (int) data_get($extraData, 'subscription_months', 0);
+            $duration = $months > 0 ? " на {$months} мес." : '';
+
+            return "Подарочный код{$duration} готов: {$giftCode}.\nПередайте его получателю для активации в mini-app.";
+        }
+
         $subscriptionEndDate = data_get($extraData, 'subscription_end_date');
 
         if (($extraData['package_activation_processed'] ?? false) === true && is_string($subscriptionEndDate) && $subscriptionEndDate !== '') {

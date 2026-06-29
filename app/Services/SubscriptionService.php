@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PaymentPeriod;
+use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
@@ -201,6 +202,41 @@ class SubscriptionService
                 'source' => 'referral_bonus',
                 'transaction_id' => $transaction?->id,
                 'meta' => $meta,
+            ]);
+
+            $this->syncUserSubscriptionExpiry($user);
+
+            return $subscription;
+        });
+    }
+
+    public function activateGiftCodeForUser(User $user, SubscriptionCode $code): UserSubscription
+    {
+        return DB::transaction(function () use ($user, $code) {
+            $user->loadMissing('latestSubscription');
+
+            $latestSubscription = $user->latestSubscription;
+            $startDate = $latestSubscription
+                ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
+                : today()->toDateString();
+
+            $endDate = $code->months
+                ? Carbon::parse($startDate)->addMonths($code->months)->toDateString()
+                : Carbon::parse($startDate)->addDays((int) $code->days)->toDateString();
+
+            $subscription = UserSubscription::query()->create([
+                'user_id' => $user->id,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'price' => (float) $code->price,
+                'source' => 'gift_code',
+                'meta' => [
+                    'gift_code_id' => $code->id,
+                    'gift_code' => $code->code,
+                    'buyer_user_id' => $code->buyer_user_id,
+                    'subscription_months' => $code->months,
+                    'subscription_days' => $code->days,
+                ],
             ]);
 
             $this->syncUserSubscriptionExpiry($user);

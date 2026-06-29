@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CurrentPayment;
 use App\Models\Invoice;
+use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
@@ -175,5 +176,51 @@ class ApiTransactionRouteTest extends TestCase
             'end_date' => '2026-11-18',
             'price' => 720,
         ]);
+    }
+
+    public function test_transactions_route_creates_gift_code_when_balance_is_enough(): void
+    {
+        $telegram = Mockery::mock();
+        $telegram->shouldNotReceive('sendMessage');
+        Telegram::swap($telegram);
+
+        CurrentPayment::query()->create([
+            'start_date' => '2026-05-01',
+            'end_date' => '2026-05-31',
+            'amount' => 150,
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'join_at' => '2026-05-01',
+            'balance' => 1000,
+        ]);
+
+        $this->postJson("/api/users/{$user->telegram_id}/transactions", [
+            'month' => 6,
+            'purchase_type' => 'GIFT',
+        ])->assertOk()
+            ->assertJsonPath('status', 'gift_code_created')
+            ->assertJsonPath('message', 'Подарочный код создан. Передайте его получателю для активации в mini-app.')
+            ->assertJsonPath('months', 6)
+            ->assertJsonPath('days', 180);
+
+        $code = SubscriptionCode::query()->sole();
+
+        $this->assertSame($user->id, $code->buyer_user_id);
+        $this->assertSame(6, $code->months);
+        $this->assertSame(180, $code->days);
+        $this->assertSame(720.0, $code->price);
+
+        $this->assertDatabaseHas('transactions', [
+            'user_id' => $user->id,
+            'amount' => -720,
+            'is_approved' => true,
+            'description' => 'Подарочный код на 6 мес.',
+        ]);
+
+        $this->assertDatabaseCount('user_subscriptions', 0);
     }
 }

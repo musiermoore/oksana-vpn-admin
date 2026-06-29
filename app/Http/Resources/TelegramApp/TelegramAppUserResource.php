@@ -27,6 +27,10 @@ class TelegramAppUserResource extends JsonResource
                 isset($this->referral_summary),
                 fn () => $this->referral_summary
             ),
+            'subscription_codes' => $this->when(
+                isset($this->subscription_codes_summary),
+                fn () => $this->subscription_codes_summary
+            ),
         ];
     }
 }

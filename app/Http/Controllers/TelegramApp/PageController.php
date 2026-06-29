@@ -71,6 +71,7 @@ class PageController extends Controller
             'subscription_packages_url' => route('telegram-app.subscription-packages'),
             'claim_referral_url' => route('telegram-app.referrals.claim'),
             'payment_url' => route('telegram-app.payments.subscriptions'),
+            'activate_subscription_code_url' => route('telegram-app.payments.subscription-codes.activate'),
             ...$extra,
         ]);
     }

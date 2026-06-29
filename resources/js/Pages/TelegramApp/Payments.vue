@@ -16,6 +16,7 @@ const props = defineProps({
     profile_url: String,
     subscription_packages_url: String,
     payment_url: String,
+    activate_subscription_code_url: String,
 });
 
 const state = ref('loading');
@@ -27,12 +28,18 @@ const selectedMonth = ref(null);
 const payingMonth = ref(null);
 const paymentResult = ref(null);
 const packageLoadError = ref('');
+const purchaseMode = ref('personal');
+const activationCode = ref('');
+const activationError = ref('');
+const activationStatus = ref('');
+const activatingCode = ref(false);
 
 const selectedPackage = computed(() => (
     packages.value.find((item) => item.month === selectedMonth.value)
     ?? packages.value[0]
     ?? null
 ));
+const purchasedCodes = computed(() => user.value?.subscription_codes ?? []);
 
 const balanceAmount = computed(() => Number(user.value?.balance ?? 0));
 const debtAmount = computed(() => Number(user.value?.debt ?? 0));
@@ -85,6 +92,22 @@ const paymentBreakdown = (item) => {
     return `Полная стоимость ${totalPrice} ₽ · с баланса спишется ${balanceApplied} ₽`;
 };
 
+const formatCode = (value) => {
+    if (!value) {
+        return '--------';
+    }
+
+    return String(value).replace(/(.{4})/g, '$1 ').trim();
+};
+
+const giftCodeStatusText = (item) => {
+    if (item.status === 'activated') {
+        return 'Активирован';
+    }
+
+    return 'Готов к передаче';
+};
+
 const retry = () => {
     window.location.reload();
 };
@@ -107,8 +130,10 @@ const loadPackages = async () => {
         ?? null;
 };
 
-const openPackageSelect = async () => {
+const openPackageSelectFor = async (mode) => {
     packageLoadError.value = '';
+    purchaseMode.value = mode;
+    error.value = '';
 
     try {
         await loadPackages();
@@ -141,6 +166,7 @@ const buySubscription = async () => {
         const response = await window.axios.post(props.payment_url, {
             month: selectedPackage.value.month,
             return_url: window.location.href,
+            purchase_type: purchaseMode.value,
         }, {
             headers: telegramAppHeaders(),
         });
@@ -150,6 +176,12 @@ const buySubscription = async () => {
         if (response.data?.status === 'activated') {
             await refreshAfterPayment();
             screen.value = 'activated';
+            return;
+        }
+
+        if (response.data?.status === 'gift_code_created') {
+            await refreshAfterPayment();
+            screen.value = 'gift-created';
             return;
         }
 
@@ -163,6 +195,44 @@ const buySubscription = async () => {
         error.value = normalizeTelegramAppError(requestError, 'Не удалось перейти к оплате.');
     } finally {
         payingMonth.value = null;
+    }
+};
+
+const copyText = async (value, successMessage) => {
+    try {
+        await navigator.clipboard.writeText(value);
+        activationStatus.value = successMessage;
+    } catch {
+        activationError.value = 'Не удалось скопировать. Попробуйте выделить код вручную.';
+    }
+};
+
+const activateCode = async () => {
+    if (!activationCode.value.trim()) {
+        activationError.value = 'Введите код для активации.';
+        activationStatus.value = '';
+        return;
+    }
+
+    activatingCode.value = true;
+    activationError.value = '';
+    activationStatus.value = '';
+
+    try {
+        const response = await window.axios.post(props.activate_subscription_code_url, {
+            code: activationCode.value.trim(),
+        }, {
+            headers: telegramAppHeaders(),
+        });
+
+        paymentResult.value = response.data ?? null;
+        activationCode.value = '';
+        await refreshAfterPayment();
+        screen.value = 'code-activated';
+    } catch (requestError) {
+        activationError.value = normalizeTelegramAppError(requestError, 'Не удалось активировать код.');
+    } finally {
+        activatingCode.value = false;
     }
 };
 
@@ -263,16 +333,78 @@ onMounted(async () => {
                 </div>
 
                 <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" @click="openPackageSelect">Купить подписку</button>
+                    <button class="button tg-button-full" type="button" @click="openPackageSelectFor('personal')">Купить подписку</button>
+                    <button class="button button--secondary tg-button-full" type="button" @click="openPackageSelectFor('gift')">
+                        Купить код в подарок
+                    </button>
                     <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
                 </div>
 
                 <p v-if="packageLoadError" class="field-error">{{ packageLoadError }}</p>
+
+                <div class="tg-payment-hint">
+                    <strong>Активировать полученный код</strong>
+                    <p>Введите код от человека, который оплатил вам доступ.</p>
+                </div>
+
+                <label class="field-group">
+                    <span class="field-label">Код активации</span>
+                    <input
+                        v-model="activationCode"
+                        type="text"
+                        class="field-input"
+                        inputmode="latin"
+                        autocomplete="off"
+                        placeholder="Например, ABCD EFGH JKLM"
+                    >
+                </label>
+
+                <button
+                    class="button tg-button-full"
+                    type="button"
+                    :disabled="activatingCode"
+                    @click="activateCode"
+                >
+                    {{ activatingCode ? 'Активируем...' : 'Активировать код' }}
+                </button>
+
+                <p v-if="activationError" class="field-error">{{ activationError }}</p>
+                <p v-else-if="activationStatus" class="field-success">{{ activationStatus }}</p>
+
+                <div v-if="purchasedCodes.length > 0" class="tg-panel tg-panel-stack">
+                    <span class="tg-section-label">Мои подарочные коды</span>
+
+                    <div class="tg-plan-list">
+                        <div
+                            v-for="item in purchasedCodes"
+                            :key="item.id"
+                            class="tg-plan-option"
+                        >
+                            <div class="tg-plan-option__copy">
+                                <strong>{{ formatCode(item.code) }}</strong>
+                                <span>{{ item.months }} {{ item.months === 1 ? 'месяц' : item.months < 5 ? 'месяца' : 'месяцев' }}</span>
+                                <span>{{ giftCodeStatusText(item) }}</span>
+                            </div>
+
+                            <div class="tg-plan-option__meta">
+                                <strong>{{ item.price }} ₽</strong>
+                                <button
+                                    v-if="item.status !== 'activated'"
+                                    class="button button--secondary"
+                                    type="button"
+                                    @click="copyText(item.code, 'Код скопирован.')"
+                                >
+                                    Копировать
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <section v-else-if="screen === 'packages'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Выбор тарифа</span>
-                <h2>Выберите срок подписки</h2>
+                <h2>{{ purchaseMode === 'gift' ? 'Выберите срок подарочного кода' : 'Выберите срок подписки' }}</h2>
 
                 <div v-if="packages.length === 0" class="tg-empty-panel">
                     <h2>Нет доступных тарифов</h2>
@@ -304,8 +436,14 @@ onMounted(async () => {
                 </div>
 
                 <div class="tg-payment-hint">
-                    <strong>Перейти к оплате картой / СБП</strong>
-                    <p>Показываем сумму к оплате с учётом уже доступного баланса на аккаунте.</p>
+                    <strong>{{ purchaseMode === 'gift' ? 'После оплаты получите код' : 'Перейти к оплате картой / СБП' }}</strong>
+                    <p>
+                        {{
+                            purchaseMode === 'gift'
+                                ? 'Код можно будет передать другому человеку, а он активирует его в mini-app.'
+                                : 'Показываем сумму к оплате с учётом уже доступного баланса на аккаунте.'
+                        }}
+                    </p>
                 </div>
 
                 <div class="tg-stack-actions">
@@ -315,7 +453,7 @@ onMounted(async () => {
                         :disabled="!selectedPackage || payingMonth !== null || packages.length === 0"
                         @click="buySubscription"
                     >
-                        {{ payingMonth ? 'Создаём оплату...' : 'Оплатить' }}
+                        {{ payingMonth ? 'Создаём оплату...' : purchaseMode === 'gift' ? 'Получить подарочный код' : 'Оплатить' }}
                     </button>
                     <button class="button button--secondary tg-button-full" type="button" @click="cancelPackageSelect">
                         Отменить
@@ -338,9 +476,45 @@ onMounted(async () => {
                 <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
             </section>
 
+            <section v-else-if="screen === 'gift-created'" class="tg-panel tg-panel-stack">
+                <span class="tg-section-label">Подарочный код</span>
+                <h2>Код готов</h2>
+                <p>{{ paymentResult?.message || 'Передайте код получателю для активации в mini-app.' }}</p>
+
+                <div class="tg-inline-callout">
+                    <span>Код</span>
+                    <strong>{{ formatCode(paymentResult?.code) }}</strong>
+                </div>
+
+                <div class="tg-stack-actions">
+                    <button class="button tg-button-full" type="button" @click="copyText(paymentResult?.code, 'Код скопирован.')">
+                        Скопировать код
+                    </button>
+                    <button class="button button--secondary tg-button-full" type="button" @click="screen = 'overview'">
+                        К моим кодам
+                    </button>
+                </div>
+
+                <p v-if="activationError" class="field-error">{{ activationError }}</p>
+                <p v-else-if="activationStatus" class="field-success">{{ activationStatus }}</p>
+            </section>
+
+            <section v-else-if="screen === 'code-activated'" class="tg-panel tg-panel-stack">
+                <span class="tg-section-label">Готово</span>
+                <h2>Код активирован</h2>
+                <p>{{ paymentResult?.message || 'Подписка уже добавлена к вашему аккаунту.' }}</p>
+
+                <div class="tg-inline-callout">
+                    <span>Новый срок</span>
+                    <strong>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</strong>
+                </div>
+
+                <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
+            </section>
+
             <section v-else class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Оплата</span>
-                <h2>Нужно завершить оплату</h2>
+                <h2>{{ purchaseMode === 'gift' ? 'Нужно оплатить подарочный код' : 'Нужно завершить оплату' }}</h2>
                 <p>{{ paymentResult?.message || 'Для активации подписки перейдите к оплате.' }}</p>
 
                 <div class="tg-inline-callout">

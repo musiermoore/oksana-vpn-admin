@@ -173,6 +173,16 @@ class User extends Authenticatable
         return $this->hasMany(UserSubscription::class);
     }
 
+    public function purchasedSubscriptionCodes(): HasMany
+    {
+        return $this->hasMany(SubscriptionCode::class, 'buyer_user_id');
+    }
+
+    public function activatedSubscriptionCodes(): HasMany
+    {
+        return $this->hasMany(SubscriptionCode::class, 'activated_by_user_id');
+    }
+
     public function supportTickets(): HasMany
     {
         return $this->hasMany(SupportTicket::class);

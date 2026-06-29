@@ -360,6 +360,44 @@
     gap: var(--tg-stack-gap);
 }
 
+.field-group {
+    display: grid;
+    gap: 8px;
+}
+
+.field-label {
+    color: #fff8ff;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.field-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid rgba(192, 132, 255, 0.24);
+    border-radius: var(--tg-radius);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff8ff;
+    box-sizing: border-box;
+}
+
+.field-input::placeholder {
+    color: rgba(226, 214, 255, 0.44);
+}
+
+.field-input:focus {
+    outline: none;
+    border-color: rgba(216, 180, 106, 0.42);
+    box-shadow: 0 0 0 3px rgba(216, 180, 106, 0.10);
+}
+
+.field-success {
+    margin: 0;
+    color: var(--tg-success);
+    font-size: 0.88rem;
+}
+
 .tg-home-intro {
     padding-top: 18px;
     padding-bottom: 18px;

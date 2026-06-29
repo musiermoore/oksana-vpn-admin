@@ -122,6 +122,8 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
             ->name('referrals.claim');
         Route::post('payments/subscriptions', [TelegramAppPaymentController::class, 'purchaseSubscription'])
             ->name('payments.subscriptions');
+        Route::post('payments/subscription-codes/activate', [TelegramAppPaymentController::class, 'activateSubscriptionCode'])
+            ->name('payments.subscription-codes.activate');
         Route::get('wireguard/configs', [TelegramAppConnectionController::class, 'wireGuardConfigs'])
             ->name('wireguard.configs.index');
         Route::get('wireguard/configs/{configId}/download', [TelegramAppConnectionController::class, 'wireGuardDownload'])

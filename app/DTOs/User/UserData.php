@@ -6,7 +6,7 @@ readonly class UserData
 {
     public function __construct(
         public string $name,
-        public string $telegram,
+        public ?string $telegram,
         public ?string $description,
         public string $joinAt,
         public bool $isActive = true,
@@ -17,9 +17,11 @@ readonly class UserData
 
     public function toArray(): array
     {
+        $telegram = $this->telegram !== null ? trim($this->telegram) : null;
+
         return [
             'name' => $this->name,
-            'telegram' => $this->telegram,
+            'telegram' => $telegram !== '' ? $telegram : null,
             'description' => $this->description,
             'join_at' => $this->joinAt,
             'is_active' => $this->isActive,

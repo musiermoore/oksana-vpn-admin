@@ -16,7 +16,7 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'telegram' => ['required', 'string', 'max:255'],
+            'telegram' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'join_at' => ['required', 'date'],
             'is_active' => ['required', 'boolean'],
@@ -31,7 +31,7 @@ class UpdateUserRequest extends FormRequest
 
         return new UserData(
             name: $data['name'],
-            telegram: $data['telegram'],
+            telegram: $data['telegram'] ?? null,
             description: $data['description'] ?? null,
             joinAt: $data['join_at'],
             isActive: (bool) $data['is_active'],

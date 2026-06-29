@@ -16,7 +16,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'telegram' => ['required', 'string', 'max:255'],
+            'telegram' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'join_at' => ['required', 'date'],
             'create_configs' => ['nullable', 'boolean'],
@@ -31,7 +31,7 @@ class StoreUserRequest extends FormRequest
 
         return new UserData(
             name: $data['name'],
-            telegram: $data['telegram'],
+            telegram: $data['telegram'] ?? null,
             description: $data['description'] ?? null,
             joinAt: $data['join_at'],
             createConfigs: (bool) ($data['create_configs'] ?? false),

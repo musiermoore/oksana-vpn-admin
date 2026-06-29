@@ -69,7 +69,7 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
 
             <label class="field">
                 <span>Telegram</span>
-                <input v-model="form.telegram" type="text" required>
+                <input v-model="form.telegram" type="text">
             </label>
 
             <label class="field">

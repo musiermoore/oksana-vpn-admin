@@ -34,8 +34,12 @@ const selectedPackage = computed(() => (
     ?? null
 ));
 
+const balanceAmount = computed(() => Number(user.value?.balance ?? 0));
+const debtAmount = computed(() => Number(user.value?.debt ?? 0));
 const hasDebt = computed(() => Number(user.value?.debt ?? 0) > 0);
 const hasMoneyForNextMonth = computed(() => Boolean(user.value?.has_money_for_next_subscription_month));
+const totalDiscountPercent = computed(() => Number(user.value?.referral?.total_discount_percent ?? 0));
+const hasReferralDiscount = computed(() => totalDiscountPercent.value > 0);
 
 const durationText = (months) => {
     if (months === 1) {
@@ -212,20 +216,20 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <div class="tg-rows">
-                    <div class="tg-row-link tg-row-link--plain">
+                <div v-if="balanceAmount > 0 || debtAmount > 0" class="tg-rows">
+                    <div v-if="balanceAmount > 0" class="tg-row-link tg-row-link--plain">
                         <div class="tg-row-link__icon" aria-hidden="true">₽</div>
                         <div class="tg-row-link__copy">
                             <strong>Баланс</strong>
-                            <span>{{ user?.balance ?? 0 }} ₽</span>
+                            <span>{{ balanceAmount }} ₽</span>
                         </div>
                     </div>
 
-                    <div class="tg-row-link tg-row-link--plain">
+                    <div v-if="debtAmount > 0" class="tg-row-link tg-row-link--plain">
                         <div class="tg-row-link__icon" aria-hidden="true">!</div>
                         <div class="tg-row-link__copy">
                             <strong>Долг</strong>
-                            <span>{{ user?.debt ?? 0 }} ₽</span>
+                            <span>{{ debtAmount }} ₽</span>
                         </div>
                     </div>
                 </div>
@@ -241,11 +245,19 @@ onMounted(async () => {
                         <p>Рекомендуем пополнить подписку заранее, чтобы доступ не прерывался.</p>
                     </div>
 
-                    <div v-if="user?.referral" class="tg-payment-hint">
-                        <strong>{{ user.referral.total_discount_percent }}% скидки будет учтено при покупке</strong>
+                    <div v-if="hasReferralDiscount" class="tg-payment-hint">
+                        <strong>{{ totalDiscountPercent }}% скидки будет учтено при покупке</strong>
                         <p>
                             Накопительная скидка {{ user.referral.accumulated_discount_percent }}%.
                             После успешной оплаты она сбросится, постоянная {{ user.referral.permanent_discount_percent }}% останется.
+                        </p>
+                    </div>
+
+                    <div v-else class="tg-payment-hint">
+                        <strong>Скидка появится, если пригласить друзей</strong>
+                        <p>
+                            Участвуйте в реферальной программе, чтобы получать скидку на подписку.
+                            <Link :href="routes?.home">Открыть реферальную программу на главной</Link>.
                         </p>
                     </div>
                 </div>

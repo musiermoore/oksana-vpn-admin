@@ -296,15 +296,37 @@ class XuiConfigService
 
         if ($rows !== []) {
             return collect($rows)
-                ->flatMap(fn (mixed $row) => $this->normalizeOnlineEntry($row))
+                ->flatMap(fn (mixed $row) => $this->expandOnlineEntry($row))
                 ->values()
                 ->all();
         }
 
         return collect($payload['obj'] ?? $payload['data'] ?? [])
-            ->flatMap(fn (mixed $row) => $this->normalizeOnlineEntry($row))
+            ->flatMap(fn (mixed $row) => $this->expandOnlineEntry($row))
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getClientIps(string $email): array
+    {
+        $response = $this->getRequest()
+            ->get('/panel/api/clients/ips/'.urlencode($email))
+            ->throw();
+
+        $payload = $response->json();
+        $rows = $payload['obj'] ?? $payload['data'] ?? [];
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (mixed $value) => is_string($value) ? trim($value) : null,
+            $rows,
+        )));
     }
 
     /**
@@ -379,10 +401,19 @@ class XuiConfigService
 
     private function setStartSessionAndCsrf(): void
     {
-        $response = $this->getRequest()->get('/');
+        $response = $this->getRequest()->get('/csrf-token');
 
         $this->csrf = $this->getCsrfToken($response);
         $this->session = $this->getAuthorizationCookie($response);
+
+        if ($this->csrf) {
+            return;
+        }
+
+        $response = $this->getRequest()->get('/');
+
+        $this->csrf = $this->getCsrfToken($response);
+        $this->session = $this->session ?: $this->getAuthorizationCookie($response);
     }
 
     private function getAuthorizationCookie(Response $response): ?string
@@ -395,6 +426,28 @@ class XuiConfigService
 
     private function getCsrfToken(Response $response): ?string
     {
+        $payload = $response->json();
+
+        if (is_array($payload)) {
+            $token = $payload['token']
+                ?? $payload['csrf_token']
+                ?? $payload['csrfToken']
+                ?? (is_string($payload['obj'] ?? null) ? $payload['obj'] : null)
+                ?? (is_string($payload['data'] ?? null) ? $payload['data'] : null)
+                ?? (is_string($payload['obj']['token'] ?? null) ? $payload['obj']['token'] : null)
+                ?? (is_string($payload['data']['token'] ?? null) ? $payload['data']['token'] : null);
+
+            if (is_string($token) && trim($token) !== '') {
+                return trim($token);
+            }
+        }
+
+        $body = trim($response->body());
+
+        if ($body !== '' && ! str_contains($body, '<html')) {
+            return $body;
+        }
+
         $html = $response->body();
 
         preg_match('/meta name="csrf-token" content="([^"]+)"/', $html, $matches);
@@ -939,6 +992,58 @@ class XuiConfigService
                 'first_seen' => $firstSeen,
                 'last_seen' => $lastSeen,
             ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function expandOnlineEntry(mixed $row): array
+    {
+        if (is_string($row)) {
+            return $this->normalizeOnlineIpList($row, $this->getClientIps($row));
+        }
+
+        return $this->normalizeOnlineEntry($row);
+    }
+
+    /**
+     * @param  array<int, string>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizeOnlineIpList(string $email, array $rows): array
+    {
+        return collect($rows)
+            ->map(function (string $row) use ($email): ?array {
+                $row = trim($row);
+
+                if ($row === '') {
+                    return null;
+                }
+
+                if (preg_match('/^(.*?)\s*\(([^)]+)\)\s*$/', $row, $matches) === 1) {
+                    $ip = trim($matches[1]);
+                    $seenAt = trim($matches[2]);
+                } else {
+                    $ip = $row;
+                    $seenAt = '';
+                }
+
+                if ($ip === '') {
+                    return null;
+                }
+
+                $timestamp = $seenAt !== '' ? $seenAt : now()->toDateTimeString();
+
+                return [
+                    'email' => $email,
+                    'ip' => $ip,
+                    'first_seen' => $timestamp,
+                    'last_seen' => $timestamp,
+                ];
+            })
+            ->filter()
             ->values()
             ->all();
     }

@@ -273,4 +273,54 @@ class XuiConfigServiceTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->url() === 'https://panel.test/panel/api/clients/traffic/alice_modern_1');
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'getClientTraffics'));
     }
+
+    public function test_service_prefers_csrf_token_endpoint_before_html_fallback(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Modern Panel',
+            'code' => 'MPN',
+            'ip' => '10.0.0.6',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'panel_api_version' => Server::PANEL_API_V3_2_8,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'success' => true,
+                'obj' => 'csrf-token-from-endpoint',
+            ], 200, [
+                'Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/clients/traffic/alice_modern_1' => Http::response([
+                'success' => true,
+                'obj' => [
+                    'email' => 'alice_modern_1',
+                    'up' => 100,
+                    'down' => 200,
+                ],
+            ]),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-from-html">',
+                200,
+                ['Set-Cookie' => '3x-ui=html-session; Path=/; HttpOnly']
+            ),
+        ]);
+
+        XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server)
+            ->getClientTraffics('alice_modern_1');
+
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://panel.test/csrf-token');
+        Http::assertNotSent(fn (Request $request) => $request->url() === 'https://panel.test/');
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://panel.test/login'
+            && $request->hasHeader('X-CSRF-Token', 'csrf-token-from-endpoint'));
+    }
 }

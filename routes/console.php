@@ -10,6 +10,7 @@ use App\Console\Commands\RenewSubscriptionsCommand;
 use App\Jobs\ReleaseBlockedConfigsJob;
 use App\Jobs\SyncServerOnlineClientsJob;
 use App\Jobs\SyncServerUserStatsJob;
+use App\Models\ActiveConnection;
 use App\Models\Server;
 
 Schedule::command(CalculatePeersTraffic::class)->everyMinute();
@@ -39,3 +40,7 @@ Schedule::call(function (): void {
 })->everyFiveMinutes();
 
 Schedule::job(new ReleaseBlockedConfigsJob)->everyMinute();
+
+Schedule::command('model:prune', [
+    '--model' => [ActiveConnection::class],
+])->hourly();

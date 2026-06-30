@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ActiveConnection extends Model
 {
+    use MassPrunable;
+
     public const CONFIG_TYPE_VLESS = 'vless';
 
     public const CONFIG_TYPE_SHADOWSOCKS = 'shadowsocks';
@@ -44,5 +47,15 @@ class ActiveConnection extends Model
     public function scopeActive(Builder $query, ?\DateTimeInterface $threshold = null): Builder
     {
         return $query->where('last_seen', '>', $threshold ?? now()->subMinutes(2));
+    }
+
+    public function scopeStale(Builder $query, ?\DateTimeInterface $threshold = null): Builder
+    {
+        return $query->where('last_seen', '<=', $threshold ?? now()->subDay());
+    }
+
+    public function prunable(): Builder
+    {
+        return static::query()->stale();
     }
 }

@@ -313,11 +313,15 @@ class XuiConfigService
     public function getClientIps(string $email): array
     {
         $response = $this->getRequest()
-            ->get('/panel/api/clients/ips/'.urlencode($email))
+            ->post('/panel/api/clients/ips/'.urlencode($email))
             ->throw();
 
         $payload = $response->json();
         $rows = $payload['obj'] ?? $payload['data'] ?? [];
+
+        if (is_string($rows)) {
+            $rows = preg_split('/[\r\n,]+/', $rows) ?: [];
+        }
 
         if (! is_array($rows)) {
             return [];

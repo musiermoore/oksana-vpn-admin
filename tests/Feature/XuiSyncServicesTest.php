@@ -71,10 +71,7 @@ class XuiSyncServicesTest extends TestCase
                 'obj' => ['alice-config'],
             ]),
             'https://panel.test/panel/api/clients/ips/alice-config' => Http::response([
-                'obj' => [
-                    '198.51.100.10 (2026-06-30 10:00:00)',
-                    '198.51.100.11 (2026-06-30 10:01:00)',
-                ],
+                'obj' => "198.51.100.10 (2026-06-30 10:00:00)\n198.51.100.11 (2026-06-30 10:01:00)",
             ]),
             'https://panel.test/panel/api/inbounds/list' => Http::response([
                 'obj' => [[
@@ -128,7 +125,7 @@ class XuiSyncServicesTest extends TestCase
 
         Http::assertSent(fn (Request $request) => $request->method() === 'POST'
             && $request->url() === 'https://panel.test/panel/api/clients/onlines');
-        Http::assertSent(fn (Request $request) => $request->method() === 'GET'
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
             && $request->url() === 'https://panel.test/panel/api/clients/ips/alice-config');
     }
 }

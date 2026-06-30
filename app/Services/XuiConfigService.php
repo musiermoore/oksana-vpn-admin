@@ -290,7 +290,7 @@ class XuiConfigService
      */
     public function getOnlineClientEntries(): array
     {
-        $response = $this->getWithFallback($this->getOnlineClientPaths());
+        $response = $this->postWithFallback($this->getOnlineClientPaths(), []);
         $payload = $response->json();
         $rows = $this->normalizeResponseData($payload);
 

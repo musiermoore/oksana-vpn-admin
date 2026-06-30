@@ -9,6 +9,7 @@ use App\Models\UserServerStat;
 use App\Models\VlessConfig;
 use App\Services\XuiConnectionSyncService;
 use App\Services\XuiUserTrafficSyncService;
+use Illuminate\Http\Client\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -66,7 +67,7 @@ class XuiSyncServicesTest extends TestCase
             'https://panel.test/login' => Http::response([], 200, [
                 'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
             ]),
-            'https://panel.test/panel/api/inbounds/onlines' => Http::response([
+            'https://panel.test/panel/api/clients/onlines' => Http::response([
                 'obj' => [[
                     'email' => 'alice-config',
                     'ips' => ['198.51.100.10', '198.51.100.11'],
@@ -123,5 +124,8 @@ class XuiSyncServicesTest extends TestCase
         $stat = UserServerStat::query()->where('user_id', $user->id)->where('server_id', $server->id)->first();
 
         $this->assertNotNull($stat);
+
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && $request->url() === 'https://panel.test/panel/api/clients/onlines');
     }
 }

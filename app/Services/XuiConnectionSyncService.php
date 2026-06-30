@@ -28,6 +28,12 @@ class XuiConnectionSyncService
             $rows = collect($service->getOnlineClientEntries());
             $touchedUserIds = [];
 
+            Log::info('Starting XUI online client sync.', [
+                'server_id' => $server->id,
+                'row_count' => $rows->count(),
+                'rows' => $rows->all(),
+            ]);
+
             $rows->groupBy(fn (array $row) => $this->buildGroupingKey($row))
                 ->each(function (Collection $group) use ($server, &$touchedUserIds): void {
                     $first = $group->first();
@@ -35,6 +41,11 @@ class XuiConnectionSyncService
                     $ip = trim((string) ($first['ip'] ?? ''));
 
                     if ($email === '' || $ip === '') {
+                        Log::info('Skipping online client row with missing email or IP.', [
+                            'server_id' => $server->id,
+                            'row' => $first,
+                        ]);
+
                         return;
                     }
 
@@ -54,6 +65,14 @@ class XuiConnectionSyncService
                     $config = $resolved['config'];
 
                     if (empty($config->user_id)) {
+                        Log::info('Skipping online client row because local config has no user_id.', [
+                            'server_id' => $server->id,
+                            'email' => $email,
+                            'ip' => $ip,
+                            'config_id' => $config->getKey(),
+                            'config_type' => $resolved['type'],
+                        ]);
+
                         return;
                     }
 
@@ -74,8 +93,25 @@ class XuiConnectionSyncService
                     ]);
                     $connection->save();
 
+                    Log::info('Saved active connection from XUI sync.', [
+                        'server_id' => $server->id,
+                        'user_id' => $config->user_id,
+                        'email' => $email,
+                        'ip' => $ip,
+                        'config_id' => $config->getKey(),
+                        'config_type' => $resolved['type'],
+                        'protocol' => $resolved['protocol'],
+                        'first_seen' => $connection->first_seen,
+                        'last_seen' => $connection->last_seen,
+                    ]);
+
                     $touchedUserIds[$config->user_id] = $config->user_id;
                 });
+
+            Log::info('Finished XUI online client sync.', [
+                'server_id' => $server->id,
+                'touched_user_ids' => array_values($touchedUserIds),
+            ]);
 
             return array_values($touchedUserIds);
         });

@@ -12,6 +12,7 @@ return [
         'redis:default' => 60,
         'redis:configs' => 120,
         'redis:vless-configs' => 120,
+        'redis:xui-sync' => 120,
     ],
     'trim' => [
         'recent' => 60,
@@ -54,6 +55,19 @@ return [
             'timeout' => 120,
             'nice' => 0,
         ],
+        'supervisor-xui-sync' => [
+            'connection' => 'redis',
+            'queue' => ['xui-sync'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 120,
+            'nice' => 0,
+        ],
     ],
     'environments' => [
         'production' => [
@@ -70,11 +84,22 @@ return [
                 'balanceCooldown' => 3,
                 'timeout' => 120,
             ],
+            'supervisor-xui-sync' => [
+                'queue' => ['xui-sync'],
+                'maxProcesses' => 5,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+                'timeout' => 120,
+            ],
         ],
         'local' => [
             'supervisor-default' => [
                 'queue' => ['default', 'configs', 'vless-configs'],
                 'maxProcesses' => 3,
+            ],
+            'supervisor-xui-sync' => [
+                'queue' => ['xui-sync'],
+                'maxProcesses' => 1,
             ],
         ],
     ],

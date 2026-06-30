@@ -34,12 +34,9 @@ class DeviceLimitService
                 ->orderByDesc('id')
                 ->get();
 
-            $distinctIpCount = $activeConnections
-                ->pluck('ip')
-                ->unique()
-                ->count();
+            $activeConnectionCount = $activeConnections->count();
 
-            if ($distinctIpCount <= (int) $user->max_devices) {
+            if ($activeConnectionCount <= (int) $user->max_devices) {
                 return;
             }
 
@@ -60,7 +57,7 @@ class DeviceLimitService
                 return;
             }
 
-            DB::transaction(function () use ($user, $candidate, $distinctIpCount): void {
+            DB::transaction(function () use ($user, $candidate, $activeConnectionCount): void {
                 $blocked = BlockedConfig::query()->firstOrCreate(
                     [
                         'config_type' => $candidate->config_type,
@@ -70,8 +67,8 @@ class DeviceLimitService
                         'user_id' => $user->id,
                         'server_id' => $candidate->server_id,
                         'reason' => sprintf(
-                            'Device limit exceeded: %d active IPs, limit %d, newest IP %s',
-                            $distinctIpCount,
+                            'Device limit exceeded: %d active connections, limit %d, latest connection %s',
+                            $activeConnectionCount,
                             (int) $user->max_devices,
                             $candidate->ip,
                         ),
@@ -82,8 +79,8 @@ class DeviceLimitService
                 if (! $blocked->wasRecentlyCreated) {
                     $blocked->forceFill([
                         'reason' => sprintf(
-                            'Device limit still exceeded: %d active IPs, limit %d, newest IP %s',
-                            $distinctIpCount,
+                            'Device limit still exceeded: %d active connections, limit %d, latest connection %s',
+                            $activeConnectionCount,
                             (int) $user->max_devices,
                             $candidate->ip,
                         ),
@@ -101,7 +98,7 @@ class DeviceLimitService
                 'config_id' => $candidate->config_id,
                 'server_id' => $candidate->server_id,
                 'ip' => $candidate->ip,
-                'active_devices' => $distinctIpCount,
+                'active_devices' => $activeConnectionCount,
                 'max_devices' => (int) $user->max_devices,
             ]);
         });
@@ -135,8 +132,7 @@ class DeviceLimitService
             $activeDeviceCount = ActiveConnection::query()
                 ->where('user_id', $user->id)
                 ->active()
-                ->distinct('ip')
-                ->count('ip');
+                ->count();
 
             if ((int) $user->max_devices > 0 && $activeDeviceCount > (int) $user->max_devices) {
                 $blockedConfig->forceFill([

@@ -11,7 +11,6 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -263,7 +262,34 @@ class XuiConfigService
      */
     public function getClientTrafficSummaries(): array
     {
-        return collect($this->getInbounds())
+        try {
+            $response = $this->getWithFallback($this->getClientListPaths());
+            $payload = $response->json();
+            $rows = $this->normalizeClientListRows($payload);
+
+            return collect($rows)
+                ->map(function (array $row): array {
+                    $traffic = is_array($row['traffic'] ?? null) ? $row['traffic'] : [];
+                    $inboundIds = is_array($row['inboundIds'] ?? null) ? $row['inboundIds'] : [];
+
+                    return [
+                        'inbound_id' => (int) ($inboundIds[0] ?? 0),
+                        'protocol' => (string) ($row['protocol'] ?? ''),
+                        'email' => (string) ($row['email'] ?? ''),
+                        'upload_bytes' => (int) ($traffic['up'] ?? $traffic['upload'] ?? $traffic['uploadBytes'] ?? 0),
+                        'download_bytes' => (int) ($traffic['down'] ?? $traffic['download'] ?? $traffic['downloadBytes'] ?? 0),
+                    ];
+                })
+                ->filter(fn (array $row) => $row['email'] !== '')
+                ->values()
+                ->all();
+        } catch (RequestException $exception) {
+            if ($exception->response?->status() !== 404) {
+                throw $exception;
+            }
+        }
+
+        $rows = collect($this->getInbounds())
             ->flatMap(function (array $row): array {
                 $inbound = $this->normalizeInbound($row);
                 $stats = $this->normalizeClientStats($row['clientStats'] ?? $row['client_stats'] ?? $inbound['client_stats'] ?? []);
@@ -284,6 +310,8 @@ class XuiConfigService
             })
             ->values()
             ->all();
+
+        return $rows;
     }
 
     /**
@@ -296,39 +324,17 @@ class XuiConfigService
         $rows = $this->normalizeResponseData($payload);
 
         if ($rows !== []) {
-            $expanded = collect($rows)
+            return collect($rows)
                 ->flatMap(fn (mixed $row) => $this->expandOnlineEntry($row))
                 ->values()
                 ->all();
-
-            Log::info('XUI online clients payload received.', [
-                'server_id' => $this->server->id,
-                'source' => 'normalized-response-data',
-                'raw_row_count' => count($rows),
-                'raw_rows' => $rows,
-                'expanded_count' => count($expanded),
-                'expanded_rows' => $expanded,
-            ]);
-
-            return $expanded;
         }
 
         $fallbackRows = $payload['obj'] ?? $payload['data'] ?? [];
-        $expanded = collect($fallbackRows)
+        return collect($fallbackRows)
             ->flatMap(fn (mixed $row) => $this->expandOnlineEntry($row))
             ->values()
             ->all();
-
-        Log::info('XUI online clients payload received.', [
-            'server_id' => $this->server->id,
-            'source' => 'payload-obj-or-data',
-            'raw_row_count' => is_countable($fallbackRows) ? count($fallbackRows) : 0,
-            'raw_rows' => $fallbackRows,
-            'expanded_count' => count($expanded),
-            'expanded_rows' => $expanded,
-        ]);
-
-        return $expanded;
     }
 
     /**
@@ -348,29 +354,13 @@ class XuiConfigService
         }
 
         if (! is_array($rows)) {
-            Log::info('XUI client IP sync returned non-array payload.', [
-                'server_id' => $this->server->id,
-                'email' => $email,
-                'payload' => $payload,
-            ]);
-
             return [];
         }
 
-        $ips = array_values(array_filter(array_map(
+        return array_values(array_filter(array_map(
             fn (mixed $value) => is_string($value) ? trim($value) : null,
             $rows,
         )));
-
-        Log::info('XUI client IP sync payload parsed.', [
-            'server_id' => $this->server->id,
-            'email' => $email,
-            'raw_rows' => $rows,
-            'parsed_count' => count($ips),
-            'parsed_rows' => $ips,
-        ]);
-
-        return $ips;
     }
 
     /**
@@ -841,6 +831,17 @@ class XuiConfigService
         ];
     }
 
+    /**
+     * @return array<int, string>
+     */
+    protected function getClientListPaths(): array
+    {
+        return [
+            '/panel/api/clients/list',
+            '/panel/clients/list',
+        ];
+    }
+
     protected function extractClientFromInboundsPayload(VlessConfig $config, bool $enabled): array
     {
         return $this->extractClientFromInboundSettings(
@@ -998,6 +999,20 @@ class XuiConfigService
     /**
      * @return array<int, array<string, mixed>>
      */
+    protected function normalizeClientListRows(mixed $payload): array
+    {
+        if (! is_array($payload)) {
+            return [];
+        }
+
+        $rows = $payload['obj']['items'] ?? $payload['data']['items'] ?? $payload['obj'] ?? $payload['data'] ?? [];
+
+        return is_array($rows) ? array_values(array_filter($rows, is_array(...))) : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     protected function normalizeOnlineEntry(mixed $row): array
     {
         if (is_string($row)) {
@@ -1046,28 +1061,10 @@ class XuiConfigService
     protected function expandOnlineEntry(mixed $row): array
     {
         if (is_string($row)) {
-            $expanded = $this->normalizeOnlineIpList($row, $this->getClientIps($row));
-
-            Log::info('XUI online client entry expanded from string payload.', [
-                'server_id' => $this->server->id,
-                'email' => $row,
-                'expanded_count' => count($expanded),
-                'expanded_rows' => $expanded,
-            ]);
-
-            return $expanded;
+            return $this->normalizeOnlineIpList($row, $this->getClientIps($row));
         }
 
-        $normalized = $this->normalizeOnlineEntry($row);
-
-        Log::info('XUI online client entry normalized from structured payload.', [
-            'server_id' => $this->server->id,
-            'row' => $row,
-            'normalized_count' => count($normalized),
-            'normalized_rows' => $normalized,
-        ]);
-
-        return $normalized;
+        return $this->normalizeOnlineEntry($row);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ActiveConnection;
 use App\Models\Server;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -23,98 +24,70 @@ class XuiConnectionSyncService
     {
         $lock = Cache::lock('xui-connections-sync:'.$server->id, 50);
 
-        return $lock->block(5, function () use ($server): array {
-            $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
-            $rows = collect($service->getOnlineClientEntries());
-            $touchedUserIds = [];
+        try {
+            return $lock->block(5, function () use ($server): array {
+                $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
+                $rows = collect($service->getOnlineClientEntries());
+                $touchedUserIds = [];
 
-            Log::info('Starting XUI online client sync.', [
-                'server_id' => $server->id,
-                'row_count' => $rows->count(),
-                'rows' => $rows->all(),
-            ]);
+                $rows->groupBy(fn (array $row) => $this->buildGroupingKey($row))
+                    ->each(function (Collection $group) use ($server, &$touchedUserIds): void {
+                        $first = $group->first();
+                        $email = trim((string) ($first['email'] ?? ''));
+                        $ip = trim((string) ($first['ip'] ?? ''));
 
-            $rows->groupBy(fn (array $row) => $this->buildGroupingKey($row))
-                ->each(function (Collection $group) use ($server, &$touchedUserIds): void {
-                    $first = $group->first();
-                    $email = trim((string) ($first['email'] ?? ''));
-                    $ip = trim((string) ($first['ip'] ?? ''));
+                        if ($email === '' || $ip === '') {
+                            return;
+                        }
 
-                    if ($email === '' || $ip === '') {
-                        Log::info('Skipping online client row with missing email or IP.', [
+                        $resolved = $this->configLocator->findByServerAndEmail($server, $email);
+
+                        if ($resolved === null) {
+                            Log::warning('Skipping unknown online 3x-ui client during sync.', [
+                                'server_id' => $server->id,
+                                'email' => $email,
+                                'ip' => $ip,
+                            ]);
+
+                            return;
+                        }
+
+                        /** @var Model&object{user_id:int|null} $config */
+                        $config = $resolved['config'];
+
+                        if (empty($config->user_id)) {
+                            return;
+                        }
+
+                        $timestamps = $this->resolveSeenTimestamps($group);
+
+                        $connection = ActiveConnection::query()->firstOrNew([
                             'server_id' => $server->id,
-                            'row' => $first,
-                        ]);
-
-                        return;
-                    }
-
-                    $resolved = $this->configLocator->findByServerAndEmail($server, $email);
-
-                    if ($resolved === null) {
-                        Log::warning('Skipping unknown online 3x-ui client during sync.', [
-                            'server_id' => $server->id,
-                            'email' => $email,
-                            'ip' => $ip,
-                        ]);
-
-                        return;
-                    }
-
-                    /** @var Model&object{user_id:int|null} $config */
-                    $config = $resolved['config'];
-
-                    if (empty($config->user_id)) {
-                        Log::info('Skipping online client row because local config has no user_id.', [
-                            'server_id' => $server->id,
-                            'email' => $email,
-                            'ip' => $ip,
-                            'config_id' => $config->getKey(),
                             'config_type' => $resolved['type'],
+                            'config_id' => $config->getKey(),
+                            'ip' => $ip,
                         ]);
 
-                        return;
-                    }
+                        $connection->fill([
+                            'user_id' => $config->user_id,
+                            'protocol' => $resolved['protocol'],
+                            'first_seen' => $connection->exists ? $connection->first_seen : $timestamps['first_seen'],
+                            'last_seen' => $timestamps['last_seen'],
+                        ]);
+                        $connection->save();
 
-                    $timestamps = $this->resolveSeenTimestamps($group);
+                        $touchedUserIds[$config->user_id] = $config->user_id;
+                    });
 
-                    $connection = ActiveConnection::query()->firstOrNew([
-                        'server_id' => $server->id,
-                        'config_type' => $resolved['type'],
-                        'config_id' => $config->getKey(),
-                        'ip' => $ip,
-                    ]);
-
-                    $connection->fill([
-                        'user_id' => $config->user_id,
-                        'protocol' => $resolved['protocol'],
-                        'first_seen' => $connection->exists ? $connection->first_seen : $timestamps['first_seen'],
-                        'last_seen' => $timestamps['last_seen'],
-                    ]);
-                    $connection->save();
-
-                    Log::info('Saved active connection from XUI sync.', [
-                        'server_id' => $server->id,
-                        'user_id' => $config->user_id,
-                        'email' => $email,
-                        'ip' => $ip,
-                        'config_id' => $config->getKey(),
-                        'config_type' => $resolved['type'],
-                        'protocol' => $resolved['protocol'],
-                        'first_seen' => $connection->first_seen,
-                        'last_seen' => $connection->last_seen,
-                    ]);
-
-                    $touchedUserIds[$config->user_id] = $config->user_id;
-                });
-
-            Log::info('Finished XUI online client sync.', [
+                return array_values($touchedUserIds);
+            });
+        } catch (LockTimeoutException) {
+            Log::warning('Skipped XUI online client sync because the server lock is busy.', [
                 'server_id' => $server->id,
-                'touched_user_ids' => array_values($touchedUserIds),
             ]);
 
-            return array_values($touchedUserIds);
-        });
+            return [];
+        }
     }
 
     /**

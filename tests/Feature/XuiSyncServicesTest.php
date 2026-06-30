@@ -59,6 +59,9 @@ class XuiSyncServicesTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
             'https://panel.test/' => Http::response(
                 '<meta name="csrf-token" content="csrf-token-value">',
                 200,
@@ -73,6 +76,17 @@ class XuiSyncServicesTest extends TestCase
             'https://panel.test/panel/api/clients/ips/alice-config' => Http::response([
                 'obj' => "198.51.100.10 (2026-06-30 10:00:00)\n198.51.100.11 (2026-06-30 10:01:00)",
             ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'email' => 'alice-config',
+                    'inboundIds' => [10],
+                    'traffic' => [
+                        'up' => 512,
+                        'down' => 1024,
+                        'enable' => true,
+                    ],
+                ]],
+            ]),
             'https://panel.test/panel/api/inbounds/list' => Http::response([
                 'obj' => [[
                     'id' => 10,
@@ -85,11 +99,7 @@ class XuiSyncServicesTest extends TestCase
                             'enable' => true,
                         ]],
                     ], JSON_UNESCAPED_SLASHES),
-                    'clientStats' => [[
-                        'email' => 'alice-config',
-                        'up' => 512,
-                        'down' => 1024,
-                    ]],
+                    'clientStats' => [],
                     'streamSettings' => json_encode([
                         'network' => 'tcp',
                         'security' => 'reality',
@@ -127,5 +137,7 @@ class XuiSyncServicesTest extends TestCase
             && $request->url() === 'https://panel.test/panel/api/clients/onlines');
         Http::assertSent(fn (Request $request) => $request->method() === 'POST'
             && $request->url() === 'https://panel.test/panel/api/clients/ips/alice-config');
+        Http::assertSent(fn (Request $request) => $request->method() === 'GET'
+            && $request->url() === 'https://panel.test/panel/api/clients/list');
     }
 }

@@ -100,8 +100,7 @@ class SubscriptionMetadataService
         $activeDevices = ActiveConnection::query()
             ->where('user_id', $user->id)
             ->active()
-            ->distinct('ip')
-            ->count('ip');
+            ->count();
 
         return [
             'upload' => (int) ($aggregate->upload_total ?? 0),

@@ -258,6 +258,49 @@ class XuiConfigService
     }
 
     /**
+     * Send an arbitrary authenticated request to the panel using the same
+     * session, cookies, and CSRF flow as the rest of the XUI integration.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function sendDiagnosticRequest(string $method, string $path, array $payload = [], string $encoding = 'form'): array
+    {
+        $method = mb_strtolower(trim($method));
+        $path = $this->normalizeDiagnosticPath($path);
+        $request = $this->getRequest();
+
+        if ($encoding === 'form') {
+            $request = $request->asForm();
+        }
+
+        $response = match ($method) {
+            'get' => $request->get($path, $payload),
+            'post' => $request->post($path, $payload),
+            'put' => $request->put($path, $payload),
+            'patch' => $request->patch($path, $payload),
+            'delete' => $request->delete($path, $payload),
+            default => throw new RuntimeException("Unsupported diagnostic request method [{$method}]"),
+        };
+
+        $json = $response->json();
+
+        return [
+            'ok' => $response->successful(),
+            'status' => $response->status(),
+            'headers' => $response->headers(),
+            'body' => $response->body(),
+            'json' => is_array($json) ? $json : null,
+            'request' => [
+                'method' => mb_strtoupper($method),
+                'path' => $path,
+                'encoding' => $encoding,
+                'payload' => $payload,
+            ],
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function getClientTrafficSummaries(): array
@@ -862,6 +905,28 @@ class XuiConfigService
     private function getBaseUrl(): string
     {
         return rtrim($this->server->panel_link, '/');
+    }
+
+    private function normalizeDiagnosticPath(string $path): string
+    {
+        $path = trim($path);
+
+        if ($path === '') {
+            throw new RuntimeException('Diagnostic request path cannot be empty.');
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            $parsedPath = parse_url($path, PHP_URL_PATH);
+            $query = parse_url($path, PHP_URL_QUERY);
+
+            $path = is_string($parsedPath) && $parsedPath !== '' ? $parsedPath : '/';
+
+            if (is_string($query) && $query !== '') {
+                $path .= '?'.$query;
+            }
+        }
+
+        return str_starts_with($path, '/') ? $path : '/'.$path;
     }
 
     protected function postWithFallback(array $paths, array $payload): Response

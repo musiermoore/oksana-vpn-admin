@@ -25,6 +25,7 @@ use App\Http\Controllers\VlessConfigController;
 use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
+use App\Http\Controllers\XuiDebugController;
 use App\Http\Middleware\BasicAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -83,6 +84,8 @@ Route::middleware('auth')->group(function () {
         ->name('transactions.approve');
     Route::delete('transactions/{transaction}/decline', [TransactionController::class, 'decline'])
         ->name('transactions.decline');
+    Route::get('xui-debug', [XuiDebugController::class, 'index'])->name('xui-debug.index');
+    Route::post('xui-debug', [XuiDebugController::class, 'execute'])->name('xui-debug.execute');
 
     Route::post('logout', [AuthController::class, 'destroy'])->name('logout');
 });

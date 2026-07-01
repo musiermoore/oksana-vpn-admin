@@ -24,6 +24,7 @@ const destroyServer = (server) => {
         <div class="page-header">
             <div><h1>Серверы</h1></div>
             <div class="actions">
+                <Link class="button button--secondary" href="/xui-debug">3x-ui Debug</Link>
                 <Link class="button" href="/servers/create">Создать</Link>
             </div>
         </div>

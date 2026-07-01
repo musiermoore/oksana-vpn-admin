@@ -381,7 +381,7 @@ class XuiConfigService
     }
 
     /**
-     * @return array<int, string>
+     * @return array<int, string|array<string, mixed>>
      */
     public function getClientIps(string $email): array
     {
@@ -400,10 +400,29 @@ class XuiConfigService
             return [];
         }
 
-        return array_values(array_filter(array_map(
-            fn (mixed $value) => is_string($value) ? trim($value) : null,
-            $rows,
-        )));
+        return array_values(array_filter(array_map(function (mixed $value): string|array|null {
+            if (is_string($value)) {
+                $value = trim($value);
+
+                return $value !== '' ? $value : null;
+            }
+
+            if (! is_array($value)) {
+                return null;
+            }
+
+            $ip = trim((string) ($value['ip'] ?? ''));
+
+            if ($ip === '') {
+                return null;
+            }
+
+            return [
+                'ip' => $ip,
+                'time' => $value['time'] ?? $value['last_seen'] ?? $value['lastSeen'] ?? null,
+                'node' => $value['node'] ?? null,
+            ];
+        }, $rows)));
     }
 
     /**
@@ -1133,14 +1152,31 @@ class XuiConfigService
     }
 
     /**
-     * @param  array<int, string>  $rows
+     * @param  array<int, string|array<string, mixed>>  $rows
      * @return array<int, array<string, mixed>>
      */
     protected function normalizeOnlineIpList(string $email, array $rows): array
     {
         return collect($rows)
-            ->map(function (string $row) use ($email): ?array {
-                $row = trim($row);
+            ->map(function (mixed $row) use ($email): ?array {
+                if (is_array($row)) {
+                    $ip = trim((string) ($row['ip'] ?? ''));
+
+                    if ($ip === '') {
+                        return null;
+                    }
+
+                    $timestamp = trim((string) ($row['time'] ?? '')) ?: now()->toDateTimeString();
+
+                    return [
+                        'email' => $email,
+                        'ip' => $ip,
+                        'first_seen' => $timestamp,
+                        'last_seen' => $timestamp,
+                    ];
+                }
+
+                $row = trim((string) $row);
 
                 if ($row === '') {
                     return null;

@@ -74,7 +74,20 @@ class XuiSyncServicesTest extends TestCase
                 'obj' => ['alice-config'],
             ]),
             'https://panel.test/panel/api/clients/ips/alice-config' => Http::response([
-                'obj' => "198.51.100.10 (2026-06-30 10:00:00)\n198.51.100.11 (2026-06-30 10:01:00)",
+                'success' => true,
+                'msg' => '',
+                'obj' => [
+                    [
+                        'ip' => '198.51.100.10',
+                        'time' => '2026-06-30 10:00:00',
+                        'node' => '',
+                    ],
+                    [
+                        'ip' => '198.51.100.11',
+                        'time' => '2026-06-30 10:01:00',
+                        'node' => '',
+                    ],
+                ],
             ]),
             'https://panel.test/panel/api/clients/list' => Http::response([
                 'obj' => [[
@@ -120,6 +133,8 @@ class XuiSyncServicesTest extends TestCase
             'config_id' => $config->id,
             'config_type' => ActiveConnection::CONFIG_TYPE_VLESS,
             'ip' => '198.51.100.10',
+            'first_seen' => '2026-06-30 10:00:00',
+            'last_seen' => '2026-06-30 10:00:00',
         ]);
 
         $this->assertDatabaseHas('user_server_stats', [

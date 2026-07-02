@@ -115,7 +115,13 @@ class ServerController extends Controller
 
     private function getInboundOptions(Server $server): array
     {
-        if (! $server->isVlessType() || blank($server->panel_link) || blank($server->panel_username) || blank($server->panel_password)) {
+        if (
+            ! $server->is_active
+            || ! $server->isVlessType()
+            || blank($server->panel_link)
+            || blank($server->panel_username)
+            || blank($server->panel_password)
+        ) {
             return [];
         }
 

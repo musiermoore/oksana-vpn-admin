@@ -6,6 +6,7 @@ use App\Models\Server;
 use App\Services\XuiConfigServiceFactory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Response;
 use Throwable;
 
@@ -24,7 +25,11 @@ class XuiDebugController extends Controller
     public function execute(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'server_id' => ['required', 'integer', 'exists:servers,id'],
+            'server_id' => [
+                'required',
+                'integer',
+                Rule::exists('servers', 'id')->where('is_active', true),
+            ],
             'preset' => ['required', 'string'],
             'method' => ['required', 'string', 'in:GET,POST,PUT,PATCH,DELETE'],
             'endpoint' => ['required', 'string', 'max:1000'],
@@ -96,6 +101,7 @@ class XuiDebugController extends Controller
     private function getServerOptions(): array
     {
         return Server::query()
+            ->where('is_active', true)
             ->orderBy('name')
             ->get()
             ->map(fn (Server $server) => [
@@ -183,7 +189,10 @@ class XuiDebugController extends Controller
         $presets = collect($this->getPresets())->keyBy('value');
         $selectedPreset = (string) $request->old('preset', $request->query('preset', 'online-clients'));
         $preset = $presets->get($selectedPreset, $presets->get('online-clients'));
-        $defaultServerId = Server::query()->orderBy('name')->value('id');
+        $defaultServerId = Server::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->value('id');
 
         return [
             'server_id' => (int) $request->old('server_id', $request->query('server_id', $defaultServerId ?? 0)),

@@ -9,6 +9,7 @@ use App\Services\XuiConfigServiceFactory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 use Tests\TestCase;
 
 class XuiConfigServiceTest extends TestCase
@@ -322,5 +323,26 @@ class XuiConfigServiceTest extends TestCase
         Http::assertNotSent(fn (Request $request) => $request->url() === 'https://panel.test/');
         Http::assertSent(fn (Request $request) => $request->url() === 'https://panel.test/login'
             && $request->hasHeader('X-CSRF-Token', 'csrf-token-from-endpoint'));
+    }
+
+    public function test_factory_rejects_inactive_server(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Inactive Panel',
+            'code' => 'IPN',
+            'ip' => '10.0.0.7',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'is_active' => false,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Server [{$server->id}] is inactive.");
+
+        XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
     }
 }

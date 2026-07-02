@@ -4,9 +4,11 @@ namespace App\Services\Subscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\Models\Proxy;
+use App\Models\Server;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
+use Illuminate\Support\Collection;
 
 class NormalizedNodeService
 {
@@ -24,7 +26,7 @@ class NormalizedNodeService
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
-            ->with('server.proxies')
+            ->with('server')
             ->get()
             ->map(fn (VlessConfig $config) => [
                 'type' => 'vless',
@@ -39,7 +41,7 @@ class NormalizedNodeService
             ->where('shadowsocks_configs.is_active', true)
             ->where('shadowsocks_configs.enable', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
-            ->with('server.proxies')
+            ->with('server')
             ->get()
             ->map(fn (ShadowsocksConfig $config) => [
                 'type' => 'shadowsocks',
@@ -60,8 +62,10 @@ class NormalizedNodeService
             ])
             ->values();
 
+        $proxyIndex = $this->buildProxyIndex($items);
+
         $nodes = $items
-            ->flatMap(fn (array $item) => $this->buildNodesForItem($item))
+            ->flatMap(fn (array $item) => $this->buildNodesForItem($item, $proxyIndex))
             ->unique(fn (NormalizedNode $node) => $node->uri)
             ->sortBy([
                 fn (NormalizedNode $node) => $node->serverId,
@@ -78,16 +82,18 @@ class NormalizedNodeService
 
     /**
      * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig|ShadowsocksConfig}  $item
+     * @param  array<string, Collection<int, Proxy>>  $proxyIndex
      * @return array<int, NormalizedNode>
      */
-    private function buildNodesForItem(array $item): array
+    private function buildNodesForItem(array $item, array $proxyIndex): array
     {
         $config = $item['config'];
 
         if ($config instanceof VlessConfig) {
-            $proxy = $this->resolveReadyProxy(
-                server: $config->server,
+            $proxies = $this->resolveReadyProxies(
+                serverId: (int) $config->server_id,
                 inboundId: $config->inbound_id ?? null,
+                proxyIndex: $proxyIndex,
                 requireExactInboundMatch: true,
             );
             $directNodes = collect($this->getVlessUris($config))
@@ -95,12 +101,13 @@ class NormalizedNodeService
                 ->filter()
                 ->values();
 
-            if (! $proxy instanceof Proxy) {
+            if ($proxies->isEmpty()) {
                 return $directNodes->all();
             }
 
             $proxyNodes = $directNodes
-                ->map(fn (NormalizedNode $node, int $index) => $this->buildProxyNode($node, $proxy, $index))
+                ->flatMap(fn (NormalizedNode $node, int $index) => $proxies
+                    ->map(fn (Proxy $proxy) => $this->buildProxyNode($node, $proxy, $index)))
                 ->filter()
                 ->values();
 
@@ -111,20 +118,31 @@ class NormalizedNodeService
         }
 
         if ($config instanceof ShadowsocksConfig) {
-            $proxy = $this->resolveReadyProxy($config->server, $config->inbound_id ?? null);
+            $proxies = $this->resolveReadyProxies(
+                serverId: (int) $config->server_id,
+                inboundId: $config->inbound_id ?? null,
+                proxyIndex: $proxyIndex,
+            );
             $node = $this->buildNode($config->getLink(), $item, 0);
 
             if (! $node) {
                 return [];
             }
 
-            if (! $proxy instanceof Proxy) {
+            if ($proxies->isEmpty()) {
                 return [$node];
             }
 
-            $proxyNode = $this->buildProxyNode($node, $proxy, 0);
+            $proxyNodes = $proxies
+                ->map(fn (Proxy $proxy) => $this->buildProxyNode($node, $proxy, 0))
+                ->filter()
+                ->values()
+                ->all();
 
-            return array_values(array_filter([$node, $proxyNode]));
+            return [
+                $node,
+                ...$proxyNodes,
+            ];
         }
 
         return [];
@@ -212,55 +230,75 @@ class NormalizedNodeService
         };
     }
 
-    private function resolveReadyProxy(
-        \App\Models\Server $server,
+    /**
+     * @return Collection<int, Proxy>
+     */
+    private function resolveReadyProxies(
+        int $serverId,
         ?int $inboundId = null,
+        array $proxyIndex = [],
         bool $requireExactInboundMatch = false,
-    ): ?Proxy
+    ): Collection
     {
-        if ($server->relationLoaded('proxies')) {
-            $readyProxies = $server->proxies
-                ->filter(fn (Proxy $proxy) => (bool) $proxy->is_ready)
-                ->sortBy(fn (Proxy $proxy) => (int) $proxy->id)
-                ->values();
+        $exactProxies = $proxyIndex[$this->proxyIndexKey($serverId, $inboundId)] ?? collect();
 
-            if ($inboundId !== null) {
-                $exactProxy = $readyProxies
-                    ->first(fn (Proxy $proxy) => (int) $proxy->inbound_id === $inboundId);
-
-                if ($exactProxy instanceof Proxy) {
-                    return $exactProxy;
-                }
-            }
-
-            if ($requireExactInboundMatch) {
-                return null;
-            }
-
-            return $readyProxies
-                ->first(fn (Proxy $proxy) => $proxy->inbound_id === null);
-        }
-
-        if ($inboundId !== null) {
-            $exactProxy = $server->proxies()
-                ->where('proxies.is_ready', true)
-                ->where('proxies.inbound_id', $inboundId)
-                ->orderBy('proxies.id')
-                ->first();
-
-            if ($exactProxy instanceof Proxy) {
-                return $exactProxy;
-            }
+        if ($exactProxies->isNotEmpty()) {
+            return $exactProxies;
         }
 
         if ($requireExactInboundMatch) {
-            return null;
+            return collect();
         }
 
-        return $server->proxies()
-            ->where('proxies.is_ready', true)
-            ->whereNull('proxies.inbound_id')
-            ->orderBy('proxies.id')
-            ->first();
+        return $proxyIndex[$this->proxyIndexKey($serverId, null)] ?? collect();
+    }
+
+    /**
+     * @param  Collection<int, array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig|ShadowsocksConfig}>  $items
+     * @return array<string, Collection<int, Proxy>>
+     */
+    private function buildProxyIndex(Collection $items): array
+    {
+        $serverIds = $items
+            ->pluck('server_id')
+            ->map(fn (mixed $serverId) => (int) $serverId)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($serverIds === []) {
+            return [];
+        }
+
+        $proxyIndex = [];
+
+        Proxy::query()
+            ->where('is_ready', true)
+            ->whereHas('servers', fn ($query) => $query->whereIn('servers.id', $serverIds))
+            ->with([
+                'servers' => fn ($query) => $query
+                    ->whereIn('servers.id', $serverIds)
+                    ->select('servers.id'),
+            ])
+            ->orderBy('id')
+            ->get()
+            ->each(function (Proxy $proxy) use (&$proxyIndex): void {
+                $proxy->servers->each(function (Server $server) use (&$proxyIndex, $proxy): void {
+                    $key = $this->proxyIndexKey((int) $server->getKey(), $proxy->inbound_id);
+
+                    if (! array_key_exists($key, $proxyIndex)) {
+                        $proxyIndex[$key] = collect();
+                    }
+
+                    $proxyIndex[$key]->push($proxy);
+                });
+            });
+
+        return $proxyIndex;
+    }
+
+    private function proxyIndexKey(int $serverId, ?int $inboundId): string
+    {
+        return $serverId.':'.($inboundId === null ? 'null' : $inboundId);
     }
 }

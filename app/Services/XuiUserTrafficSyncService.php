@@ -21,6 +21,10 @@ class XuiUserTrafficSyncService
      */
     public function syncServer(Server $server): array
     {
+        if (! $server->is_active) {
+            return [];
+        }
+
         $lock = Cache::lock('xui-user-stats-sync:'.$server->id, 240);
 
         try {

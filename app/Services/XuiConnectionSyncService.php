@@ -22,6 +22,10 @@ class XuiConnectionSyncService
      */
     public function syncServer(Server $server): array
     {
+        if (! $server->is_active) {
+            return [];
+        }
+
         $lock = Cache::lock('xui-connections-sync:'.$server->id, 50);
 
         try {

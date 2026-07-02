@@ -24,6 +24,7 @@ class NormalizedNodeService
         $vlessConfigs = $user->vlessConfigs()
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
+            ->whereHas('server', fn ($query) => $query->where('is_active', true))
             ->with('server.proxies')
             ->get()
             ->map(fn (VlessConfig $config) => [
@@ -38,6 +39,7 @@ class NormalizedNodeService
         $shadowsocksConfigs = $user->shadowsocksConfigs()
             ->where('shadowsocks_configs.is_active', true)
             ->where('shadowsocks_configs.enable', true)
+            ->whereHas('server', fn ($query) => $query->where('is_active', true))
             ->with('server.proxies')
             ->get()
             ->map(fn (ShadowsocksConfig $config) => [

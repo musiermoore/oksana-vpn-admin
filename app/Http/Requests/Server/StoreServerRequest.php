@@ -33,6 +33,7 @@ class StoreServerRequest extends FormRequest
             'app_path' => ['required', 'string', 'max:255'],
             'ssh_private_key' => ['nullable', 'string'],
             'ssh_public_key' => ['nullable', 'string'],
+            'is_active' => ['nullable', 'boolean'],
             'is_ready' => ['nullable', 'boolean'],
             'hide_configs_for_non_admins' => ['nullable', 'boolean'],
             'allowed_inbound_ids' => ['nullable', 'array'],
@@ -58,6 +59,7 @@ class StoreServerRequest extends FormRequest
             appPath: $data['app_path'],
             sshPrivateKey: $data['ssh_private_key'] ?? null,
             sshPublicKey: $data['ssh_public_key'] ?? null,
+            isActive: (bool) ($data['is_active'] ?? true),
             isReady: (bool) ($data['is_ready'] ?? false),
             hideConfigsForNonAdmins: (bool) ($data['hide_configs_for_non_admins'] ?? false),
             allowedInboundIds: $data['type'] === Server::TYPE_VLESS

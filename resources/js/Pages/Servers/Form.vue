@@ -26,6 +26,7 @@ const form = useForm({
     app_path: props.server?.app_path ?? '',
     ssh_private_key: '',
     ssh_public_key: props.server?.ssh_public_key ?? '',
+    is_active: props.server?.is_active ?? true,
     is_ready: props.server?.is_ready ?? false,
     hide_configs_for_non_admins: props.server?.hide_configs_for_non_admins ?? false,
     allowed_inbound_ids: props.server?.allowed_inbound_ids ?? [],
@@ -65,6 +66,7 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><input v-model="form.app_path" required></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><textarea v-model="form.ssh_private_key" /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><textarea v-model="form.ssh_public_key" /></label>
+            <label class="field"><span>Is Active</span><input v-model="form.is_active" type="checkbox"></label>
             <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field"><span>Hide configs for non-admins</span><input v-model="form.hide_configs_for_non_admins" type="checkbox"></label>
             <label class="field" style="grid-column: 1 / -1;">

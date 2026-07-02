@@ -23,6 +23,7 @@ class ServerResource extends JsonResource
             'app_path' => $this->app_path,
             'ssh_public_key' => $this->ssh_public_key,
             'is_vless' => (bool) $this->is_vless,
+            'is_active' => (bool) $this->is_active,
             'is_ready' => (bool) $this->is_ready,
             'hide_configs_for_non_admins' => (bool) $this->hide_configs_for_non_admins,
             'allowed_inbound_ids' => $this->allowed_inbound_ids,

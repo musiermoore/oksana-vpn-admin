@@ -415,6 +415,71 @@ class VlessConnectTest extends TestCase
         ], $names);
     }
 
+    public function test_connect_hides_configs_from_inactive_servers(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Inactive Server User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $activeServer = $this->createServer('Латвия', 'LV', 'lv.example.com');
+        $inactiveServer = $this->createServer('Финляндия', 'FI', 'fi.example.com');
+        $inactiveServer->update(['is_active' => false]);
+
+        VlessConfig::query()->create([
+            'server_id' => $activeServer->id,
+            'user_id' => $user->id,
+            'name' => 'active-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'active-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $inactiveServer->id,
+            'user_id' => $user->id,
+            'name' => 'inactive-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'inactive-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('Латвия • VLESS • TCP', $decoded);
+        $this->assertStringNotContainsString('Финляндия • VLESS • TCP', $decoded);
+        $this->assertStringNotContainsString('inactive-uuid', $decoded);
+    }
+
     public function test_connect_keeps_server_id_priority_for_same_named_servers(): void
     {
         Http::fake([

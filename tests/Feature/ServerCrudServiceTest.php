@@ -51,6 +51,7 @@ class ServerCrudServiceTest extends TestCase
             appPath: '/opt/app',
             sshPrivateKey: null,
             sshPublicKey: null,
+            isActive: true,
             isReady: false,
             hideConfigsForNonAdmins: false,
             allowedInboundIds: $type === Server::TYPE_VLESS ? [10] : null,

@@ -597,6 +597,71 @@ class VlessConnectTest extends TestCase
         $this->assertStringNotContainsString('vless://proxy-uuid@generic.example.com:8443?', $decoded);
     }
 
+    public function test_connect_includes_not_ready_proxy_for_admin_user_only(): void
+    {
+        $admin = User::query()->create([
+            'name' => 'Admin User',
+            'telegram' => '@admin',
+            'telegram_id' => '111111',
+            'is_admin' => true,
+        ]);
+
+        $regularUser = User::query()->create([
+            'name' => 'Regular User',
+            'telegram' => '@tester',
+            'telegram_id' => '222222',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
+        $this->createProxy($server, 'Ru Proxy', 'proxy.example.com', 8443, 10, false);
+
+        foreach ([$admin, $regularUser] as $user) {
+            VlessConfig::query()->create([
+                'server_id' => $server->id,
+                'user_id' => $user->id,
+                'inbound_id' => 10,
+                'name' => 'proxy-config-'.$user->id,
+                'is_active' => true,
+                'enable' => true,
+                'uuid' => 'proxy-uuid-'.$user->id,
+                'port' => 443,
+                'protocol' => 'vless',
+                'type' => 'tcp',
+                'encryption' => 'none',
+                'security' => 'reality',
+                'pbk' => 'public-key',
+                'fp' => 'chrome',
+                'sni' => 'example.com',
+                'sid' => 'abcd',
+                'spx' => '/',
+            ]);
+        }
+
+        $adminResponse = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('111111'),
+            'i' => Crypt::encrypt((string) $admin->id),
+        ]));
+
+        $adminResponse->assertOk();
+
+        $adminDecoded = base64_decode((string) $adminResponse->getContent(), true);
+
+        $this->assertNotFalse($adminDecoded);
+        $this->assertStringContainsString('vless://proxy-uuid-'.$admin->id.'@proxy.example.com:8443?', $adminDecoded);
+
+        $regularResponse = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('222222'),
+            'i' => Crypt::encrypt((string) $regularUser->id),
+        ]));
+
+        $regularResponse->assertOk();
+
+        $regularDecoded = base64_decode((string) $regularResponse->getContent(), true);
+
+        $this->assertNotFalse($regularDecoded);
+        $this->assertStringNotContainsString('vless://proxy-uuid-'.$regularUser->id.'@proxy.example.com:8443?', $regularDecoded);
+    }
+
     public function test_connect_hides_configs_from_inactive_servers(): void
     {
         $user = User::query()->create([
@@ -985,7 +1050,7 @@ class VlessConnectTest extends TestCase
         ]);
     }
 
-    private function createProxy(Server $server, string $name, string $host, int $port, ?int $inboundId = null): Proxy
+    private function createProxy(Server $server, string $name, string $host, int $port, ?int $inboundId = null, bool $isReady = true): Proxy
     {
         $proxy = Proxy::query()->create([
             'name' => $name,
@@ -993,7 +1058,7 @@ class VlessConnectTest extends TestCase
             'port' => $port,
             'inbound_id' => $inboundId,
             'is_https' => true,
-            'is_ready' => true,
+            'is_ready' => $isReady,
         ]);
 
         $proxy->servers()->attach($server);

@@ -62,7 +62,7 @@ class NormalizedNodeService
             ])
             ->values();
 
-        $proxyIndex = $this->buildProxyIndex($items);
+        $proxyIndex = $this->buildProxyIndex($items, $user);
 
         $nodes = $items
             ->flatMap(fn (array $item) => $this->buildNodesForItem($item, $proxyIndex))
@@ -257,7 +257,7 @@ class NormalizedNodeService
      * @param  Collection<int, array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig|ShadowsocksConfig}>  $items
      * @return array<string, Collection<int, Proxy>>
      */
-    private function buildProxyIndex(Collection $items): array
+    private function buildProxyIndex(Collection $items, User $user): array
     {
         $serverIds = $items
             ->pluck('server_id')
@@ -272,15 +272,20 @@ class NormalizedNodeService
 
         $proxyIndex = [];
 
-        Proxy::query()
-            ->where('is_ready', true)
+        $proxyQuery = Proxy::query()
             ->whereHas('servers', fn ($query) => $query->whereIn('servers.id', $serverIds))
             ->with([
                 'servers' => fn ($query) => $query
                     ->whereIn('servers.id', $serverIds)
                     ->select('servers.id'),
             ])
-            ->orderBy('id')
+            ->orderBy('id');
+
+        if (! $user->is_admin) {
+            $proxyQuery->where('is_ready', true);
+        }
+
+        $proxyQuery
             ->get()
             ->each(function (Proxy $proxy) use (&$proxyIndex): void {
                 $proxy->servers->each(function (Server $server) use (&$proxyIndex, $proxy): void {

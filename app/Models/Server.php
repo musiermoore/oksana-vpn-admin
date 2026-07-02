@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\File;
 
@@ -81,6 +82,12 @@ class Server extends Model
     public function shadowsocksConfigs(): HasMany
     {
         return $this->hasMany(ShadowsocksConfig::class);
+    }
+
+    public function proxies(): BelongsToMany
+    {
+        return $this->belongsToMany(Proxy::class)
+            ->withTimestamps();
     }
 
     public function getSlugCodeAttribute(): string

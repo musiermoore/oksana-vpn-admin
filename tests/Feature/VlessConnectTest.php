@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
@@ -363,6 +364,57 @@ class VlessConnectTest extends TestCase
         $this->assertCount(3, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
     }
 
+    public function test_connect_returns_direct_and_proxy_links_when_ready_proxy_is_linked_to_server(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Proxy User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
+        $this->createProxy($server, 'Ru Proxy', 'proxy.example.com', 8443);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'proxy-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'proxy-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('vless://proxy-uuid@lv.example.com:443?', $decoded);
+        $this->assertStringContainsString('vless://proxy-uuid@proxy.example.com:8443?', $decoded);
+
+        $names = $this->extractNames($decoded);
+
+        $this->assertSame([
+            'Латвия • VLESS • TCP',
+            'Латвия (Ru Proxy) • VLESS • TCP',
+        ], $names);
+    }
+
     public function test_connect_keeps_server_id_priority_for_same_named_servers(): void
     {
         Http::fake([
@@ -684,6 +736,21 @@ class VlessConnectTest extends TestCase
             'sid' => 'abcd',
             'spx' => '/',
         ]);
+    }
+
+    private function createProxy(Server $server, string $name, string $host, int $port): Proxy
+    {
+        $proxy = Proxy::query()->create([
+            'name' => $name,
+            'host' => $host,
+            'port' => $port,
+            'is_https' => true,
+            'is_ready' => true,
+        ]);
+
+        $proxy->servers()->attach($server);
+
+        return $proxy;
     }
 
     /**

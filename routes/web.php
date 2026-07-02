@@ -7,6 +7,7 @@ use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\ExtraPaymentController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProxyController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SupportTicketController;
@@ -57,6 +58,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('transactions', TransactionController::class);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
+    Route::resource('proxies', ProxyController::class)->except(['show']);
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
     Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');

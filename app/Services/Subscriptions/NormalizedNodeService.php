@@ -3,6 +3,7 @@
 namespace App\Services\Subscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
+use App\Models\Proxy;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
@@ -12,6 +13,7 @@ class NormalizedNodeService
 {
     public function __construct(
         private readonly SubscriptionUriParser $parser,
+        private readonly SubscriptionUriTransformer $uriTransformer,
     ) {}
 
     /**
@@ -22,7 +24,7 @@ class NormalizedNodeService
         $vlessConfigs = $user->vlessConfigs()
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
-            ->with('server')
+            ->with('server.proxies')
             ->get()
             ->map(fn (VlessConfig $config) => [
                 'type' => 'vless',
@@ -36,7 +38,7 @@ class NormalizedNodeService
         $shadowsocksConfigs = $user->shadowsocksConfigs()
             ->where('shadowsocks_configs.is_active', true)
             ->where('shadowsocks_configs.enable', true)
-            ->with('server')
+            ->with('server.proxies')
             ->get()
             ->map(fn (ShadowsocksConfig $config) => [
                 'type' => 'shadowsocks',
@@ -80,11 +82,25 @@ class NormalizedNodeService
     private function buildNodesForItem(array $item): array
     {
         $config = $item['config'];
+        $proxy = $this->resolveReadyProxy($config->server);
 
         if ($config instanceof VlessConfig) {
-            return collect($this->getVlessUris($config))
+            $directNodes = collect($this->getVlessUris($config))
                 ->map(fn (string $uri, int $index) => $this->buildNode($uri, $item, $index))
                 ->filter()
+                ->values();
+
+            if (! $proxy instanceof Proxy) {
+                return $directNodes->all();
+            }
+
+            $proxyNodes = $directNodes
+                ->map(fn (NormalizedNode $node, int $index) => $this->buildProxyNode($node, $proxy, $index))
+                ->filter()
+                ->values();
+
+            return $directNodes
+                ->concat($proxyNodes)
                 ->values()
                 ->all();
         }
@@ -92,7 +108,17 @@ class NormalizedNodeService
         if ($config instanceof ShadowsocksConfig) {
             $node = $this->buildNode($config->getLink(), $item, 0);
 
-            return $node ? [$node] : [];
+            if (! $node) {
+                return [];
+            }
+
+            if (! $proxy instanceof Proxy) {
+                return [$node];
+            }
+
+            $proxyNode = $this->buildProxyNode($node, $proxy, 0);
+
+            return array_values(array_filter([$node, $proxyNode]));
         }
 
         return [];
@@ -120,6 +146,34 @@ class NormalizedNodeService
             sourceType: $item['type'],
             sortServerName: $item['server_sort'],
             meta: [],
+        );
+    }
+
+    private function buildProxyNode(NormalizedNode $node, Proxy $proxy, int $index): ?NormalizedNode
+    {
+        $proxyUri = $this->uriTransformer->replaceAddress($node->uri, (string) $proxy->host, (int) $proxy->port);
+
+        if (! is_string($proxyUri) || $proxyUri === '') {
+            return null;
+        }
+
+        $serverName = sprintf('%s (%s)', $node->serverName, $proxy->name);
+
+        return new NormalizedNode(
+            id: $node->id.':proxy:'.$proxy->id.':'.$index,
+            serverName: $serverName,
+            protocol: $node->protocol,
+            transport: $node->transport,
+            uri: $proxyUri,
+            serverId: $node->serverId,
+            configId: $node->configId,
+            sourceType: $node->sourceType,
+            sortServerName: mb_strtolower($serverName),
+            meta: [
+                ...$node->meta,
+                'proxy_id' => (int) $proxy->id,
+                'proxy_name' => (string) $proxy->name,
+            ],
         );
     }
 
@@ -174,5 +228,20 @@ class NormalizedNodeService
             'hysteria2' => 4,
             default => 99,
         };
+    }
+
+    private function resolveReadyProxy(\App\Models\Server $server): ?Proxy
+    {
+        if ($server->relationLoaded('proxies')) {
+            return $server->proxies
+                ->filter(fn (Proxy $proxy) => (bool) $proxy->is_ready)
+                ->sortBy('id')
+                ->first();
+        }
+
+        return $server->proxies()
+            ->where('proxies.is_ready', true)
+            ->orderBy('proxies.id')
+            ->first();
     }
 }

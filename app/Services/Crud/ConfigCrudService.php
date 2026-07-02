@@ -41,6 +41,11 @@ class ConfigCrudService
         foreach ($data->configs as $config) {
             /** @var Server $server */
             $server = $servers->get($config->serverId) ?? $this->servers->findOrFail($config->serverId);
+
+            if (! $server->is_active) {
+                throw new RuntimeException("Сервер {$server->name} отключён.");
+            }
+
             $configName = $this->generateConfigName($user, $server);
 
             if (! $user->createConfig([
@@ -61,6 +66,10 @@ class ConfigCrudService
     public function createBulk(ConfigBulkStoreData $data): array
     {
         $server = $this->servers->findOrFail($data->serverId);
+
+        if (! $server->is_active) {
+            throw new RuntimeException("Сервер {$server->name} отключён.");
+        }
 
         $users = User::query()
             ->with('configs')

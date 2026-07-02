@@ -358,6 +358,7 @@ class User extends Authenticatable
         $success = true;
 
         $servers ??= Server::query()
+            ->where('is_active', true)
             ->where('is_ready', true)
             ->wireGuard()
             ->get();

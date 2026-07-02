@@ -30,6 +30,8 @@ class ServerResource extends JsonResource
             'links' => [
                 'edit' => route('servers.edit', $this->resource),
                 'destroy' => route('servers.destroy', $this->resource),
+                'enable' => route('servers.enable', $this->resource),
+                'disable' => route('servers.disable', $this->resource),
             ],
         ];
     }

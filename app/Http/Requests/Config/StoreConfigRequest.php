@@ -22,7 +22,11 @@ class StoreConfigRequest extends FormRequest
             'configs' => ['required', 'array', 'min:1'],
             'configs.*.server_id' => [
                 'required',
-                Rule::exists('servers', 'id')->where(fn ($query) => $query->whereIn('type', Server::wireGuardTypes())),
+                Rule::exists('servers', 'id')->where(
+                    fn ($query) => $query
+                        ->whereIn('type', Server::wireGuardTypes())
+                        ->where('is_active', true)
+                ),
             ],
             'configs.*.description' => ['nullable', 'string'],
         ];

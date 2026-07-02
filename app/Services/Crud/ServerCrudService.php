@@ -50,6 +50,20 @@ class ServerCrudService
         $this->servers->delete($server);
     }
 
+    public function enable(Server $server): Server
+    {
+        return $this->servers->update($server, [
+            'is_active' => true,
+        ]);
+    }
+
+    public function disable(Server $server): Server
+    {
+        return $this->servers->update($server, [
+            'is_active' => false,
+        ]);
+    }
+
     private function dispatchWireGuardInstallIfNeeded(Server $server): void
     {
         if (! $server->isModernWireGuardType()) {

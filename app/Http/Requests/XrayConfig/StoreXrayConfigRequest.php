@@ -3,7 +3,9 @@
 namespace App\Http\Requests\XrayConfig;
 
 use App\DTOs\XrayConfig\XrayConfigStoreData;
+use App\Models\Server;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreXrayConfigRequest extends FormRequest
 {
@@ -17,7 +19,14 @@ class StoreXrayConfigRequest extends FormRequest
         return [
             'protocol' => ['required', 'string', 'in:vless,shadowsocks'],
             'user_id' => ['required', 'exists:users,id'],
-            'server_id' => ['required', 'exists:servers,id'],
+            'server_id' => [
+                'required',
+                Rule::exists('servers', 'id')->where(
+                    fn ($query) => $query
+                        ->where('type', Server::TYPE_VLESS)
+                        ->where('is_active', true)
+                ),
+            ],
             'inbound_id' => ['required', 'integer', 'min:1'],
         ];
     }

@@ -199,6 +199,7 @@ class XrayConfigController extends Controller
     {
         return Server::query()
             ->vless()
+            ->where('is_active', true)
             ->where('is_ready', true)
             ->orderBy('name')
             ->get()

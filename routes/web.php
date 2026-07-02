@@ -58,6 +58,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('transactions', TransactionController::class);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
+    Route::post('servers/{server}/enable', [ServerController::class, 'enable'])
+        ->name('servers.enable');
+    Route::post('servers/{server}/disable', [ServerController::class, 'disable'])
+        ->name('servers.disable');
     Route::resource('proxies', ProxyController::class)->except(['show']);
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);

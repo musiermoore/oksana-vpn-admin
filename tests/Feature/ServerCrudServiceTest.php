@@ -35,6 +35,20 @@ class ServerCrudServiceTest extends TestCase
         Queue::assertNotPushed(InstallWireGuardAgentForServerJob::class);
     }
 
+    public function test_enable_and_disable_update_server_activity_flag(): void
+    {
+        $service = app(ServerCrudService::class);
+        $server = $service->create($this->makeServerData(Server::TYPE_VLESS, 'VLS'));
+
+        $this->assertTrue((bool) $server->is_active);
+
+        $server = $service->disable($server);
+        $this->assertFalse((bool) $server->is_active);
+
+        $server = $service->enable($server);
+        $this->assertTrue((bool) $server->is_active);
+    }
+
     private function makeServerData(string $type, string $code = 'WGA'): ServerData
     {
         return new ServerData(

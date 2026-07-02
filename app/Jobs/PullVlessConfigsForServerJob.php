@@ -37,7 +37,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
     {
         $server = Server::query()->find($this->serverId);
 
-        if (! $server) {
+        if (! $server || ! $server->is_active) {
             return;
         }
 

@@ -28,6 +28,7 @@ class PullVlessConfigs extends Command
     public function handle(): int
     {
         $servers = Server::query()
+            ->where('is_active', true)
             ->whereNotNull([
                 'panel_link',
                 'panel_username',

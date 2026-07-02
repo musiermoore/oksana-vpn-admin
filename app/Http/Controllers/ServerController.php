@@ -97,6 +97,22 @@ class ServerController extends Controller
             ->with('success', 'Сервер успешно удалён');
     }
 
+    public function enable(Server $server)
+    {
+        $this->serverService->enable($server);
+
+        return redirect()->back()
+            ->with('success', 'Сервер успешно включён.');
+    }
+
+    public function disable(Server $server)
+    {
+        $this->serverService->disable($server);
+
+        return redirect()->back()
+            ->with('success', 'Сервер успешно отключён.');
+    }
+
     private function getInboundOptions(Server $server): array
     {
         if (! $server->isVlessType() || blank($server->panel_link) || blank($server->panel_username) || blank($server->panel_password)) {

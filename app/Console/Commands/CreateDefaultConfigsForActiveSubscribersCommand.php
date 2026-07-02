@@ -19,6 +19,7 @@ class CreateDefaultConfigsForActiveSubscribersCommand extends Command
         $userId = $this->argument('user_id');
 
         $servers = Server::query()
+            ->where('is_active', true)
             ->where('is_ready', true)
             ->get();
 

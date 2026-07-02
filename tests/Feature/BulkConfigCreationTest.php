@@ -50,4 +50,27 @@ class BulkConfigCreationTest extends TestCase
             Sleep::sleep(5),
         ]);
     }
+
+    public function test_bulk_creation_rejects_inactive_server(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Inactive Bulk Server',
+            'code' => 'IBS',
+            'ip' => '10.0.0.8',
+            'type' => Server::TYPE_WIREGUARD_OLD,
+            'app_path' => '/opt/app',
+            'is_active' => false,
+        ]);
+
+        User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Сервер Inactive Bulk Server отключён.');
+
+        app(ConfigCrudService::class)->createBulk(new ConfigBulkStoreData($server->id));
+    }
 }

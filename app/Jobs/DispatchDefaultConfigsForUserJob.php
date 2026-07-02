@@ -32,6 +32,7 @@ class DispatchDefaultConfigsForUserJob implements ShouldQueue
         }
 
         $servers = Server::query()
+            ->where('is_active', true)
             ->where('is_ready', true)
             ->orderBy('id')
             ->get();

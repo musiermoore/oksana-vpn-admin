@@ -31,7 +31,7 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
             ->find($this->userId);
         $server = Server::query()->find($this->serverId);
 
-        if (! $user || ! $server || ! $server->is_ready || ! $user->hasActiveSubscription()) {
+        if (! $user || ! $server || ! $server->is_active || ! $server->is_ready || ! $user->hasActiveSubscription()) {
             return;
         }
 

@@ -8,6 +8,14 @@ defineProps({
     servers: Array,
 });
 
+const toggleServer = (server) => {
+    const toggleLink = server?.is_active ? server?.links?.disable : server?.links?.enable;
+
+    if (toggleLink) {
+        router.post(toggleLink);
+    }
+};
+
 const destroyServer = (server) => {
     const destroyLink = server?.links?.destroy;
 
@@ -56,6 +64,14 @@ const destroyServer = (server) => {
                     <td>
                         <div class="actions">
                             <Link v-if="server.links?.edit" class="button button--secondary" :href="server.links.edit">Изменить</Link>
+                            <button
+                                class="button"
+                                :class="server.is_active ? 'button--danger' : 'button--success'"
+                                type="button"
+                                @click="toggleServer(server)"
+                            >
+                                {{ server.is_active ? 'Отключить' : 'Включить' }}
+                            </button>
                             <button
                                 v-if="server.links?.destroy"
                                 class="button button--danger"

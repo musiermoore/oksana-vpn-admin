@@ -48,6 +48,36 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
     }
 
+    public function test_job_does_not_create_config_for_inactive_server(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Inactive WG',
+            'code' => 'IWG',
+            'ip' => '10.0.0.10',
+            'app_path' => '/opt/app',
+            'is_active' => false,
+            'is_ready' => true,
+            'type' => Server::TYPE_WIREGUARD_OLD,
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseCount('configs', 0);
+    }
+
     public function test_job_creates_one_wireguard_agent_config_for_ready_server(): void
     {
         $server = Server::query()->create([

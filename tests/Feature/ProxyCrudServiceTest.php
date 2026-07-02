@@ -24,6 +24,7 @@ class ProxyCrudServiceTest extends TestCase
             name: 'Ru Proxy',
             host: 'proxy.example.com',
             port: 443,
+            inboundId: 10,
             isHttps: true,
             isReady: true,
             description: 'Primary proxy',
@@ -35,6 +36,7 @@ class ProxyCrudServiceTest extends TestCase
             'name' => 'Ru Proxy',
             'host' => 'proxy.example.com',
             'port' => 443,
+            'inbound_id' => 10,
             'is_ready' => true,
         ]);
         $this->assertSame([$serverOne->id], $proxy->servers->pluck('id')->all());
@@ -43,6 +45,7 @@ class ProxyCrudServiceTest extends TestCase
             name: 'Ru Proxy',
             host: 'proxy-updated.example.com',
             port: 8443,
+            inboundId: null,
             isHttps: false,
             isReady: false,
             description: null,
@@ -54,6 +57,7 @@ class ProxyCrudServiceTest extends TestCase
             'id' => $proxy->id,
             'host' => 'proxy-updated.example.com',
             'port' => 8443,
+            'inbound_id' => null,
             'is_https' => false,
             'is_ready' => false,
         ]);
@@ -70,6 +74,7 @@ class ProxyCrudServiceTest extends TestCase
             'name' => 'Ru Proxy',
             'host' => 'proxy.example.com',
             'port' => 443,
+            'inbound_id' => 10,
             'is_https' => true,
             'is_ready' => true,
         ]);

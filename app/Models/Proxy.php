@@ -14,6 +14,7 @@ class Proxy extends Model
         'name',
         'host',
         'port',
+        'inbound_id',
         'is_https',
         'is_ready',
         'description',
@@ -25,6 +26,7 @@ class Proxy extends Model
             'is_https' => 'boolean',
             'is_ready' => 'boolean',
             'port' => 'integer',
+            'inbound_id' => 'integer',
         ];
     }
 

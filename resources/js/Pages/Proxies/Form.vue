@@ -16,6 +16,7 @@ const form = useForm({
     name: props.proxy?.name ?? '',
     host: props.proxy?.host ?? '',
     port: props.proxy?.port ?? 443,
+    inbound_id: props.proxy?.inbound_id ?? '',
     is_https: props.proxy?.is_https ?? true,
     is_ready: props.proxy?.is_ready ?? false,
     description: props.proxy?.description ?? '',
@@ -35,6 +36,7 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Имя</span><input v-model="form.name" required></label>
             <label class="field"><span>Host</span><input v-model="form.host" required></label>
             <label class="field"><span>Port</span><input v-model="form.port" type="number" min="1" max="65535" required></label>
+            <label class="field"><span>Inbound ID</span><input v-model="form.inbound_id" type="number" min="1" placeholder="Пусто = для всех inbound"></label>
             <label class="field"><span>HTTPS</span><input v-model="form.is_https" type="checkbox"></label>
             <label class="field"><span>Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field" style="grid-column: 1 / -1;">

@@ -84,7 +84,7 @@ class NormalizedNodeService
     private function buildNodesForItem(array $item): array
     {
         $config = $item['config'];
-        $proxy = $this->resolveReadyProxy($config->server);
+        $proxy = $this->resolveReadyProxy($config->server, $config->inbound_id ?? null);
 
         if ($config instanceof VlessConfig) {
             $directNodes = collect($this->getVlessUris($config))
@@ -232,17 +232,34 @@ class NormalizedNodeService
         };
     }
 
-    private function resolveReadyProxy(\App\Models\Server $server): ?Proxy
+    private function resolveReadyProxy(\App\Models\Server $server, ?int $inboundId = null): ?Proxy
     {
         if ($server->relationLoaded('proxies')) {
             return $server->proxies
-                ->filter(fn (Proxy $proxy) => (bool) $proxy->is_ready)
-                ->sortBy('id')
+                ->filter(function (Proxy $proxy) use ($inboundId) {
+                    if (! $proxy->is_ready) {
+                        return false;
+                    }
+
+                    return $proxy->inbound_id === null || (int) $proxy->inbound_id === (int) $inboundId;
+                })
+                ->sortBy([
+                    fn (Proxy $proxy) => $proxy->inbound_id === null ? 1 : 0,
+                    fn (Proxy $proxy) => (int) $proxy->id,
+                ])
                 ->first();
         }
 
         return $server->proxies()
             ->where('proxies.is_ready', true)
+            ->where(function ($query) use ($inboundId) {
+                $query->whereNull('proxies.inbound_id');
+
+                if ($inboundId !== null) {
+                    $query->orWhere('proxies.inbound_id', $inboundId);
+                }
+            })
+            ->orderByRaw('CASE WHEN proxies.inbound_id IS NULL THEN 1 ELSE 0 END')
             ->orderBy('proxies.id')
             ->first();
     }

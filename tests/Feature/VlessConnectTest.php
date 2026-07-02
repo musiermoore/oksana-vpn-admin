@@ -415,6 +415,52 @@ class VlessConnectTest extends TestCase
         ], $names);
     }
 
+    public function test_connect_prefers_proxy_with_matching_inbound_id_over_generic_proxy(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Proxy User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
+        $this->createProxy($server, 'Generic Proxy', 'generic.example.com', 8443, null);
+        $this->createProxy($server, 'Inbound Proxy', 'inbound.example.com', 9443, 10);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+            'name' => 'proxy-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'proxy-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('vless://proxy-uuid@inbound.example.com:9443?', $decoded);
+        $this->assertStringNotContainsString('vless://proxy-uuid@generic.example.com:8443?', $decoded);
+    }
+
     public function test_connect_hides_configs_from_inactive_servers(): void
     {
         $user = User::query()->create([
@@ -803,12 +849,13 @@ class VlessConnectTest extends TestCase
         ]);
     }
 
-    private function createProxy(Server $server, string $name, string $host, int $port): Proxy
+    private function createProxy(Server $server, string $name, string $host, int $port, ?int $inboundId = null): Proxy
     {
         $proxy = Proxy::query()->create([
             'name' => $name,
             'host' => $host,
             'port' => $port,
+            'inbound_id' => $inboundId,
             'is_https' => true,
             'is_ready' => true,
         ]);

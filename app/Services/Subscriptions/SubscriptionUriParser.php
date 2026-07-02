@@ -75,6 +75,8 @@ class SubscriptionUriParser
             'path' => rawurldecode((string) Arr::get($query, 'path', '')),
             'service_name' => rawurldecode((string) Arr::get($query, 'serviceName', '')),
             'mode' => (string) Arr::get($query, 'mode', ''),
+            'extra' => rawurldecode((string) Arr::get($query, 'extra', '')),
+            'x_padding_bytes' => (string) Arr::get($query, 'x_padding_bytes', Arr::get($query, 'xPaddingBytes', '')),
             'sni' => (string) Arr::get($query, 'sni', ''),
             'pbk' => (string) Arr::get($query, 'pbk', ''),
             'fp' => (string) Arr::get($query, 'fp', ''),

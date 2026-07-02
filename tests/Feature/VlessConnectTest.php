@@ -253,6 +253,96 @@ class VlessConnectTest extends TestCase
         );
     }
 
+    public function test_static_xhttp_link_contains_xhttp_transport_parameters(): void
+    {
+        $server = $this->createServer('Латвия', 'LV1', 'lv.oksana1984.ru');
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => null,
+            'name' => 'xhttp-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => '45f18045-9a4c-4e39-bb58-7b08db2d73df',
+            'port' => 56120,
+            'protocol' => 'vless',
+            'type' => 'xhttp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'VBPWniidw6S8vDHAfqSxRxLxLx6Jthfx4DqaHxd1kBM',
+            'fp' => 'firefox',
+            'sni' => 'www.ya.ru',
+            'host' => '',
+            'path' => '/search',
+            'mode' => 'auto',
+            'extra' => '{"mode":"auto","xPaddingBytes":"0"}',
+            'x_padding_bytes' => '0',
+            'sid' => '5d262be3a53b',
+            'spx' => '/NUyFkRoBI7YOXhg',
+        ]);
+
+        $this->assertSame(
+            'vless://45f18045-9a4c-4e39-bb58-7b08db2d73df@lv.oksana1984.ru:56120?type=xhttp&encryption=none&security=reality&pbk=VBPWniidw6S8vDHAfqSxRxLxLx6Jthfx4DqaHxd1kBM&fp=firefox&sni=www.ya.ru&sid=5d262be3a53b&spx=%2FNUyFkRoBI7YOXhg&host=&path=%2Fsearch&mode=auto&extra=%7B%22mode%22%3A%22auto%22%2C%22xPaddingBytes%22%3A%220%22%7D&x_padding_bytes=0#lv1-xhttp-config',
+            $config->getStaticLink()
+        );
+    }
+
+    public function test_connect_builds_xhttp_links_locally_without_fetching_remote_subscription(): void
+    {
+        Http::fake();
+
+        $user = User::query()->create([
+            'name' => 'XHTTP User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv.oksana1984.ru');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 4,
+            'name' => 'xhttp-user-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => '45f18045-9a4c-4e39-bb58-7b08db2d73df',
+            'sub_id' => 'remote-sub-id-should-not-be-fetched',
+            'port' => 56120,
+            'protocol' => 'vless',
+            'type' => 'xhttp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'VBPWniidw6S8vDHAfqSxRxLxLx6Jthfx4DqaHxd1kBM',
+            'fp' => 'firefox',
+            'sni' => 'www.ya.ru',
+            'host' => '',
+            'path' => '/search',
+            'mode' => 'auto',
+            'extra' => '{"mode":"auto","xPaddingBytes":"0"}',
+            'x_padding_bytes' => '0',
+            'sid' => '5d262be3a53b',
+            'spx' => '/NUyFkRoBI7YOXhg',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('type=xhttp', $decoded);
+        $this->assertStringContainsString('path=%2Fsearch', $decoded);
+        $this->assertStringContainsString('mode=auto', $decoded);
+        $this->assertStringContainsString('x_padding_bytes=0', $decoded);
+
+        Http::assertNothingSent();
+    }
+
     public function test_connect_returns_mixed_vless_and_shadowsocks_links_sorted_by_type_server_and_config_id(): void
     {
         Http::fake([

@@ -33,6 +33,9 @@ class VlessConfig
         private ?string $host = null,
         private ?string $path = null,
         private ?string $serviceName = null,
+        private ?string $mode = null,
+        private ?string $extra = null,
+        private ?string $xPaddingBytes = null,
         private ?string $sid = null,
         private ?string $spx = null,
     )
@@ -71,6 +74,9 @@ class VlessConfig
         $config->setHost($data['host'] ?? null);
         $config->setPath($data['path'] ?? null);
         $config->setServiceName($data['service_name'] ?? null);
+        $config->setMode($data['mode'] ?? null);
+        $config->setExtra($data['extra'] ?? null);
+        $config->setXPaddingBytes(isset($data['x_padding_bytes']) ? (string) $data['x_padding_bytes'] : null);
         $config->setSid($data['sid'] ?? null);
         $config->setSpx($data['spx'] ?? null);
 
@@ -103,6 +109,9 @@ class VlessConfig
             'host' => $this->host,
             'path' => $this->path,
             'service_name' => $this->serviceName,
+            'mode' => $this->mode,
+            'extra' => $this->extra,
+            'x_padding_bytes' => $this->xPaddingBytes,
             'sid' => $this->sid,
             'spx' => $this->spx,
         ];
@@ -364,6 +373,27 @@ class VlessConfig
     public function setServiceName(?string $serviceName): self
     {
         $this->serviceName = $serviceName;
+
+        return $this;
+    }
+
+    public function setMode(?string $mode): self
+    {
+        $this->mode = $mode;
+
+        return $this;
+    }
+
+    public function setExtra(?string $extra): self
+    {
+        $this->extra = $extra;
+
+        return $this;
+    }
+
+    public function setXPaddingBytes(?string $xPaddingBytes): self
+    {
+        $this->xPaddingBytes = $xPaddingBytes;
 
         return $this;
     }

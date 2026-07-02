@@ -710,6 +710,7 @@ class XuiConfigService
         $streamSettings = $this->decodeJsonField($row['streamSettings'] ?? $row['stream_settings'] ?? null);
         $wsSettings = $this->decodeJsonField($streamSettings['wsSettings'] ?? $streamSettings['ws_settings'] ?? null);
         $grpcSettings = $this->decodeJsonField($streamSettings['grpcSettings'] ?? $streamSettings['grpc_settings'] ?? null);
+        $xhttpSettings = $this->decodeJsonField($streamSettings['xhttpSettings'] ?? $streamSettings['xhttp_settings'] ?? null);
         $tlsSettings = $this->decodeJsonField($streamSettings['tlsSettings'] ?? $streamSettings['tls_settings'] ?? null);
         $realitySettings = $this->decodeJsonField(
             $streamSettings['realitySettings'] ?? $streamSettings['reality_settings'] ?? null
@@ -736,9 +737,18 @@ class XuiConfigService
                 ?? null,
             'sid' => $realitySettings['shortIds'][0] ?? null,
             'spx' => '/',
-            'host' => $headers['Host'] ?? null,
-            'path' => $wsSettings['path'] ?? null,
+            'host' => $xhttpSettings['host']
+                ?? $headers['Host']
+                ?? null,
+            'path' => $xhttpSettings['path']
+                ?? $wsSettings['path']
+                ?? null,
             'service_name' => $grpcSettings['serviceName'] ?? $grpcSettings['service_name'] ?? null,
+            'mode' => $xhttpSettings['mode'] ?? null,
+            'extra' => $this->normalizeJsonValueToString($xhttpSettings['extra'] ?? null),
+            'x_padding_bytes' => isset($xhttpSettings['xPaddingBytes'])
+                ? (string) $xhttpSettings['xPaddingBytes']
+                : (isset($xhttpSettings['x_padding_bytes']) ? (string) $xhttpSettings['x_padding_bytes'] : null),
         ];
     }
 
@@ -768,6 +778,9 @@ class XuiConfigService
             $inbound['host'] ?? null,
             $inbound['path'] ?? null,
             $inbound['service_name'] ?? null,
+            $inbound['mode'] ?? null,
+            $inbound['extra'] ?? null,
+            isset($inbound['x_padding_bytes']) ? (string) $inbound['x_padding_bytes'] : null,
             $inbound['sid'] ?? null,
             $inbound['spx'] ?? '/'
         );
@@ -788,6 +801,23 @@ class XuiConfigService
         $decoded = json_decode($value, true);
 
         return is_array($decoded) ? $decoded : [];
+    }
+
+    private function normalizeJsonValueToString(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            $value = trim($value);
+
+            return $value !== '' ? $value : null;
+        }
+
+        if (is_array($value)) {
+            $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+            return $encoded !== false ? $encoded : null;
+        }
+
+        return null;
     }
 
     private function extractClientFromTrafficPayload(array $payload, VlessConfig $config, bool $enabled): array

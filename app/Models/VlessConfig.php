@@ -35,6 +35,9 @@ class VlessConfig extends Model
         'host',
         'path',
         'service_name',
+        'mode',
+        'extra',
+        'x_padding_bytes',
         'sid',
         'spx',
     ];
@@ -113,6 +116,30 @@ class VlessConfig extends Model
 
             if ($this->type === 'grpc' && $this->service_name) {
                 $paramList[] = 'serviceName='.urlencode($this->service_name);
+            }
+        }
+
+        if (in_array($this->type, ['http', 'h2', 'xhttp'], true)) {
+            if ($this->type === 'xhttp' || $this->host) {
+                $paramList[] = 'host='.urlencode((string) $this->host);
+            }
+
+            if ($this->path) {
+                $paramList[] = 'path='.urlencode($this->path);
+            }
+        }
+
+        if ($this->type === 'xhttp') {
+            if ($this->mode) {
+                $paramList[] = 'mode='.urlencode($this->mode);
+            }
+
+            if ($this->extra) {
+                $paramList[] = 'extra='.urlencode($this->extra);
+            }
+
+            if ($this->x_padding_bytes !== null && $this->x_padding_bytes !== '') {
+                $paramList[] = 'x_padding_bytes='.urlencode((string) $this->x_padding_bytes);
             }
         }
 

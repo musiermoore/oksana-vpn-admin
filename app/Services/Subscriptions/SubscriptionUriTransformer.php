@@ -43,6 +43,8 @@ class SubscriptionUriTransformer
             'path' => $parsed['path'],
             'serviceName' => $parsed['service_name'],
             'mode' => $parsed['mode'],
+            'extra' => $parsed['extra'],
+            'x_padding_bytes' => $parsed['x_padding_bytes'],
             'sni' => $parsed['sni'],
             'pbk' => $parsed['pbk'],
             'fp' => $parsed['fp'],

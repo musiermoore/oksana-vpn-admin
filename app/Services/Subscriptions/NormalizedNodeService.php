@@ -7,7 +7,6 @@ use App\Models\Proxy;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
-use Illuminate\Support\Facades\Http;
 
 class NormalizedNodeService
 {
@@ -184,31 +183,7 @@ class NormalizedNodeService
      */
     private function getVlessUris(VlessConfig $config): array
     {
-        if (empty($config->sub_id)) {
-            return [$config->getStaticLink()];
-        }
-
-        try {
-            $response = Http::timeout(10)
-                ->get($config->getSubscriptionLink())
-                ->body();
-
-            $decoded = base64_decode($response, true);
-
-            if ($decoded === false) {
-                $decoded = $response;
-            }
-
-            return collect(preg_split('/\r\n|\r|\n/', $decoded))
-                ->map(fn ($line) => trim((string) $line))
-                ->filter(fn ($line) => $line !== '' && $this->isSupportedSubscriptionLink($line))
-                ->values()
-                ->all();
-        } catch (\Exception $exception) {
-            report($exception);
-
-            return [];
-        }
+        return [$config->getStaticLink()];
     }
 
     private function isSupportedSubscriptionLink(string $line): bool

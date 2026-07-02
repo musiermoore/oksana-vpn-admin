@@ -235,31 +235,39 @@ class NormalizedNodeService
     private function resolveReadyProxy(\App\Models\Server $server, ?int $inboundId = null): ?Proxy
     {
         if ($server->relationLoaded('proxies')) {
-            return $server->proxies
-                ->filter(function (Proxy $proxy) use ($inboundId) {
-                    if (! $proxy->is_ready) {
-                        return false;
-                    }
+            $readyProxies = $server->proxies
+                ->filter(fn (Proxy $proxy) => (bool) $proxy->is_ready)
+                ->sortBy(fn (Proxy $proxy) => (int) $proxy->id)
+                ->values();
 
-                    return $proxy->inbound_id === null || (int) $proxy->inbound_id === (int) $inboundId;
-                })
-                ->sortBy([
-                    fn (Proxy $proxy) => $proxy->inbound_id === null ? 1 : 0,
-                    fn (Proxy $proxy) => (int) $proxy->id,
-                ])
+            if ($inboundId !== null) {
+                $exactProxy = $readyProxies
+                    ->first(fn (Proxy $proxy) => (int) $proxy->inbound_id === $inboundId);
+
+                if ($exactProxy instanceof Proxy) {
+                    return $exactProxy;
+                }
+            }
+
+            return $readyProxies
+                ->first(fn (Proxy $proxy) => $proxy->inbound_id === null);
+        }
+
+        if ($inboundId !== null) {
+            $exactProxy = $server->proxies()
+                ->where('proxies.is_ready', true)
+                ->where('proxies.inbound_id', $inboundId)
+                ->orderBy('proxies.id')
                 ->first();
+
+            if ($exactProxy instanceof Proxy) {
+                return $exactProxy;
+            }
         }
 
         return $server->proxies()
             ->where('proxies.is_ready', true)
-            ->where(function ($query) use ($inboundId) {
-                $query->whereNull('proxies.inbound_id');
-
-                if ($inboundId !== null) {
-                    $query->orWhere('proxies.inbound_id', $inboundId);
-                }
-            })
-            ->orderByRaw('CASE WHEN proxies.inbound_id IS NULL THEN 1 ELSE 0 END')
+            ->whereNull('proxies.inbound_id')
             ->orderBy('proxies.id')
             ->first();
     }

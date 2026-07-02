@@ -457,6 +457,7 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode((string) $response->getContent(), true);
 
         $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('vless://proxy-uuid@lv.example.com:443?', $decoded);
         $this->assertStringContainsString('vless://proxy-uuid@inbound.example.com:9443?', $decoded);
         $this->assertStringNotContainsString('vless://proxy-uuid@generic.example.com:8443?', $decoded);
     }

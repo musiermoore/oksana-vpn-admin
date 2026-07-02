@@ -552,6 +552,51 @@ class VlessConnectTest extends TestCase
         $this->assertStringNotContainsString('vless://proxy-uuid@generic.example.com:8443?', $decoded);
     }
 
+    public function test_connect_does_not_use_generic_proxy_for_vless_when_exact_inbound_proxy_is_missing(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Proxy User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
+        $this->createProxy($server, 'Generic Proxy', 'generic.example.com', 8443, null);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+            'name' => 'proxy-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'proxy-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('vless://proxy-uuid@lv.example.com:443?', $decoded);
+        $this->assertStringNotContainsString('vless://proxy-uuid@generic.example.com:8443?', $decoded);
+    }
+
     public function test_connect_hides_configs_from_inactive_servers(): void
     {
         $user = User::query()->create([

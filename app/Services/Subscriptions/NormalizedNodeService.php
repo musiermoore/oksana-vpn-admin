@@ -83,9 +83,13 @@ class NormalizedNodeService
     private function buildNodesForItem(array $item): array
     {
         $config = $item['config'];
-        $proxy = $this->resolveReadyProxy($config->server, $config->inbound_id ?? null);
 
         if ($config instanceof VlessConfig) {
+            $proxy = $this->resolveReadyProxy(
+                server: $config->server,
+                inboundId: $config->inbound_id ?? null,
+                requireExactInboundMatch: true,
+            );
             $directNodes = collect($this->getVlessUris($config))
                 ->map(fn (string $uri, int $index) => $this->buildNode($uri, $item, $index))
                 ->filter()
@@ -107,6 +111,7 @@ class NormalizedNodeService
         }
 
         if ($config instanceof ShadowsocksConfig) {
+            $proxy = $this->resolveReadyProxy($config->server, $config->inbound_id ?? null);
             $node = $this->buildNode($config->getLink(), $item, 0);
 
             if (! $node) {
@@ -207,7 +212,11 @@ class NormalizedNodeService
         };
     }
 
-    private function resolveReadyProxy(\App\Models\Server $server, ?int $inboundId = null): ?Proxy
+    private function resolveReadyProxy(
+        \App\Models\Server $server,
+        ?int $inboundId = null,
+        bool $requireExactInboundMatch = false,
+    ): ?Proxy
     {
         if ($server->relationLoaded('proxies')) {
             $readyProxies = $server->proxies
@@ -224,6 +233,10 @@ class NormalizedNodeService
                 }
             }
 
+            if ($requireExactInboundMatch) {
+                return null;
+            }
+
             return $readyProxies
                 ->first(fn (Proxy $proxy) => $proxy->inbound_id === null);
         }
@@ -238,6 +251,10 @@ class NormalizedNodeService
             if ($exactProxy instanceof Proxy) {
                 return $exactProxy;
             }
+        }
+
+        if ($requireExactInboundMatch) {
+            return null;
         }
 
         return $server->proxies()

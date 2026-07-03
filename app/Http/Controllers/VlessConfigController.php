@@ -200,6 +200,17 @@ class VlessConfigController extends Controller
         return $response;
     }
 
+    public function connectRaw(Request $request, UserSubscriptionService $subscriptionService)
+    {
+        $user = $this->resolveUserFromConnectionRequest($request);
+
+        if (! $user) {
+            return null;
+        }
+
+        return response()->json($subscriptionService->buildDebug($user));
+    }
+
     public function deepLink(Request $request, string $client, VlessDeepLinkService $deepLinkService)
     {
         $user = $this->resolveUserFromConnectionRequest($request);

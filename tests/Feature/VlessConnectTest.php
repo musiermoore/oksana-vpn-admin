@@ -104,6 +104,68 @@ class VlessConnectTest extends TestCase
         $this->assertStringStartsWith('v2rayng://install-sub?url=', $location);
     }
 
+    public function test_connect_raw_requires_basic_auth_and_returns_debug_json(): void
+    {
+        config([
+            'auth.basic_auth.login' => 'debug-user',
+            'auth.basic_auth.password' => 'debug-pass',
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Debug User',
+            'telegram' => '@debug',
+            'telegram_id' => '654321',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+
+        $config = ShadowsocksConfig::query()->create([
+            'server_id' => $server->id,
+            'inbound_id' => 12,
+            'user_id' => $user->id,
+            'name' => 'android-ss',
+            'description' => null,
+            'is_active' => true,
+            'enable' => true,
+            'port' => 8388,
+            'method' => 'chacha20-ietf-poly1305',
+            'password' => 'secret',
+        ]);
+
+        $query = [
+            'tg' => Crypt::encrypt('654321'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ];
+
+        $this->get(route('vless.connect-raw', $query))
+            ->assertUnauthorized();
+
+        $response = $this->withServerVariables([
+            'PHP_AUTH_USER' => 'debug-user',
+            'PHP_AUTH_PW' => 'debug-pass',
+        ])->get(route('vless.connect-raw', $query));
+
+        $response->assertOk()
+            ->assertExactJson([
+                [
+                    'url' => $config->getLink(),
+                    'config' => [
+                        'id' => $config->id,
+                        'name' => 'Латвия • SHADOWSOCKS',
+                        'domain' => 'lv-1.example.com',
+                        'port' => 8388,
+                        'protocol' => 'shadowsocks',
+                        'transport' => 'tcp',
+                        'inbound_id' => 12,
+                    ],
+                    'server' => [
+                        'id' => $server->id,
+                        'name' => 'Латвия',
+                    ],
+                ],
+            ]);
+    }
+
     public function test_deep_link_route_redirects_hiddify_to_clash_subscription(): void
     {
         Http::fake([

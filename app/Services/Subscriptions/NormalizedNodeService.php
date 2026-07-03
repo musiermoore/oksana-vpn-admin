@@ -159,6 +159,8 @@ class NormalizedNodeService
             return null;
         }
 
+        $config = $item['config'];
+
         return new NormalizedNode(
             id: implode(':', [$item['server_id'], $item['config_id'], $index, md5($uri)]),
             serverName: $item['server'],
@@ -169,7 +171,14 @@ class NormalizedNodeService
             configId: $item['config_id'],
             sourceType: $item['type'],
             sortServerName: $item['server_sort'],
-            meta: [],
+            meta: [
+                'config_name' => (string) $config->name,
+                'config_port' => (int) $config->port,
+                'config_protocol' => $config instanceof VlessConfig
+                    ? (string) ($config->protocol ?: 'vless')
+                    : 'shadowsocks',
+                'config_inbound_id' => $config->inbound_id === null ? null : (int) $config->inbound_id,
+            ],
         );
     }
 

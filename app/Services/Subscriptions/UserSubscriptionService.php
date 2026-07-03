@@ -16,6 +16,57 @@ class UserSubscriptionService
 
     public function build(User $user, ?string $format = null): SubscriptionBuildResult
     {
+        $namedNodes = $this->buildNamedNodes($user);
+
+        return $this->builderFactory
+            ->make((string) $format)
+            ->build($namedNodes);
+    }
+
+    /**
+     * @return array<int, array{
+     *     url: string,
+     *     config: array{
+     *         id: int,
+     *         name: string,
+     *         domain: string,
+     *         port: int,
+     *         protocol: string,
+     *         transport: string,
+     *         inbound_id: int|null
+     *     },
+     *     server: array{id: int, name: string}
+     * }>
+     */
+    public function buildDebug(User $user): array
+    {
+        return array_map(function (NormalizedNode $node): array {
+            return [
+                'url' => $node->uri,
+                'config' => [
+                    'id' => $node->configId,
+                    'name' => (string) ($node->meta['name'] ?? $node->meta['config_name'] ?? $node->serverName),
+                    'domain' => $this->extractDomain($node->uri),
+                    'port' => (int) ($node->meta['config_port'] ?? 0),
+                    'protocol' => (string) ($node->meta['config_protocol'] ?? $node->protocol),
+                    'transport' => $node->transport,
+                    'inbound_id' => isset($node->meta['config_inbound_id'])
+                        ? (is_null($node->meta['config_inbound_id']) ? null : (int) $node->meta['config_inbound_id'])
+                        : null,
+                ],
+                'server' => [
+                    'id' => $node->serverId,
+                    'name' => $node->serverName,
+                ],
+            ];
+        }, $this->buildNamedNodes($user));
+    }
+
+    /**
+     * @return array<int, NormalizedNode>
+     */
+    private function buildNamedNodes(User $user): array
+    {
         $nodes = $this->normalizedNodeService->collect($user);
         $names = $this->nodeNameService->buildNames($nodes);
 
@@ -54,9 +105,7 @@ class UserSubscriptionService
             return 0;
         });
 
-        return $this->builderFactory
-            ->make((string) $format)
-            ->build($namedNodes);
+        return $namedNodes;
     }
 
     private function getTypeSortOrder(string $type): int
@@ -69,5 +118,12 @@ class UserSubscriptionService
             'hysteria2' => 4,
             default => 99,
         };
+    }
+
+    private function extractDomain(string $uri): string
+    {
+        $host = parse_url($uri, PHP_URL_HOST);
+
+        return is_string($host) ? $host : '';
     }
 }

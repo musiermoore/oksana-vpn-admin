@@ -105,6 +105,9 @@ Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::clas
 
 Route::get('connect', [VlessConfigController::class, 'connect'])
     ->name('vless.connect');
+Route::get('connect-raw', [VlessConfigController::class, 'connectRaw'])
+    ->middleware(BasicAuth::class)
+    ->name('vless.connect-raw');
 Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLink'])
     ->name('vless.deep-link');
 

@@ -871,6 +871,52 @@ class VlessConnectTest extends TestCase
         );
     }
 
+    public function test_connect_returns_full_hysteria2_links_for_local_hysteria_configs(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $latvia = $this->createServer('Латвия', 'LV', 'lv.oksana1984.ru');
+
+        VlessConfig::query()->create([
+            'server_id' => $latvia->id,
+            'user_id' => $user->id,
+            'name' => 'hysteria-lv',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'hysteria-uuid',
+            'auth' => 'xrp11ixkmlsebrwe',
+            'port' => 59885,
+            'protocol' => 'hysteria',
+            'type' => 'udp',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'alpn' => 'h2,http/1.1,h3',
+            'fp' => 'firefox',
+            'sni' => 'lv.oksana1984.ru',
+            'obfs' => 'salamander',
+            'obfs_password' => 'rva44wfs935cbf5s',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123456'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString(
+            'hysteria2://xrp11ixkmlsebrwe@lv.oksana1984.ru:59885?alpn=h2%2Chttp%2F1.1%2Ch3&fm=%7B%22udp%22%3A%5B%7B%22settings%22%3A%7B%22password%22%3A%22rva44wfs935cbf5s%22%7D%2C%22type%22%3A%22salamander%22%7D%5D%7D&fp=firefox&obfs=salamander&obfs-password=rva44wfs935cbf5s&security=tls&sni=lv.oksana1984.ru#',
+            $decoded
+        );
+    }
+
     public function test_connect_returns_subscription_metadata_headers_from_local_database(): void
     {
         $user = User::query()->create([

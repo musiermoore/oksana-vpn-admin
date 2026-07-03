@@ -30,12 +30,15 @@ class VlessConfig extends Model
         'flow',
 
         'pbk',
+        'alpn',
         'fp',
         'sni',
         'host',
         'path',
         'service_name',
         'mode',
+        'obfs',
+        'obfs_password',
         'extra',
         'x_padding_bytes',
         'sid',
@@ -79,7 +82,9 @@ class VlessConfig extends Model
     {
         return match ($this->getNormalizedProtocol()) {
             'trojan' => $this->getTrojanStaticLink(),
-            'hysteria', 'hy' => $this->getHysteriaStaticLink(),
+            'hysteria', 'hy' => $this->shouldBuildHysteria2Link()
+                ? $this->getHysteria2StaticLink()
+                : $this->getHysteriaStaticLink(),
             'hysteria2', 'hy2' => $this->getHysteria2StaticLink(),
             default => $this->getVlessStaticLink(),
         };
@@ -205,6 +210,12 @@ class VlessConfig extends Model
     {
         $secret = rawurlencode((string) ($this->password ?: $this->auth ?: $this->uuid));
         $paramList = array_filter([
+            $this->alpn ? 'alpn='.urlencode($this->alpn) : null,
+            $this->buildHysteria2FastOpenMetadata(),
+            $this->fp ? 'fp='.urlencode($this->fp) : null,
+            $this->obfs ? 'obfs='.urlencode($this->obfs) : null,
+            $this->obfs_password ? 'obfs-password='.urlencode($this->obfs_password) : null,
+            $this->security ? 'security='.urlencode($this->security) : null,
             $this->sni ? 'sni='.urlencode($this->sni) : null,
             $this->security === 'none' ? 'insecure=1' : null,
         ]);
@@ -218,6 +229,36 @@ class VlessConfig extends Model
     private function getNormalizedProtocol(): string
     {
         return mb_strtolower((string) ($this->protocol ?: 'vless'));
+    }
+
+    private function shouldBuildHysteria2Link(): bool
+    {
+        return $this->alpn !== null
+            || $this->obfs !== null
+            || $this->obfs_password !== null
+            || $this->security !== null && mb_strtolower($this->security) === 'tls';
+    }
+
+    private function buildHysteria2FastOpenMetadata(): ?string
+    {
+        if (mb_strtolower((string) $this->obfs) !== 'salamander' || empty($this->obfs_password)) {
+            return null;
+        }
+
+        $payload = json_encode([
+            'udp' => [[
+                'settings' => [
+                    'password' => $this->obfs_password,
+                ],
+                'type' => 'salamander',
+            ]],
+        ], JSON_UNESCAPED_SLASHES);
+
+        if ($payload === false) {
+            return null;
+        }
+
+        return 'fm='.urlencode($payload);
     }
 
     public function getBaseUrl(): string

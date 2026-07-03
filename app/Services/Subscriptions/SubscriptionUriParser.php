@@ -172,10 +172,14 @@ class SubscriptionUriParser
             'password' => rawurldecode((string) ($parts['user'] ?? '')),
             'server' => (string) ($parts['host'] ?? ''),
             'port' => (int) ($parts['port'] ?? 0),
+            'alpn' => $this->splitList((string) Arr::get($query, 'alpn', '')),
+            'fm' => rawurldecode((string) Arr::get($query, 'fm', '')),
+            'fp' => (string) Arr::get($query, 'fp', ''),
             'sni' => (string) Arr::get($query, 'sni', ''),
             'insecure' => $this->toBool(Arr::get($query, 'insecure')),
             'obfs' => (string) Arr::get($query, 'obfs', ''),
             'obfs_password' => (string) Arr::get($query, 'obfs-password', ''),
+            'security' => (string) Arr::get($query, 'security', ''),
             'fragment' => rawurldecode((string) ($parts['fragment'] ?? '')),
         ];
     }

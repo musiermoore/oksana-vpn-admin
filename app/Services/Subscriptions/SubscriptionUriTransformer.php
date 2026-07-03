@@ -110,6 +110,10 @@ class SubscriptionUriTransformer
     {
         $scheme = Str::startsWith($sourceUri, 'hy2://') ? 'hy2' : 'hysteria2';
         $query = array_filter([
+            'alpn' => implode(',', Arr::wrap($parsed['alpn'] ?? [])),
+            'fm' => $parsed['fm'] ?? null,
+            'fp' => $parsed['fp'] ?? null,
+            'security' => $parsed['security'] ?? null,
             'sni' => $parsed['sni'],
             'insecure' => $parsed['insecure'] ? '1' : null,
             'obfs' => $parsed['obfs'],

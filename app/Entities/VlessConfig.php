@@ -28,12 +28,15 @@ class VlessConfig
         private ?string $flow = null,
 
         private ?string $pbk = null,
+        private ?string $alpn = null,
         private ?string $fp = null,
         private ?string $sni = null,
         private ?string $host = null,
         private ?string $path = null,
         private ?string $serviceName = null,
         private ?string $mode = null,
+        private ?string $obfs = null,
+        private ?string $obfsPassword = null,
         private ?string $extra = null,
         private ?string $xPaddingBytes = null,
         private ?string $sid = null,
@@ -69,12 +72,15 @@ class VlessConfig
         $config->setFlow($data['flow'] ?? null);
 
         $config->setPbk($data['pbk'] ?? null);
+        $config->setAlpn($data['alpn'] ?? null);
         $config->setFp($data['fp'] ?? null);
         $config->setSni($data['sni'] ?? null);
         $config->setHost($data['host'] ?? null);
         $config->setPath($data['path'] ?? null);
         $config->setServiceName($data['service_name'] ?? null);
         $config->setMode($data['mode'] ?? null);
+        $config->setObfs($data['obfs'] ?? null);
+        $config->setObfsPassword($data['obfs_password'] ?? null);
         $config->setExtra($data['extra'] ?? null);
         $config->setXPaddingBytes(isset($data['x_padding_bytes']) ? (string) $data['x_padding_bytes'] : null);
         $config->setSid($data['sid'] ?? null);
@@ -104,12 +110,15 @@ class VlessConfig
             'security' => $this->security,
             'flow' => $this->flow,
             'pbk' => $this->pbk,
+            'alpn' => $this->alpn,
             'fp' => $this->fp,
             'sni' => $this->sni,
             'host' => $this->host,
             'path' => $this->path,
             'service_name' => $this->serviceName,
             'mode' => $this->mode,
+            'obfs' => $this->obfs,
+            'obfs_password' => $this->obfsPassword,
             'extra' => $this->extra,
             'x_padding_bytes' => $this->xPaddingBytes,
             'sid' => $this->sid,

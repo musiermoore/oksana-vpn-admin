@@ -10,6 +10,7 @@ use App\Models\VlessConfig;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -719,6 +720,8 @@ class XuiConfigService
         $headers = $this->decodeJsonField($wsSettings['headers'] ?? null);
         $type = mb_strtolower((string) ($streamSettings['network'] ?? 'tcp'));
         $security = mb_strtolower((string) ($streamSettings['security'] ?? 'none'));
+        $alpn = $this->normalizeAlpn($tlsSettings['alpn'] ?? $streamSettings['alpn'] ?? null);
+        ['type' => $obfs, 'password' => $obfsPassword] = $this->extractHysteriaObfs($settings, $streamSettings);
 
         return [
             'id' => isset($row['id']) ? (int) $row['id'] : null,
@@ -730,6 +733,7 @@ class XuiConfigService
             'stream_settings' => $streamSettings,
             'method' => $settings['method'] ?? $settings['clients'][0]['method'] ?? null,
             'pbk' => $realitySettings['settings']['publicKey'] ?? null,
+            'alpn' => $alpn,
             'fp' => $realitySettings['settings']['fingerprint'] ?? null,
             'sni' => $realitySettings['serverNames'][0]
                 ?? $tlsSettings['serverName']
@@ -745,6 +749,8 @@ class XuiConfigService
                 ?? null,
             'service_name' => $grpcSettings['serviceName'] ?? $grpcSettings['service_name'] ?? null,
             'mode' => $xhttpSettings['mode'] ?? null,
+            'obfs' => $obfs,
+            'obfs_password' => $obfsPassword,
             'extra' => $this->normalizeJsonValueToString($xhttpSettings['extra'] ?? null),
             'x_padding_bytes' => isset($xhttpSettings['xPaddingBytes'])
                 ? (string) $xhttpSettings['xPaddingBytes']
@@ -773,12 +779,15 @@ class XuiConfigService
             $inbound['security'] ?? null,
             $settings['flow'] ?? null,
             $inbound['pbk'] ?? null,
+            $inbound['alpn'] ?? null,
             $inbound['fp'] ?? null,
             $inbound['sni'] ?? null,
             $inbound['host'] ?? null,
             $inbound['path'] ?? null,
             $inbound['service_name'] ?? null,
             $inbound['mode'] ?? null,
+            $inbound['obfs'] ?? null,
+            $inbound['obfs_password'] ?? null,
             $inbound['extra'] ?? null,
             isset($inbound['x_padding_bytes']) ? (string) $inbound['x_padding_bytes'] : null,
             $inbound['sid'] ?? null,
@@ -815,6 +824,103 @@ class XuiConfigService
             $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             return $encoded !== false ? $encoded : null;
+        }
+
+        return null;
+    }
+
+    private function normalizeAlpn(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            $normalized = trim($value);
+
+            return $normalized !== '' ? $normalized : null;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $normalized = collect($value)
+            ->map(fn (mixed $item) => is_scalar($item) ? trim((string) $item) : '')
+            ->filter()
+            ->implode(',');
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @param  array<string, mixed>  $streamSettings
+     * @return array{type: ?string, password: ?string}
+     */
+    private function extractHysteriaObfs(array $settings, array $streamSettings): array
+    {
+        $candidates = [
+            Arr::get($settings, 'obfs'),
+            Arr::get($settings, 'obfsSettings'),
+            Arr::get($settings, 'obfs_settings'),
+            Arr::get($streamSettings, 'obfs'),
+            Arr::get($streamSettings, 'obfsSettings'),
+            Arr::get($streamSettings, 'obfs_settings'),
+        ];
+
+        $type = $this->firstNonEmptyString([
+            Arr::get($settings, 'obfsType'),
+            Arr::get($settings, 'obfs_type'),
+            Arr::get($streamSettings, 'obfsType'),
+            Arr::get($streamSettings, 'obfs_type'),
+        ]);
+
+        $password = $this->firstNonEmptyString([
+            Arr::get($settings, 'obfsPassword'),
+            Arr::get($settings, 'obfs_password'),
+            Arr::get($streamSettings, 'obfsPassword'),
+            Arr::get($streamSettings, 'obfs_password'),
+        ]);
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate)) {
+                $type ??= trim($candidate) !== '' ? trim($candidate) : null;
+
+                continue;
+            }
+
+            if (! is_array($candidate)) {
+                continue;
+            }
+
+            $type ??= $this->firstNonEmptyString([
+                Arr::get($candidate, 'type'),
+                Arr::get($candidate, 'name'),
+            ]);
+
+            $password ??= $this->firstNonEmptyString([
+                Arr::get($candidate, 'password'),
+                Arr::get($candidate, 'settings.password'),
+                Arr::get($candidate, 'salamander.password'),
+                Arr::get($candidate, 'salamander.settings.password'),
+            ]);
+        }
+
+        return [
+            'type' => $type,
+            'password' => $password,
+        ];
+    }
+
+    private function firstNonEmptyString(array $values): ?string
+    {
+        foreach ($values as $value) {
+            if (! is_scalar($value)) {
+                continue;
+            }
+
+            $normalized = trim((string) $value);
+
+            if ($normalized !== '') {
+                return $normalized;
+            }
         }
 
         return null;

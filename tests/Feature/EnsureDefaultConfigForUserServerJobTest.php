@@ -6,6 +6,7 @@ use App\Jobs\EnsureDefaultConfigForUserServerJob;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Models\VlessConfig;
 use Illuminate\Http\Client\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -563,5 +564,105 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
                 && ($request['client']['flow'] ?? null) === 'xtls-rprx-vision'
                 && ($request['client']['security'] ?? null) === 'auto';
         });
+    }
+
+    public function test_job_refreshes_existing_hysteria_config_from_panel_client_settings(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Ready Hysteria',
+            'code' => 'RHY',
+            'ip' => '10.0.0.5',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+            'name' => '@alice',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'hysteria-uuid',
+            'auth' => 'old-auth',
+            'port' => 59885,
+            'protocol' => 'hysteria',
+            'type' => 'udp',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'sni' => 'lv.oksana1984.ru',
+        ]);
+
+        Http::fake([
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'hysteria',
+                    'port' => 59885,
+                    'settings' => [
+                        'clients' => [[
+                            'id' => 'hysteria-uuid',
+                            'email' => '@alice',
+                            'auth' => 'xrp11ixkmlsebrwe',
+                            'enable' => true,
+                        ]],
+                        'obfs' => [
+                            'type' => 'salamander',
+                            'password' => 'rva44wfs935cbf5s',
+                        ],
+                    ],
+                    'streamSettings' => json_encode([
+                        'network' => 'udp',
+                        'security' => 'tls',
+                        'tlsSettings' => [
+                            'serverName' => 'lv.oksana1984.ru',
+                            'alpn' => ['h2', 'http/1.1', 'h3'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                    'fp' => 'firefox',
+                ]],
+            ]),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'id' => $config->id,
+            'auth' => 'xrp11ixkmlsebrwe',
+            'alpn' => 'h2,http/1.1,h3',
+            'fp' => 'firefox',
+            'obfs' => 'salamander',
+            'obfs_password' => 'rva44wfs935cbf5s',
+            'security' => 'tls',
+            'sni' => 'lv.oksana1984.ru',
+        ]);
+
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/addClient'));
     }
 }

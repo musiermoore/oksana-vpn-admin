@@ -201,11 +201,11 @@ class XuiConfigService
 
         $existingConfigs = $user->vlessConfigs()
             ->where('server_id', $this->server->id)
-            ->get(['id', 'inbound_id', 'type']);
+            ->get();
 
         return collect($allowedInbounds)
-            ->reject(function (array $inbound) use ($existingConfigs) {
-                return $existingConfigs->contains(function (VlessConfig $config) use ($inbound) {
+            ->map(function (array $inbound) use ($existingConfigs, $user) {
+                $existingConfig = $existingConfigs->first(function (VlessConfig $config) use ($inbound) {
                     $inboundId = (int) ($inbound['id'] ?? 0);
 
                     if (! empty($config->inbound_id)) {
@@ -214,10 +214,56 @@ class XuiConfigService
 
                     return mb_strtolower((string) $config->type) === mb_strtolower((string) ($inbound['type'] ?? ''));
                 });
+
+                if ($existingConfig instanceof VlessConfig) {
+                    return $this->refreshExistingClientConfig($existingConfig, $user, $inbound);
+                }
+
+                return $this->createClientOnInbound($user, $inbound);
             })
-            ->map(fn (array $inbound) => $this->createClientOnInbound($user, $inbound))
             ->values()
             ->all();
+    }
+
+    private function refreshExistingClientConfig(VlessConfig $config, User $user, array $inbound): VlessConfig
+    {
+        $clients = $inbound['settings']['clients'] ?? [];
+
+        if (! is_array($clients)) {
+            return $config;
+        }
+
+        $matchedClient = collect($clients)->first(function (mixed $client) use ($config, $user): bool {
+            if (! is_array($client)) {
+                return false;
+            }
+
+            $clientId = (string) ($client['id'] ?? '');
+            $clientEmail = (string) ($client['email'] ?? '');
+
+            return ($config->uuid && $clientId === (string) $config->uuid)
+                || ($config->name && $clientEmail === (string) $config->name)
+                || ($user->telegram && $clientEmail === (string) $user->telegram);
+        });
+
+        if (! is_array($matchedClient)) {
+            return $config;
+        }
+
+        $attributes = $this->buildLocalConfigAttributes($inbound, [
+            'email' => $matchedClient['email'] ?? $config->name,
+            'enable' => array_key_exists('enable', $matchedClient) ? (bool) $matchedClient['enable'] : $config->enable,
+            'id' => $matchedClient['id'] ?? $config->uuid,
+            'subId' => $matchedClient['subId'] ?? $config->sub_id,
+            'password' => $matchedClient['password'] ?? $config->password,
+            'auth' => $matchedClient['auth'] ?? $config->auth,
+            'flow' => $matchedClient['flow'] ?? $config->flow,
+        ], $user->id);
+
+        $config->fill($attributes);
+        $config->save();
+
+        return $config->fresh();
     }
 
     public function setClientEnabled(string $uuid, bool $enabled): array
@@ -734,7 +780,11 @@ class XuiConfigService
             'method' => $settings['method'] ?? $settings['clients'][0]['method'] ?? null,
             'pbk' => $realitySettings['settings']['publicKey'] ?? null,
             'alpn' => $alpn,
-            'fp' => $realitySettings['settings']['fingerprint'] ?? null,
+            'fp' => $realitySettings['settings']['fingerprint']
+                ?? $streamSettings['fp']
+                ?? $settings['fp']
+                ?? $row['fp']
+                ?? null,
             'sni' => $realitySettings['serverNames'][0]
                 ?? $tlsSettings['serverName']
                 ?? $headers['Host']

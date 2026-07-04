@@ -353,9 +353,7 @@ class XuiConfigService
     public function getClientTrafficSummaries(): array
     {
         try {
-            $response = $this->getWithFallback($this->getClientListPaths());
-            $payload = $response->json();
-            $rows = $this->normalizeClientListRows($payload);
+            $rows = $this->getClientListEntries();
 
             return collect($rows)
                 ->map(function (array $row): array {
@@ -1027,6 +1025,17 @@ class XuiConfigService
 
             return $this->extractClientFromInboundsPayload($config, $enabled);
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getClientListEntries(): array
+    {
+        $response = $this->getWithFallback($this->getClientListPaths());
+        $payload = $response->json();
+
+        return $this->normalizeClientListRows($payload);
     }
 
     protected function usesTrafficEndpointForEnableState(): bool

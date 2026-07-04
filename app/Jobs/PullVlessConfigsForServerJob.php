@@ -45,9 +45,10 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
 
         $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $data = $service->getAllVlessInbounds();
+        $clientIndex = $this->buildClientIndex($service->getClientListEntries());
 
         foreach ($data as $row) {
-            $this->handleInbound($row, $server, $uuids, $service);
+            $this->handleInbound($row, $server, $uuids, $service, $clientIndex);
         }
 
         if ($uuids !== []) {
@@ -63,28 +64,40 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
         report($exception);
     }
 
-    private function handleInbound(array $row, Server $server, array &$uuids, XuiConfigService $service): void
+    private function handleInbound(
+        array $row,
+        Server $server,
+        array &$uuids,
+        XuiConfigService $service,
+        array $clientIndex,
+    ): void
     {
         $settings = $row['settings'] ?? [];
 
         $clients = collect($settings['clients'] ?? []);
 
         foreach ($clients as $client) {
-            $uuid = $client['id'] ?? null;
+            $uuid = $client['id'] ?? $client['uuid'] ?? null;
 
             if (! $uuid) {
                 continue;
             }
 
+            $mergedClient = $this->mergeClientPayload(
+                inboundId: (int) ($row['id'] ?? 0),
+                inboundClient: is_array($client) ? $client : [],
+                clientIndex: $clientIndex,
+            );
+
             $vlessConfig = [
                 ...$service->buildLocalConfigAttributes($row, [
-                    'email' => $client['email'] ?? null,
-                    'enable' => ! empty($client['enable']),
+                    'email' => $mergedClient['email'] ?? null,
+                    'enable' => ! empty($mergedClient['enable']),
                     'id' => $uuid,
-                    'subId' => $client['subId'] ?? null,
-                    'password' => $client['password'] ?? null,
-                    'auth' => $client['auth'] ?? null,
-                    'flow' => $client['flow'] ?? null,
+                    'subId' => $mergedClient['subId'] ?? null,
+                    'password' => $mergedClient['password'] ?? null,
+                    'auth' => $mergedClient['auth'] ?? null,
+                    'flow' => $mergedClient['flow'] ?? null,
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -99,6 +112,73 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                 'uuid' => $uuid,
             ], $vlessConfig);
         }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<string, array<string, mixed>>
+     */
+    private function buildClientIndex(array $rows): array
+    {
+        $index = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $inboundIds = is_array($row['inboundIds'] ?? null) ? $row['inboundIds'] : [];
+            $identifiers = array_filter([
+                $row['uuid'] ?? $row['id'] ?? null,
+                $row['email'] ?? null,
+                $row['subId'] ?? null,
+            ], fn (mixed $value) => is_string($value) ? trim($value) !== '' : ! empty($value));
+
+            foreach ($inboundIds as $inboundId) {
+                foreach ($identifiers as $identifier) {
+                    $index[$this->clientIndexKey((int) $inboundId, (string) $identifier)] = $row;
+                }
+            }
+        }
+
+        return $index;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inboundClient
+     * @param  array<string, array<string, mixed>>  $clientIndex
+     * @return array<string, mixed>
+     */
+    private function mergeClientPayload(int $inboundId, array $inboundClient, array $clientIndex): array
+    {
+        $matchedClient = null;
+
+        foreach ([
+            $inboundClient['id'] ?? null,
+            $inboundClient['uuid'] ?? null,
+            $inboundClient['email'] ?? null,
+            $inboundClient['subId'] ?? null,
+        ] as $identifier) {
+            if (! is_scalar($identifier) || trim((string) $identifier) === '') {
+                continue;
+            }
+
+            $matchedClient = $clientIndex[$this->clientIndexKey($inboundId, (string) $identifier)] ?? null;
+
+            if (is_array($matchedClient)) {
+                break;
+            }
+        }
+
+        return [
+            ...$inboundClient,
+            ...(is_array($matchedClient) ? $matchedClient : []),
+        ];
+    }
+
+    private function clientIndexKey(int $inboundId, string $identifier): string
+    {
+        return $inboundId.':'.$identifier;
     }
 
 }

@@ -917,6 +917,34 @@ class VlessConnectTest extends TestCase
         );
     }
 
+    public function test_hysteria2_static_link_prefers_auth_over_password_for_secret(): void
+    {
+        $server = $this->createServer('Латвия', 'LV', 'lv.oksana1984.ru');
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => null,
+            'name' => 'hysteria-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'hysteria-uuid',
+            'password' => 'legacy-password',
+            'auth' => 'preferred-auth',
+            'port' => 59885,
+            'protocol' => 'hysteria',
+            'type' => 'udp',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'alpn' => 'h2,http/1.1,h3',
+            'sni' => 'lv.oksana1984.ru',
+        ]);
+
+        $this->assertStringStartsWith(
+            'hysteria2://preferred-auth@lv.oksana1984.ru:59885?',
+            $config->getStaticLink()
+        );
+    }
+
     public function test_connect_returns_subscription_metadata_headers_from_local_database(): void
     {
         $user = User::query()->create([

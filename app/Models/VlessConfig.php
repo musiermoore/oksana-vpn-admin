@@ -208,7 +208,7 @@ class VlessConfig extends Model
 
     private function getHysteria2StaticLink(): string
     {
-        $secret = rawurlencode((string) ($this->password ?: $this->auth ?: $this->uuid));
+        $secret = rawurlencode((string) ($this->auth ?: $this->password ?: $this->uuid));
         $paramList = array_filter([
             $this->alpn ? 'alpn='.urlencode($this->alpn) : null,
             $this->buildHysteria2FastOpenMetadata(),

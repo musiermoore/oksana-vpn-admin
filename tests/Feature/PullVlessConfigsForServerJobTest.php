@@ -50,20 +50,29 @@ class PullVlessConfigsForServerJobTest extends TestCase
                             'email' => 'musiermoore_latviia_329',
                             'enable' => true,
                         ]],
-                        'obfs' => [
-                            'type' => 'salamander',
-                            'password' => 'rva44wfs935cbf5s',
-                        ],
                     ],
                     'streamSettings' => json_encode([
                         'network' => 'hysteria',
+                        'hysteriaSettings' => [
+                            'version' => 2,
+                        ],
                         'security' => 'tls',
                         'tlsSettings' => [
                             'serverName' => 'lv.oksana1984.ru',
                             'alpn' => ['h2', 'http/1.1', 'h3'],
+                            'settings' => [
+                                'fingerprint' => 'firefox',
+                            ],
+                        ],
+                        'finalmask' => [
+                            'udp' => [[
+                                'type' => 'salamander',
+                                'settings' => [
+                                    'password' => 'rva44wfs935cbf5s',
+                                ],
+                            ]],
                         ],
                     ], JSON_UNESCAPED_SLASHES),
-                    'fp' => 'firefox',
                 ]],
             ]),
             'https://panel.test/panel/api/clients/list' => Http::response([

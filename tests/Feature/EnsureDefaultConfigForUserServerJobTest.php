@@ -638,14 +638,27 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
                         ],
                     ],
                     'streamSettings' => json_encode([
-                        'network' => 'udp',
+                        'network' => 'hysteria',
+                        'hysteriaSettings' => [
+                            'version' => 2,
+                        ],
                         'security' => 'tls',
                         'tlsSettings' => [
                             'serverName' => 'lv.oksana1984.ru',
                             'alpn' => ['h2', 'http/1.1', 'h3'],
+                            'settings' => [
+                                'fingerprint' => 'firefox',
+                            ],
+                        ],
+                        'finalmask' => [
+                            'udp' => [[
+                                'type' => 'salamander',
+                                'settings' => [
+                                    'password' => 'rva44wfs935cbf5s',
+                                ],
+                            ]],
                         ],
                     ], JSON_UNESCAPED_SLASHES),
-                    'fp' => 'firefox',
                 ]],
             ]),
         ]);

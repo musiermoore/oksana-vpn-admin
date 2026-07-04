@@ -779,6 +779,7 @@ class XuiConfigService
             'pbk' => $realitySettings['settings']['publicKey'] ?? null,
             'alpn' => $alpn,
             'fp' => $realitySettings['settings']['fingerprint']
+                ?? Arr::get($tlsSettings, 'settings.fingerprint')
                 ?? $streamSettings['fp']
                 ?? $settings['fp']
                 ?? $row['fp']
@@ -911,6 +912,7 @@ class XuiConfigService
             Arr::get($streamSettings, 'obfs'),
             Arr::get($streamSettings, 'obfsSettings'),
             Arr::get($streamSettings, 'obfs_settings'),
+            Arr::get($streamSettings, 'finalmask.udp.0'),
         ];
 
         $type = $this->firstNonEmptyString([

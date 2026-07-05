@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\VlessConfig;
 
 use App\DTOs\VlessConfig\VlessConfigStoreData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreVlessConfigRequest extends FormRequest
+class StoreVlessConfigRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -21,14 +23,8 @@ class StoreVlessConfigRequest extends FormRequest
         ];
     }
 
-    public function toDto(): VlessConfigStoreData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new VlessConfigStoreData(
-            userId: (int) $data['user_id'],
-            serverId: (int) $data['server_id'],
-            inboundId: (int) $data['inbound_id'],
-        );
+        return VlessConfigStoreData::class;
     }
 }

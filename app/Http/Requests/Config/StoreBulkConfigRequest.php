@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Config;
 
 use App\DTOs\Config\ConfigBulkStoreData;
+use App\Http\Requests\DataFormRequest;
 use App\Models\Server;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreBulkConfigRequest extends FormRequest
+class StoreBulkConfigRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -28,10 +30,8 @@ class StoreBulkConfigRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ConfigBulkStoreData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ConfigBulkStoreData(serverId: (int) $data['server_id']);
+        return ConfigBulkStoreData::class;
     }
 }

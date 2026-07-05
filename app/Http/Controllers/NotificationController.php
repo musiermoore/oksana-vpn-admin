@@ -35,11 +35,12 @@ class NotificationController extends Controller
 
     public function store(StoreNotificationRequest $request): RedirectResponse
     {
-        $userIds = $request->validated('user_ids', []);
+        $data = $request->toDto();
+        $userIds = $data->userIds;
         $targets = User::query()
             ->select(['id', 'name', 'telegram', 'telegram_id', 'deleted_at'])
             ->when(
-                ! $request->boolean('send_to_all'),
+                ! $data->sendToAll,
                 fn ($query) => $query->whereIn('id', $userIds),
             )
             ->orderBy('id')
@@ -52,13 +53,13 @@ class NotificationController extends Controller
         }
 
         $messageHtml = $this->broadcastService->sanitizeMessage(
-            (string) $request->validated('message_html', '')
+            (string) ($data->messageHtml ?? '')
         );
 
         $result = $this->broadcastService->send(
             $targets,
             $messageHtml,
-            $request->file('image')
+            $data->image
         );
 
         $redirect = back()->with(

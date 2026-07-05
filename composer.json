@@ -12,6 +12,7 @@
         "laravel/horizon": "^5.46",
         "laravel/tinker": "^3.0",
         "simplesoftwareio/simple-qrcode": "^4.2",
+        "spatie/laravel-data": "^4.23",
         "yoomoney/yookassa-sdk-php": "^3.13"
     },
     "require-dev": {

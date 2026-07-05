@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\TelegramApp;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\DTOs\TelegramApp\ClaimReferralData;
+use App\Http\Requests\DataFormRequest;
 
-class ClaimReferralRequest extends FormRequest
+class ClaimReferralRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -18,8 +21,8 @@ class ClaimReferralRequest extends FormRequest
         ];
     }
 
-    public function referralInput(): string
+    protected function dtoClass(): string
     {
-        return trim((string) $this->validated('referral'));
+        return ClaimReferralData::class;
     }
 }

@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Api;
 
 use App\DTOs\User\ApiUserRegistrationData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class RegisterApiUserRequest extends FormRequest
+class RegisterApiUserRequest extends DataFormRequest
 {
     protected function prepareForValidation(): void
     {
@@ -31,15 +33,8 @@ class RegisterApiUserRequest extends FormRequest
         ];
     }
 
-    public function toDto(?string $telegramId = null): ApiUserRegistrationData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ApiUserRegistrationData(
-            telegramId: trim($telegramId ?? $data['telegram_id']),
-            telegram: trim((string) ($data['telegram'] ?? '')),
-            name: isset($data['name']) ? trim((string) $data['name']) : null,
-            startParam: isset($data['start_param']) ? trim((string) $data['start_param']) : null,
-        );
+        return ApiUserRegistrationData::class;
     }
 }

@@ -23,6 +23,7 @@ class ReferralController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $data = $request->toDto();
 
         try {
             if ($user->referrer_id !== null) {
@@ -33,7 +34,7 @@ class ReferralController extends Controller
                 throw new DomainException('Привязать реферера вручную можно только в течение первого месяца после регистрации.');
             }
 
-            $referral = $this->referrals->attachReferral($user, $request->referralInput());
+            $referral = $this->referrals->attachReferral($user, $data->referral);
 
             if ($referral === null) {
                 throw new DomainException('Не удалось распознать ссылку или привязать реферера.');

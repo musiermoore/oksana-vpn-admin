@@ -6,10 +6,9 @@ namespace App\DTOs\TelegramApp;
 
 use App\DTOs\Data;
 
-class TelegramAppAuthData extends Data
+class ClaimReferralData extends Data
 {
     public function __construct(
-        public string $initData,
-        public ?string $startParam = null,
+        public string $referral,
     ) {}
 }

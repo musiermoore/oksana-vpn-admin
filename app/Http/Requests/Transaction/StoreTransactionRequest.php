@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Transaction;
 
 use App\DTOs\Transaction\TransactionData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreTransactionRequest extends FormRequest
+class StoreTransactionRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -23,16 +25,8 @@ class StoreTransactionRequest extends FormRequest
         ];
     }
 
-    public function toDto(): TransactionData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new TransactionData(
-            userId: (int) $data['user_id'],
-            typeId: (int) $data['type_id'],
-            amount: (float) $data['amount'],
-            description: $data['description'] ?? null,
-            isApproved: (bool) ($data['is_approved'] ?? false),
-        );
+        return TransactionData::class;
     }
 }

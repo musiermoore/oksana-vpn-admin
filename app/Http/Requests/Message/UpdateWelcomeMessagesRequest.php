@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Message;
 
 use App\DTOs\Message\WelcomeMessagesData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class UpdateWelcomeMessagesRequest extends FormRequest
+class UpdateWelcomeMessagesRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -20,13 +22,8 @@ class UpdateWelcomeMessagesRequest extends FormRequest
         ];
     }
 
-    public function toDto(): WelcomeMessagesData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new WelcomeMessagesData(
-            basicText: (string) ($data['basic_text'] ?? ''),
-            extendedText: (string) ($data['extended_text'] ?? ''),
-        );
+        return WelcomeMessagesData::class;
     }
 }

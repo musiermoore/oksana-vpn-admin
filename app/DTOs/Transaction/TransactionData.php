@@ -1,14 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\Transaction;
 
-readonly class TransactionData
+use App\DTOs\Data;
+
+class TransactionData extends Data
 {
     public function __construct(
         public int $userId,
         public int $typeId,
         public float $amount,
-        public ?string $description,
+        public ?string $description = null,
         public bool $isApproved = false,
     ) {}
 

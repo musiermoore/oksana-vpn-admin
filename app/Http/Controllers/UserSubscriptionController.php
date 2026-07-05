@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\UserSubscriptionResource;
 use App\Http\Requests\UserSubscription\UpdateUserSubscriptionRequest;
+use App\Http\Resources\UserSubscriptionResource;
 use App\Models\UserSubscription;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -55,7 +55,7 @@ class UserSubscriptionController extends Controller
 
     public function update(UpdateUserSubscriptionRequest $request, UserSubscription $subscription)
     {
-        $subscription->update($request->validated());
+        $subscription->update($request->toDto()->toArray());
 
         return redirect()->route('subscriptions.index');
     }

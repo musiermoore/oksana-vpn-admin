@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\ExtraPayment;
 
 use App\DTOs\ExtraPayment\ExtraPaymentData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreExtraPaymentRequest extends FormRequest
+class StoreExtraPaymentRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -21,14 +23,8 @@ class StoreExtraPaymentRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ExtraPaymentData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ExtraPaymentData(
-            userId: (int) $data['user_id'],
-            currentPaymentId: (int) $data['current_payment_id'],
-            amount: (float) $data['amount'],
-        );
+        return ExtraPaymentData::class;
     }
 }

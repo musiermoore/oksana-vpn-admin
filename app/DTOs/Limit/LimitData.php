@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\Limit;
 
-readonly class LimitData
+use App\DTOs\Data;
+
+class LimitData extends Data
 {
     public function __construct(
         public int $configId,

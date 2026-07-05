@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\UserSubscription;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\DTOs\UserSubscription\UserSubscriptionUpdateData;
+use App\Http\Requests\DataFormRequest;
 
-class UpdateUserSubscriptionRequest extends FormRequest
+class UpdateUserSubscriptionRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -17,5 +20,10 @@ class UpdateUserSubscriptionRequest extends FormRequest
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
         ];
+    }
+
+    protected function dtoClass(): string
+    {
+        return UserSubscriptionUpdateData::class;
     }
 }

@@ -1,27 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\Server;
 
-readonly class ServerData
+use App\DTOs\Data;
+use App\Models\Server;
+
+class ServerData extends Data
 {
     public function __construct(
         public string $name,
         public string $code,
         public string $ip,
         public string $type,
-        public bool $isHttps,
-        public ?string $linkHost,
-        public ?string $panelLink,
-        public ?string $panelUsername,
-        public ?string $panelPassword,
-        public string $panelApiVersion,
         public string $appPath,
-        public ?string $sshPrivateKey,
-        public ?string $sshPublicKey,
-        public bool $isActive,
-        public bool $isReady,
-        public bool $hideConfigsForNonAdmins,
-        public ?array $allowedInboundIds,
+        public bool $isHttps = false,
+        public string $panelApiVersion = Server::PANEL_API_V2_9,
+        public bool $isActive = true,
+        public bool $isReady = false,
+        public bool $hideConfigsForNonAdmins = false,
+        public ?string $linkHost = null,
+        public ?string $panelLink = null,
+        public ?string $panelUsername = null,
+        public ?string $panelPassword = null,
+        public ?string $sshPrivateKey = null,
+        public ?string $sshPublicKey = null,
+        public ?array $allowedInboundIds = null,
     ) {}
 
     public function toArray(): array

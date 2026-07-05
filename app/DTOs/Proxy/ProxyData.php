@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\Proxy;
 
-readonly class ProxyData
+use App\DTOs\Data;
+
+class ProxyData extends Data
 {
     /**
      * @param  array<int, int>  $serverIds
@@ -11,11 +15,11 @@ readonly class ProxyData
         public string $name,
         public string $host,
         public int $port,
-        public ?int $inboundId,
         public bool $isHttps,
         public bool $isReady,
-        public ?string $description,
-        public array $serverIds,
+        public ?int $inboundId = null,
+        public ?string $description = null,
+        public array $serverIds = [],
     ) {}
 
     public function toArray(): array

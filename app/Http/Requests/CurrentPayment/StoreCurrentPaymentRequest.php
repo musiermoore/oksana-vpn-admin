@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\CurrentPayment;
 
 use App\DTOs\CurrentPayment\CurrentPaymentData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreCurrentPaymentRequest extends FormRequest
+class StoreCurrentPaymentRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -21,14 +23,8 @@ class StoreCurrentPaymentRequest extends FormRequest
         ];
     }
 
-    public function toDto(): CurrentPaymentData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new CurrentPaymentData(
-            startDate: $data['start_date'],
-            endDate: $data['end_date'],
-            amount: (float) $data['amount'],
-        );
+        return CurrentPaymentData::class;
     }
 }

@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\CurrentPayment;
 
-readonly class CurrentPaymentData
+use App\DTOs\Data;
+
+class CurrentPaymentData extends Data
 {
     public function __construct(
         public string $startDate,

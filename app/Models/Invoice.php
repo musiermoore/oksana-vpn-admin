@@ -16,6 +16,16 @@ class Invoice extends Model
         'provider',
         'provider_payment_id',
         'status',
+        'tax_status',
+        'tax_queued_at',
+        'tax_sent_at',
+        'tax_last_error_at',
+        'tax_receipt_uuid',
+        'tax_service_name',
+        'tax_estimated_commission',
+        'tax_error_message',
+        'tax_request_payload',
+        'tax_response_payload',
         'paid',
         'amount',
         'currency',
@@ -32,10 +42,16 @@ class Invoice extends Model
         return [
             'paid' => 'bool',
             'amount' => 'float',
+            'tax_estimated_commission' => 'float',
             'payload' => 'array',
             'history' => 'array',
+            'tax_request_payload' => 'array',
+            'tax_response_payload' => 'array',
             'paid_at' => 'datetime',
             'canceled_at' => 'datetime',
+            'tax_queued_at' => 'datetime',
+            'tax_sent_at' => 'datetime',
+            'tax_last_error_at' => 'datetime',
         ];
     }
 

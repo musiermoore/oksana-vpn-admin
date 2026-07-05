@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\TelegramApp;
 
-readonly class TelegramAppAuthData
+use App\DTOs\Data;
+
+class TelegramAppAuthData extends Data
 {
     public function __construct(
         public string $initData,

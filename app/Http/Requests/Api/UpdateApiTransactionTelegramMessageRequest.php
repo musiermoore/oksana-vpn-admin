@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Api;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\DTOs\Api\ApiTransactionTelegramMessageData;
+use App\Http\Requests\DataFormRequest;
 
-class UpdateApiTransactionTelegramMessageRequest extends FormRequest
+class UpdateApiTransactionTelegramMessageRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -17,5 +20,10 @@ class UpdateApiTransactionTelegramMessageRequest extends FormRequest
             'telegram_chat_id' => ['required', 'integer'],
             'telegram_message_id' => ['required', 'integer'],
         ];
+    }
+
+    protected function dtoClass(): string
+    {
+        return ApiTransactionTelegramMessageData::class;
     }
 }

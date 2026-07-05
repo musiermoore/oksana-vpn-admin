@@ -1,14 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Config;
 
-use App\DTOs\Config\ConfigCreateItemData;
 use App\DTOs\Config\ConfigStoreData;
+use App\Http\Requests\DataFormRequest;
 use App\Models\Server;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreConfigRequest extends FormRequest
+class StoreConfigRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -32,19 +33,8 @@ class StoreConfigRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ConfigStoreData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ConfigStoreData(
-            userId: (int) $data['user_id'],
-            configs: array_map(
-                fn (array $config) => new ConfigCreateItemData(
-                    serverId: (int) $config['server_id'],
-                    description: $config['description'] ?? null,
-                ),
-                $data['configs'],
-            ),
-        );
+        return ConfigStoreData::class;
     }
 }

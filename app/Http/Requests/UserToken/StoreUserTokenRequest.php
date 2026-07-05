@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\UserToken;
 
 use App\DTOs\UserToken\UserTokenData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreUserTokenRequest extends FormRequest
+class StoreUserTokenRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -19,10 +21,8 @@ class StoreUserTokenRequest extends FormRequest
         ];
     }
 
-    public function toDto(): UserTokenData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new UserTokenData(userId: (int) $data['user_id']);
+        return UserTokenData::class;
     }
 }

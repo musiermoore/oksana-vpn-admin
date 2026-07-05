@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\SupportTicket;
 
-use App\Enums\SupportTicketStatus;
 use App\DTOs\SupportTicket\SupportTicketReplyData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Enums\SupportTicketStatus;
+use App\Http\Requests\DataFormRequest;
 use Illuminate\Validation\Rule;
 
-class ReplySupportTicketRequest extends FormRequest
+class ReplySupportTicketRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -22,13 +24,8 @@ class ReplySupportTicketRequest extends FormRequest
         ];
     }
 
-    public function toDto(): SupportTicketReplyData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new SupportTicketReplyData(
-            message: trim((string) $data['message']),
-            status: isset($data['status']) ? SupportTicketStatus::from((string) $data['status']) : null,
-        );
+        return SupportTicketReplyData::class;
     }
 }

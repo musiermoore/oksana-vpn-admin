@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\VlessConfig;
 
 use App\DTOs\VlessConfig\VlessConfigUpdateData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class UpdateVlessConfigRequest extends FormRequest
+class UpdateVlessConfigRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -19,10 +21,8 @@ class UpdateVlessConfigRequest extends FormRequest
         ];
     }
 
-    public function toDto(): VlessConfigUpdateData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new VlessConfigUpdateData(userId: (int) $data['user_id']);
+        return VlessConfigUpdateData::class;
     }
 }

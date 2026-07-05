@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\XrayConfig;
 
-readonly class XrayConfigStoreData
+use App\DTOs\Data;
+
+class XrayConfigStoreData extends Data
 {
     public function __construct(
         public string $protocol,

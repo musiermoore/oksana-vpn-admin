@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Limit;
 
 use App\DTOs\Limit\LimitData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreLimitRequest extends FormRequest
+class StoreLimitRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -20,13 +22,8 @@ class StoreLimitRequest extends FormRequest
         ];
     }
 
-    public function toDto(): LimitData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new LimitData(
-            configId: (int) $data['config_id'],
-            amount: (int) $data['amount'],
-        );
+        return LimitData::class;
     }
 }

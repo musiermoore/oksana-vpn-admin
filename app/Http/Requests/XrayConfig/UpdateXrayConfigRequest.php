@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\XrayConfig;
 
 use App\DTOs\XrayConfig\XrayConfigUpdateData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class UpdateXrayConfigRequest extends FormRequest
+class UpdateXrayConfigRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -19,12 +21,8 @@ class UpdateXrayConfigRequest extends FormRequest
         ];
     }
 
-    public function toDto(): XrayConfigUpdateData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new XrayConfigUpdateData(
-            userId: (int) $data['user_id'],
-        );
+        return XrayConfigUpdateData::class;
     }
 }

@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\TelegramApp;
 
 use App\DTOs\SupportTicket\SupportTicketStoreData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreSupportTicketRequest extends FormRequest
+class StoreSupportTicketRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -20,13 +22,8 @@ class StoreSupportTicketRequest extends FormRequest
         ];
     }
 
-    public function toDto(): SupportTicketStoreData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new SupportTicketStoreData(
-            subject: isset($data['subject']) ? trim((string) $data['subject']) : null,
-            message: trim((string) $data['message']),
-        );
+        return SupportTicketStoreData::class;
     }
 }

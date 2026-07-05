@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Config;
 
 use App\DTOs\Config\ConfigUpdateData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class UpdateConfigRequest extends FormRequest
+class UpdateConfigRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -20,13 +22,8 @@ class UpdateConfigRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ConfigUpdateData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ConfigUpdateData(
-            userId: (int) $data['user_id'],
-            description: $data['description'] ?? null,
-        );
+        return ConfigUpdateData::class;
     }
 }

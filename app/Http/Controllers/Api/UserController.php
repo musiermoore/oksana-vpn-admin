@@ -173,7 +173,7 @@ class UserController extends Controller
 
     public function saveTelegramId(RegisterApiUserRequest $request, string $telegramId)
     {
-        return $this->registrationResponse($request->toDto($telegramId));
+        return $this->registrationResponse($request->toDto());
     }
 
     public function getVlessLink()

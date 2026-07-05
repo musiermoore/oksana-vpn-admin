@@ -235,6 +235,67 @@ textarea {
     display: none;
 }
 
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    background: rgba(148, 163, 184, 0.16);
+    color: var(--text);
+}
+
+.status-pill--success {
+    background: rgba(47, 125, 72, 0.16);
+    color: var(--success);
+}
+
+.status-pill--warning {
+    background: rgba(168, 106, 0, 0.16);
+    color: var(--warning);
+}
+
+.status-pill--danger {
+    background: rgba(161, 38, 38, 0.16);
+    color: var(--danger);
+}
+
+.status-pill--muted {
+    background: rgba(95, 113, 135, 0.14);
+    color: var(--muted);
+}
+
+.kv-list {
+    display: grid;
+    gap: 10px;
+}
+
+.kv-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(184, 199, 219, 0.35);
+}
+
+.kv-row span {
+    color: var(--muted);
+}
+
+.alert {
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid transparent;
+}
+
+.alert--danger {
+    color: var(--danger);
+    background: rgba(161, 38, 38, 0.08);
+    border-color: rgba(161, 38, 38, 0.18);
+}
+
 .sidebar-nav {
     display: grid;
     gap: 8px;

@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\SupportTicket;
 
-readonly class SupportTicketStoreData
+use App\DTOs\Data;
+
+class SupportTicketStoreData extends Data
 {
     public function __construct(
-        public ?string $subject,
         public string $message,
+        public ?string $subject = null,
     ) {}
 }

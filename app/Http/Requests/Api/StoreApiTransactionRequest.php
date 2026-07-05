@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Api;
 
 use App\DTOs\Transaction\ApiDepositTransactionData;
 use App\Enums\SubscriptionPurchaseType;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreApiTransactionRequest extends FormRequest
+class StoreApiTransactionRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -23,16 +25,8 @@ class StoreApiTransactionRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ApiDepositTransactionData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ApiDepositTransactionData(
-            month: (int) $data['month'],
-            returnUrl: isset($data['return_url']) ? trim($data['return_url']) : null,
-            purchaseType: isset($data['purchase_type'])
-                ? SubscriptionPurchaseType::from((string) $data['purchase_type'])
-                : SubscriptionPurchaseType::PERSONAL,
-        );
+        return ApiDepositTransactionData::class;
     }
 }

@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\ExtraPayment;
 
-readonly class ExtraPaymentData
+use App\DTOs\Data;
+
+class ExtraPaymentData extends Data
 {
     public function __construct(
         public int $userId,

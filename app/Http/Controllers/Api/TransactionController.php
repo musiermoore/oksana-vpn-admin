@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\UpdateApiTransactionTelegramMessageRequest;
 use App\Http\Requests\Api\StoreApiTransactionRequest;
+use App\Http\Requests\Api\UpdateApiTransactionTelegramMessageRequest;
 use App\Models\Transaction;
 use App\Services\Api\ApiTransactionService;
 use App\Services\Crud\TransactionCrudService;
 use App\Support\BotApiMessages;
 use DomainException;
-use Throwable;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class TransactionController
 {
@@ -46,11 +46,13 @@ class TransactionController
         string $telegramId,
         string $transactionId,
     ): Response {
+        $data = $request->toDto();
+
         $updated = $this->apiTransactionService->updateTelegramMessageMetadata(
             $request->attributes->get('apiUser'),
             (int) $transactionId,
-            (int) $request->integer('telegram_chat_id'),
-            (int) $request->integer('telegram_message_id'),
+            $data->telegramChatId,
+            $data->telegramMessageId,
         );
 
         if (! $updated) {
@@ -67,7 +69,7 @@ class TransactionController
         $this->transactionService->approve($transaction);
 
         return response()->json([
-            'message' => "Пополнение одобрено."
+            'message' => 'Пополнение одобрено.',
         ]);
     }
 
@@ -76,7 +78,7 @@ class TransactionController
         $this->transactionService->decline($transaction);
 
         return response()->json([
-            'message' => "Пополнение отклонено."
+            'message' => 'Пополнение отклонено.',
         ]);
     }
 }

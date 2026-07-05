@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Server;
 
 use App\DTOs\Server\ServerData;
+use App\Http\Requests\DataFormRequest;
 use App\Models\Server;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreServerRequest extends FormRequest
+class StoreServerRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -41,31 +43,9 @@ class StoreServerRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ServerData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ServerData(
-            name: $data['name'],
-            code: $data['code'],
-            ip: $data['ip'],
-            type: (string) $data['type'],
-            isHttps: (bool) ($data['is_https'] ?? false),
-            linkHost: $data['link_host'] ?? null,
-            panelLink: $data['panel_link'] ?? null,
-            panelUsername: $data['panel_username'] ?? null,
-            panelPassword: $data['panel_password'] ?? null,
-            panelApiVersion: $data['panel_api_version'] ?? Server::PANEL_API_V2_9,
-            appPath: $data['app_path'],
-            sshPrivateKey: $data['ssh_private_key'] ?? null,
-            sshPublicKey: $data['ssh_public_key'] ?? null,
-            isActive: (bool) ($data['is_active'] ?? true),
-            isReady: (bool) ($data['is_ready'] ?? false),
-            hideConfigsForNonAdmins: (bool) ($data['hide_configs_for_non_admins'] ?? false),
-            allowedInboundIds: $data['type'] === Server::TYPE_VLESS
-                ? $this->normalizeAllowedInboundIds($data['allowed_inbound_ids'] ?? null)
-                : null,
-        );
+        return ServerData::class;
     }
 
     private function normalizeAllowedInboundIds(?array $value): ?array
@@ -77,5 +57,17 @@ class StoreServerRequest extends FormRequest
             ->all();
 
         return $inboundIds === [] ? null : $inboundIds;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function additionalDtoData(): array
+    {
+        return [
+            'allowedInboundIds' => (string) $this->input('type') === Server::TYPE_VLESS
+                ? $this->normalizeAllowedInboundIds($this->validated('allowed_inbound_ids', null))
+                : null,
+        ];
     }
 }

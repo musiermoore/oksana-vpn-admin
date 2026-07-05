@@ -5,12 +5,15 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\ExtraPaymentController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProxyController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SupportTicketController;
+use App\Http\Controllers\TaxDebugController;
+use App\Http\Controllers\TaxSettingController;
 use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
 use App\Http\Controllers\TelegramApp\ConnectionController as TelegramAppConnectionController;
 use App\Http\Controllers\TelegramApp\PageController as TelegramAppPageController;
@@ -56,6 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('user-tokens', UserTokenController::class)->except(['edit', 'update']);
     Route::resource('configs', ConfigController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class);
+    Route::resource('invoices', InvoiceController::class)->only(['index', 'show']);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
     Route::post('servers/{server}/enable', [ServerController::class, 'enable'])
@@ -92,6 +96,12 @@ Route::middleware('auth')->group(function () {
         ->name('transactions.decline');
     Route::get('xui-debug', [XuiDebugController::class, 'index'])->name('xui-debug.index');
     Route::post('xui-debug', [XuiDebugController::class, 'execute'])->name('xui-debug.execute');
+    Route::get('tax-debug', [TaxDebugController::class, 'index'])->name('tax-debug.index');
+    Route::post('tax-debug', [TaxDebugController::class, 'execute'])->name('tax-debug.execute');
+    Route::get('tax-settings', [TaxSettingController::class, 'edit'])->name('tax-settings.edit');
+    Route::put('tax-settings', [TaxSettingController::class, 'update'])->name('tax-settings.update');
+    Route::get('invoices/{invoice}/send', [InvoiceController::class, 'sendPreview'])->name('invoices.send-preview');
+    Route::post('invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('invoices.send');
 
     Route::post('logout', [AuthController::class, 'destroy'])->name('logout');
 });

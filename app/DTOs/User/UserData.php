@@ -1,14 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\User;
 
-readonly class UserData
+use App\DTOs\Data;
+
+class UserData extends Data
 {
     public function __construct(
         public string $name,
-        public ?string $telegram,
-        public ?string $description,
         public string $joinAt,
+        public ?string $telegram = null,
+        public ?string $description = null,
         public bool $isActive = true,
         public bool $createConfigs = false,
         public int $maxDevices = 0,

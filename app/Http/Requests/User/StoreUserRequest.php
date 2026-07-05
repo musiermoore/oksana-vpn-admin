@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\User;
 
 use App\DTOs\User\UserData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class StoreUserRequest extends FormRequest
+class StoreUserRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -25,18 +27,8 @@ class StoreUserRequest extends FormRequest
         ];
     }
 
-    public function toDto(): UserData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new UserData(
-            name: $data['name'],
-            telegram: $data['telegram'] ?? null,
-            description: $data['description'] ?? null,
-            joinAt: $data['join_at'],
-            createConfigs: (bool) ($data['create_configs'] ?? false),
-            maxDevices: (int) ($data['max_devices'] ?? 0),
-            trafficLimitBytes: (int) ($data['traffic_limit_bytes'] ?? 0),
-        );
+        return UserData::class;
     }
 }

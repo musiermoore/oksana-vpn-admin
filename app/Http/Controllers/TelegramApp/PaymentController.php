@@ -45,9 +45,10 @@ class PaymentController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $data = $request->toDto();
 
         try {
-            $code = $this->subscriptionCodes->activateForUser($user, (string) $request->string('code'));
+            $code = $this->subscriptionCodes->activateForUser($user, $data->code);
             $user->refresh();
         } catch (DomainException $exception) {
             return response()->json([

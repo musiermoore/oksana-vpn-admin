@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Proxy;
 
 use App\DTOs\Proxy\ProxyData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreProxyRequest extends FormRequest
+class StoreProxyRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -28,23 +30,8 @@ class StoreProxyRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ProxyData
+    protected function dtoClass(): string
     {
-        $data = $this->validated();
-
-        return new ProxyData(
-            name: (string) $data['name'],
-            host: (string) $data['host'],
-            port: (int) $data['port'],
-            inboundId: isset($data['inbound_id']) ? (int) $data['inbound_id'] : null,
-            isHttps: (bool) $data['is_https'],
-            isReady: (bool) $data['is_ready'],
-            description: $data['description'] ?? null,
-            serverIds: collect($data['server_ids'] ?? [])
-                ->map(fn (mixed $id) => (int) $id)
-                ->unique()
-                ->values()
-                ->all(),
-        );
+        return ProxyData::class;
     }
 }

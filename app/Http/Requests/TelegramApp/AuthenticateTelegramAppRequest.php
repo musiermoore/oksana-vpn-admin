@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\TelegramApp;
 
 use App\DTOs\TelegramApp\TelegramAppAuthData;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\DataFormRequest;
 
-class AuthenticateTelegramAppRequest extends FormRequest
+class AuthenticateTelegramAppRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -19,11 +21,8 @@ class AuthenticateTelegramAppRequest extends FormRequest
         ];
     }
 
-    public function toDto(): TelegramAppAuthData
+    protected function dtoClass(): string
     {
-        return new TelegramAppAuthData(
-            initData: trim((string) $this->validated('init_data')),
-            startParam: null,
-        );
+        return TelegramAppAuthData::class;
     }
 }

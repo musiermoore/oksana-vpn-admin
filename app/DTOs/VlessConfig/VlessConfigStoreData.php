@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\VlessConfig;
 
-readonly class VlessConfigStoreData
+use App\DTOs\Data;
+
+class VlessConfigStoreData extends Data
 {
     public function __construct(
         public int $userId,

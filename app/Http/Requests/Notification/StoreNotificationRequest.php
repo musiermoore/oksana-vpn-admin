@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Notification;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\DTOs\Notification\NotificationBroadcastData;
+use App\Http\Requests\DataFormRequest;
 use Illuminate\Validation\Validator;
 
-class StoreNotificationRequest extends FormRequest
+class StoreNotificationRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -53,5 +56,10 @@ class StoreNotificationRequest extends FormRequest
                 fn ($value) => $value !== null && $value !== ''
             )),
         ]);
+    }
+
+    protected function dtoClass(): string
+    {
+        return NotificationBroadcastData::class;
     }
 }

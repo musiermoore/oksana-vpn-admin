@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\Config;
 
-readonly class ConfigUpdateData
+use App\DTOs\Data;
+
+class ConfigUpdateData extends Data
 {
     public function __construct(
         public int $userId,
-        public ?string $description,
+        public ?string $description = null,
     ) {}
 
     public function toArray(): array

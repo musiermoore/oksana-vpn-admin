@@ -221,4 +221,93 @@ class InvoiceTaxSendTest extends TestCase
         $this->assertSame(Invoice::TAX_STATUS_QUEUED, $invoice->tax_status);
         Queue::assertPushed(SendInvoiceToTaxJob::class, 1);
     }
+
+    public function test_old_pending_invoices_are_hidden_from_index(): void
+    {
+        $admin = User::query()->create([
+            'name' => 'Admin',
+            'telegram' => '@admin',
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Client',
+            'telegram' => '@client',
+        ]);
+
+        $visibleInvoice = Invoice::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => 'pay-visible-pending',
+            'status' => 'pending',
+            'paid' => false,
+            'amount' => 500,
+            'currency' => 'RUB',
+        ]);
+        $visibleInvoice->forceFill([
+            'created_at' => now()->subMinutes(20),
+        ])->saveQuietly();
+
+        $hiddenInvoice = Invoice::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => 'pay-hidden-pending',
+            'status' => 'pending',
+            'paid' => false,
+            'amount' => 600,
+            'currency' => 'RUB',
+        ]);
+        $hiddenInvoice->forceFill([
+            'created_at' => now()->subMinutes(31),
+        ])->saveQuietly();
+
+        $response = $this->actingAs($admin)->get(route('invoices.index'));
+
+        $response->assertOk();
+        $response->assertSee((string) $visibleInvoice->provider_payment_id);
+        $response->assertDontSee((string) $hiddenInvoice->provider_payment_id);
+    }
+
+    public function test_old_pending_paid_invoice_is_not_bulk_queued_for_tax_send(): void
+    {
+        Queue::fake();
+
+        $user = User::query()->create([
+            'name' => 'Client',
+            'telegram' => '@client',
+        ]);
+
+        $eligibleInvoice = Invoice::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => 'pay-command-visible',
+            'status' => 'succeeded',
+            'paid' => true,
+            'amount' => 1300,
+            'currency' => 'RUB',
+            'tax_status' => Invoice::TAX_STATUS_NOT_SENT,
+        ]);
+
+        $stalePendingInvoice = Invoice::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => 'pay-command-hidden',
+            'status' => 'pending',
+            'paid' => true,
+            'amount' => 1400,
+            'currency' => 'RUB',
+            'tax_status' => Invoice::TAX_STATUS_NOT_SENT,
+        ]);
+        $stalePendingInvoice->forceFill([
+            'created_at' => now()->subMinutes(31),
+        ])->saveQuietly();
+
+        Artisan::call(SendPaidInvoicesToTaxCommand::class);
+
+        $eligibleInvoice->refresh();
+        $stalePendingInvoice->refresh();
+
+        $this->assertSame(Invoice::TAX_STATUS_QUEUED, $eligibleInvoice->tax_status);
+        $this->assertSame(Invoice::TAX_STATUS_NOT_SENT, $stalePendingInvoice->tax_status);
+        Queue::assertPushed(SendInvoiceToTaxJob::class, 1);
+    }
 }

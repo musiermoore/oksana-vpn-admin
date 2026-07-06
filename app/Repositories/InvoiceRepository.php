@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Collection;
 
 class InvoiceRepository
 {
+    private const STALE_PENDING_MINUTES = 30;
+
     /**
      * @param  array<string, mixed>  $attributes
      */
@@ -38,7 +40,7 @@ class InvoiceRepository
      */
     public function latestWithRelations(): Collection
     {
-        return Invoice::query()
+        return $this->visibleQuery()
             ->with(['user', 'transactions.type'])
             ->latest()
             ->get();
@@ -53,12 +55,22 @@ class InvoiceRepository
 
     public function eligibleForTaxSend(): Builder
     {
-        return Invoice::query()
+        return $this->visibleQuery()
             ->where('paid', true)
             ->whereIn('tax_status', [
                 Invoice::TAX_STATUS_NOT_SENT,
                 Invoice::TAX_STATUS_FAILED,
             ])
             ->orderBy('id');
+    }
+
+    public function visibleQuery(): Builder
+    {
+        return Invoice::query()
+            ->where(function (Builder $query): void {
+                $query
+                    ->where('status', '!=', 'pending')
+                    ->orWhere('created_at', '>=', now()->subMinutes(self::STALE_PENDING_MINUTES));
+            });
     }
 }

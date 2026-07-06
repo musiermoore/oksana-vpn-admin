@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Invoice\SendInvoiceToTaxRequest;
+use App\Http\Requests\Invoice\UpdateInvoiceTaxStatusRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TaxRequestLogResource;
 use App\Models\Invoice;
@@ -49,6 +50,17 @@ class InvoiceController extends Controller
         ]);
     }
 
+    public function edit(Request $request, Invoice $invoice)
+    {
+        $invoice = $this->invoices->findWithRelations((int) $invoice->id)
+            ?? $invoice->load(['user', 'transactions.type']);
+
+        return $this->inertia('Invoices/Edit', [
+            'invoice' => (new InvoiceResource($invoice))->toArray($request),
+            'tax_status_options' => Invoice::taxStatuses(),
+        ]);
+    }
+
     public function sendPreview(Request $request, Invoice $invoice)
     {
         $invoice = $this->invoices->findWithRelations((int) $invoice->id)
@@ -72,5 +84,23 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoices.show', $invoice)
             ->with('success', 'Инвойс поставлен в очередь на отправку в налоговую.');
+    }
+
+    public function sendPaid(Request $request): RedirectResponse
+    {
+        $queued = $this->invoiceTax->queueEligiblePaidInvoices($request->user()?->id);
+
+        return redirect()
+            ->route('invoices.index')
+            ->with('success', sprintf('В очередь на отправку в налоговую поставлено %d оплаченных инвойсов.', $queued));
+    }
+
+    public function updateTaxStatus(UpdateInvoiceTaxStatusRequest $request, Invoice $invoice): RedirectResponse
+    {
+        $this->invoiceTax->updateTaxStatus($invoice, $request->toDto()->taxStatus);
+
+        return redirect()
+            ->route('invoices.edit', $invoice)
+            ->with('success', 'Статус налоговой обновлён вручную.');
     }
 }

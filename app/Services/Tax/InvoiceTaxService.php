@@ -28,12 +28,12 @@ class InvoiceTaxService
             throw new RuntimeException('В налоговую можно отправлять только оплаченный инвойс.');
         }
 
-        if (in_array($invoice->tax_status, ['queued', 'sending'], true)) {
+        if (in_array($invoice->tax_status, [Invoice::TAX_STATUS_QUEUED, Invoice::TAX_STATUS_SENDING], true)) {
             throw new RuntimeException('Инвойс уже находится в очереди на отправку.');
         }
 
         $updatedInvoice = $this->invoices->update($invoice, [
-            'tax_status' => 'queued',
+            'tax_status' => Invoice::TAX_STATUS_QUEUED,
             'tax_queued_at' => now(),
             'tax_error_message' => null,
         ]);
@@ -41,6 +41,59 @@ class InvoiceTaxService
         SendInvoiceToTaxJob::dispatch($updatedInvoice->id, $initiatorUserId);
 
         return $updatedInvoice;
+    }
+
+    public function queueEligiblePaidInvoices(?int $initiatorUserId): int
+    {
+        $queued = 0;
+
+        $this->invoices->eligibleForTaxSend()
+            ->chunkById(100, function ($invoices) use ($initiatorUserId, &$queued): void {
+                foreach ($invoices as $invoice) {
+                    $this->queueSend($invoice, $initiatorUserId);
+                    $queued++;
+                }
+            });
+
+        return $queued;
+    }
+
+    public function updateTaxStatus(Invoice $invoice, string $taxStatus): Invoice
+    {
+        $attributes = [
+            'tax_status' => $taxStatus,
+        ];
+
+        if ($taxStatus === Invoice::TAX_STATUS_SENT) {
+            $attributes['tax_sent_at'] = $invoice->tax_sent_at ?? now();
+            $attributes['tax_error_message'] = null;
+            $attributes['tax_last_error_at'] = null;
+        }
+
+        if ($taxStatus === Invoice::TAX_STATUS_NOT_SENT) {
+            $attributes['tax_queued_at'] = null;
+            $attributes['tax_sent_at'] = null;
+            $attributes['tax_last_error_at'] = null;
+            $attributes['tax_error_message'] = null;
+        }
+
+        if ($taxStatus === Invoice::TAX_STATUS_QUEUED) {
+            $attributes['tax_queued_at'] = $invoice->tax_queued_at ?? now();
+            $attributes['tax_error_message'] = null;
+            $attributes['tax_last_error_at'] = null;
+        }
+
+        if ($taxStatus === Invoice::TAX_STATUS_SENDING) {
+            $attributes['tax_queued_at'] = $invoice->tax_queued_at ?? now();
+            $attributes['tax_error_message'] = null;
+            $attributes['tax_last_error_at'] = null;
+        }
+
+        if ($taxStatus === Invoice::TAX_STATUS_FAILED) {
+            $attributes['tax_last_error_at'] = $invoice->tax_last_error_at ?? now();
+        }
+
+        return $this->invoices->update($invoice, $attributes);
     }
 
     public function handleSend(int $invoiceId, ?int $initiatorUserId = null): void
@@ -55,7 +108,7 @@ class InvoiceTaxService
 
         if (! $settings instanceof TaxSetting) {
             $this->invoices->update($invoice, [
-                'tax_status' => 'failed',
+                'tax_status' => Invoice::TAX_STATUS_FAILED,
                 'tax_last_error_at' => now(),
                 'tax_error_message' => 'Не найдены TaxSettings.',
             ]);
@@ -79,7 +132,7 @@ class InvoiceTaxService
 
         try {
             $this->invoices->update($invoice, [
-                'tax_status' => 'sending',
+                'tax_status' => Invoice::TAX_STATUS_SENDING,
                 'tax_error_message' => null,
                 'tax_last_error_at' => null,
                 'tax_service_name' => $settings->service_name,
@@ -102,7 +155,7 @@ class InvoiceTaxService
 
             if (! $response->successful()) {
                 $this->invoices->update($invoice, [
-                    'tax_status' => 'failed',
+                    'tax_status' => Invoice::TAX_STATUS_FAILED,
                     'tax_last_error_at' => now(),
                     'tax_error_message' => $response->body(),
                     'tax_request_payload' => $result['payload'] ?? null,
@@ -113,7 +166,7 @@ class InvoiceTaxService
             }
 
             $this->invoices->update($invoice, [
-                'tax_status' => 'sent',
+                'tax_status' => Invoice::TAX_STATUS_SENT,
                 'tax_sent_at' => now(),
                 'tax_service_name' => $settings->service_name,
                 'tax_estimated_commission' => round((float) $invoice->amount * 0.04, 2),
@@ -132,7 +185,7 @@ class InvoiceTaxService
             ]);
 
             $this->invoices->update($invoice, [
-                'tax_status' => 'failed',
+                'tax_status' => Invoice::TAX_STATUS_FAILED,
                 'tax_last_error_at' => now(),
                 'tax_error_message' => $exception->getMessage(),
             ]);

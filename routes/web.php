@@ -59,7 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('user-tokens', UserTokenController::class)->except(['edit', 'update']);
     Route::resource('configs', ConfigController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class);
-    Route::resource('invoices', InvoiceController::class)->only(['index', 'show']);
+    Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'edit']);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
     Route::post('servers/{server}/enable', [ServerController::class, 'enable'])
@@ -100,8 +100,10 @@ Route::middleware('auth')->group(function () {
     Route::post('tax-debug', [TaxDebugController::class, 'execute'])->name('tax-debug.execute');
     Route::get('tax-settings', [TaxSettingController::class, 'edit'])->name('tax-settings.edit');
     Route::put('tax-settings', [TaxSettingController::class, 'update'])->name('tax-settings.update');
+    Route::post('invoices/send-paid', [InvoiceController::class, 'sendPaid'])->name('invoices.send-paid');
     Route::get('invoices/{invoice}/send', [InvoiceController::class, 'sendPreview'])->name('invoices.send-preview');
     Route::post('invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('invoices.send');
+    Route::patch('invoices/{invoice}/tax-status', [InvoiceController::class, 'updateTaxStatus'])->name('invoices.update-tax-status');
 
     Route::post('logout', [AuthController::class, 'destroy'])->name('logout');
 });

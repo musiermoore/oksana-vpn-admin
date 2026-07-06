@@ -11,6 +11,16 @@ class Invoice extends Model
 {
     use HasFactory;
 
+    public const TAX_STATUS_NOT_SENT = 'not_sent';
+
+    public const TAX_STATUS_QUEUED = 'queued';
+
+    public const TAX_STATUS_SENDING = 'sending';
+
+    public const TAX_STATUS_SENT = 'sent';
+
+    public const TAX_STATUS_FAILED = 'failed';
+
     protected $fillable = [
         'user_id',
         'provider',
@@ -64,5 +74,19 @@ class Invoice extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function taxStatuses(): array
+    {
+        return [
+            self::TAX_STATUS_NOT_SENT,
+            self::TAX_STATUS_QUEUED,
+            self::TAX_STATUS_SENDING,
+            self::TAX_STATUS_SENT,
+            self::TAX_STATUS_FAILED,
+        ];
     }
 }

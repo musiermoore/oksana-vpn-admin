@@ -7,6 +7,7 @@ use App\Console\Commands\DisableConfigsOfOverdueDebtorsCommand;
 use App\Console\Commands\PullVlessConfigs;
 use App\Console\Commands\RemoveOldTrafficLogs;
 use App\Console\Commands\RenewSubscriptionsCommand;
+use App\Console\Commands\SendPaidInvoicesToTaxCommand;
 use App\Jobs\ReleaseBlockedConfigsJob;
 use App\Jobs\SyncServerOnlineClientsJob;
 use App\Jobs\SyncServerUserStatsJob;
@@ -20,6 +21,7 @@ Schedule::command(AddExtraPayments::class)->hourly();
 Schedule::command(CreateDefaultConfigsForActiveSubscribersCommand::class)->everyFiveMinutes();
 Schedule::command(RenewSubscriptionsCommand::class)->everyFiveMinutes();
 Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyThirtyMinutes();
+Schedule::command(SendPaidInvoicesToTaxCommand::class)->dailyAt('06:00')->timezone('UTC');
 
 Schedule::call(function (): void {
     Server::query()

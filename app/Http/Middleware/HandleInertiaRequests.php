@@ -25,8 +25,6 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Рефералка', 'href' => route('referrals.index'), 'badge' => 'RF'],
             ['label' => 'API лог', 'href' => route('api-request-logs.index'), 'badge' => 'LG'],
             ['label' => '3x-ui Debug', 'href' => route('xui-debug.index'), 'badge' => 'XD'],
-            ['label' => 'Tax Debug', 'href' => route('tax-debug.index'), 'badge' => 'TD'],
-            ['label' => 'Tax Settings', 'href' => route('tax-settings.edit'), 'badge' => 'TS'],
             ['label' => 'Поддержка', 'href' => route('support-tickets.index'), 'badge' => 'SP'],
             ['label' => 'Рассылка', 'href' => route('notifications.create'), 'badge' => 'NT'],
             ['label' => 'Welcome', 'href' => route('messages.welcome.edit'), 'badge' => 'WM'],

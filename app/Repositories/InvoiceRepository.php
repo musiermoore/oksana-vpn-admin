@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\Invoice;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class InvoiceRepository
@@ -48,5 +49,16 @@ class InvoiceRepository
         return Invoice::query()
             ->with(['transactions.type', 'user'])
             ->find($id);
+    }
+
+    public function eligibleForTaxSend(): Builder
+    {
+        return Invoice::query()
+            ->where('paid', true)
+            ->whereIn('tax_status', [
+                Invoice::TAX_STATUS_NOT_SENT,
+                Invoice::TAX_STATUS_FAILED,
+            ])
+            ->orderBy('id');
     }
 }

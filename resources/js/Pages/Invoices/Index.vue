@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 defineOptions({ layout: AppLayout });
@@ -19,6 +19,10 @@ defineProps({
         }),
     },
 });
+
+const sendPaidForm = useForm({});
+
+const sendPaidInvoices = () => sendPaidForm.post('/invoices/send-paid');
 
 const formatDate = (value) => {
     if (!value) {
@@ -55,7 +59,9 @@ const taxStatusLabel = (status) => ({
 
             <div class="actions">
                 <Link class="button button--secondary" href="/tax-settings">Настройки налоговой</Link>
-                <Link class="button" href="/tax-debug">Tax Debug</Link>
+                <button class="button" type="button" :disabled="sendPaidForm.processing" @click="sendPaidInvoices">
+                    Отправить оплаченные в налоговую
+                </button>
             </div>
         </div>
 
@@ -124,6 +130,7 @@ const taxStatusLabel = (status) => ({
                     <td>
                         <div class="actions">
                             <Link class="button button--secondary" :href="invoice.links.show">Открыть</Link>
+                            <Link class="button button--secondary" :href="invoice.links.edit">Редактировать</Link>
                             <Link class="button" :href="invoice.links.send_preview">В налоговую</Link>
                         </div>
                     </td>

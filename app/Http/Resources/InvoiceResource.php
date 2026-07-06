@@ -41,8 +41,10 @@ class InvoiceResource extends JsonResource
                 : [],
             'links' => [
                 'show' => route('invoices.show', $this->resource),
+                'edit' => route('invoices.edit', $this->resource),
                 'send_preview' => route('invoices.send-preview', $this->resource),
                 'send' => route('invoices.send', $this->resource),
+                'update_tax_status' => route('invoices.update-tax-status', $this->resource),
             ],
         ];
     }

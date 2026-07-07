@@ -19,6 +19,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
 
 COPY . .
+COPY docker/app/Caddyfile /etc/caddy/Caddyfile
 RUN rm -rf ./public/build ./public/hot
 COPY --from=frontend /app/public/build ./public/build
 

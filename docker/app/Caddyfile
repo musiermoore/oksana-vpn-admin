@@ -4,11 +4,9 @@
     admin off
 }
 
-{$SERVER_NAME} {
+:8000 {
     root * /var/www/html/public
-    encode zstd br gzip
+    encode zstd gzip
 
-    php_server {
-        try_files {path} /index.php?{query}
-    }
+    php_server
 }

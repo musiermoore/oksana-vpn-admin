@@ -9,6 +9,7 @@ services:
             context: .
             dockerfile: docker/app/Dockerfile.prod
         restart: unless-stopped
+        command: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
         expose:
             - '8000'
         volumes:

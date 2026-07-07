@@ -763,6 +763,7 @@
     border: 1px solid rgba(193, 139, 255, 0.28);
     background: linear-gradient(135deg, #8d5dff, #b16eff);
     color: #ffffff;
+    cursor: pointer;
     box-shadow: 0 12px 24px rgba(108, 56, 224, 0.28);
 }
 

@@ -3,13 +3,15 @@ services:
         container_name: wireguard_app
         env_file:
             - .env
+        environment:
+            SERVER_NAME: ':8000'
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         build:
             context: .
             dockerfile: docker/app/Dockerfile
         working_dir: /var/www/html
-        command: php artisan serve --host=0.0.0.0 --port=8000
+        command: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
         ports:
             - '${APP_PORT:-8000}:8000'
         volumes:

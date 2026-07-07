@@ -3,14 +3,17 @@ services:
         container_name: wireguard_app_prod
         env_file:
             - .env
+        environment:
+            SERVER_NAME: ':8000'
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         build:
             context: .
             dockerfile: docker/app/Dockerfile.prod
         restart: unless-stopped
-        ports:
-            - '${APP_PORT:-8000}:8000'
+        command: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+        expose:
+            - '8000'
         volumes:
             - './storage:/var/www/html/storage'
         networks:

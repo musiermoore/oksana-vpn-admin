@@ -9,6 +9,7 @@ This file captures project-specific working rules so future development stays co
 - Use `docker compose exec app` for all PHP and Composer commands.
 - Use `docker compose exec vite` for Node and npm commands when they need the container environment.
 - Use the default `docker compose` files for development, and `docker compose -f docker-compose.prod.yml ...` only for production workflows.
+- The `app` service runs Laravel behind FrankenPHP.
 - Prefer `rg` for searching in the codebase.
 
 ## Backend Rules

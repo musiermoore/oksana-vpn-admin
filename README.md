@@ -37,6 +37,8 @@ docker compose exec app php artisan migrate
 
 `docker compose` без дополнительных флагов использует dev-окружение по умолчанию.
 
+HTTP теперь обслуживается через FrankenPHP в контейнере `app`, а не через `php artisan serve`.
+
 Для локальных очередей через Redis:
 ```.dotenv
 QUEUE_CONNECTION=redis
@@ -61,7 +63,8 @@ docker compose logs -f vite
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-В production Vite не запускается отдельным контейнером: ассеты собираются внутри production image.
+В production Vite не запускается отдельным контейнером: ассеты собираются внутри production image, а Laravel обслуживается FrankenPHP из контейнера `app`.
+Если перед приложением стоит отдельный Caddy reverse proxy, контейнер `app` доступен внутри Docker-сети на `app:8000` и не публикует порт на хост.
 
 ### Horizon и очереди в production
 
@@ -86,6 +89,15 @@ docker compose exec app composer require laravel/horizon
 docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec app php artisan optimize:clear
 docker compose -f docker-compose.prod.yml exec app php artisan migrate
+docker compose -f docker-compose.prod.yml restart horizon
+```
+
+Пример деплоя после checkout:
+```shell
+docker compose -f docker-compose.prod.yml up -d --build mysql redis app horizon
+docker compose -f docker-compose.prod.yml exec -T app php artisan optimize:clear
+docker compose -f docker-compose.prod.yml exec -T app php artisan migrate --seed --force
+docker compose -f docker-compose.prod.yml exec -T app php artisan optimize
 docker compose -f docker-compose.prod.yml restart horizon
 ```
 

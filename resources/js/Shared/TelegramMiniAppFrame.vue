@@ -9,14 +9,17 @@ const props = defineProps({
     user: Object,
 });
 
-const navItems = [
+const navItems = computed(() => [
     { hrefKey: 'home', label: 'Главная', icon: 'home' },
     { hrefKey: 'wireguard', label: 'WG', icon: 'shield' },
     { hrefKey: 'vless', label: 'VLESS', icon: 'spark' },
+    ...(props.user?.has_vless_wl_configs && props.routes?.vless_wl
+        ? [{ hrefKey: 'vless_wl', label: 'WL', icon: 'spark' }]
+        : []),
     { hrefKey: 'payments', label: 'Подписка', icon: 'crown' },
     { hrefKey: 'help', label: 'Помощь', icon: 'help' },
     { hrefKey: 'chats', label: 'Чаты', icon: 'chat' },
-];
+]);
 
 const currentPath = computed(() => window.location.pathname.replace(/\/+$/, '') || '/telegram-app');
 const isProfileOpen = ref(false);

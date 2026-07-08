@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserToken;
 use App\Models\VlessConfig;
 use App\Services\Crud\VlessConfigCrudService;
+use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\SubscriptionMetadataService;
 use App\Services\Subscriptions\UserSubscriptionService;
 use App\Services\VlessDeepLinkService;
@@ -200,6 +201,36 @@ class VlessConfigController extends Controller
         return $response;
     }
 
+    public function connectWhiteList(
+        Request $request,
+        SubscriptionMetadataService $metadataService,
+        UserSubscriptionService $subscriptionService,
+        VlessExternalSubscriptionAccessService $externalSubscriptions
+    ) {
+        $user = $this->resolveUserFromConnectionRequest($request);
+
+        if (! $user) {
+            return null;
+        }
+
+        $subscription = $subscriptionService->buildFromNodes(
+            $externalSubscriptions->getNamedNodesForUser($user),
+            $request->query('format')
+        );
+
+        $response = response($subscription->content);
+
+        foreach ($metadataService->buildHeaders(
+            $user,
+            $subscription->fileExtension,
+            $subscription->contentType,
+        ) as $name => $value) {
+            $response->header($name, $value);
+        }
+
+        return $response;
+    }
+
     public function connectRaw(Request $request, UserSubscriptionService $subscriptionService)
     {
         $user = $this->resolveUserFromConnectionRequest($request);
@@ -211,6 +242,19 @@ class VlessConfigController extends Controller
         return response()->json($subscriptionService->buildDebug($user));
     }
 
+    public function connectWhiteListRaw(
+        Request $request,
+        VlessExternalSubscriptionAccessService $externalSubscriptions
+    ) {
+        $user = $this->resolveUserFromConnectionRequest($request);
+
+        if (! $user) {
+            return null;
+        }
+
+        return response()->json($externalSubscriptions->buildDebug($user));
+    }
+
     public function deepLink(Request $request, string $client, VlessDeepLinkService $deepLinkService)
     {
         $user = $this->resolveUserFromConnectionRequest($request);
@@ -220,6 +264,29 @@ class VlessConfigController extends Controller
         }
 
         $redirectUrl = $deepLinkService->resolveRedirectUrl($client, $deepLinkService->getConnectUrl($user, $client));
+
+        if ($redirectUrl === null) {
+            abort(404);
+        }
+
+        return redirect()->away($redirectUrl);
+    }
+
+    public function deepLinkWhiteList(
+        Request $request,
+        string $client,
+        VlessDeepLinkService $deepLinkService
+    ) {
+        $user = $this->resolveUserFromConnectionRequest($request);
+
+        if (! $user) {
+            abort(404);
+        }
+
+        $redirectUrl = $deepLinkService->resolveRedirectUrl(
+            $client,
+            $deepLinkService->getConnectUrlForRoute($user, 'vless.connect-wl', $client)
+        );
 
         if ($redirectUrl === null) {
             abort(404);

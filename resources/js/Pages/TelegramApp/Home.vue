@@ -25,7 +25,7 @@ const referralStatus = ref('');
 const referralInput = ref('');
 const claimingReferral = ref(false);
 
-const primaryNavItems = [
+const primaryNavItems = computed(() => ([
     {
         key: 'wireguard',
         title: 'WireGuard',
@@ -38,7 +38,13 @@ const primaryNavItems = [
         description: 'Deep links для клиентов, raw-ссылка и QR-код.',
         glyph: 'VL',
     },
-];
+    ...(user.value?.has_vless_wl_configs ? [{
+        key: 'vless_wl',
+        title: 'VLESS Белые списки',
+        description: 'Отдельная подборка конфигов с белыми списками.',
+        glyph: 'WL',
+    }] : []),
+]));
 
 const secondaryNavItems = [
     {

@@ -18,6 +18,10 @@ class TelegramAppUserResource extends JsonResource
             'debt' => max(0, -(float) ($this->balance ?? 0)),
             'is_admin' => (bool) $this->is_admin,
             'has_active_access' => $this->hasActiveAccess(),
+            'has_vless_wl_configs' => $this->when(
+                isset($this->has_vless_wl_configs),
+                fn () => (bool) $this->has_vless_wl_configs,
+            ),
             'subscription_expires_at' => optional($this->subscription_expires_at)?->toAtomString(),
             'has_money_for_next_subscription_month' => $this->when(
                 isset($this->has_money_for_next_subscription_month),

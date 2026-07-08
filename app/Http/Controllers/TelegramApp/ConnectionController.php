@@ -320,6 +320,96 @@ class ConnectionController extends Controller
         }
     }
 
+    public function vlessWhiteListLinks(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($response = $this->ensureActiveAccess($user)) {
+            return $response;
+        }
+
+        try {
+            return response()->json(
+                (new ApiVlessDeepLinksResource($this->users->getVlessWhiteListLinks($user)))->resolve()
+            );
+        } catch (Exception $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => BotApiMessages::unexpectedError(),
+            ], 500);
+        }
+    }
+
+    public function vlessWhiteListQrCode(Request $request): Response
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($response = $this->ensureActiveAccess($user)) {
+            return $response;
+        }
+
+        try {
+            $png = QrCode::format('png')
+                ->margin(5)
+                ->size(512)
+                ->generate($this->users->getVlessWhiteListLink($user));
+
+            return response($png)
+                ->header('Content-Type', 'image/png')
+                ->header('Content-Disposition', 'attachment; filename="vless-wl-qrcode.png"');
+        } catch (Exception $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => BotApiMessages::unexpectedError(),
+            ], 500);
+        }
+    }
+
+    public function vlessWhiteListSendQr(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($response = $this->ensureActiveAccess($user)) {
+            return $response;
+        }
+
+        $temporaryPath = null;
+
+        try {
+            $png = QrCode::format('png')
+                ->margin(5)
+                ->size(512)
+                ->generate($this->users->getVlessWhiteListLink($user));
+
+            $temporaryPath = $this->storeTemporaryTelegramFile($png, 'vless-wl-qrcode.png');
+
+            Telegram::sendPhoto([
+                'chat_id' => (string) $user->telegram_id,
+                'photo' => InputFile::create($temporaryPath, 'vless-wl-qrcode.png'),
+                'caption' => 'VLESS WL QR-код',
+            ]);
+
+            return response()->json([
+                'message' => 'QR-код отправлен в бот.',
+            ]);
+        } catch (Exception $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Не удалось отправить QR-код в бота. Откройте диалог с ботом и попробуйте ещё раз.',
+            ], 422);
+        } finally {
+            if ($temporaryPath && is_file($temporaryPath)) {
+                @unlink($temporaryPath);
+            }
+        }
+    }
+
     private function ensureActiveAccess(User $user): ?JsonResponse
     {
         if ($user->hasActiveAccess()) {

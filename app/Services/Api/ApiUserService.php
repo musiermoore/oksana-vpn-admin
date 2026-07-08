@@ -12,6 +12,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
 use App\Services\ReferralService;
 use App\Services\SubscriptionService;
+use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use App\Services\VlessDeepLinkService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -28,6 +29,7 @@ class ApiUserService
         private readonly SubscriptionService $subscriptionService,
         private readonly VlessDeepLinkService $vlessDeepLinks,
         private readonly ReferralService $referrals,
+        private readonly VlessExternalSubscriptionSyncService $externalSubscriptions,
     ) {}
 
     public function findUserByTelegramId(string $telegramId): ?User
@@ -148,8 +150,40 @@ class ApiUserService
     {
         return [
             'link' => $this->vlessDeepLinks->getConnectUrl($user),
+            'raw_link' => $this->vlessDeepLinks->getConnectUrl($user),
+            'show_raw_link' => true,
             ...$this->vlessDeepLinks->getRouteLinks($this->vlessDeepLinks->getDeepLinkRouteParameters($user)),
         ];
+    }
+
+    /**
+     * @return array<string, string|bool|null>
+     */
+    public function getVlessWhiteListLinks(User $user): array
+    {
+        return [
+            'link' => $user->is_admin
+                ? $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl')
+                : null,
+            'raw_link' => $user->is_admin
+                ? $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl')
+                : null,
+            'show_raw_link' => (bool) $user->is_admin,
+            ...$this->vlessDeepLinks->getRouteLinksForRoute(
+                'vless.deep-link-wl',
+                $this->vlessDeepLinks->getDeepLinkRouteParameters($user)
+            ),
+        ];
+    }
+
+    public function getVlessWhiteListLink(User $user): string
+    {
+        return $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl');
+    }
+
+    public function hasVisibleVlessWhiteListConfigs(User $user): bool
+    {
+        return $this->externalSubscriptions->hasVisibleConfigsForUser($user);
     }
 
     public function hasMoneyForNextSubscriptionMonth(User $user): bool

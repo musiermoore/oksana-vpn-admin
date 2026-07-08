@@ -8,6 +8,8 @@ use App\Models\Server;
 use App\Models\TelegramAppToken;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Models\VlessExternalSubscription;
+use App\Models\VlessExternalSubscriptionConfig;
 use App\Support\BotApiMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -79,18 +81,66 @@ class TelegramAppConnectionRoutesTest extends TestCase
         $this->assertStringContainsString('/connect?', (string) ($payload['link'] ?? ''));
     }
 
+    public function test_authenticated_admin_can_load_vless_wl_links_and_raw_link_via_telegram_app_routes(): void
+    {
+        [$user, $token] = $this->createAuthorizedActiveUser(isAdmin: true);
+        $this->createVisibleWhiteListSubscription(isReady: false);
+
+        $response = $this->withToken($token)
+            ->getJson('/telegram-app/vless-wl/link');
+
+        $response->assertOk();
+        $payload = $response->json();
+
+        $this->assertTrue((bool) ($payload['show_raw_link'] ?? false));
+        $this->assertStringContainsString('/connect-wl?', (string) ($payload['raw_link'] ?? ''));
+        $this->assertStringContainsString('/connect-wl/deep-link/happ', (string) ($payload['happ_deep_link'] ?? ''));
+    }
+
+    public function test_authenticated_regular_user_can_load_vless_wl_links_without_raw_link(): void
+    {
+        [$user, $token] = $this->createAuthorizedActiveUser();
+        $this->createVisibleWhiteListSubscription(isReady: true);
+
+        $response = $this->withToken($token)
+            ->getJson('/telegram-app/vless-wl/link');
+
+        $response->assertOk()
+            ->assertJsonPath('show_raw_link', false)
+            ->assertJsonPath('raw_link', null);
+    }
+
+    public function test_telegram_app_profile_marks_vless_wl_visibility_per_user_role(): void
+    {
+        [$admin, $adminToken] = $this->createAuthorizedActiveUser(isAdmin: true, telegramId: '111111111');
+        [$user, $userToken] = $this->createAuthorizedActiveUser(telegramId: '222222222');
+
+        $this->createVisibleWhiteListSubscription(isReady: false);
+
+        $this->withToken($adminToken)
+            ->getJson('/telegram-app/me')
+            ->assertOk()
+            ->assertJsonPath('user.has_vless_wl_configs', true);
+
+        $this->withToken($userToken)
+            ->getJson('/telegram-app/me')
+            ->assertOk()
+            ->assertJsonPath('user.has_vless_wl_configs', false);
+    }
+
     /**
      * @return array{0: User, 1: string}
      */
-    private function createAuthorizedUser(float $balance): array
+    private function createAuthorizedUser(float $balance, bool $isAdmin = false, string $telegramId = '987654321'): array
     {
         $user = User::query()->create([
             'name' => 'Telegram App User',
             'telegram' => '@telegram-app-user',
-            'telegram_id' => '987654321',
+            'telegram_id' => $telegramId,
             'join_at' => '2026-05-01',
             'balance' => $balance,
             'is_active' => true,
+            'is_admin' => $isAdmin,
         ]);
 
         $plainTextToken = str_repeat('c', 80);
@@ -107,9 +157,9 @@ class TelegramAppConnectionRoutesTest extends TestCase
     /**
      * @return array{0: User, 1: string}
      */
-    private function createAuthorizedActiveUser(): array
+    private function createAuthorizedActiveUser(bool $isAdmin = false, string $telegramId = '987654321'): array
     {
-        [$user, $token] = $this->createAuthorizedUser(balance: 500);
+        [$user, $token] = $this->createAuthorizedUser(balance: 500, isAdmin: $isAdmin, telegramId: $telegramId);
 
         $payment = CurrentPayment::query()->create([
             'start_date' => now()->subDay()->toDateString(),
@@ -125,6 +175,27 @@ class TelegramAppConnectionRoutesTest extends TestCase
         ]);
 
         return [$user, $token];
+    }
+
+    private function createVisibleWhiteListSubscription(bool $isReady): void
+    {
+        $subscription = VlessExternalSubscription::query()->create([
+            'name' => 'WL',
+            'type' => VlessExternalSubscription::TYPE_DIRECT,
+            'source_url' => 'vless://uuid@wl.example.com:443?type=tcp&security=reality#wl',
+            'is_active' => true,
+            'is_ready' => $isReady,
+        ]);
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $subscription->id,
+            'config_key' => 'wl-1',
+            'name' => 'WL config',
+            'normalized_name' => 'wl config',
+            'protocol' => 'vless',
+            'url' => 'vless://uuid@wl.example.com:443?type=tcp&security=reality#wl',
+            'sort_order' => 0,
+        ]);
     }
 
     private function createServer(string $code, array $attributes = []): Server

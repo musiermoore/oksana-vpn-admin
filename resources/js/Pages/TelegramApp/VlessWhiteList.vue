@@ -15,9 +15,9 @@ const props = defineProps({
     routes: Object,
     auth_url: String,
     profile_url: String,
-    vless_link_url: String,
-    vless_qr_url: String,
-    vless_send_qr_url: String,
+    vless_wl_link_url: String,
+    vless_wl_qr_url: String,
+    vless_wl_send_qr_url: String,
 });
 
 const state = ref('loading');
@@ -37,16 +37,16 @@ const preferredLinks = computed(() => ([
     {
         key: 'happ_deep_link',
         title: 'Happ',
-        description: 'Открыть подписку напрямую в Happ.',
+        description: 'Открыть WL-подписку напрямую в Happ.',
         url: links.value?.happ_deep_link ?? '',
     },
     {
         key: 'v2raytun_deeplink',
         title: 'V2RayTun',
-        description: 'Импортировать подписку в V2RayTun.',
+        description: 'Импортировать WL-подписку в V2RayTun.',
         url: links.value?.v2raytun_deeplink ?? '',
     },
-]));
+]).filter((item) => item.url));
 
 const extraLinks = computed(() => ([
     { key: 'v2rayn_deeplink', title: 'V2RayN', url: links.value?.v2rayn_deeplink ?? '' },
@@ -71,7 +71,7 @@ const copyRawLink = async () => {
     const value = links.value?.raw_link ?? links.value?.link ?? '';
 
     if (!value) {
-        copied.value = 'Ссылка пока недоступна.';
+        copied.value = 'Raw-ссылка недоступна для этого пользователя.';
         return;
     }
 
@@ -89,7 +89,7 @@ const loadData = async () => {
         profileUrl: props.profile_url,
     });
 
-    const response = await window.axios.get(props.vless_link_url, {
+    const response = await window.axios.get(props.vless_wl_link_url, {
         headers: telegramAppHeaders(),
     });
 
@@ -110,7 +110,7 @@ const openQrResult = async () => {
     revokeQrUrl();
 
     try {
-        const response = await fetchTelegramBinary(props.vless_qr_url);
+        const response = await fetchTelegramBinary(props.vless_wl_qr_url);
         qrImageUrl.value = URL.createObjectURL(response.data);
         step.value = 'qr';
     } catch (requestError) {
@@ -126,7 +126,7 @@ const sendQrToBot = async () => {
     qrStatus.value = '';
 
     try {
-        const response = await window.axios.post(props.vless_send_qr_url, {}, {
+        const response = await window.axios.post(props.vless_wl_send_qr_url, {}, {
             headers: telegramAppHeaders(),
         });
         qrStatus.value = response.data?.message ?? 'QR-код отправлен в бот.';
@@ -143,12 +143,12 @@ onMounted(async () => {
     } catch (requestError) {
         if (isTelegramDebtError(requestError)) {
             state.value = 'debt';
-            debtMessage.value = normalizeTelegramAppError(requestError, 'Доступ к VLESS требует активной подписки.');
+            debtMessage.value = normalizeTelegramAppError(requestError, 'Доступ к VLESS WL требует активной подписки.');
             return;
         }
 
         state.value = 'error';
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть VLESS.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть VLESS White List.');
     }
 });
 
@@ -159,8 +159,8 @@ onBeforeUnmount(() => {
 
 <template>
     <TelegramMiniAppFrame
-        title="VLESS"
-        description="Откройте deep links для клиентов, покажите QR-код или скопируйте raw-ссылку."
+        title="VLESS Белые списки"
+        description="Отдельная подборка внешних конфигов с белыми списками."
         :routes="routes"
         :user="user"
     >
@@ -169,14 +169,14 @@ onBeforeUnmount(() => {
                 <span class="tg-state-orbit__core"></span>
             </div>
             <h2>Проверяем доступ...</h2>
-            <p>Загружаем VLESS-данные для подключения.</p>
+            <p>Загружаем WL-конфиги для подключения.</p>
         </section>
 
         <section v-else-if="state === 'error'" class="tg-state-panel">
             <div class="tg-state-orbit tg-state-orbit--danger">
                 <span class="tg-state-orbit__core">!</span>
             </div>
-            <h2>Не удалось открыть VLESS</h2>
+            <h2>Не удалось открыть VLESS Белые списки</h2>
             <p>{{ error }}</p>
             <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
         </section>
@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
             <div class="tg-state-orbit tg-state-orbit--danger">
                 <span class="tg-state-orbit__core">₽</span>
             </div>
-            <h2>VLESS недоступен</h2>
+            <h2>WL-подписка недоступна</h2>
             <p>{{ debtMessage }}</p>
             <div class="tg-stack-actions">
                 <Link :href="routes?.payments" class="button tg-button-full">Подписка</Link>
@@ -195,9 +195,9 @@ onBeforeUnmount(() => {
 
         <template v-else>
             <section v-if="step === 'menu'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">VLESS</span>
+                <span class="tg-section-label">VLESS WL</span>
                 <h2>Выберите действие</h2>
-                <p>Можно сразу открыть ссылку в клиенте или показать QR-код.</p>
+                <p>Можно открыть WL-подписку через deep link или показать QR-код.</p>
 
                 <div class="tg-stack-actions">
                     <button class="button tg-button-full" type="button" @click="openLinkResult">Link</button>
@@ -212,8 +212,8 @@ onBeforeUnmount(() => {
 
             <section v-else-if="step === 'links'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Link</span>
-                <h2>Подключение к VLESS</h2>
-                <p>Выберите клиент или скопируйте raw-ссылку.</p>
+                <h2>Подключение к VLESS Белые списки</h2>
+                <p>Для обычных пользователей доступны только deep links. Админы дополнительно видят raw-ссылку.</p>
 
                 <div class="tg-link-list">
                     <button
@@ -231,15 +231,13 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
 
-                <div class="tg-raw-link-box">
-                    <template v-if="links?.show_raw_link !== false">
-                        <strong>Raw-ссылка</strong>
-                        <code>{{ links?.raw_link || links?.link }}</code>
-                        <button class="button button--secondary tg-button-full" type="button" @click="copyRawLink">
-                            Скопировать raw-ссылку
-                        </button>
-                        <p v-if="copied" class="tg-muted">{{ copied }}</p>
-                    </template>
+                <div v-if="links?.show_raw_link" class="tg-raw-link-box">
+                    <strong>Raw-ссылка</strong>
+                    <code>{{ links?.raw_link || links?.link }}</code>
+                    <button class="button button--secondary tg-button-full" type="button" @click="copyRawLink">
+                        Скопировать raw-ссылку
+                    </button>
+                    <p v-if="copied" class="tg-muted">{{ copied }}</p>
                 </div>
 
                 <section v-if="extraLinks.length > 0" class="tg-extra-links">
@@ -262,18 +260,17 @@ onBeforeUnmount(() => {
                     <button class="button button--secondary tg-button-full" type="button" @click="step = 'menu'">
                         Назад
                     </button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
+
+                <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 
             <section v-else class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">QR-Code</span>
-                <h2>QR для VLESS</h2>
-                <p>Отсканируйте код в совместимом VLESS-клиенте.</p>
+                <h2>QR для VLESS Белые списки</h2>
+                <p>Откройте QR-код в клиенте или отправьте его в бота.</p>
 
-                <div class="tg-qr-card">
-                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="VLESS QR code" class="tg-qr-card__image">
-                </div>
+                <img v-if="qrImageUrl" :src="qrImageUrl" alt="QR code" class="tg-qr-image">
 
                 <div class="tg-stack-actions">
                     <button class="button tg-button-full" type="button" :disabled="sendingQrToBot" @click="sendQrToBot">
@@ -282,7 +279,6 @@ onBeforeUnmount(() => {
                     <button class="button button--secondary tg-button-full" type="button" @click="step = 'menu'">
                         Назад
                     </button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
 
                 <p v-if="qrStatus" class="tg-muted">{{ qrStatus }}</p>

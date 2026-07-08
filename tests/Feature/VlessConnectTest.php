@@ -8,6 +8,8 @@ use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\UserServerStat;
 use App\Models\VlessConfig;
+use App\Models\VlessExternalSubscription;
+use App\Models\VlessExternalSubscriptionConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -164,6 +166,107 @@ class VlessConnectTest extends TestCase
                     ],
                 ],
             ]);
+    }
+
+    public function test_connect_wl_returns_filtered_external_subscription_content(): void
+    {
+        $user = User::query()->create([
+            'name' => 'WL User',
+            'telegram' => '@wl-user',
+            'telegram_id' => '777777',
+            'is_admin' => false,
+        ]);
+
+        $subscription = VlessExternalSubscription::query()->create([
+            'name' => 'White List',
+            'type' => VlessExternalSubscription::TYPE_SUBSCRIPTION,
+            'source_url' => 'https://example.com/sub',
+            'filter_pattern' => 'германия',
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $subscription->id,
+            'config_key' => 'wl-1',
+            'name' => 'Германия #1',
+            'normalized_name' => 'германия #1',
+            'protocol' => 'vless',
+            'url' => 'vless://uuid-1@de.example.com:443?type=tcp&security=reality#de-1',
+            'sort_order' => 0,
+        ]);
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $subscription->id,
+            'config_key' => 'wl-2',
+            'name' => 'Германия #2',
+            'normalized_name' => 'германия #2',
+            'protocol' => 'trojan',
+            'url' => 'trojan://secret@de2.example.com:443?security=tls&type=tcp#de-2',
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get(route('vless.connect-wl', [
+            'tg' => Crypt::encrypt('777777'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('Германия', $decoded);
+        $this->assertStringContainsString('vless://uuid-1@de.example.com:443', $decoded);
+        $this->assertStringContainsString('trojan://secret@de2.example.com:443', $decoded);
+    }
+
+    public function test_connect_wl_raw_requires_basic_auth_and_hides_admin_only_configs_from_regular_users(): void
+    {
+        config([
+            'auth.basic_auth.login' => 'debug-user',
+            'auth.basic_auth.password' => 'debug-pass',
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'WL Debug User',
+            'telegram' => '@wl-debug',
+            'telegram_id' => '888888',
+            'is_admin' => false,
+        ]);
+
+        $subscription = VlessExternalSubscription::query()->create([
+            'name' => 'Admin only WL',
+            'type' => VlessExternalSubscription::TYPE_DIRECT,
+            'source_url' => 'vless://uuid-admin@admin.example.com:443?type=tcp&security=reality#admin',
+            'is_active' => true,
+            'is_ready' => false,
+        ]);
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $subscription->id,
+            'config_key' => 'wl-admin',
+            'name' => 'Admin only',
+            'normalized_name' => 'admin only',
+            'protocol' => 'vless',
+            'url' => 'vless://uuid-admin@admin.example.com:443?type=tcp&security=reality#admin',
+            'sort_order' => 0,
+        ]);
+
+        $query = [
+            'tg' => Crypt::encrypt('888888'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ];
+
+        $this->get(route('vless.connect-wl-raw', $query))
+            ->assertUnauthorized();
+
+        $this->withServerVariables([
+            'PHP_AUTH_USER' => 'debug-user',
+            'PHP_AUTH_PW' => 'debug-pass',
+        ])->get(route('vless.connect-wl-raw', $query))
+            ->assertOk()
+            ->assertExactJson([]);
     }
 
     public function test_deep_link_route_redirects_hiddify_to_clash_subscription(): void

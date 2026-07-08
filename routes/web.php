@@ -26,6 +26,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserSubscriptionController;
 use App\Http\Controllers\UserTokenController;
 use App\Http\Controllers\VlessConfigController;
+use App\Http\Controllers\VlessExternalSubscriptionController;
 use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
@@ -67,6 +68,11 @@ Route::middleware('auth')->group(function () {
     Route::post('servers/{server}/disable', [ServerController::class, 'disable'])
         ->name('servers.disable');
     Route::resource('proxies', ProxyController::class)->except(['show']);
+    Route::resource('vless-external-subscriptions', VlessExternalSubscriptionController::class)->except(['show']);
+    Route::post('vless-external-subscriptions/preview', [VlessExternalSubscriptionController::class, 'preview'])
+        ->name('vless-external-subscriptions.preview');
+    Route::post('vless-external-subscriptions/{vlessExternalSubscription}/sync', [VlessExternalSubscriptionController::class, 'sync'])
+        ->name('vless-external-subscriptions.sync');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
     Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');
@@ -117,16 +123,24 @@ Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::clas
 
 Route::get('connect', [VlessConfigController::class, 'connect'])
     ->name('vless.connect');
+Route::get('connect-wl', [VlessConfigController::class, 'connectWhiteList'])
+    ->name('vless.connect-wl');
 Route::get('connect-raw', [VlessConfigController::class, 'connectRaw'])
     ->middleware(BasicAuth::class)
     ->name('vless.connect-raw');
+Route::get('connects-wl-raw', [VlessConfigController::class, 'connectWhiteListRaw'])
+    ->middleware(BasicAuth::class)
+    ->name('vless.connect-wl-raw');
 Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLink'])
     ->name('vless.deep-link');
+Route::get('connect-wl/deep-link/{client}', [VlessConfigController::class, 'deepLinkWhiteList'])
+    ->name('vless.deep-link-wl');
 
 Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
     Route::get('/', [TelegramAppPageController::class, 'home'])->name('home');
     Route::get('wireguard', [TelegramAppPageController::class, 'wireGuard'])->name('pages.wireguard');
     Route::get('vless', [TelegramAppPageController::class, 'vless'])->name('pages.vless');
+    Route::get('vless-wl', [TelegramAppPageController::class, 'vlessWhiteList'])->name('pages.vless-wl');
     Route::get('payments', [TelegramAppPageController::class, 'payments'])->name('pages.payments');
     Route::get('help', [TelegramAppPageController::class, 'help'])->name('pages.help');
     Route::get('chats', [TelegramAppPageController::class, 'chats'])->name('pages.chats');
@@ -168,6 +182,12 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
             ->name('vless.qr-code');
         Route::post('vless/send-qr', [TelegramAppConnectionController::class, 'vlessSendQr'])
             ->name('vless.send-qr');
+        Route::get('vless-wl/link', [TelegramAppConnectionController::class, 'vlessWhiteListLinks'])
+            ->name('vless-wl.link');
+        Route::get('vless-wl/qr-code', [TelegramAppConnectionController::class, 'vlessWhiteListQrCode'])
+            ->name('vless-wl.qr-code');
+        Route::post('vless-wl/send-qr', [TelegramAppConnectionController::class, 'vlessWhiteListSendQr'])
+            ->name('vless-wl.send-qr');
 
         Route::get('support/tickets', [TelegramAppSupportTicketController::class, 'index'])
             ->name('support.tickets.index');

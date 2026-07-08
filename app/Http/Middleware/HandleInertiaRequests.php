@@ -30,6 +30,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Welcome', 'href' => route('messages.welcome.edit'), 'badge' => 'WM'],
             ['label' => 'Сервера', 'href' => route('servers.index'), 'badge' => 'SV'],
             ['label' => 'Прокси', 'href' => route('proxies.index'), 'badge' => 'PX'],
+            ['label' => 'VLESS WL', 'href' => route('vless-external-subscriptions.index'), 'badge' => 'VW'],
         ] : [];
 
         return array_merge(parent::share($request), [

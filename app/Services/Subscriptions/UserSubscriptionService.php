@@ -18,9 +18,23 @@ class UserSubscriptionService
     {
         $namedNodes = $this->buildNamedNodes($user);
 
+        return $this->buildFromNodes($namedNodes, $format);
+    }
+
+    /**
+     * @param  array<int, NormalizedNode>  $nodes
+     */
+    public function buildFromNodes(array $nodes, ?string $format = null): SubscriptionBuildResult
+    {
+        if ($nodes === []) {
+            return $this->builderFactory
+                ->make((string) $format)
+                ->build([]);
+        }
+
         return $this->builderFactory
             ->make((string) $format)
-            ->build($namedNodes);
+            ->build($nodes);
     }
 
     /**
@@ -39,6 +53,27 @@ class UserSubscriptionService
      * }>
      */
     public function buildDebug(User $user): array
+    {
+        return $this->buildDebugFromNodes($this->buildNamedNodes($user));
+    }
+
+    /**
+     * @param  array<int, NormalizedNode>  $nodes
+     * @return array<int, array{
+     *     url: string,
+     *     config: array{
+     *         id: int,
+     *         name: string,
+     *         domain: string,
+     *         port: int,
+     *         protocol: string,
+     *         transport: string,
+     *         inbound_id: int|null
+     *     },
+     *     server: array{id: int, name: string}
+     * }>
+     */
+    public function buildDebugFromNodes(array $nodes): array
     {
         return array_map(function (NormalizedNode $node): array {
             return [
@@ -59,7 +94,7 @@ class UserSubscriptionService
                     'name' => $node->serverName,
                 ],
             ];
-        }, $this->buildNamedNodes($user));
+        }, $nodes);
     }
 
     /**

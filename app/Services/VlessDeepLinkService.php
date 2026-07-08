@@ -25,10 +25,19 @@ class VlessDeepLinkService
      */
     public function getRouteLinks(array $parameters): array
     {
+        return $this->getRouteLinksForRoute('vless.deep-link', $parameters);
+    }
+
+    /**
+     * @param  array{token: string}  $parameters
+     * @return array<string, string>
+     */
+    public function getRouteLinksForRoute(string $routeName, array $parameters): array
+    {
         $links = [];
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = config('vless.domain').route('vless.deep-link', [
+            $links[$responseKey] = config('vless.domain').route($routeName, [
                 ...$parameters,
                 'client' => $client,
             ], absolute: false);
@@ -39,6 +48,11 @@ class VlessDeepLinkService
 
     public function getConnectUrl(User $user, ?string $client = null): string
     {
+        return $this->getConnectUrlForRoute($user, 'vless.connect', $client);
+    }
+
+    public function getConnectUrlForRoute(User $user, string $routeName, ?string $client = null): string
+    {
         $parameters = $this->getConnectRouteParameters($user);
         $format = $this->resolveClientFormat($client);
 
@@ -46,7 +60,7 @@ class VlessDeepLinkService
             $parameters['format'] = $format;
         }
 
-        return $this->buildUrl('vless.connect', $parameters);
+        return $this->buildUrl($routeName, $parameters);
     }
 
     /**

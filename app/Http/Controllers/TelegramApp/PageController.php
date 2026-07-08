@@ -26,6 +26,11 @@ class PageController extends Controller
         return $this->page('TelegramApp/Vless');
     }
 
+    public function vlessWhiteList()
+    {
+        return $this->page('TelegramApp/VlessWhiteList');
+    }
+
     public function help()
     {
         return $this->page('TelegramApp/Help');
@@ -55,6 +60,7 @@ class PageController extends Controller
                 'home' => route('telegram-app.home'),
                 'wireguard' => route('telegram-app.pages.wireguard'),
                 'vless' => route('telegram-app.pages.vless'),
+                'vless_wl' => route('telegram-app.pages.vless-wl'),
                 'payments' => route('telegram-app.pages.payments'),
                 'help' => route('telegram-app.pages.help'),
                 'chats' => route('telegram-app.pages.chats'),
@@ -66,6 +72,9 @@ class PageController extends Controller
             'vless_link_url' => route('telegram-app.vless.link'),
             'vless_qr_url' => route('telegram-app.vless.qr-code'),
             'vless_send_qr_url' => route('telegram-app.vless.send-qr'),
+            'vless_wl_link_url' => route('telegram-app.vless-wl.link'),
+            'vless_wl_qr_url' => route('telegram-app.vless-wl.qr-code'),
+            'vless_wl_send_qr_url' => route('telegram-app.vless-wl.send-qr'),
             'support_tickets_url' => route('telegram-app.support.tickets.index'),
             'support_ticket_store_url' => route('telegram-app.support.tickets.store'),
             'subscription_packages_url' => route('telegram-app.subscription-packages'),

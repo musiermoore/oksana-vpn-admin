@@ -11,6 +11,8 @@ class ApiVlessDeepLinksResource extends JsonResource
     {
         return [
             'link' => $this['link'],
+            'raw_link' => $this['raw_link'] ?? $this['link'],
+            'show_raw_link' => (bool) ($this['show_raw_link'] ?? true),
             'happ_deep_link' => $this['happ_deep_link'],
             'v2rayn_deeplink' => $this['v2rayn_deeplink'],
             'v2rayng_deeplink' => $this['v2rayng_deeplink'],

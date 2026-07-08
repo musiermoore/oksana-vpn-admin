@@ -35,6 +35,10 @@ class UserController extends Controller
             'subscription_codes_summary',
             SubscriptionCodeResource::collection($user->purchasedSubscriptionCodes)->resolve()
         );
+        $user->setAttribute(
+            'has_vless_wl_configs',
+            $this->users->hasVisibleVlessWhiteListConfigs($user)
+        );
 
         return response()->json([
             'user' => (new TelegramAppUserResource($user))->resolve(),

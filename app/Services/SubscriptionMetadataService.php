@@ -45,9 +45,16 @@ class SubscriptionMetadataService
     /**
      * @return array<string, string>
      */
-    public function buildHeaders(User $user, string $fileExtension = 'txt', ?string $contentType = null): array
+    public function buildHeaders(
+        User $user,
+        string $fileExtension = 'txt',
+        ?string $contentType = null,
+        ?string $profileTitle = null,
+        bool $includeDeviceHeaders = true,
+    ): array
     {
         $payload = $this->payload($user);
+        $resolvedProfileTitle = $this->resolveProfileTitle($payload['filename'], $profileTitle);
 
         $headers = [
             'Subscription-Userinfo' => sprintf(
@@ -58,10 +65,14 @@ class SubscriptionMetadataService
                 $payload['expire'],
             ),
             'Profile-Update-Interval' => '24',
-            'X-Subscription-Devices-Limit' => (string) $payload['max_devices'],
-            'X-Subscription-Devices-Used' => (string) $payload['active_devices'],
-            'Content-Disposition' => 'attachment; filename="'.$this->replaceExtension($payload['filename'], $fileExtension).'"',
+            'Profile-Title' => $resolvedProfileTitle,
+            'Content-Disposition' => 'attachment; filename="'.$this->replaceExtension($resolvedProfileTitle, $fileExtension).'"',
         ];
+
+        if ($includeDeviceHeaders) {
+            $headers['X-Subscription-Devices-Limit'] = (string) $payload['max_devices'];
+            $headers['X-Subscription-Devices-Used'] = (string) $payload['active_devices'];
+        }
 
         if ($contentType !== null && $contentType !== '') {
             $headers['Content-Type'] = $contentType;
@@ -137,5 +148,16 @@ class SubscriptionMetadataService
         $safeExtension = trim($extension, '.');
 
         return ($name !== '' ? $name : 'subscription').'.'.$safeExtension;
+    }
+
+    private function resolveProfileTitle(string $defaultFilename, ?string $profileTitle): string
+    {
+        $title = trim((string) $profileTitle);
+
+        if ($title !== '') {
+            return $title;
+        }
+
+        return pathinfo($defaultFilename, PATHINFO_FILENAME) ?: 'subscription';
     }
 }

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Services\Subscriptions\SubscriptionUriParser;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -157,6 +158,12 @@ class VlessExternalSubscriptionSyncService
             ? $decoded
             : $body;
 
+        $jsonConfigs = $this->parseJsonProfiles($content);
+
+        if ($jsonConfigs !== []) {
+            return $jsonConfigs;
+        }
+
         return collect(preg_split('/\r\n|\r|\n/', $content) ?: [])
             ->map(fn (string $line) => trim($line))
             ->filter(fn (string $line) => $line !== '' && $this->isSupportedSubscriptionLink($line))
@@ -205,5 +212,264 @@ class VlessExternalSubscriptionSyncService
     {
         return collect(preg_split('/\r\n|\r|\n/', $content) ?: [])
             ->contains(fn (string $line) => $this->isSupportedSubscriptionLink(trim($line)));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseJsonProfiles(string $content): array
+    {
+        try {
+            $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return [];
+        }
+
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        return collect($decoded)
+            ->map(fn (mixed $profile) => is_array($profile) ? $this->buildUriFromJsonProfile($profile) : null)
+            ->filter(fn (mixed $uri) => is_string($uri) && $uri !== '')
+            ->values()
+            ->all();
+    }
+
+    private function buildUriFromJsonProfile(array $profile): ?string
+    {
+        $outbound = collect($profile['outbounds'] ?? [])
+            ->first(function (mixed $item): bool {
+                if (! is_array($item)) {
+                    return false;
+                }
+
+                $protocol = mb_strtolower((string) ($item['protocol'] ?? ''));
+                $tag = mb_strtolower((string) ($item['tag'] ?? ''));
+
+                return in_array($protocol, ['vless', 'trojan', 'shadowsocks', 'hysteria2', 'hysteria'], true)
+                    && ($tag === 'proxy' || $tag === '' || $protocol !== 'freedom');
+            });
+
+        if (! is_array($outbound)) {
+            return null;
+        }
+
+        $remarks = trim((string) ($profile['remarks'] ?? ''));
+
+        return match (mb_strtolower((string) ($outbound['protocol'] ?? ''))) {
+            'vless' => $this->buildVlessUriFromOutbound($outbound, $remarks),
+            'trojan' => $this->buildTrojanUriFromOutbound($outbound, $remarks),
+            'shadowsocks' => $this->buildShadowsocksUriFromOutbound($outbound, $remarks),
+            'hysteria2' => $this->buildHysteria2UriFromOutbound($outbound, $remarks),
+            'hysteria' => $this->buildHysteriaUriFromOutbound($outbound, $remarks),
+            default => null,
+        };
+    }
+
+    private function buildVlessUriFromOutbound(array $outbound, string $remarks): ?string
+    {
+        $server = Arr::first(Arr::get($outbound, 'settings.vnext', []));
+        $user = Arr::first(Arr::get($server, 'users', []));
+
+        if (! is_array($server) || ! is_array($user)) {
+            return null;
+        }
+
+        $stream = is_array($outbound['streamSettings'] ?? null) ? $outbound['streamSettings'] : [];
+        $security = mb_strtolower((string) ($stream['security'] ?? 'none'));
+        $transport = mb_strtolower((string) ($stream['network'] ?? 'tcp'));
+        $tlsSettings = is_array($stream['tlsSettings'] ?? null) ? $stream['tlsSettings'] : [];
+        $realitySettings = is_array($stream['realitySettings'] ?? null) ? $stream['realitySettings'] : [];
+        $wsSettings = is_array($stream['wsSettings'] ?? null) ? $stream['wsSettings'] : [];
+        $grpcSettings = is_array($stream['grpcSettings'] ?? null) ? $stream['grpcSettings'] : [];
+        $httpSettings = is_array($stream['httpSettings'] ?? null) ? $stream['httpSettings'] : [];
+        $xhttpSettings = is_array($stream['xhttpSettings'] ?? null) ? $stream['xhttpSettings'] : [];
+
+        $params = array_filter([
+            'type' => $transport ?: 'tcp',
+            'encryption' => (string) ($user['encryption'] ?? 'none'),
+            'security' => $security,
+            'sni' => (string) ($tlsSettings['serverName'] ?? $realitySettings['serverName'] ?? ''),
+            'fp' => (string) ($tlsSettings['fingerprint'] ?? $realitySettings['fingerprint'] ?? ''),
+            'alpn' => $this->implodeList($tlsSettings['alpn'] ?? []),
+            'pbk' => (string) ($realitySettings['publicKey'] ?? ''),
+            'sid' => (string) ($realitySettings['shortId'] ?? ''),
+            'spx' => (string) ($realitySettings['spiderX'] ?? ''),
+            'host' => (string) (
+                $wsSettings['headers']['Host']
+                ?? $wsSettings['host']
+                ?? $httpSettings['host'][0]
+                ?? $httpSettings['host']
+                ?? $xhttpSettings['host']
+                ?? ''
+            ),
+            'path' => (string) ($wsSettings['path'] ?? $httpSettings['path'] ?? $xhttpSettings['path'] ?? ''),
+            'serviceName' => (string) ($grpcSettings['serviceName'] ?? ''),
+            'mode' => (string) ($xhttpSettings['mode'] ?? ''),
+            'extra' => $this->normalizeJsonString($xhttpSettings['extra'] ?? null),
+            'xPaddingBytes' => isset($xhttpSettings['xPaddingBytes']) ? (string) $xhttpSettings['xPaddingBytes'] : null,
+            'flow' => (string) ($user['flow'] ?? ''),
+        ], fn (mixed $value) => $value !== null && $value !== '');
+
+        $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        $fragment = rawurlencode($remarks);
+
+        return sprintf(
+            'vless://%s@%s:%d?%s#%s',
+            rawurlencode((string) ($user['id'] ?? '')),
+            (string) ($server['address'] ?? ''),
+            (int) ($server['port'] ?? 0),
+            $query,
+            $fragment
+        );
+    }
+
+    private function buildTrojanUriFromOutbound(array $outbound, string $remarks): ?string
+    {
+        $server = Arr::first(Arr::get($outbound, 'settings.servers', []));
+
+        if (! is_array($server)) {
+            return null;
+        }
+
+        $stream = is_array($outbound['streamSettings'] ?? null) ? $outbound['streamSettings'] : [];
+        $transport = mb_strtolower((string) ($stream['network'] ?? 'tcp'));
+        $security = mb_strtolower((string) ($stream['security'] ?? 'tls'));
+        $wsSettings = is_array($stream['wsSettings'] ?? null) ? $stream['wsSettings'] : [];
+        $grpcSettings = is_array($stream['grpcSettings'] ?? null) ? $stream['grpcSettings'] : [];
+        $tlsSettings = is_array($stream['tlsSettings'] ?? null) ? $stream['tlsSettings'] : [];
+
+        $params = array_filter([
+            'security' => $security,
+            'type' => $transport,
+            'sni' => (string) ($tlsSettings['serverName'] ?? ''),
+            'host' => (string) ($wsSettings['headers']['Host'] ?? $wsSettings['host'] ?? ''),
+            'path' => (string) ($wsSettings['path'] ?? ''),
+            'serviceName' => (string) ($grpcSettings['serviceName'] ?? ''),
+        ], fn (mixed $value) => $value !== '');
+
+        return sprintf(
+            'trojan://%s@%s:%d?%s#%s',
+            rawurlencode((string) ($server['password'] ?? '')),
+            (string) ($server['address'] ?? ''),
+            (int) ($server['port'] ?? 0),
+            http_build_query($params, '', '&', PHP_QUERY_RFC3986),
+            rawurlencode($remarks)
+        );
+    }
+
+    private function buildShadowsocksUriFromOutbound(array $outbound, string $remarks): ?string
+    {
+        $server = Arr::first(Arr::get($outbound, 'settings.servers', []));
+
+        if (! is_array($server)) {
+            return null;
+        }
+
+        $credentials = base64_encode(sprintf(
+            '%s:%s',
+            (string) ($server['method'] ?? ''),
+            (string) ($server['password'] ?? '')
+        ));
+
+        $plugin = trim((string) ($server['plugin'] ?? ''));
+        $query = $plugin !== '' ? '?'.http_build_query(['plugin' => $plugin], '', '&', PHP_QUERY_RFC3986) : '';
+
+        return sprintf(
+            'ss://%s@%s:%d%s#%s',
+            rtrim(strtr($credentials, '+/', '-_'), '='),
+            (string) ($server['address'] ?? ''),
+            (int) ($server['port'] ?? 0),
+            $query,
+            rawurlencode($remarks)
+        );
+    }
+
+    private function buildHysteria2UriFromOutbound(array $outbound, string $remarks): ?string
+    {
+        $server = Arr::first(Arr::get($outbound, 'settings.servers', []));
+
+        if (! is_array($server)) {
+            return null;
+        }
+
+        $params = array_filter([
+            'sni' => (string) ($server['sni'] ?? ''),
+            'alpn' => $this->implodeList($server['alpn'] ?? []),
+            'insecure' => ! empty($server['insecure']) ? '1' : '',
+            'obfs' => (string) ($server['obfs'] ?? ''),
+            'obfs-password' => (string) ($server['obfs-password'] ?? ''),
+        ], fn (mixed $value) => $value !== '');
+
+        return sprintf(
+            'hysteria2://%s@%s:%d?%s#%s',
+            rawurlencode((string) ($server['password'] ?? '')),
+            (string) ($server['address'] ?? ''),
+            (int) ($server['port'] ?? 0),
+            http_build_query($params, '', '&', PHP_QUERY_RFC3986),
+            rawurlencode($remarks)
+        );
+    }
+
+    private function buildHysteriaUriFromOutbound(array $outbound, string $remarks): ?string
+    {
+        $server = Arr::first(Arr::get($outbound, 'settings.servers', []));
+
+        if (! is_array($server)) {
+            return null;
+        }
+
+        $params = array_filter([
+            'protocol' => (string) ($server['protocol'] ?? 'udp'),
+            'auth' => (string) ($server['auth_str'] ?? $server['auth-str'] ?? $server['password'] ?? ''),
+            'peer' => (string) ($server['serverName'] ?? $server['sni'] ?? ''),
+            'insecure' => ! empty($server['insecure']) ? '1' : '',
+        ], fn (mixed $value) => $value !== '');
+
+        return sprintf(
+            'hysteria://%s:%d?%s#%s',
+            (string) ($server['address'] ?? ''),
+            (int) ($server['port'] ?? 0),
+            http_build_query($params, '', '&', PHP_QUERY_RFC3986),
+            rawurlencode($remarks)
+        );
+    }
+
+    /**
+     * @param  mixed  $value
+     */
+    private function normalizeJsonString(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return $encoded === false ? null : $encoded;
+    }
+
+    /**
+     * @param  mixed  $value
+     */
+    private function implodeList(mixed $value): string
+    {
+        if (is_string($value)) {
+            return trim($value);
+        }
+
+        if (! is_array($value)) {
+            return '';
+        }
+
+        return collect($value)
+            ->filter(fn (mixed $item) => is_scalar($item) && trim((string) $item) !== '')
+            ->map(fn (mixed $item) => trim((string) $item))
+            ->implode(',');
     }
 }

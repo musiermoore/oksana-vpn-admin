@@ -194,6 +194,7 @@ class VlessConfigController extends Controller
             $user,
             $subscription->fileExtension,
             $subscription->contentType,
+            'Oksana VPN',
         ) as $name => $value) {
             $response->header($name, $value);
         }

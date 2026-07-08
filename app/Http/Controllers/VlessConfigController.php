@@ -195,6 +195,8 @@ class VlessConfigController extends Controller
             $subscription->fileExtension,
             $subscription->contentType,
             'Oksana VPN',
+            true,
+            false,
         ) as $name => $value) {
             $response->header($name, $value);
         }
@@ -226,6 +228,7 @@ class VlessConfigController extends Controller
             $subscription->fileExtension,
             $subscription->contentType,
             'Oksana VPN - Белые списки',
+            false,
             false,
         ) as $name => $value) {
             $response->header($name, $value);

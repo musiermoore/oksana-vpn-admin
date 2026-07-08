@@ -51,6 +51,7 @@ class SubscriptionMetadataService
         ?string $contentType = null,
         ?string $profileTitle = null,
         bool $includeDeviceHeaders = true,
+        bool $includeDownloadFilename = true,
     ): array
     {
         $payload = $this->payload($user);
@@ -66,8 +67,11 @@ class SubscriptionMetadataService
             ),
             'Profile-Update-Interval' => '24',
             'Profile-Title' => $resolvedProfileTitle,
-            'Content-Disposition' => 'attachment; filename="'.$this->replaceExtension($resolvedProfileTitle, $fileExtension).'"',
         ];
+
+        if ($includeDownloadFilename) {
+            $headers['Content-Disposition'] = 'attachment; filename="'.$this->replaceExtension($resolvedProfileTitle, $fileExtension).'"';
+        }
 
         if ($includeDeviceHeaders) {
             $headers['X-Subscription-Devices-Limit'] = (string) $payload['max_devices'];

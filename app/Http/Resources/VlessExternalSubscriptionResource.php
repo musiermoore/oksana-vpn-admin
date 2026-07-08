@@ -16,6 +16,7 @@ class VlessExternalSubscriptionResource extends JsonResource
             'type' => $this->type,
             'source_url' => $this->source_url,
             'filter_pattern' => $this->filter_pattern,
+            'connect_name_prefix' => $this->connect_name_prefix,
             'is_active' => (bool) $this->is_active,
             'is_ready' => (bool) $this->is_ready,
             'last_synced_at' => optional($this->last_synced_at)?->toAtomString(),

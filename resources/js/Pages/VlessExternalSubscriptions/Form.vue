@@ -20,6 +20,7 @@ const form = useForm({
     type: props.subscription?.type ?? 'subscription',
     source_url: props.subscription?.source_url ?? '',
     filter_pattern: props.subscription?.filter_pattern ?? '',
+    connect_name_prefix: props.subscription?.connect_name_prefix ?? '',
     is_active: props.subscription?.is_active ?? true,
     is_ready: props.subscription?.is_ready ?? true,
 });
@@ -80,6 +81,11 @@ const loadPreview = async () => {
             <label class="field">
                 <span>Паттерн</span>
                 <input v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия">
+            </label>
+
+            <label class="field">
+                <span>Название в connect-wl</span>
+                <input v-model="form.connect_name_prefix" placeholder="Например: Сервер">
             </label>
 
             <label class="field">

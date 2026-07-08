@@ -17,6 +17,7 @@ class VlessExternalSubscription extends Model
         'type',
         'source_url',
         'filter_pattern',
+        'connect_name_prefix',
         'is_active',
         'is_ready',
         'last_synced_at',

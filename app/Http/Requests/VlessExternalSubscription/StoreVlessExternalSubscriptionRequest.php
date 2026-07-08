@@ -24,6 +24,7 @@ class StoreVlessExternalSubscriptionRequest extends FormRequest
             ])],
             'source_url' => ['required', 'string'],
             'filter_pattern' => ['nullable', 'string', 'max:255'],
+            'connect_name_prefix' => ['nullable', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
             'is_ready' => ['required', 'boolean'],
         ];

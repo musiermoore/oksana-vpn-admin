@@ -21,13 +21,17 @@ class VlessExternalSubscriptionAccessService
      */
     public function getNamedNodesForUser(User $user): array
     {
-        $nodes = collect($this->syncService->getVisibleConfigsForUser($user))
+        $configs = collect($this->syncService->getVisibleConfigsForUser($user))
+            ->values();
+
+        $nodes = $configs
             ->map(fn (VlessExternalSubscriptionConfig $config, int $index) => $this->mapConfigToNode($config, $index))
             ->filter()
             ->values()
             ->all();
 
         $names = $this->nodeNameService->buildNames($nodes);
+        $customNames = $this->buildCustomNames($configs);
 
         return array_map(
             fn (NormalizedNode $node) => new NormalizedNode(
@@ -40,7 +44,7 @@ class VlessExternalSubscriptionAccessService
                 configId: $node->configId,
                 sourceType: $node->sourceType,
                 sortServerName: $node->sortServerName,
-                meta: [...$node->meta, 'name' => $names[$node->id] ?? $node->serverName],
+                meta: [...$node->meta, 'name' => $customNames[$node->id] ?? $names[$node->id] ?? $node->serverName],
             ),
             $nodes
         );
@@ -102,5 +106,30 @@ class VlessExternalSubscriptionAccessService
                 'port' => (int) ($parsed['port'] ?? 0),
             ],
         );
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, VlessExternalSubscriptionConfig>  $configs
+     * @return array<string, string>
+     */
+    private function buildCustomNames(\Illuminate\Support\Collection $configs): array
+    {
+        $names = [];
+
+        $configs
+            ->groupBy(fn (VlessExternalSubscriptionConfig $config) => (int) $config->vless_external_subscription_id)
+            ->each(function (\Illuminate\Support\Collection $group) use (&$names): void {
+                $prefix = trim((string) $group->first()?->subscription?->connect_name_prefix);
+
+                if ($prefix === '') {
+                    return;
+                }
+
+                $group->values()->each(function (VlessExternalSubscriptionConfig $config, int $index) use (&$names, $prefix): void {
+                    $names['wl:'.$config->id] = sprintf('%s %d', $prefix, $index + 1);
+                });
+            });
+
+        return $names;
     }
 }

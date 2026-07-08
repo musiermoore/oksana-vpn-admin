@@ -1093,7 +1093,7 @@ class VlessConnectTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertHeader('Profile-Update-Interval', '24');
+        $response->assertHeader('Profile-Update-Interval', '1');
         $response->assertHeader('X-Subscription-Devices-Limit', '5');
         $response->assertHeader('X-Subscription-Devices-Used', '0');
         $response->assertHeader('Content-Disposition', 'attachment; filename="Premium Subscription.txt"');

@@ -198,7 +198,7 @@ class VlessConfigController extends Controller
             true,
             false,
             true,
-            '1H',
+            '1',
         ) as $name => $value) {
             $response->header($name, $value);
         }
@@ -233,7 +233,7 @@ class VlessConfigController extends Controller
             false,
             false,
             false,
-            '1H',
+            '1',
         ) as $name => $value) {
             $response->header($name, $value);
         }

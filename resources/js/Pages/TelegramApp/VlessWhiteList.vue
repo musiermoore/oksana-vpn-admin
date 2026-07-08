@@ -197,13 +197,10 @@ onBeforeUnmount(() => {
             <section v-if="step === 'menu'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">VLESS WL</span>
                 <h2>Выберите действие</h2>
-                <p>Можно открыть WL-подписку через deep link или показать QR-код.</p>
+                <p>Можно открыть WL-подписку через deep link.</p>
 
                 <div class="tg-stack-actions">
                     <button class="button tg-button-full" type="button" @click="openLinkResult">Link</button>
-                    <button class="button tg-button-full" type="button" :disabled="loadingQr" @click="openQrResult">
-                        {{ loadingQr ? 'Загружаем...' : 'QR-Code' }}
-                    </button>
                     <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
                 </div>
 

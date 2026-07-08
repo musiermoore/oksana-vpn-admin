@@ -24,9 +24,7 @@ return new class extends Migration
 
         Schema::create('vless_external_subscription_configs', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('vless_external_subscription_id')
-                ->constrained('vless_external_subscriptions')
-                ->cascadeOnDelete();
+            $table->unsignedBigInteger('vless_external_subscription_id');
             $table->string('config_key');
             $table->string('name');
             $table->string('normalized_name');
@@ -39,6 +37,10 @@ return new class extends Migration
                 ['vless_external_subscription_id', 'config_key'],
                 'vless_external_subscription_configs_unique_key'
             );
+            $table->foreign('vless_external_subscription_id', 'vless_ext_sub_cfg_sub_id_fk')
+                ->references('id')
+                ->on('vless_external_subscriptions')
+                ->cascadeOnDelete();
         });
     }
 

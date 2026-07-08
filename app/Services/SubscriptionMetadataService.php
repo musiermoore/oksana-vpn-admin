@@ -52,22 +52,27 @@ class SubscriptionMetadataService
         ?string $profileTitle = null,
         bool $includeDeviceHeaders = true,
         bool $includeDownloadFilename = true,
+        bool $includeTrafficUsage = true,
+        string $profileUpdateInterval = '24',
     ): array
     {
         $payload = $this->payload($user);
         $resolvedProfileTitle = $this->resolveProfileTitle($payload['filename'], $profileTitle);
 
         $headers = [
-            'Subscription-Userinfo' => sprintf(
+            'Profile-Update-Interval' => $profileUpdateInterval,
+            'Profile-Title' => $resolvedProfileTitle,
+        ];
+
+        if ($includeTrafficUsage) {
+            $headers['Subscription-Userinfo'] = sprintf(
                 'upload=%d; download=%d; total=%d; expire=%d',
                 $payload['upload'],
                 $payload['download'],
                 $payload['total'],
                 $payload['expire'],
-            ),
-            'Profile-Update-Interval' => '24',
-            'Profile-Title' => $resolvedProfileTitle,
-        ];
+            );
+        }
 
         if ($includeDownloadFilename) {
             $headers['Content-Disposition'] = 'attachment; filename="'.$this->replaceExtension($resolvedProfileTitle, $fileExtension).'"';

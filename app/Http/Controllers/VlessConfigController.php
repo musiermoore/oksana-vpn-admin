@@ -197,6 +197,8 @@ class VlessConfigController extends Controller
             'Oksana VPN',
             true,
             false,
+            true,
+            '1H',
         ) as $name => $value) {
             $response->header($name, $value);
         }
@@ -230,6 +232,8 @@ class VlessConfigController extends Controller
             'Oksana VPN - Белые списки',
             false,
             false,
+            false,
+            '1H',
         ) as $name => $value) {
             $response->header($name, $value);
         }

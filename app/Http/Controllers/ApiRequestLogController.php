@@ -34,6 +34,9 @@ class ApiRequestLogController extends Controller
                         ->where('api_request_logs.action', 'like', '%' . $search . '%')
                         ->orWhere('api_request_logs.endpoint', 'like', '%' . $search . '%')
                         ->orWhere('api_request_logs.method', 'like', '%' . $search . '%')
+                        ->orWhere('api_request_logs.ip_address', 'like', '%' . $search . '%')
+                        ->orWhere('api_request_logs.forwarded_for', 'like', '%' . $search . '%')
+                        ->orWhere('api_request_logs.user_agent', 'like', '%' . $search . '%')
                         ->orWhere('api_request_logs.request_timezone', 'like', '%' . $search . '%')
                         ->orWhere('api_request_logs.user_id', $search)
                         ->orWhereHas('user', function (Builder $userQuery) use ($search) {
@@ -59,6 +62,26 @@ class ApiRequestLogController extends Controller
             ->latest()
             ->paginate(50)
             ->withQueryString();
+
+        $topUsers = (clone $baseQuery)
+            ->selectRaw('user_id, COUNT(*) as hits')
+            ->with('user')
+            ->whereNotNull('user_id')
+            ->groupBy('user_id')
+            ->orderByDesc('hits')
+            ->limit(10)
+            ->get()
+            ->map(fn (ApiRequestLog $log) => [
+                'user_id' => $log->user_id,
+                'hits' => (int) $log->hits,
+                'user' => $log->user ? [
+                    'id' => $log->user->id,
+                    'full_name' => $log->user->full_name,
+                    'telegram' => $log->user->telegram,
+                    'edit_url' => route('users.edit', $log->user),
+                ] : null,
+            ])
+            ->values();
 
         $timezoneStats = (clone $baseQuery)
             ->selectRaw('COALESCE(request_timezone, ?) as timezone_label, COUNT(*) as hits', ['Не указана'])
@@ -87,6 +110,7 @@ class ApiRequestLogController extends Controller
         return $this->inertia('ApiRequestLogs/Index', [
             'filters' => $filters,
             'logs' => ApiRequestLogResource::collection($logs)->response()->getData(true),
+            'top_users' => $topUsers,
             'timezone_stats' => $timezoneStats,
             'overview' => $overview,
             'viewer_timezone' => $viewerTimezone,

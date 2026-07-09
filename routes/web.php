@@ -32,6 +32,7 @@ use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
 use App\Http\Controllers\XuiDebugController;
 use App\Http\Middleware\BasicAuth;
+use App\Http\Middleware\TrackApiRequests;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware([BasicAuth::class, 'guest'])->group(function () {
@@ -122,8 +123,10 @@ Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::clas
     ->name('users.configs.qr-code');
 
 Route::get('connect', [VlessConfigController::class, 'connect'])
+    ->middleware(TrackApiRequests::class)
     ->name('vless.connect');
 Route::get('connect-wl', [VlessConfigController::class, 'connectWhiteList'])
+    ->middleware(TrackApiRequests::class)
     ->name('vless.connect-wl');
 Route::get('connect-raw', [VlessConfigController::class, 'connectRaw'])
     ->middleware(BasicAuth::class)
@@ -132,8 +135,10 @@ Route::get('connects-wl-raw', [VlessConfigController::class, 'connectWhiteListRa
     ->middleware(BasicAuth::class)
     ->name('vless.connect-wl-raw');
 Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLink'])
+    ->middleware(TrackApiRequests::class)
     ->name('vless.deep-link');
 Route::get('connect-wl/deep-link/{client}', [VlessConfigController::class, 'deepLinkWhiteList'])
+    ->middleware(TrackApiRequests::class)
     ->name('vless.deep-link-wl');
 
 Route::prefix('telegram-app')->name('telegram-app.')->group(function () {

@@ -12,6 +12,7 @@ use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Support\BotApiMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TelegramAppConnectionRoutesTest extends TestCase
@@ -39,6 +40,8 @@ class TelegramAppConnectionRoutesTest extends TestCase
                     'name' => 'ios-main',
                     'download_url' => "/telegram-app/wireguard/configs/{$config->id}/download",
                     'qr_code_url' => "/telegram-app/wireguard/configs/{$config->id}/qr-code",
+                    'send_file_to_bot_url' => "/telegram-app/wireguard/configs/{$config->id}/send-file",
+                    'send_qr_to_bot_url' => "/telegram-app/wireguard/configs/{$config->id}/send-qr",
                 ]],
             ]);
     }
@@ -143,7 +146,7 @@ class TelegramAppConnectionRoutesTest extends TestCase
             'is_admin' => $isAdmin,
         ]);
 
-        $plainTextToken = str_repeat('c', 80);
+        $plainTextToken = hash('sha256', $telegramId.'-'.Str::uuid());
 
         TelegramAppToken::query()->create([
             'user_id' => $user->id,

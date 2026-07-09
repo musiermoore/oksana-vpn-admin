@@ -154,6 +154,9 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
             'https://panel.test/' => Http::response(
                 '<meta name="csrf-token" content="csrf-token-value">',
                 200,
@@ -263,6 +266,9 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
             'https://panel.test/' => Http::response(
                 '<meta name="csrf-token" content="csrf-token-value">',
                 200,
@@ -365,6 +371,9 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
             'https://panel.test/' => Http::response(
                 '<meta name="csrf-token" content="csrf-token-value">',
                 200,
@@ -436,6 +445,9 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
             'https://panel.test/' => Http::response(
                 '<meta name="csrf-token" content="csrf-token-value">',
                 200,
@@ -517,6 +529,9 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
             'https://panel.test/' => Http::response(
                 '<meta name="csrf-token" content="csrf-token-value">',
                 200,
@@ -612,6 +627,9 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
             'https://panel.test/' => Http::response(
                 '<meta name="csrf-token" content="csrf-token-value">',
                 200,

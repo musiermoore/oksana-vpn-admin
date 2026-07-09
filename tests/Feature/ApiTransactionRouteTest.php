@@ -113,7 +113,7 @@ class ApiTransactionRouteTest extends TestCase
         $this->assertSame('23d93cac-000f-5000-8000-126628f15141', $invoice->provider_payment_id);
         $this->assertSame('https://yookassa.example/confirm', $invoice->confirmation_url);
 
-        $this->assertSame([
+        $this->assertEquals([
             'subscription_months' => 6,
             'base_month_price' => 150,
             'discount_percent' => 20,

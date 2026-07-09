@@ -6,7 +6,9 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class ApiRequestLogPayloadFactory
 {
@@ -24,6 +26,8 @@ class ApiRequestLogPayloadFactory
             'request_timezone_offset' => $this->resolveTimezoneOffset($request),
             'response_status' => $response?->getStatusCode(),
             'ip_address' => $request->ip(),
+            'forwarded_for' => $this->resolveForwardedFor($request),
+            'user_agent' => $this->resolveUserAgent($request),
         ];
     }
 
@@ -52,6 +56,12 @@ class ApiRequestLogPayloadFactory
 
         if ($userId > 0) {
             return $userId;
+        }
+
+        $connectUserId = $this->resolveConnectUserId($request);
+
+        if ($connectUserId !== null) {
+            return $connectUserId;
         }
 
         $telegramId = $route?->parameter('telegramId') ?? $request->input('telegram_id');
@@ -205,5 +215,74 @@ class ApiRequestLogPayloadFactory
         $minutes = $absolute % 60;
 
         return sprintf('UTC%s%02d:%02d', $sign, $hours, $minutes);
+    }
+
+    private function resolveForwardedFor(Request $request): ?string
+    {
+        foreach (['CF-Connecting-IP', 'X-Real-IP', 'X-Forwarded-For', 'Forwarded'] as $header) {
+            $value = trim((string) $request->header($header, ''));
+
+            if ($value !== '') {
+                return mb_substr($value, 0, 1000);
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveUserAgent(Request $request): ?string
+    {
+        $userAgent = trim((string) $request->userAgent());
+
+        return $userAgent === '' ? null : mb_substr($userAgent, 0, 1000);
+    }
+
+    private function resolveConnectUserId(Request $request): ?int
+    {
+        $credentials = $this->resolveConnectCredentials($request);
+
+        if ($credentials === null) {
+            return null;
+        }
+
+        return User::query()
+            ->whereKey($credentials['i'])
+            ->where('telegram_id', $credentials['tg'])
+            ->value('id');
+    }
+
+    /**
+     * @return array{tg: string, i: int}|null
+     */
+    private function resolveConnectCredentials(Request $request): ?array
+    {
+        try {
+            if ($request->filled('token')) {
+                $payload = Crypt::decrypt($request->string('token')->toString());
+
+                if (! is_array($payload)) {
+                    return null;
+                }
+
+                $telegramId = (string) ($payload['tg'] ?? '');
+                $userId = (int) ($payload['i'] ?? 0);
+            } elseif ($request->filled('tg') && $request->filled('i')) {
+                $telegramId = (string) Crypt::decrypt($request->string('tg')->toString());
+                $userId = (int) Crypt::decrypt($request->string('i')->toString());
+            } else {
+                return null;
+            }
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($telegramId === '' || $userId <= 0) {
+            return null;
+        }
+
+        return [
+            'tg' => $telegramId,
+            'i' => $userId,
+        ];
     }
 }

@@ -19,6 +19,8 @@ class ApiRequestLogResource extends JsonResource
             'request_timezone_offset' => $this->request_timezone_offset,
             'response_status' => $this->response_status,
             'ip_address' => $this->ip_address,
+            'forwarded_for' => $this->forwarded_for,
+            'user_agent' => $this->user_agent,
             'created_at' => $this->created_at?->toISOString(),
             'formatted_created_at' => $this->created_at?->format('d.m.Y H:i:s'),
             'user' => $this->user ? [

@@ -52,6 +52,7 @@ class ApiRequestLogPageTest extends TestCase
                 ->component('ApiRequestLogs/Index')
                 ->where('overview.total', 2)
                 ->where('viewer_timezone', 'Europe/Berlin')
+                ->where('top_users.0.hits', 2)
                 ->where('timezone_stats', function ($stats): bool {
                     return collect($stats)
                         ->pluck('timezone')

@@ -29,7 +29,7 @@ class ConfigRepository
     {
         return $user->configs()
             ->with('server:id,hide_configs_for_non_admins')
-            ->get(['id', 'user_id', 'name']);
+            ->get(['id', 'user_id', 'server_id', 'name']);
     }
 
     public function findForUser(User $user, int|string $id): ?Config

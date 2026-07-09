@@ -15,21 +15,23 @@ class BasicAuth
      */
     public function handle(Request $request, Closure $next): Response
     {
-        header('Cache-Control: no-cache, must-revalidate, max-age=0');
-
-        if ($this->isUnauthorized()) {
-            header('HTTP/1.1 401 Authorization Required');
-            header('WWW-Authenticate: Basic realm="Access denied"');
-
-            exit;
+        if ($this->isUnauthorized($request)) {
+            return response('Unauthorized', 401, [
+                'Cache-Control' => 'no-cache, must-revalidate, max-age=0',
+                'WWW-Authenticate' => 'Basic realm="Access denied"',
+            ]);
         }
 
         $request->attributes->set('isAuthorized', true);
 
-        return $next($request);
+        $response = $next($request);
+
+        $response->headers->set('Cache-Control', 'no-cache, must-revalidate, max-age=0');
+
+        return $response;
     }
 
-    private function isUnauthorized(): bool
+    private function isUnauthorized(Request $request): bool
     {
         $AUTH_USER = config('auth.basic_auth.login');
         $AUTH_PASS = config('auth.basic_auth.password');
@@ -38,9 +40,12 @@ class BasicAuth
             return false;
         }
 
-        return empty($_SERVER['PHP_AUTH_USER'])
-            || empty($_SERVER['PHP_AUTH_PW'])
-            || $_SERVER['PHP_AUTH_USER'] != $AUTH_USER
-            || $_SERVER['PHP_AUTH_PW']   != $AUTH_PASS;
+        $providedUser = $request->getUser() ?: ($_SERVER['PHP_AUTH_USER'] ?? null);
+        $providedPassword = $request->getPassword() ?: ($_SERVER['PHP_AUTH_PW'] ?? null);
+
+        return empty($providedUser)
+            || empty($providedPassword)
+            || $providedUser != $AUTH_USER
+            || $providedPassword != $AUTH_PASS;
     }
 }

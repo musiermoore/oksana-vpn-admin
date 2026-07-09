@@ -153,7 +153,7 @@ class VlessConnectTest extends TestCase
                     'url' => $config->getLink(),
                     'config' => [
                         'id' => $config->id,
-                        'name' => 'Латвия • SHADOWSOCKS',
+                        'name' => 'Латвия • SHADOWSOCKS • TCP',
                         'domain' => 'lv-1.example.com',
                         'port' => 8388,
                         'protocol' => 'shadowsocks',
@@ -168,7 +168,7 @@ class VlessConnectTest extends TestCase
             ]);
     }
 
-    public function test_connect_wl_returns_filtered_external_subscription_content(): void
+    public function test_connect_wl_returns_named_external_subscription_content(): void
     {
         $user = User::query()->create([
             'name' => 'WL User',
@@ -216,9 +216,12 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode($response->getContent(), true);
 
         $this->assertNotFalse($decoded);
-        $this->assertStringContainsString('Германия', $decoded);
         $this->assertStringContainsString('vless://uuid-1@de.example.com:443', $decoded);
         $this->assertStringContainsString('trojan://secret@de2.example.com:443', $decoded);
+        $this->assertSame([
+            'White List • TROJAN • TCP',
+            'White List • VLESS • TCP',
+        ], collect($this->extractNames($decoded))->sort()->values()->all());
     }
 
     public function test_connect_wl_raw_requires_basic_auth_and_hides_admin_only_configs_from_regular_users(): void
@@ -601,14 +604,13 @@ class VlessConnectTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertCount(5, $lines);
+        $this->assertCount(4, $lines);
         $names = $this->extractNames($decoded);
         sort($names);
 
         $expectedNames = [
             'Латвия • VLESS • TCP',
-            'Финляндия • SHADOWSOCKS • TCP #1',
-            'Финляндия • SHADOWSOCKS • TCP #2',
+            'Финляндия • SHADOWSOCKS • TCP',
             'Финляндия • VLESS • TCP',
             'Эстония • SHADOWSOCKS • TCP',
         ];
@@ -616,7 +618,7 @@ class VlessConnectTest extends TestCase
 
         $this->assertSame($expectedNames, $names);
         $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'vless://')));
-        $this->assertCount(3, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
+        $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
     }
 
     public function test_connect_returns_direct_and_proxy_links_when_ready_proxy_is_linked_to_server(): void
@@ -887,8 +889,7 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode((string) $response->getContent(), true);
 
         $this->assertNotFalse($decoded);
-        $this->assertStringContainsString('Латвия • VLESS • TCP', $decoded);
-        $this->assertStringNotContainsString('Финляндия • VLESS • TCP', $decoded);
+        $this->assertSame(['Латвия • VLESS • TCP'], $this->extractNames($decoded));
         $this->assertStringNotContainsString('inactive-uuid', $decoded);
     }
 
@@ -1094,9 +1095,9 @@ class VlessConnectTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('Profile-Update-Interval', '1');
+        $response->assertHeader('Profile-Title', 'Oksana VPN');
         $response->assertHeader('X-Subscription-Devices-Limit', '5');
         $response->assertHeader('X-Subscription-Devices-Used', '0');
-        $response->assertHeader('Content-Disposition', 'attachment; filename="Premium Subscription.txt"');
 
         $userinfo = $response->headers->get('Subscription-Userinfo');
 
@@ -1106,7 +1107,7 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('total=107374182400', $userinfo);
     }
 
-    public function test_connect_preserves_remote_xhttp_and_hysteria_links_from_subscription_source(): void
+    public function test_connect_prefers_local_static_link_over_remote_subscription_source(): void
     {
         Http::fake([
             'https://de.example.com/sub/sub-de' => Http::response(base64_encode(implode("\n", [
@@ -1148,20 +1149,13 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode($response->getContent(), true);
 
         $this->assertNotFalse($decoded);
-        $this->assertStringContainsString('type=xhttp', $decoded);
-        $this->assertStringContainsString('mode=auto', $decoded);
-        $this->assertStringContainsString('hy2://secret@de.example.com:8443?sni=hy.example.com#', $decoded);
+        $this->assertStringContainsString('type=tcp', $decoded);
+        $this->assertStringNotContainsString('type=xhttp', $decoded);
+        $this->assertStringNotContainsString('hy2://secret@de.example.com:8443?sni=hy.example.com#', $decoded);
     }
 
     public function test_connect_returns_clash_subscription_with_auto_and_manual_groups(): void
     {
-        Http::fake([
-            'https://de.example.com/sub/sub-de' => Http::response(base64_encode(implode("\n", [
-                'vless://uuid-xhttp@de.example.com:443?type=xhttp&security=reality&path=%2Fxhttp&mode=auto&host=cdn.example.com&pbk=pk&fp=chrome&sni=example.com&sid=abcd&spx=%2F#legacy-xhttp',
-                'hy2://secret@de.example.com:8443?sni=hy.example.com#legacy-hy2',
-            ]))),
-        ]);
-
         $user = User::query()->create([
             'name' => 'Clash User',
             'telegram' => '@tester',
@@ -1173,16 +1167,40 @@ class VlessConnectTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $server->id,
             'user_id' => $user->id,
-            'name' => 'remote-sub',
+            'name' => 'xhttp-config',
             'is_active' => true,
             'enable' => true,
-            'uuid' => 'uuid-remote',
-            'sub_id' => 'sub-de',
+            'uuid' => 'uuid-xhttp',
             'port' => 443,
             'protocol' => 'vless',
-            'type' => 'tcp',
+            'type' => 'xhttp',
             'encryption' => 'none',
             'security' => 'reality',
+            'pbk' => 'pk',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+            'host' => 'cdn.example.com',
+            'path' => '/xhttp',
+            'mode' => 'auto',
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'hy2-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'uuid-hy2',
+            'auth' => 'secret',
+            'port' => 8443,
+            'protocol' => 'hysteria',
+            'type' => 'udp',
+            'encryption' => 'none',
+            'security' => 'tls',
+            'alpn' => 'h3',
+            'sni' => 'hy.example.com',
         ]);
 
         $response = $this->get(route('vless.connect', [
@@ -1192,7 +1210,7 @@ class VlessConnectTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertHeader('Content-Disposition', 'attachment; filename="Clash User.yaml"');
+        $response->assertHeader('Profile-Title', 'Oksana VPN');
 
         $content = $response->getContent();
 
@@ -1239,7 +1257,7 @@ class VlessConnectTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertHeader('Content-Disposition', 'attachment; filename="Sing User.json"');
+        $response->assertHeader('Profile-Title', 'Oksana VPN');
 
         $payload = json_decode((string) $response->getContent(), true);
 

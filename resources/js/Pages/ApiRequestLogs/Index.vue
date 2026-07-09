@@ -18,6 +18,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    top_users: {
+        type: Array,
+        default: () => [],
+    },
     overview: {
         type: Object,
         default: () => ({
@@ -139,6 +143,27 @@ const paginationLinks = computed(() => props.logs?.meta?.links ?? []);
     <section class="page-card stack">
         <div class="page-header">
             <div>
+                <h2 class="section-title">Топ пользователей</h2>
+                <p>Помогает быстро заметить пользователей с необычно большим числом запросов.</p>
+            </div>
+        </div>
+
+        <div v-if="top_users.length" class="list">
+            <div v-for="item in top_users" :key="item.user_id" class="item-row">
+                <div>
+                    <Link v-if="item.user?.edit_url" :href="item.user.edit_url">{{ item.user.full_name }}</Link>
+                    <span v-else>Пользователь #{{ item.user_id }}</span>
+                    <div class="muted">{{ item.user?.telegram || 'Telegram не указан' }}</div>
+                </div>
+                <span class="badge">{{ item.hits }}</span>
+            </div>
+        </div>
+        <div v-else class="empty-state">Пока нет данных по пользователям.</div>
+    </section>
+
+    <section class="page-card stack">
+        <div class="page-header">
+            <div>
                 <h2 class="section-title">Фильтры</h2>
                 <p>Активно фильтров: {{ activeFilterCount }}<template v-if="form.viewer_timezone"> · Время: {{ form.viewer_timezone }}</template></p>
             </div>
@@ -234,7 +259,9 @@ const paginationLinks = computed(() => props.logs?.meta?.links ?? []);
                     <td>{{ log.action }}</td>
                     <td>
                         <div>{{ log.endpoint }}</div>
-                        <div class="muted">{{ log.ip_address || 'IP не определен' }}</div>
+                        <div class="muted">IP: {{ log.ip_address || 'не определен' }}</div>
+                        <div class="muted">Forwarded: {{ log.forwarded_for || 'нет' }}</div>
+                        <div class="muted">{{ log.user_agent || 'User-Agent не определен' }}</div>
                     </td>
                     <td>
                         <div>{{ log.request_timezone || 'Не указана' }}</div>

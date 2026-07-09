@@ -17,6 +17,8 @@ class ApiRequestLog extends Model
         'request_timezone_offset',
         'response_status',
         'ip_address',
+        'forwarded_for',
+        'user_agent',
     ];
 
     protected function casts(): array

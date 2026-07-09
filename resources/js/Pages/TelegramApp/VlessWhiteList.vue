@@ -202,9 +202,18 @@ onBeforeUnmount(() => {
 
                 <div class="tg-stack-actions">
                     <button class="button tg-button-full" type="button" @click="openLinkResult">Link</button>
+                    <button
+                        v-if="canShowRawLink"
+                        class="button button--secondary tg-button-full"
+                        type="button"
+                        @click="copyRawLink"
+                    >
+                        Скопировать
+                    </button>
                     <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
                 </div>
 
+                <p v-if="copied" class="tg-muted">{{ copied }}</p>
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 

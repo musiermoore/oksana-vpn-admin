@@ -32,7 +32,6 @@ const copied = ref('');
 const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
-const canShowRawLink = computed(() => Boolean(user.value?.is_admin && links.value?.show_raw_link));
 
 const preferredLinks = computed(() => ([
     {
@@ -68,13 +67,13 @@ const retry = () => {
     window.location.reload();
 };
 
-const copyRawLink = async () => {
-    const value = canShowRawLink.value ? (links.value?.raw_link ?? links.value?.link ?? '') : '';
-
+const copyDeepLink = async (value) => {
     if (!value) {
-        copied.value = 'Raw-ссылка недоступна для этого пользователя.';
+        copied.value = 'Ссылка недоступна.';
         return;
     }
+
+    actionError.value = '';
 
     try {
         await navigator.clipboard.writeText(value);
@@ -202,64 +201,75 @@ onBeforeUnmount(() => {
 
                 <div class="tg-stack-actions">
                     <button class="button tg-button-full" type="button" @click="openLinkResult">Link</button>
-                    <button
-                        v-if="canShowRawLink"
-                        class="button button--secondary tg-button-full"
-                        type="button"
-                        @click="copyRawLink"
-                    >
-                        Скопировать
-                    </button>
                     <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
                 </div>
 
-                <p v-if="copied" class="tg-muted">{{ copied }}</p>
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 
             <section v-else-if="step === 'links'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Link</span>
                 <h2>Подключение к VLESS Белые списки</h2>
-                <p>{{ canShowRawLink ? 'Доступны deep links и raw-ссылка для ручного импорта.' : 'Доступны только deep links для быстрого подключения.' }}</p>
+                <p>Доступны только deep links для быстрого подключения.</p>
 
                 <div class="tg-link-list">
-                    <button
+                    <div
                         v-for="item in preferredLinks"
                         :key="item.key"
-                        class="tg-row-link tg-row-link--button"
-                        type="button"
-                        @click="openTelegramExternalLink(item.url)"
+                        class="tg-row-link"
                     >
                         <div class="tg-row-link__copy">
                             <strong>{{ item.title }}</strong>
                             <span>{{ item.description }}</span>
                         </div>
-                        <span class="tg-link-pill">Открыть</span>
-                    </button>
-                </div>
-
-                <div v-if="canShowRawLink" class="tg-raw-link-box">
-                    <strong>Raw-ссылка</strong>
-                    <code>{{ links?.raw_link || links?.link }}</code>
-                    <button class="button button--secondary tg-button-full" type="button" @click="copyRawLink">
-                        Скопировать raw-ссылку
-                    </button>
-                    <p v-if="copied" class="tg-muted">{{ copied }}</p>
+                        <div class="tg-chip-row">
+                            <button
+                                class="tg-link-pill"
+                                type="button"
+                                @click="openTelegramExternalLink(item.url)"
+                            >
+                                Открыть
+                            </button>
+                            <button
+                                class="tg-link-pill"
+                                type="button"
+                                @click="copyDeepLink(item.url)"
+                            >
+                                Скопировать
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <section v-if="extraLinks.length > 0" class="tg-extra-links">
                     <strong>Дополнительные клиенты</strong>
 
-                    <div class="tg-chip-row">
-                        <button
+                    <div class="tg-link-list">
+                        <div
                             v-for="item in extraLinks"
                             :key="item.key"
-                            class="tg-chip-button"
-                            type="button"
-                            @click="openTelegramExternalLink(item.url)"
+                            class="tg-row-link"
                         >
-                            {{ item.title }}
-                        </button>
+                            <div class="tg-row-link__copy">
+                                <strong>{{ item.title }}</strong>
+                            </div>
+                            <div class="tg-chip-row">
+                                <button
+                                    class="tg-link-pill"
+                                    type="button"
+                                    @click="openTelegramExternalLink(item.url)"
+                                >
+                                    Открыть
+                                </button>
+                                <button
+                                    class="tg-link-pill"
+                                    type="button"
+                                    @click="copyDeepLink(item.url)"
+                                >
+                                    Скопировать
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -269,6 +279,7 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
 
+                <p v-if="copied" class="tg-muted">{{ copied }}</p>
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 

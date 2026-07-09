@@ -32,6 +32,7 @@ const copied = ref('');
 const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
+const canShowRawLink = computed(() => Boolean(user.value?.is_admin && links.value?.show_raw_link));
 
 const preferredLinks = computed(() => ([
     {
@@ -68,7 +69,7 @@ const retry = () => {
 };
 
 const copyRawLink = async () => {
-    const value = links.value?.raw_link ?? links.value?.link ?? '';
+    const value = canShowRawLink.value ? (links.value?.raw_link ?? links.value?.link ?? '') : '';
 
     if (!value) {
         copied.value = 'Raw-ссылка недоступна для этого пользователя.';
@@ -210,7 +211,7 @@ onBeforeUnmount(() => {
             <section v-else-if="step === 'links'" class="tg-panel tg-panel-stack">
                 <span class="tg-section-label">Link</span>
                 <h2>Подключение к VLESS Белые списки</h2>
-                <p>Для обычных пользователей доступны только deep links. Админы дополнительно видят raw-ссылку.</p>
+                <p>{{ canShowRawLink ? 'Доступны deep links и raw-ссылка для ручного импорта.' : 'Доступны только deep links для быстрого подключения.' }}</p>
 
                 <div class="tg-link-list">
                     <button
@@ -228,7 +229,7 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
 
-                <div v-if="links?.show_raw_link" class="tg-raw-link-box">
+                <div v-if="canShowRawLink" class="tg-raw-link-box">
                     <strong>Raw-ссылка</strong>
                     <code>{{ links?.raw_link || links?.link }}</code>
                     <button class="button button--secondary tg-button-full" type="button" @click="copyRawLink">

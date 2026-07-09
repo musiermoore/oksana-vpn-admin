@@ -28,10 +28,14 @@ const actionError = ref('');
 const user = ref(null);
 const links = ref(null);
 const qrImageUrl = ref('');
-const copied = ref('');
+const copyToast = ref('');
+const copyToastIsError = ref(false);
 const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
+let copyToastTimeoutId = null;
+
+const hasWhiteListRoute = computed(() => Boolean(user.value?.has_vless_wl_configs && props.routes?.vless_wl));
 
 const preferredLinks = computed(() => ([
     {
@@ -67,19 +71,34 @@ const retry = () => {
     window.location.reload();
 };
 
+const showCopyToast = (message, isError = false) => {
+    copyToast.value = message;
+    copyToastIsError.value = isError;
+
+    if (copyToastTimeoutId) {
+        window.clearTimeout(copyToastTimeoutId);
+    }
+
+    copyToastTimeoutId = window.setTimeout(() => {
+        copyToast.value = '';
+        copyToastIsError.value = false;
+        copyToastTimeoutId = null;
+    }, 2200);
+};
+
 const copyRawLink = async () => {
     const value = links.value?.raw_link ?? links.value?.link ?? '';
 
     if (!value) {
-        copied.value = 'Ссылка пока недоступна.';
+        showCopyToast('Ссылка пока недоступна.', true);
         return;
     }
 
     try {
         await navigator.clipboard.writeText(value);
-        copied.value = 'Ссылка скопирована.';
+        showCopyToast('Ссылка скопирована.');
     } catch {
-        copied.value = 'Не удалось скопировать ссылку.';
+        showCopyToast('Не удалось скопировать ссылку.', true);
     }
 };
 
@@ -105,7 +124,6 @@ const openLinkResult = () => {
 const openQrResult = async () => {
     loadingQr.value = true;
     actionError.value = '';
-    copied.value = '';
     qrStatus.value = '';
     revokeQrUrl();
 
@@ -153,6 +171,10 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    if (copyToastTimeoutId) {
+        window.clearTimeout(copyToastTimeoutId);
+    }
+
     revokeQrUrl();
 });
 </script>
@@ -204,6 +226,9 @@ onBeforeUnmount(() => {
                     <button class="button tg-button-full" type="button" :disabled="loadingQr" @click="openQrResult">
                         {{ loadingQr ? 'Загружаем...' : 'QR-Code' }}
                     </button>
+                    <Link v-if="hasWhiteListRoute" :href="routes?.vless_wl" class="button button--secondary tg-button-full">
+                        Белые списки
+                    </Link>
                     <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
                 </div>
 
@@ -238,7 +263,6 @@ onBeforeUnmount(() => {
                         <button class="button button--secondary tg-button-full" type="button" @click="copyRawLink">
                             Скопировать raw-ссылку
                         </button>
-                        <p v-if="copied" class="tg-muted">{{ copied }}</p>
                     </template>
                 </div>
 
@@ -262,6 +286,9 @@ onBeforeUnmount(() => {
                     <button class="button button--secondary tg-button-full" type="button" @click="step = 'menu'">
                         Назад
                     </button>
+                    <Link v-if="hasWhiteListRoute" :href="routes?.vless_wl" class="button button--secondary tg-button-full">
+                        Белые списки
+                    </Link>
                     <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
             </section>
@@ -289,5 +316,13 @@ onBeforeUnmount(() => {
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
         </template>
+
+        <p
+            v-if="copyToast"
+            class="tg-copy-toast"
+            :class="{ 'is-error': copyToastIsError }"
+        >
+            {{ copyToast }}
+        </p>
     </TelegramMiniAppFrame>
 </template>

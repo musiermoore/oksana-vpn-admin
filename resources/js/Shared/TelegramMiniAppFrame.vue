@@ -13,9 +13,6 @@ const navItems = computed(() => [
     { hrefKey: 'home', label: 'Главная', icon: 'home' },
     { hrefKey: 'wireguard', label: 'WG', icon: 'shield' },
     { hrefKey: 'vless', label: 'VLESS', icon: 'spark' },
-    ...(props.user?.has_vless_wl_configs && props.routes?.vless_wl
-        ? [{ hrefKey: 'vless_wl', label: 'БЛ', icon: 'watch' }]
-        : []),
     { hrefKey: 'payments', label: 'Подписка', icon: 'crown' },
     { hrefKey: 'help', label: 'Помощь', icon: 'help' },
     { hrefKey: 'chats', label: 'Чаты', icon: 'chat' },
@@ -71,10 +68,6 @@ const iconPath = (name) => {
 
     if (name === 'chat') {
         return 'M6.75 8.25h10.5A2.25 2.25 0 0 1 19.5 10.5v5.25A2.25 2.25 0 0 1 17.25 18H11.5l-3.75 2.25V18H6.75A2.25 2.25 0 0 1 4.5 15.75V10.5a2.25 2.25 0 0 1 2.25-2.25Z';
-    }
-
-    if (name === 'watch') {
-        return 'M12 3.75c4.56 0 8.25 3.7 8.25 8.25S16.56 20.25 12 20.25 3.75 16.56 3.75 12 7.44 3.75 12 3.75ZM8.25 9.75h7.5M7.5 12h9M8.25 14.25h7.5';
     }
 
     return 'M12 17.25h.01M9.1 9.3a2.9 2.9 0 1 1 4.84 2.16c-.74.67-1.44 1.13-1.44 2.29';

@@ -28,10 +28,12 @@ const actionError = ref('');
 const user = ref(null);
 const links = ref(null);
 const qrImageUrl = ref('');
-const copied = ref('');
+const copyToast = ref('');
+const copyToastIsError = ref(false);
 const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
+let copyToastTimeoutId = null;
 
 const preferredLinks = computed(() => ([
     {
@@ -67,9 +69,24 @@ const retry = () => {
     window.location.reload();
 };
 
+const showCopyToast = (message, isError = false) => {
+    copyToast.value = message;
+    copyToastIsError.value = isError;
+
+    if (copyToastTimeoutId) {
+        window.clearTimeout(copyToastTimeoutId);
+    }
+
+    copyToastTimeoutId = window.setTimeout(() => {
+        copyToast.value = '';
+        copyToastIsError.value = false;
+        copyToastTimeoutId = null;
+    }, 2200);
+};
+
 const copyDeepLink = async (value) => {
     if (!value) {
-        copied.value = 'Ссылка недоступна.';
+        showCopyToast('Ссылка недоступна.', true);
         return;
     }
 
@@ -77,9 +94,9 @@ const copyDeepLink = async (value) => {
 
     try {
         await navigator.clipboard.writeText(value);
-        copied.value = 'Ссылка скопирована.';
+        showCopyToast('Ссылка скопирована.');
     } catch {
-        copied.value = 'Не удалось скопировать ссылку.';
+        showCopyToast('Не удалось скопировать ссылку.', true);
     }
 };
 
@@ -105,7 +122,6 @@ const openLinkResult = () => {
 const openQrResult = async () => {
     loadingQr.value = true;
     actionError.value = '';
-    copied.value = '';
     qrStatus.value = '';
     revokeQrUrl();
 
@@ -153,6 +169,10 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    if (copyToastTimeoutId) {
+        window.clearTimeout(copyToastTimeoutId);
+    }
+
     revokeQrUrl();
 });
 </script>
@@ -279,7 +299,6 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
 
-                <p v-if="copied" class="tg-muted">{{ copied }}</p>
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
 
@@ -303,5 +322,13 @@ onBeforeUnmount(() => {
                 <p v-if="actionError" class="field-error">{{ actionError }}</p>
             </section>
         </template>
+
+        <p
+            v-if="copyToast"
+            class="tg-copy-toast"
+            :class="{ 'is-error': copyToastIsError }"
+        >
+            {{ copyToast }}
+        </p>
     </TelegramMiniAppFrame>
 </template>

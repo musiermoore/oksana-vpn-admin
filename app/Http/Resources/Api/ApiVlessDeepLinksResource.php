@@ -20,6 +20,7 @@ class ApiVlessDeepLinksResource extends JsonResource
             'sing_box_deeplink' => $this['sing_box_deeplink'],
             'hiddify_deeplink' => $this['hiddify_deeplink'],
             'v2raytun_deeplink' => $this['v2raytun_deeplink'],
+            'incy_deeplink' => $this['incy_deeplink'],
         ];
     }
 }

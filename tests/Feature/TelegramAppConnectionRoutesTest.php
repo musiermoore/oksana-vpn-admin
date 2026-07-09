@@ -81,6 +81,7 @@ class TelegramAppConnectionRoutesTest extends TestCase
 
         $this->assertStringContainsString('/connect/deep-link/happ', (string) ($payload['happ_deep_link'] ?? ''));
         $this->assertStringContainsString('/connect/deep-link/v2raytun', (string) ($payload['v2raytun_deeplink'] ?? ''));
+        $this->assertStringContainsString('/connect/deep-link/incy', (string) ($payload['incy_deeplink'] ?? ''));
         $this->assertStringContainsString('/connect?', (string) ($payload['link'] ?? ''));
     }
 

@@ -294,6 +294,7 @@ class ApiUserRoutesTest extends TestCase
         $this->assertArrayHasKey('sing_box_deeplink', $payload);
         $this->assertArrayHasKey('hiddify_deeplink', $payload);
         $this->assertArrayHasKey('v2raytun_deeplink', $payload);
+        $this->assertArrayHasKey('incy_deeplink', $payload);
 
         $this->assertStringStartsWith('https://vpn.example/connect/deep-link/happ?', $payload['happ_deep_link']);
         $this->assertStringStartsWith('https://vpn.example/connect/deep-link/v2rayn?', $payload['v2rayn_deeplink']);

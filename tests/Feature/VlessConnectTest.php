@@ -106,6 +106,39 @@ class VlessConnectTest extends TestCase
         $this->assertStringStartsWith('v2rayng://install-sub?url=', $location);
     }
 
+    public function test_deep_link_route_redirects_to_incy_subscription_import(): void
+    {
+        Http::fake([
+            'https://lv-1.example.com/sub/sub-lv-1' => Http::response(base64_encode(
+                "vless://uuid-1@lv-1.example.com?type=tcp&security=reality#old-name-1\n"
+            )),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'telegram' => '@tester',
+            'telegram_id' => '123456',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
+        $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
+
+        $response = $this->get(route('vless.deep-link', [
+            'client' => 'incy',
+            'token' => Crypt::encrypt([
+                'tg' => '123456',
+                'i' => (string) $user->id,
+            ]),
+        ]));
+
+        $response->assertRedirect();
+
+        $location = $response->headers->get('Location');
+
+        $this->assertNotNull($location);
+        $this->assertStringStartsWith('incy://import/', $location);
+    }
+
     public function test_connect_raw_requires_basic_auth_and_returns_debug_json(): void
     {
         config([

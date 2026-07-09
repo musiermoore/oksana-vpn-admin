@@ -17,6 +17,7 @@ class VlessDeepLinkService
         'sing-box' => 'sing_box_deeplink',
         'hiddify' => 'hiddify_deeplink',
         'v2raytun' => 'v2raytun_deeplink',
+        'incy' => 'incy_deeplink',
     ];
 
     /**
@@ -97,6 +98,7 @@ class VlessDeepLinkService
             'sing-box' => 'sing-box://import-remote-profile?url='.urlencode($subscriptionLink),
             'hiddify' => 'hiddify://import/'.$subscriptionLink,
             'v2raytun' => 'v2raytun://import/'.$subscriptionLink,
+            'incy' => 'incy://import/'.$subscriptionLink,
             default => null,
         };
     }

@@ -48,6 +48,12 @@ const preferredLinks = computed(() => ([
         description: 'Импортировать WL-подписку в V2RayTun.',
         url: links.value?.v2raytun_deeplink ?? '',
     },
+    {
+        key: 'incy_deeplink',
+        title: 'Incy',
+        description: 'Импортировать WL-подписку в Incy.',
+        url: links.value?.incy_deeplink ?? '',
+    },
 ]).filter((item) => item.url));
 
 const extraLinks = computed(() => ([

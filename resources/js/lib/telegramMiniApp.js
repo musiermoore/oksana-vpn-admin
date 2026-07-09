@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'telegram-mini-app-token';
+const TELEGRAM_USER_ID_KEY = 'telegram-mini-app-telegram-user-id';
 const START_PARAM_KEY = 'telegram-mini-app-last-start-param';
 const START_PARAM_AUTH_KEY = 'telegram-mini-app-last-auth-start-param';
 
@@ -10,6 +11,8 @@ export const telegramAppLabels = {
 
 export const getTelegramAppToken = () => window.localStorage.getItem(TOKEN_KEY) ?? '';
 
+export const getTelegramAppTelegramUserId = () => window.localStorage.getItem(TELEGRAM_USER_ID_KEY) ?? '';
+
 export const setTelegramAppToken = (token) => {
     if (token) {
         window.localStorage.setItem(TOKEN_KEY, token);
@@ -17,6 +20,16 @@ export const setTelegramAppToken = (token) => {
     }
 
     window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(TELEGRAM_USER_ID_KEY);
+};
+
+export const setTelegramAppTelegramUserId = (telegramUserId) => {
+    if (telegramUserId) {
+        window.localStorage.setItem(TELEGRAM_USER_ID_KEY, telegramUserId);
+        return;
+    }
+
+    window.localStorage.removeItem(TELEGRAM_USER_ID_KEY);
 };
 
 export const telegramAppHeaders = () => {
@@ -38,6 +51,14 @@ export const prepareTelegramWebApp = () => {
 
 export const getTelegramProfile = () => {
     return window.Telegram?.WebApp?.initDataUnsafe?.user ?? null;
+};
+
+export const getTelegramProfileId = () => {
+    const telegramUserId = getTelegramProfile()?.id;
+
+    return telegramUserId === undefined || telegramUserId === null
+        ? ''
+        : String(telegramUserId).trim();
 };
 
 export const getTelegramStartParam = () => {
@@ -111,6 +132,7 @@ export const loginTelegramApp = async (authUrl) => {
     }
 
     setTelegramAppToken(token);
+    setTelegramAppTelegramUserId(getTelegramProfileId());
 
     return response.data;
 };
@@ -127,9 +149,14 @@ export const ensureTelegramAppSession = async ({ authUrl, profileUrl }) => {
     prepareTelegramWebApp();
     const startParam = getTelegramStartParam();
     const lastAuthStartParam = window.sessionStorage.getItem(START_PARAM_AUTH_KEY) ?? '';
+    const currentTelegramUserId = getTelegramProfileId();
+    const storedTelegramUserId = getTelegramAppTelegramUserId();
     const shouldRefreshForReferral = isReferralStartParam(startParam) && lastAuthStartParam !== startParam;
+    const shouldRefreshForMissingTelegramUser =
+        getTelegramAppToken() !== '' && currentTelegramUserId !== '' && storedTelegramUserId === '';
+    const shouldRefreshForTelegramUser = currentTelegramUserId !== '' && storedTelegramUserId !== '' && storedTelegramUserId !== currentTelegramUserId;
 
-    if (getTelegramAppToken() === '' || shouldRefreshForReferral) {
+    if (getTelegramAppToken() === '' || shouldRefreshForReferral || shouldRefreshForMissingTelegramUser || shouldRefreshForTelegramUser) {
         await loginTelegramApp(authUrl);
 
         if (shouldRefreshForReferral) {

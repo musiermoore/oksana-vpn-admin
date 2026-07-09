@@ -125,8 +125,8 @@ Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::clas
 Route::get('connect', [VlessConfigController::class, 'connect'])
     ->middleware(TrackApiRequests::class)
     ->name('vless.connect');
-Route::get('connect-wl', [VlessConfigController::class, 'connectWhiteList'])
-    ->middleware([TrackApiRequests::class, BasicAuth::class])
+Route::get('connect-wl-version-2', [VlessConfigController::class, 'connectWhiteList'])
+    ->middleware(TrackApiRequests::class)
     ->name('vless.connect-wl');
 Route::get('connect-raw', [VlessConfigController::class, 'connectRaw'])
     ->middleware(BasicAuth::class)

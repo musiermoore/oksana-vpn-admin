@@ -82,6 +82,7 @@ class ClashBuilder implements SubscriptionBuilder
             'shadowsocks' => $this->buildShadowsocksProxy($parsed, $name),
             'hysteria2' => $this->buildHysteria2Proxy($parsed, $name),
             'hysteria' => $this->buildHysteriaProxy($parsed, $name),
+            'wireguard' => $this->buildWireGuardProxy($parsed, $name),
             default => null,
         };
     }
@@ -244,5 +245,57 @@ class ClashBuilder implements SubscriptionBuilder
             'skip-cert-verify' => $parsed['insecure'],
             'udp' => true,
         ], fn (mixed $value) => $value !== null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     * @return array<string, mixed>
+     */
+    private function buildWireGuardProxy(array $parsed, string $name): array
+    {
+        return array_filter([
+            'name' => $name,
+            'type' => 'wireguard',
+            'server' => $parsed['server'],
+            'port' => $parsed['port'],
+            'ip' => $this->firstCsvValue((string) ($parsed['address'] ?? '')),
+            'private-key' => $parsed['private_key'],
+            'public-key' => $parsed['public_key'],
+            'preshared-key' => $parsed['preshared_key'] !== '' ? $parsed['preshared_key'] : null,
+            'mtu' => $parsed['mtu'] > 0 ? $parsed['mtu'] : null,
+            'udp' => true,
+            'dns' => ($dns = $this->splitCsv((string) ($parsed['dns'] ?? ''))) !== [] ? $dns : null,
+            'reserved' => ($reserved = $this->parseReserved((string) ($parsed['reserved'] ?? ''))) !== [] ? $reserved : null,
+        ], fn (mixed $value) => $value !== null);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function splitCsv(string $value): array
+    {
+        return collect(explode(',', $value))
+            ->map(fn (string $item) => trim($item))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function firstCsvValue(string $value): string
+    {
+        return $this->splitCsv($value)[0] ?? '';
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function parseReserved(string $value): array
+    {
+        return collect(explode(',', $value))
+            ->map(fn (string $item) => trim($item))
+            ->filter(fn (string $item) => $item !== '' && is_numeric($item))
+            ->map(fn (string $item) => (int) $item)
+            ->values()
+            ->all();
     }
 }

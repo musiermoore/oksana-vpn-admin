@@ -83,6 +83,7 @@ class SingBoxBuilder implements SubscriptionBuilder
             'shadowsocks' => $this->buildShadowsocksOutbound($parsed, $tag),
             'hysteria2' => $this->buildHysteria2Outbound($parsed, $tag),
             'hysteria' => $this->buildHysteriaOutbound($parsed, $tag),
+            'wireguard' => $this->buildWireGuardOutbound($parsed, $tag),
             default => null,
         };
     }
@@ -249,6 +250,28 @@ class SingBoxBuilder implements SubscriptionBuilder
 
     /**
      * @param  array<string, mixed>  $parsed
+     * @return array<string, mixed>
+     */
+    private function buildWireGuardOutbound(array $parsed, string $tag): array
+    {
+        return array_filter([
+            'type' => 'wireguard',
+            'tag' => $tag,
+            'server' => $parsed['server'],
+            'server_port' => $parsed['port'],
+            'local_address' => $this->splitCsv((string) ($parsed['address'] ?? '')),
+            'private_key' => $parsed['private_key'],
+            'peer_public_key' => $parsed['public_key'],
+            'pre_shared_key' => $parsed['preshared_key'] !== '' ? $parsed['preshared_key'] : null,
+            'mtu' => $parsed['mtu'] > 0 ? $parsed['mtu'] : null,
+            'persistent_keepalive_interval' => $parsed['keepalive'] > 0 ? $parsed['keepalive'] : null,
+            'dns' => ($dns = $this->splitCsv((string) ($parsed['dns'] ?? ''))) !== [] ? $dns : null,
+            'reserved' => ($reserved = $this->parseReserved((string) ($parsed['reserved'] ?? ''))) !== [] ? $reserved : null,
+        ], fn (mixed $value) => $value !== null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
      * @return array<string, mixed>|null
      */
     private function buildTransport(array $parsed): ?array
@@ -275,5 +298,30 @@ class SingBoxBuilder implements SubscriptionBuilder
             ], fn (mixed $value) => $value !== null),
             default => null,
         };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function splitCsv(string $value): array
+    {
+        return collect(explode(',', $value))
+            ->map(fn (string $item) => trim($item))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function parseReserved(string $value): array
+    {
+        return collect(explode(',', $value))
+            ->map(fn (string $item) => trim($item))
+            ->filter(fn (string $item) => $item !== '' && is_numeric($item))
+            ->map(fn (string $item) => (int) $item)
+            ->values()
+            ->all();
     }
 }

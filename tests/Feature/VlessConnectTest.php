@@ -1355,6 +1355,105 @@ class VlessConnectTest extends TestCase
         $this->assertSame('Manual', data_get($payload, 'route.final'));
     }
 
+    public function test_connect_returns_sing_box_wireguard_subscription_with_decoded_keys_and_address(): void
+    {
+        $user = User::query()->create([
+            'name' => 'WireGuard JSON User',
+            'telegram' => '@wg-json',
+            'telegram_id' => '998877',
+        ]);
+
+        $server = $this->createServer('Латвия WG', 'LVWG', 'lv.oksana1984.ru');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'wg-json-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-json-uuid',
+            'port' => 20466,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68%2Bnnk%3D@lv.oksana1984.ru:20466?address=10.0.0.3%2F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D&presharedkey=KjD72IbwK366I5oq%2Ff46MqZwAehb8Y3eG8slMQUMhzk%3D',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('998877'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'sing-box',
+        ]));
+
+        $response->assertOk();
+
+        $content = (string) $response->getContent();
+        $payload = json_decode($content, true);
+
+        $this->assertIsArray($payload);
+        $this->assertSame('wireguard', data_get($payload, 'outbounds.0.type'));
+        $this->assertSame('aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk=', data_get($payload, 'outbounds.0.private_key'));
+        $this->assertSame('X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', data_get($payload, 'outbounds.0.peer_public_key'));
+        $this->assertSame('KjD72IbwK366I5oq/f46MqZwAehb8Y3eG8slMQUMhzk=', data_get($payload, 'outbounds.0.pre_shared_key'));
+        $this->assertSame(['10.0.0.3/32'], data_get($payload, 'outbounds.0.local_address'));
+        $this->assertSame('lv.oksana1984.ru', data_get($payload, 'outbounds.0.server'));
+        $this->assertSame(20466, data_get($payload, 'outbounds.0.server_port'));
+
+        $this->assertNotFalse(base64_decode((string) data_get($payload, 'outbounds.0.private_key'), true));
+        $this->assertNotFalse(base64_decode((string) data_get($payload, 'outbounds.0.peer_public_key'), true));
+        $this->assertNotFalse(base64_decode((string) data_get($payload, 'outbounds.0.pre_shared_key'), true));
+        $this->assertStringNotContainsString('%2F', $content);
+        $this->assertStringNotContainsString('%3D', $content);
+        $this->assertStringNotContainsString('%2B', $content);
+        $this->assertStringNotContainsString('10.0.0.3%2F32/32', $content);
+    }
+
+    public function test_connect_returns_clash_wireguard_subscription_with_decoded_keys_and_address(): void
+    {
+        $user = User::query()->create([
+            'name' => 'WireGuard Clash User',
+            'telegram' => '@wg-clash',
+            'telegram_id' => '556677',
+        ]);
+
+        $server = $this->createServer('Латвия WG', 'LVWG', 'lv.oksana1984.ru');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'wg-clash-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-clash-uuid',
+            'port' => 20466,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68%2Bnnk%3D@lv.oksana1984.ru:20466?address=10.0.0.3%2F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('556677'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'clash',
+        ]));
+
+        $response->assertOk();
+
+        $content = (string) $response->getContent();
+
+        $this->assertStringContainsString("type: 'wireguard'", $content);
+        $this->assertStringContainsString("private-key: 'aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk='", $content);
+        $this->assertStringContainsString("public-key: 'X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q='", $content);
+        $this->assertStringContainsString("ip: '10.0.0.3/32'", $content);
+        $this->assertStringNotContainsString('%2F', $content);
+        $this->assertStringNotContainsString('%3D', $content);
+        $this->assertStringNotContainsString('%2B', $content);
+        $this->assertStringNotContainsString('10.0.0.3%2F32/32', $content);
+    }
+
     private function createServer(string $name, string $code, string $host): Server
     {
         return Server::query()->create([

@@ -793,7 +793,8 @@ class XuiConfigService
             'settings' => $settings,
             'stream_settings' => $streamSettings,
             'method' => $settings['method'] ?? $settings['clients'][0]['method'] ?? null,
-            'pbk' => $realitySettings['settings']['publicKey'] ?? null,
+            'pbk' => $realitySettings['settings']['publicKey']
+                ?? $this->extractWireGuardPublicKey($row, $settings, $streamSettings),
             'alpn' => $alpn,
             'fp' => $realitySettings['settings']['fingerprint']
                 ?? Arr::get($tlsSettings, 'settings.fingerprint')
@@ -865,6 +866,41 @@ class XuiConfigService
         );
 
         return $config->toArray();
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $settings
+     * @param  array<string, mixed>  $streamSettings
+     */
+    private function extractWireGuardPublicKey(array $row, array $settings, array $streamSettings): ?string
+    {
+        return $this->firstNonEmptyString([
+            $row['publicKey'] ?? null,
+            $row['public_key'] ?? null,
+            $row['peerPublicKey'] ?? null,
+            $row['peer_public_key'] ?? null,
+            $settings['publicKey'] ?? null,
+            $settings['public_key'] ?? null,
+            $settings['peerPublicKey'] ?? null,
+            $settings['peer_public_key'] ?? null,
+            Arr::get($settings, 'wgPublicKey'),
+            Arr::get($settings, 'wg_public_key'),
+            Arr::get($settings, 'peer.publicKey'),
+            Arr::get($settings, 'peer.public_key'),
+            Arr::get($settings, 'peers.0.publicKey'),
+            Arr::get($settings, 'peers.0.public_key'),
+            Arr::get($settings, 'settings.publicKey'),
+            Arr::get($settings, 'settings.public_key'),
+            $streamSettings['publicKey'] ?? null,
+            $streamSettings['public_key'] ?? null,
+            $streamSettings['peerPublicKey'] ?? null,
+            $streamSettings['peer_public_key'] ?? null,
+            Arr::get($streamSettings, 'peer.publicKey'),
+            Arr::get($streamSettings, 'peer.public_key'),
+            Arr::get($streamSettings, 'peers.0.publicKey'),
+            Arr::get($streamSettings, 'peers.0.public_key'),
+        ]);
     }
 
     /**

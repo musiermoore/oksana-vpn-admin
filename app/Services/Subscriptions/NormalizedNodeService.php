@@ -153,6 +153,10 @@ class NormalizedNodeService
      */
     private function buildNode(string $uri, array $item, int $index): ?NormalizedNode
     {
+        if (trim($uri) === '') {
+            return null;
+        }
+
         $parsed = $this->parser->parse($uri);
 
         if (! is_array($parsed)) {

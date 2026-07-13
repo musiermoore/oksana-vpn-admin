@@ -62,13 +62,13 @@ class WireGuardSubscriptionLinkService
             publicKey: $publicKey,
             name: $name,
             mtu: $this->nullableInt($interface['mtu'] ?? null),
-            dns: $this->normalizeCsvValue($this->firstNonEmptyString([$interface['dns'] ?? null])),
+            dns: $this->normalizeCsvValue($this->firstNonEmptyValue([$interface['dns'] ?? null])),
             presharedKey: $this->firstNonEmptyString([
                 $peer['presharedkey'] ?? null,
                 $peer['preshared_key'] ?? null,
             ]),
             keepalive: $this->nullableInt($peer['persistentkeepalive'] ?? null),
-            reserved: $this->normalizeCsvValue($this->firstNonEmptyString([
+            reserved: $this->normalizeCsvValue($this->firstNonEmptyValue([
                 $interface['reserved'] ?? null,
                 $peer['reserved'] ?? null,
             ])),
@@ -133,25 +133,34 @@ class WireGuardSubscriptionLinkService
                 $client['private_key'] ?? null,
                 $client['secretKey'] ?? null,
                 $client['secret_key'] ?? null,
+                $client['password'] ?? null,
                 Arr::get($client, 'wireguard.privateKey'),
                 Arr::get($client, 'wireguard.private_key'),
+                Arr::get($client, 'wireguard.password'),
             ]),
             host: $host,
             port: $port,
-            address: $this->normalizeCsvValue($this->firstNonEmptyString([
+            address: $this->normalizeCsvValue($this->firstNonEmptyValue([
                 $client['address'] ?? null,
                 $client['addresses'] ?? null,
                 $client['allowedIp'] ?? null,
                 $client['allowedIPs'] ?? null,
                 $client['allowed_ips'] ?? null,
+                $client['addressCIDR'] ?? null,
+                $client['address_cidr'] ?? null,
                 Arr::get($client, 'wireguard.address'),
                 Arr::get($client, 'wireguard.addresses'),
+                Arr::get($client, 'wireguard.allowedIp'),
+                Arr::get($client, 'wireguard.allowedIPs'),
+                Arr::get($client, 'wireguard.allowed_ips'),
             ])),
             publicKey: $this->firstNonEmptyString([
                 $inbound['public_key'] ?? null,
                 $inbound['publicKey'] ?? null,
                 Arr::get($inbound, 'settings.publicKey'),
                 Arr::get($inbound, 'settings.public_key'),
+                $this->derivePublicKeyFromPrivateKey(Arr::get($inbound, 'settings.secretKey')),
+                $this->derivePublicKeyFromPrivateKey(Arr::get($inbound, 'settings.secret_key')),
                 Arr::get($inbound, 'stream_settings.publicKey'),
                 Arr::get($inbound, 'stream_settings.public_key'),
                 Arr::get($client, 'peerPublicKey'),
@@ -161,7 +170,7 @@ class WireGuardSubscriptionLinkService
             mtu: $this->nullableInt(
                 $client['mtu'] ?? $inbound['mtu'] ?? Arr::get($inbound, 'settings.mtu') ?? null
             ),
-            dns: $this->normalizeCsvValue($this->firstNonEmptyString([
+            dns: $this->normalizeCsvValue($this->firstNonEmptyValue([
                 $client['dns'] ?? null,
                 $inbound['dns'] ?? null,
                 Arr::get($inbound, 'settings.dns'),
@@ -174,7 +183,7 @@ class WireGuardSubscriptionLinkService
             keepalive: $this->nullableInt(
                 $client['keepAlive'] ?? $client['keepalive'] ?? $client['persistentKeepalive'] ?? null
             ),
-            reserved: $this->normalizeCsvValue($this->firstNonEmptyString([
+            reserved: $this->normalizeCsvValue($this->firstNonEmptyValue([
                 $client['reserved'] ?? null,
                 Arr::get($client, 'wireguard.reserved'),
             ])),
@@ -312,6 +321,31 @@ class WireGuardSubscriptionLinkService
         return null;
     }
 
+    private function firstNonEmptyValue(array $values): mixed
+    {
+        foreach ($values as $value) {
+            if (is_array($value)) {
+                if ($value !== []) {
+                    return $value;
+                }
+
+                continue;
+            }
+
+            if (! is_scalar($value)) {
+                continue;
+            }
+
+            $normalized = trim((string) $value);
+
+            if ($normalized !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
     private function nullableInt(mixed $value): ?int
     {
         if (! is_scalar($value)) {
@@ -323,8 +357,15 @@ class WireGuardSubscriptionLinkService
         return $normalized !== '' && is_numeric($normalized) ? (int) $normalized : null;
     }
 
-    private function normalizeCsvValue(?string $value): ?string
+    private function normalizeCsvValue(mixed $value): ?string
     {
+        if (is_array($value)) {
+            return collect($value)
+                ->map(fn (mixed $item) => is_scalar($item) ? trim((string) $item) : '')
+                ->filter()
+                ->implode(',');
+        }
+
         $value = trim((string) $value);
 
         if ($value === '') {
@@ -350,5 +391,30 @@ class WireGuardSubscriptionLinkService
         }
 
         return $host;
+    }
+
+    private function derivePublicKeyFromPrivateKey(mixed $privateKey): ?string
+    {
+        if (! is_scalar($privateKey)) {
+            return null;
+        }
+
+        $privateKey = trim((string) $privateKey);
+
+        if ($privateKey === '' || ! function_exists('sodium_crypto_scalarmult_base')) {
+            return null;
+        }
+
+        $decoded = base64_decode($privateKey, true);
+
+        if ($decoded === false || strlen($decoded) !== SODIUM_CRYPTO_BOX_SECRETKEYBYTES) {
+            return null;
+        }
+
+        try {
+            return base64_encode(sodium_crypto_scalarmult_base($decoded));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

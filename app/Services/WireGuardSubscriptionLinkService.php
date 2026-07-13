@@ -273,10 +273,12 @@ class WireGuardSubscriptionLinkService
             'reserved' => $reserved,
         ], fn (mixed $value) => ! in_array($value, [null, ''], true));
 
-        $queryString = http_build_query($query);
+        $queryString = collect($query)
+            ->map(fn (mixed $value, string $key) => $key.'='.$this->stringifyQueryValue($value))
+            ->implode('&');
 
         return 'wireguard://'
-            .rawurlencode($privateKey)
+            .$privateKey
             .'@'
             .$this->formatHost($host)
             .':'
@@ -376,6 +378,15 @@ class WireGuardSubscriptionLinkService
             ->map(fn (string $item) => trim($item))
             ->filter()
             ->implode(',');
+    }
+
+    private function stringifyQueryValue(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        return trim((string) $value);
     }
 
     private function formatHost(string $host): string

@@ -177,8 +177,8 @@ class PullVlessConfigsForServerJobTest extends TestCase
         $this->assertSame('wireguard', $config->protocol);
         $this->assertSame('wireguard', $config->type);
         $this->assertNotNull($config->extra);
-        $this->assertStringStartsWith('wireguard://aGGq0lnDIL1MLZoKPriZkFp%2B4qME1WdApNPoxduT0Hs%3D@lv.oksana1984.ru:20466', $config->extra);
-        $this->assertStringContainsString('address=10.0.0.2%2F32', $config->extra);
-        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $config->extra);
+        $this->assertStringStartsWith('wireguard://aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=@lv.oksana1984.ru:20466', $config->extra);
+        $this->assertStringContainsString('address=10.0.0.2/32', $config->extra);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
     }
 }

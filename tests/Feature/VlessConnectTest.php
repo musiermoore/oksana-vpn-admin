@@ -104,7 +104,7 @@ class VlessConnectTest extends TestCase
             'type' => 'wireguard',
             'encryption' => 'none',
             'security' => 'none',
-            'extra' => 'wireguard://aGGq0lnDIL1MLZoKPriZkFp%2B4qME1WdApNPoxduT0Hs%3D@lv.oksana1984.ru:20466?address=10.0.0.2%2F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D',
+            'extra' => 'wireguard://aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=@lv.oksana1984.ru:20466?address=10.0.0.2/32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=',
         ]);
 
         $response = $this->get(route('vless.connect', [
@@ -117,9 +117,9 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode($response->getContent(), true);
 
         $this->assertNotFalse($decoded);
-        $this->assertStringContainsString('wireguard://aGGq0lnDIL1MLZoKPriZkFp%2B4qME1WdApNPoxduT0Hs%3D@lv.oksana1984.ru:20466', $decoded);
-        $this->assertStringContainsString('address=10.0.0.2%2F32', $decoded);
-        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $decoded);
+        $this->assertStringContainsString('wireguard://aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=@lv.oksana1984.ru:20466', $decoded);
+        $this->assertStringContainsString('address=10.0.0.2/32', $decoded);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $decoded);
         $this->assertStringContainsString('#'.rawurlencode('Латвия WG • WIREGUARD • UDP'), $decoded);
     }
 
@@ -1377,7 +1377,7 @@ class VlessConnectTest extends TestCase
             'type' => 'wireguard',
             'encryption' => 'none',
             'security' => 'none',
-            'extra' => 'wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68%2Bnnk%3D@lv.oksana1984.ru:20466?address=10.0.0.3%2F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D&presharedkey=KjD72IbwK366I5oq%2Ff46MqZwAehb8Y3eG8slMQUMhzk%3D',
+            'extra' => 'wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk=@lv.oksana1984.ru:20466?address=10.0.0.3/32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=&presharedkey=KjD72IbwK366I5oq/f46MqZwAehb8Y3eG8slMQUMhzk=',
         ]);
 
         $response = $this->get(route('vless.connect', [
@@ -1431,7 +1431,7 @@ class VlessConnectTest extends TestCase
             'type' => 'wireguard',
             'encryption' => 'none',
             'security' => 'none',
-            'extra' => 'wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68%2Bnnk%3D@lv.oksana1984.ru:20466?address=10.0.0.3%2F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D',
+            'extra' => 'wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk=@lv.oksana1984.ru:20466?address=10.0.0.3/32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=',
         ]);
 
         $response = $this->get(route('vless.connect', [

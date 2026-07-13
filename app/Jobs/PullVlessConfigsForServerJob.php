@@ -94,7 +94,9 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                 ...$service->buildLocalConfigAttributes($row, [
                     ...$mergedClient,
                     'email' => $mergedClient['email'] ?? null,
-                    'enable' => ! empty($mergedClient['enable']),
+                    'enable' => array_key_exists('enable', $mergedClient)
+                        ? (bool) $mergedClient['enable']
+                        : true,
                     'id' => $uuid,
                     'subId' => $mergedClient['subId'] ?? null,
                     'password' => $mergedClient['password'] ?? null,

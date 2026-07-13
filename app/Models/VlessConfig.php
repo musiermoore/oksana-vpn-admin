@@ -71,6 +71,10 @@ class VlessConfig extends Model
 
     public function getLink(): string
     {
+        if ($this->getNormalizedProtocol() === 'wireguard') {
+            return $this->getStaticLink();
+        }
+
         if (empty($this->sub_id)) {
             return $this->getStaticLink();
         }
@@ -81,6 +85,7 @@ class VlessConfig extends Model
     public function getStaticLink(): string
     {
         return match ($this->getNormalizedProtocol()) {
+            'wireguard' => $this->getWireGuardStaticLink(),
             'trojan' => $this->getTrojanStaticLink(),
             'hysteria', 'hy' => $this->shouldBuildHysteria2Link()
                 ? $this->getHysteria2StaticLink()
@@ -157,6 +162,13 @@ class VlessConfig extends Model
         $label = str($this->server->code.'_'.$this->name)->slug();
 
         return "vless://{$this->uuid}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+    }
+
+    private function getWireGuardStaticLink(): string
+    {
+        $link = trim((string) $this->extra);
+
+        return str_starts_with($link, 'wireguard://') ? $link : '';
     }
 
     private function getTrojanStaticLink(): string

@@ -15,6 +15,7 @@ class SubscriptionUriParser
         $scheme = $this->detectProtocol($uri);
 
         return match ($scheme) {
+            'wireguard' => $this->parseWireGuard($uri),
             'vless' => $this->parseVless($uri),
             'trojan' => $this->parseTrojan($uri),
             'shadowsocks' => $this->parseShadowsocks($uri),
@@ -30,6 +31,7 @@ class SubscriptionUriParser
             Str::startsWith($uri, 'vless://') => 'vless',
             Str::startsWith($uri, 'trojan://') => 'trojan',
             Str::startsWith($uri, 'ss://') => 'shadowsocks',
+            Str::startsWith($uri, 'wireguard://') => 'wireguard',
             Str::startsWith($uri, 'hy2://'),
             Str::startsWith($uri, 'hysteria2://') => 'hysteria2',
             Str::startsWith($uri, 'hysteria://') => 'hysteria',
@@ -46,10 +48,37 @@ class SubscriptionUriParser
         }
 
         return match ($parsed['protocol']) {
+            'wireguard' => 'udp',
             'hysteria', 'hysteria2' => 'quic',
             'shadowsocks' => (string) ($parsed['plugin'] ? 'plugin' : 'tcp'),
             default => (string) ($parsed['transport'] ?? 'tcp'),
         };
+    }
+
+    private function parseWireGuard(string $uri): ?array
+    {
+        $parts = parse_url($uri);
+
+        if (! is_array($parts)) {
+            return null;
+        }
+
+        parse_str((string) ($parts['query'] ?? ''), $query);
+
+        return [
+            'protocol' => 'wireguard',
+            'private_key' => rawurldecode((string) ($parts['user'] ?? '')),
+            'server' => (string) ($parts['host'] ?? ''),
+            'port' => (int) ($parts['port'] ?? 0),
+            'address' => rawurldecode((string) Arr::get($query, 'address', '')),
+            'public_key' => rawurldecode((string) Arr::get($query, 'publickey', '')),
+            'mtu' => (int) Arr::get($query, 'mtu', 0),
+            'preshared_key' => rawurldecode((string) Arr::get($query, 'presharedkey', '')),
+            'keepalive' => (int) Arr::get($query, 'keepalive', 0),
+            'dns' => rawurldecode((string) Arr::get($query, 'dns', '')),
+            'reserved' => rawurldecode((string) Arr::get($query, 'reserved', '')),
+            'fragment' => rawurldecode((string) ($parts['fragment'] ?? '')),
+        ];
     }
 
     private function parseVless(string $uri): ?array

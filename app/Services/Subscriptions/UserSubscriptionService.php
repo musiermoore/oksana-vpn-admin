@@ -151,6 +151,7 @@ class UserSubscriptionService
             'shadowsocks' => 2,
             'hysteria' => 3,
             'hysteria2' => 4,
+            'wireguard' => 5,
             default => 99,
         };
     }

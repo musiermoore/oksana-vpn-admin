@@ -41,20 +41,20 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
             return;
         }
 
-        $uuids = [];
+        $localConfigIds = [];
 
         $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $data = $service->getAllVlessInbounds();
         $clientIndex = $this->buildClientIndex($service->getClientListEntries());
 
         foreach ($data as $row) {
-            $this->handleInbound($row, $server, $uuids, $service, $clientIndex);
+            $this->handleInbound($row, $server, $localConfigIds, $service, $clientIndex);
         }
 
-        if ($uuids !== []) {
+        if ($localConfigIds !== []) {
             VlessConfigModel::query()
                 ->where('server_id', '=', $server->id)
-                ->whereNotIn('uuid', $uuids)
+                ->whereNotIn('id', $localConfigIds)
                 ->delete();
         }
     }
@@ -67,7 +67,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
     private function handleInbound(
         array $row,
         Server $server,
-        array &$uuids,
+        array &$localConfigIds,
         XuiConfigService $service,
         array $clientIndex,
     ): void
@@ -78,8 +78,9 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
 
         foreach ($clients as $client) {
             $uuid = $client['id'] ?? $client['uuid'] ?? null;
+            $protocol = mb_strtolower((string) ($row['protocol'] ?? ''));
 
-            if (! $uuid) {
+            if (! $uuid && ($protocol !== 'wireguard' || blank($client['email'] ?? null))) {
                 continue;
             }
 
@@ -105,13 +106,35 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
 
             unset($vlessConfig['user_id']);
 
-            $uuids[] = $uuid;
+            $config = VlessConfigModel::query()->updateOrCreate(
+                $this->resolveLookupAttributes($server, $row, $mergedClient, $vlessConfig),
+                $vlessConfig,
+            );
 
-            VlessConfigModel::query()->updateOrCreate([
-                'server_id' => $server->id,
-                'uuid' => $uuid,
-            ], $vlessConfig);
+            $localConfigIds[] = (int) $config->getKey();
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $inbound
+     * @param  array<string, mixed>  $client
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function resolveLookupAttributes(Server $server, array $inbound, array $client, array $attributes): array
+    {
+        if (mb_strtolower((string) ($inbound['protocol'] ?? '')) !== 'wireguard' && filled($attributes['uuid'] ?? null)) {
+            return [
+                'server_id' => $server->id,
+                'uuid' => $attributes['uuid'],
+            ];
+        }
+
+        return [
+            'server_id' => $server->id,
+            'inbound_id' => (int) ($inbound['id'] ?? 0),
+            'name' => (string) ($attributes['name'] ?? $client['email'] ?? ''),
+        ];
     }
 
     /**
@@ -132,6 +155,8 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                 $row['uuid'] ?? $row['id'] ?? null,
                 $row['email'] ?? null,
                 $row['subId'] ?? null,
+                $row['publicKey'] ?? $row['public_key'] ?? null,
+                $row['privateKey'] ?? $row['private_key'] ?? null,
             ], fn (mixed $value) => is_string($value) ? trim($value) !== '' : ! empty($value));
 
             foreach ($inboundIds as $inboundId) {

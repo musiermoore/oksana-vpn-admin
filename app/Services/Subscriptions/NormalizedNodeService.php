@@ -149,7 +149,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int}  $item
+     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig|ShadowsocksConfig}  $item
      */
     private function buildNode(string $uri, array $item, int $index): ?NormalizedNode
     {
@@ -235,6 +235,7 @@ class NormalizedNodeService
             'shadowsocks' => 2,
             'hysteria' => 3,
             'hysteria2' => 4,
+            'wireguard' => 5,
             default => 99,
         };
     }

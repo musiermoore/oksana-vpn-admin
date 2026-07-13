@@ -73,6 +73,56 @@ class VlessConnectTest extends TestCase
         $this->assertSame($expectedNames, $names);
     }
 
+    public function test_connect_includes_wireguard_configs_in_uri_subscription(): void
+    {
+        $user = User::query()->create([
+            'name' => 'WireGuard User',
+            'telegram' => '@wg-user',
+            'telegram_id' => '223344',
+        ]);
+
+        $server = Server::query()->create([
+            'name' => 'Латвия WG',
+            'code' => 'LWG',
+            'ip' => '10.10.10.10',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 8,
+            'name' => 'WG-8pf78qlqc6-wg',
+            'description' => null,
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-client-8',
+            'port' => 20466,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://aGGq0lnDIL1MLZoKPriZkFp%2B4qME1WdApNPoxduT0Hs%3D@lv.oksana1984.ru:20466?address=10.0.0.2%2F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('223344'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('wireguard://aGGq0lnDIL1MLZoKPriZkFp%2B4qME1WdApNPoxduT0Hs%3D@lv.oksana1984.ru:20466', $decoded);
+        $this->assertStringContainsString('address=10.0.0.2%2F32', $decoded);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $decoded);
+        $this->assertStringContainsString('#'.rawurlencode('Латвия WG • WIREGUARD • UDP'), $decoded);
+    }
+
     public function test_deep_link_route_redirects_to_v2rayng_subscription_import(): void
     {
         Http::fake([

@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
+use App\Services\WireGuardSubscriptionLinkService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
@@ -506,12 +507,14 @@ class XuiConfigService
 
         $this->addClient($inboundId, (string) $user->telegram, $settings);
 
-        $attributes = $this->buildLocalConfigAttributes($inbound, $settings, $user->id);
+        $refreshedInbound = $this->findInboundById($inboundId) ?? $inbound;
+        $resolvedSettings = $this->resolveClientSettingsAfterCreation($refreshedInbound, $settings);
+        $attributes = $this->buildLocalConfigAttributes($refreshedInbound, $resolvedSettings, $user->id);
 
-        return VlessConfig::query()->updateOrCreate([
-            'server_id' => $this->server->id,
-            'uuid' => $attributes['uuid'],
-        ], $attributes);
+        return VlessConfig::query()->updateOrCreate(
+            $this->resolveLocalConfigLookupAttributes($refreshedInbound, $attributes),
+            $attributes,
+        );
     }
 
     private function setSession(): void
@@ -646,6 +649,20 @@ class XuiConfigService
             ->latest('id')
             ->value('id')) + 1;
 
+        if ($this->isWireGuardInbound($inbound)) {
+            return array_filter([
+                'email' => sprintf(
+                    '%s_%s_%d',
+                    ltrim($telegram, '@'),
+                    Str::slug(Str::snake($this->server->name), '_'),
+                    $nextConfigId,
+                ),
+                'totalGB' => 0,
+                'expiryTime' => 0,
+                'enable' => true,
+            ], fn (mixed $value) => ! in_array($value, [null, ''], true));
+        }
+
         $flow = $this->shouldUseVisionFlow($inbound) ? 'xtls-rprx-vision' : null;
 
         return array_filter(array_merge($this->getDefaultClientSettings(), [
@@ -724,7 +741,7 @@ class XuiConfigService
 
     private function isSupportedVlessInboundProtocol(?string $protocol): bool
     {
-        return in_array(mb_strtolower((string) $protocol), ['vless', 'trojan', 'hysteria', 'hysteria2', 'hy2'], true);
+        return in_array(mb_strtolower((string) $protocol), ['vless', 'trojan', 'hysteria', 'hysteria2', 'hy2', 'wireguard'], true);
     }
 
     /**
@@ -809,6 +826,10 @@ class XuiConfigService
 
     public function buildLocalConfigAttributes(array $inbound, array $settings, ?int $userId = null): array
     {
+        if ($this->isWireGuardInbound($inbound)) {
+            return $this->buildWireGuardLocalConfigAttributes($inbound, $settings, $userId);
+        }
+
         $config = new VlessConfigData(
             $this->server->id,
             $inbound['id'] ?? null,
@@ -844,6 +865,71 @@ class XuiConfigService
         );
 
         return $config->toArray();
+    }
+
+    /**
+     * @param  array<string, mixed>  $inbound
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function buildWireGuardLocalConfigAttributes(array $inbound, array $settings, ?int $userId = null): array
+    {
+        $email = (string) ($settings['email'] ?? '');
+        $identifier = $this->resolveWireGuardIdentifier($settings, $email);
+        $subscriptionUri = app(WireGuardSubscriptionLinkService::class)->fromXui(
+            $this->server,
+            $inbound,
+            $settings,
+            $email !== '' ? $email : null,
+        );
+
+        return [
+            'server_id' => $this->server->id,
+            'inbound_id' => $inbound['id'] ?? null,
+            'user_id' => $userId,
+            'name' => $email !== '' ? $email : $identifier,
+            'description' => null,
+            'is_active' => true,
+            'enable' => array_key_exists('enable', $settings) ? (bool) $settings['enable'] : true,
+            'uuid' => $identifier,
+            'sub_id' => null,
+            'password' => $this->firstNonEmptyString([
+                $settings['privateKey'] ?? null,
+                $settings['private_key'] ?? null,
+                $settings['secretKey'] ?? null,
+                $settings['secret_key'] ?? null,
+            ]),
+            'auth' => $this->firstNonEmptyString([
+                $settings['presharedKey'] ?? null,
+                $settings['preshared_key'] ?? null,
+                $settings['preSharedKey'] ?? null,
+            ]),
+            'port' => $inbound['port'] ?? null,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'flow' => null,
+            'pbk' => $this->firstNonEmptyString([
+                $inbound['publicKey'] ?? null,
+                $inbound['public_key'] ?? null,
+                Arr::get($inbound, 'settings.publicKey'),
+                Arr::get($inbound, 'settings.public_key'),
+            ]),
+            'alpn' => null,
+            'fp' => null,
+            'sni' => null,
+            'host' => null,
+            'path' => null,
+            'service_name' => null,
+            'mode' => null,
+            'obfs' => null,
+            'obfs_password' => null,
+            'extra' => $subscriptionUri,
+            'x_padding_bytes' => null,
+            'sid' => null,
+            'spx' => null,
+        ];
     }
 
     private function decodeJsonField(mixed $value): array
@@ -974,6 +1060,95 @@ class XuiConfigService
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inbound
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function resolveClientSettingsAfterCreation(array $inbound, array $settings): array
+    {
+        $email = (string) ($settings['email'] ?? '');
+        $inboundId = (int) ($inbound['id'] ?? 0);
+
+        if ($email === '' || $inboundId <= 0) {
+            return $settings;
+        }
+
+        $freshInbound = $this->findInboundById($inboundId) ?? $inbound;
+        $inboundClient = collect($freshInbound['settings']['clients'] ?? [])
+            ->first(fn (mixed $client) => is_array($client) && (string) ($client['email'] ?? '') === $email);
+        $clientListEntry = collect($this->getClientListEntries())
+            ->first(function (mixed $row) use ($email, $inboundId): bool {
+                if (! is_array($row) || (string) ($row['email'] ?? '') !== $email) {
+                    return false;
+                }
+
+                $inboundIds = is_array($row['inboundIds'] ?? null) ? $row['inboundIds'] : [];
+
+                return in_array($inboundId, array_map(fn (mixed $value) => (int) $value, $inboundIds), true);
+            });
+
+        return [
+            ...$settings,
+            ...(is_array($inboundClient) ? $inboundClient : []),
+            ...(is_array($clientListEntry) ? $clientListEntry : []),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $inbound
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function resolveLocalConfigLookupAttributes(array $inbound, array $attributes): array
+    {
+        if (! $this->isWireGuardInbound($inbound) && filled($attributes['uuid'] ?? null)) {
+            return [
+                'server_id' => $this->server->id,
+                'uuid' => $attributes['uuid'],
+            ];
+        }
+
+        return [
+            'server_id' => $this->server->id,
+            'inbound_id' => $attributes['inbound_id'] ?? null,
+            'name' => $attributes['name'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findInboundById(int $inboundId): ?array
+    {
+        return collect($this->getInbounds())
+            ->map(fn (array $row) => $this->normalizeInbound($row))
+            ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $inbound
+     */
+    private function isWireGuardInbound(array $inbound): bool
+    {
+        return mb_strtolower((string) ($inbound['protocol'] ?? '')) === 'wireguard';
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private function resolveWireGuardIdentifier(array $settings, string $fallback): string
+    {
+        return (string) ($this->firstNonEmptyString([
+            $settings['id'] ?? null,
+            $settings['uuid'] ?? null,
+            $settings['publicKey'] ?? null,
+            $settings['public_key'] ?? null,
+            $settings['email'] ?? null,
+            $fallback,
+        ]) ?? $fallback);
     }
 
     private function extractClientFromTrafficPayload(array $payload, VlessConfig $config, bool $enabled): array

@@ -181,4 +181,77 @@ class PullVlessConfigsForServerJobTest extends TestCase
         $this->assertStringContainsString('address=10.0.0.2/32', $config->extra);
         $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
     }
+
+    public function test_job_normalizes_encoded_wireguard_candidate_uri_from_panel(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'WireGuard Panel',
+            'code' => 'WGP',
+            'ip' => '10.0.0.7',
+            'link_host' => 'lv.oksana1984.ru',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [8],
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 8,
+                    'protocol' => 'wireguard',
+                    'port' => 20466,
+                    'settings' => [
+                        'clients' => [[
+                            'email' => 'WG-8pf78qlqc6-wg',
+                            'privateKey' => 'aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=',
+                            'address' => '10.0.0.2/32',
+                            'link' => 'wireguard://aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=@lv.oksana1984.ru:20466?address=10.0.0.2%252F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%252Fw2NumpTOHfK0zA6Q2Q%253D#old-name',
+                            'enable' => true,
+                        ]],
+                    ],
+                    'streamSettings' => json_encode([], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'email' => 'WG-8pf78qlqc6-wg',
+                    'privateKey' => 'aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=',
+                    'address' => '10.0.0.2/32',
+                    'link' => 'wireguard://aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=@lv.oksana1984.ru:20466?address=10.0.0.2%252F32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39%252Fw2NumpTOHfK0zA6Q2Q%253D#old-name',
+                    'enable' => true,
+                    'inboundIds' => [8],
+                ]],
+            ]),
+        ]);
+
+        (new PullVlessConfigsForServerJob($server->id))->handle();
+
+        $config = \App\Models\VlessConfig::query()
+            ->where('server_id', $server->id)
+            ->where('inbound_id', 8)
+            ->where('name', 'WG-8pf78qlqc6-wg')
+            ->first();
+
+        $this->assertNotNull($config);
+        $this->assertNotNull($config->extra);
+        $this->assertStringContainsString('address=10.0.0.2/32', $config->extra);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
+        $this->assertStringNotContainsString('%252F', $config->extra);
+        $this->assertStringNotContainsString('%253D', $config->extra);
+    }
 }

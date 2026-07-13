@@ -27,7 +27,7 @@ class WireGuardSubscriptionLinkService
         }
 
         if (Str::startsWith($content, 'wireguard://')) {
-            return $this->withName($content, $name);
+            return $this->normalizeExistingUri($content, $name);
         }
 
         $sections = $this->parseConfigSections($content);
@@ -110,7 +110,7 @@ class WireGuardSubscriptionLinkService
             $candidate = trim($candidate);
 
             if (Str::startsWith($candidate, 'wireguard://')) {
-                return $this->withName($candidate, $name);
+                return $this->normalizeExistingUri($candidate, $name);
             }
 
             $uri = $this->fromConfigContent($candidate, $server, $name);
@@ -199,6 +199,31 @@ class WireGuardSubscriptionLinkService
         }
 
         return Str::before($uri, '#').'#'.rawurlencode($name);
+    }
+
+    private function normalizeExistingUri(string $uri, ?string $name = null): ?string
+    {
+        $parts = parse_url($uri);
+
+        if (! is_array($parts)) {
+            return $this->withName($uri, $name);
+        }
+
+        parse_str((string) ($parts['query'] ?? ''), $query);
+
+        return $this->buildUri(
+            privateKey: $this->decodeUriComponent((string) ($parts['user'] ?? '')),
+            host: (string) ($parts['host'] ?? ''),
+            port: isset($parts['port']) ? (int) $parts['port'] : null,
+            address: $this->decodeUriComponent((string) Arr::get($query, 'address', '')),
+            publicKey: $this->decodeUriComponent((string) Arr::get($query, 'publickey', '')),
+            name: $name ?? $this->decodeUriComponent((string) ($parts['fragment'] ?? '')),
+            mtu: $this->nullableInt(Arr::get($query, 'mtu')),
+            dns: $this->decodeUriComponent((string) Arr::get($query, 'dns', '')) ?: null,
+            presharedKey: $this->decodeUriComponent((string) Arr::get($query, 'presharedkey', '')) ?: null,
+            keepalive: $this->nullableInt(Arr::get($query, 'keepalive')),
+            reserved: $this->decodeUriComponent((string) Arr::get($query, 'reserved', '')) ?: null,
+        );
     }
 
     /**
@@ -387,6 +412,23 @@ class WireGuardSubscriptionLinkService
         }
 
         return trim((string) $value);
+    }
+
+    private function decodeUriComponent(string $value): string
+    {
+        $decoded = trim($value);
+
+        while ($decoded !== '' && preg_match('/%[0-9A-Fa-f]{2}/', $decoded) === 1) {
+            $next = rawurldecode($decoded);
+
+            if ($next === $decoded) {
+                break;
+            }
+
+            $decoded = $next;
+        }
+
+        return $decoded;
     }
 
     private function formatHost(string $host): string

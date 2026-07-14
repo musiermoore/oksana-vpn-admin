@@ -18,6 +18,9 @@ class VlessExternalSubscription extends Model
         'source_url',
         'filter_pattern',
         'connect_name_prefix',
+        'include_in_main_subscription',
+        'include_in_whitelist',
+        'is_free',
         'is_active',
         'is_ready',
         'last_synced_at',
@@ -27,6 +30,9 @@ class VlessExternalSubscription extends Model
     protected function casts(): array
     {
         return [
+            'include_in_main_subscription' => 'boolean',
+            'include_in_whitelist' => 'boolean',
+            'is_free' => 'boolean',
             'is_active' => 'boolean',
             'is_ready' => 'boolean',
             'last_synced_at' => 'datetime',

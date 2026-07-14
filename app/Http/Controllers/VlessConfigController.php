@@ -218,10 +218,16 @@ class VlessConfigController extends Controller
             return null;
         }
 
-        $subscription = $subscriptionService->buildFromNodes(
-            $externalSubscriptions->getNamedNodesForUser($user),
-            $request->query('format')
-        );
+        $nodes = $externalSubscriptions->getNamedNodesForUser($user);
+
+        if (! $user->hasActiveAccess()) {
+            $nodes = [
+                ...$subscriptionService->getExpiredPlaceholderNodes(),
+                ...$nodes,
+            ];
+        }
+
+        $subscription = $subscriptionService->buildFromNodes($nodes, $request->query('format'));
 
         $response = response($subscription->content);
 

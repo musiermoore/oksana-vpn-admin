@@ -21,7 +21,15 @@ class VlessExternalSubscriptionAccessService
      */
     public function getNamedNodesForUser(User $user): array
     {
-        $configs = collect($this->syncService->getVisibleConfigsForUser($user))
+        return $this->getNamedNodesForUserByPurpose($user, VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST);
+    }
+
+    /**
+     * @return array<int, NormalizedNode>
+     */
+    public function getNamedNodesForUserByPurpose(User $user, string $purpose): array
+    {
+        $configs = collect($this->syncService->getVisibleConfigsForUser($user, $purpose))
             ->values();
 
         $nodes = $configs
@@ -122,6 +130,16 @@ class VlessExternalSubscriptionAccessService
                 $prefix = trim((string) $group->first()?->subscription?->connect_name_prefix);
 
                 if ($prefix === '') {
+                    return;
+                }
+
+                if ($group->count() === 1) {
+                    $config = $group->first();
+
+                    if ($config !== null) {
+                        $names['wl:'.$config->id] = $prefix;
+                    }
+
                     return;
                 }
 

@@ -21,6 +21,9 @@ const form = useForm({
     source_url: props.subscription?.source_url ?? '',
     filter_pattern: props.subscription?.filter_pattern ?? '',
     connect_name_prefix: props.subscription?.connect_name_prefix ?? '',
+    include_in_main_subscription: props.subscription?.include_in_main_subscription ?? false,
+    include_in_whitelist: props.subscription?.include_in_whitelist ?? true,
+    is_free: props.subscription?.is_free ?? false,
     is_active: props.subscription?.is_active ?? true,
     is_ready: props.subscription?.is_ready ?? true,
 });
@@ -86,6 +89,21 @@ const loadPreview = async () => {
             <label class="field">
                 <span>Название в connect-wl</span>
                 <input v-model="form.connect_name_prefix" placeholder="Например: Сервер">
+            </label>
+
+            <label class="field">
+                <span>Включить в основную подписку</span>
+                <input v-model="form.include_in_main_subscription" type="checkbox">
+            </label>
+
+            <label class="field">
+                <span>Включить в подписку белых списков</span>
+                <input v-model="form.include_in_whitelist" type="checkbox">
+            </label>
+
+            <label class="field">
+                <span>Бесплатная</span>
+                <input v-model="form.is_free" type="checkbox">
             </label>
 
             <label class="field">

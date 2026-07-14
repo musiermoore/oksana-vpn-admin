@@ -5,6 +5,8 @@ namespace App\Services\Subscriptions;
 use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Models\User;
+use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
+use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 
 class UserSubscriptionService
 {
@@ -12,6 +14,7 @@ class UserSubscriptionService
         private readonly NormalizedNodeService $normalizedNodeService,
         private readonly NodeNameService $nodeNameService,
         private readonly SubscriptionBuilderFactory $builderFactory,
+        private readonly VlessExternalSubscriptionAccessService $externalSubscriptions,
     ) {}
 
     public function build(User $user, ?string $format = null): SubscriptionBuildResult
@@ -100,9 +103,25 @@ class UserSubscriptionService
     /**
      * @return array<int, NormalizedNode>
      */
+    public function getExpiredPlaceholderNodes(): array
+    {
+        return [$this->buildExpiredPlaceholderNode()];
+    }
+
+    /**
+     * @return array<int, NormalizedNode>
+     */
     private function buildNamedNodes(User $user): array
     {
-        $nodes = $this->normalizedNodeService->collect($user);
+        $nodes = [
+            ...$this->normalizedNodeService->collect($user),
+            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, VlessExternalSubscriptionSyncService::PURPOSE_MAIN),
+        ];
+
+        if (! $user->hasActiveAccess()) {
+            array_unshift($nodes, $this->buildExpiredPlaceholderNode());
+        }
+
         $names = $this->nodeNameService->buildNames($nodes);
 
         $namedNodes = array_map(
@@ -141,6 +160,27 @@ class UserSubscriptionService
         });
 
         return $namedNodes;
+    }
+
+    private function buildExpiredPlaceholderNode(): NormalizedNode
+    {
+        return new NormalizedNode(
+            id: 'expired-placeholder',
+            serverName: 'Ваша подписка закончилась 🚨',
+            protocol: 'vless',
+            transport: 'ws',
+            uri: 'vless://00000000-0000-0000-0000-000000000000@expired.invalid:443?type=ws&security=tls&host=expired.invalid&path=%2F#expired',
+            serverId: 0,
+            configId: 0,
+            sourceType: 'placeholder',
+            sortServerName: 'vasha-podpiska-zakonchilas',
+            meta: [
+                'name' => 'Ваша подписка закончилась 🚨',
+                'config_name' => 'Ваша подписка закончилась 🚨',
+                'config_protocol' => 'vless',
+                'config_port' => 443,
+            ],
+        );
     }
 
     private function getTypeSortOrder(string $type): int

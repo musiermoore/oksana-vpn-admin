@@ -14,6 +14,10 @@ use RuntimeException;
 
 class VlessExternalSubscriptionSyncService
 {
+    public const PURPOSE_MAIN = 'main';
+
+    public const PURPOSE_WHITELIST = 'whitelist';
+
     public function __construct(
         private readonly SubscriptionUriParser $parser,
     ) {}
@@ -79,11 +83,9 @@ class VlessExternalSubscriptionSyncService
         ])->save();
     }
 
-    public function hasVisibleConfigsForUser(User $user): bool
+    public function hasVisibleConfigsForUser(User $user, string $purpose = self::PURPOSE_WHITELIST): bool
     {
-        return VlessExternalSubscription::query()
-            ->where('is_active', true)
-            ->visibleForUser($user)
+        return $this->visibleSubscriptionsQuery($user, $purpose)
             ->whereHas('configs')
             ->exists();
     }
@@ -91,11 +93,9 @@ class VlessExternalSubscriptionSyncService
     /**
      * @return array<int, VlessExternalSubscriptionConfig>
      */
-    public function getVisibleConfigsForUser(User $user): array
+    public function getVisibleConfigsForUser(User $user, string $purpose = self::PURPOSE_WHITELIST): array
     {
-        return VlessExternalSubscription::query()
-            ->where('is_active', true)
-            ->visibleForUser($user)
+        return $this->visibleSubscriptionsQuery($user, $purpose)
             ->with('configs')
             ->orderBy('id')
             ->get()
@@ -103,6 +103,25 @@ class VlessExternalSubscriptionSyncService
                 ->map(fn (VlessExternalSubscriptionConfig $config) => $config->setRelation('subscription', $subscription)))
             ->values()
             ->all();
+    }
+
+    private function visibleSubscriptionsQuery(User $user, string $purpose)
+    {
+        $visibilityColumn = $purpose === self::PURPOSE_MAIN
+            ? 'include_in_main_subscription'
+            : 'include_in_whitelist';
+
+        return VlessExternalSubscription::query()
+            ->where('is_active', true)
+            ->visibleForUser($user)
+            ->where($visibilityColumn, true)
+            ->where(function ($query) use ($user): void {
+                $query->where('is_free', true);
+
+                if ($user->hasActiveAccess()) {
+                    $query->orWhere('is_free', false);
+                }
+            });
     }
 
     /**

@@ -113,8 +113,6 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
             }
 
             if (empty($existingConfig->user_id)) {
-                $existingConfig->delete();
-
                 continue;
             }
 

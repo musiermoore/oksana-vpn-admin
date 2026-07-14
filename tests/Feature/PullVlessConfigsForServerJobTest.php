@@ -371,8 +371,28 @@ class PullVlessConfigsForServerJobTest extends TestCase
             ]),
         ]);
 
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => null,
+            'inbound_id' => 3,
+            'name' => 'musiermoore_latviia_329',
+            'uuid' => 'd666060e-1b37-4aa7-908a-7728b913181d',
+            'protocol' => 'hysteria',
+            'type' => 'hysteria',
+            'is_active' => true,
+            'enable' => false,
+            'port' => 59885,
+        ]);
+
         (new PullVlessConfigsForServerJob($server->id))->handle();
 
-        $this->assertDatabaseCount('vless_configs', 0);
+        $this->assertDatabaseHas('vless_configs', [
+            'server_id' => $server->id,
+            'user_id' => null,
+            'uuid' => 'd666060e-1b37-4aa7-908a-7728b913181d',
+            'enable' => false,
+        ]);
+
+        $this->assertDatabaseCount('vless_configs', 1);
     }
 }

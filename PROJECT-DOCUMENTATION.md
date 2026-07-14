@@ -172,6 +172,11 @@ Current subscription flow:
 4. a negative approved `subscription` transaction is saved
 5. balance is recalculated
 
+Detailed subscription and activation scenarios are documented in:
+
+- `docs/subscription-flow.md`
+- `docs/telegram-mini-app-user-flows.md`
+
 ## Frontend Areas
 
 Important admin screens include:

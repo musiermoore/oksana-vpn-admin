@@ -19,6 +19,11 @@ This file captures project-specific working rules so future development stays co
 - Use repositories inside services instead of querying Eloquent models directly.
 - Prefer Eloquent relations and existing query patterns used in the project.
 - When changing billing logic, verify how `User::syncStoredBalance()` and approved transactions interact.
+- Prefer the flow `Request -> DTO/Data -> Service -> Repository -> Resource` for new business endpoints.
+- Prefer `DataFormRequest` as the base request for write endpoints.
+- Prefer typed request payload mapping via `toDto()`.
+- For new and actively changed PHP files, use `declare(strict_types=1);`, typed arguments, and explicit return types.
+- Keep controllers thin and move orchestration to services.
 
 ## Billing Rules
 
@@ -39,6 +44,9 @@ This file captures project-specific working rules so future development stays co
 - Renewal amount must come from the active payment period's `amount`.
 - Renewal start date is `current active subscription end_date + 1 day`.
 - Renewal end date is `renewal start date + 1 month`.
+- Trial, paid, gift-code, and renewal flows must stay behaviorally aligned.
+- Post-activation changes should be checked against config provisioning and config re-enable flows.
+- When changing `/connect` output, verify both main subscription and whitelist subscription behavior.
 
 ## Frontend Rules
 
@@ -50,3 +58,11 @@ This file captures project-specific working rules so future development stays co
 
 - Update this file when the user gives new workflow or runtime conventions.
 - Update `PROJECT-DOCUMENTATION.md` when the domain model or business rules change.
+- Update `docs/subscription-flow.md` when subscription, billing, trial, gift, renewal, or `/connect` flows change.
+- Update `docs/engineering-conventions.md` when engineering standards change.
+- Agents should read `AGENTS.md` first, then the docs it references.
+
+## Testing Rules
+
+- Behavior changes require tests or updates to existing tests.
+- Billing, subscriptions, `/connect`, jobs, commands, listeners, and mini-app flows should not change without test coverage.

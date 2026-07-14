@@ -4,6 +4,7 @@ namespace App\Services\Api;
 
 use App\DTOs\Transaction\ApiDepositTransactionData;
 use App\Enums\SubscriptionPurchaseType;
+use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Services\SubscriptionCodeService;
 use App\Services\SubscriptionService;
 use Carbon\Carbon;
 use DomainException;
+use Illuminate\Support\Facades\Artisan;
 
 class ApiTransactionService
 {
@@ -33,6 +35,15 @@ class ApiTransactionService
 
         if ($data->month === 0) {
             $subscription = $this->subscriptionService->activateTrialForUser($user);
+            $user->load('activeSubscription');
+
+            if ($user->hasActiveSubscription()) {
+                DispatchDefaultConfigsForUserJob::dispatch($user->id);
+                Artisan::call('configs:disable-overdue-debtors', [
+                    'user_id' => $user->id,
+                ]);
+            }
+
             $formattedEndDate = Carbon::parse($subscription->end_date)->format('d.m.Y');
 
             return [

@@ -213,12 +213,7 @@ class SubscriptionService
                 return;
             }
 
-            $user->loadMissing('latestSubscription');
-
-            $latestSubscription = $user->latestSubscription;
-            $startDate = $latestSubscription
-                ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
-                : today()->toDateString();
+            $startDate = $this->resolveNextSubscriptionStartDate($user);
             $endDate = Carbon::parse($startDate)->addMonths($months)->toDateString();
 
             $subscription = UserSubscription::query()->firstOrCreate(
@@ -276,12 +271,7 @@ class SubscriptionService
         array $meta = [],
     ): UserSubscription {
         return DB::transaction(function () use ($user, $days, $transaction, $meta) {
-            $user->loadMissing('latestSubscription');
-
-            $latestSubscription = $user->latestSubscription;
-            $startDate = $latestSubscription
-                ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
-                : today()->toDateString();
+            $startDate = $this->resolveNextSubscriptionStartDate($user);
             $endDate = Carbon::parse($startDate)->addDays($days)->toDateString();
 
             $subscription = UserSubscription::query()->create([
@@ -303,12 +293,7 @@ class SubscriptionService
     public function activateGiftCodeForUser(User $user, SubscriptionCode $code): UserSubscription
     {
         return DB::transaction(function () use ($user, $code) {
-            $user->loadMissing('latestSubscription');
-
-            $latestSubscription = $user->latestSubscription;
-            $startDate = $latestSubscription
-                ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
-                : today()->toDateString();
+            $startDate = $this->resolveNextSubscriptionStartDate($user);
 
             $endDate = $code->months
                 ? Carbon::parse($startDate)->addMonths($code->months)->toDateString()
@@ -357,9 +342,7 @@ class SubscriptionService
             return;
         }
 
-        $startDate = $latestSubscription
-            ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
-            : today()->toDateString();
+        $startDate = $this->resolveNextSubscriptionStartDate($user);
         $endDate = Carbon::parse($startDate)->addMonth()->toDateString();
 
         $this->createSubscriptionIfMissing($user, $startDate, $endDate, $amount);
@@ -443,12 +426,7 @@ class SubscriptionService
                     ->firstOrFail();
             }
 
-            $user->loadMissing('latestSubscription');
-
-            $latestSubscription = $user->latestSubscription;
-            $startDate = $latestSubscription
-                ? Carbon::parse($latestSubscription->end_date)->addDay()->toDateString()
-                : today()->toDateString();
+            $startDate = $this->resolveNextSubscriptionStartDate($user);
             $endDate = Carbon::parse($startDate)->addMonths($months)->toDateString();
 
             $subscription = UserSubscription::query()->firstOrCreate(
@@ -522,5 +500,16 @@ class SubscriptionService
         $user->forceFill([
             'subscription_expires_at' => $expiresAt ? Carbon::parse($expiresAt)->endOfDay() : null,
         ])->save();
+    }
+
+    private function resolveNextSubscriptionStartDate(User $user): string
+    {
+        $user->loadMissing('latestSubscription');
+
+        $nextDate = $user->latestSubscription
+            ? Carbon::parse($user->latestSubscription->end_date)->addDay()->startOfDay()
+            : today()->startOfDay();
+
+        return $nextDate->max(today()->startOfDay())->toDateString();
     }
 }

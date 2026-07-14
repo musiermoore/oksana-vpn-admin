@@ -21,7 +21,7 @@ Schedule::command(SyncVlessExternalSubscriptionsCommand::class)->everyFifteenMin
 Schedule::command(AddExtraPayments::class)->hourly();
 Schedule::command(CreateDefaultConfigsForActiveSubscribersCommand::class)->everyFiveMinutes();
 Schedule::command(RenewSubscriptionsCommand::class)->everyFiveMinutes();
-Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyThirtyMinutes();
+Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyFiveMinutes();
 Schedule::command(SendPaidInvoicesToTaxCommand::class)->dailyAt('06:00')->timezone('UTC');
 
 Schedule::call(function (): void {

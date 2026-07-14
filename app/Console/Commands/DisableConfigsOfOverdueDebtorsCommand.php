@@ -18,7 +18,7 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'configs:disable-overdue-debtors';
+    protected $signature = 'configs:disable-overdue-debtors {user_id?}';
 
     /**
      * The console command description.
@@ -30,12 +30,14 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->disableWireGuardConfigs();
         $this->enableWireGuardConfigs();
         $this->disableVlessConfigs();
         $this->enableVlessConfigs();
+
+        return self::SUCCESS;
     }
 
     private function getQuery()
@@ -47,6 +49,7 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
                 'users.telegram',
                 DB::raw('COALESCE(users.balance, 0) AS final_balance'),
             ])
+            ->when($this->argument('user_id'), fn ($query, $userId) => $query->whereKey($userId))
             ->groupBy('users.id');
     }
 

@@ -8,6 +8,7 @@ use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Models\User;
 use App\Services\SubscriptionCodeService;
 use App\Services\SubscriptionService;
+use Illuminate\Support\Facades\Artisan;
 
 class ActivateSubscriptionAfterTransactionApproval
 {
@@ -62,5 +63,8 @@ class ActivateSubscriptionAfterTransactionApproval
         }
 
         DispatchDefaultConfigsForUserJob::dispatch($user->id);
+        Artisan::call('configs:disable-overdue-debtors', [
+            'user_id' => $user->id,
+        ]);
     }
 }

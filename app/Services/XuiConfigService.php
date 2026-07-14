@@ -275,9 +275,22 @@ class XuiConfigService
 
     private function refreshExistingClientConfig(VlessConfig $config, User $user, array $inbound): VlessConfig
     {
+        $shouldPersist = false;
+
+        if ((int) ($config->user_id ?? 0) !== (int) $user->id) {
+            $config->user_id = $user->id;
+            $shouldPersist = true;
+        }
+
         $clients = $inbound['settings']['clients'] ?? [];
 
         if (! is_array($clients)) {
+            if ($shouldPersist) {
+                $config->save();
+
+                return $config->fresh();
+            }
+
             return $config;
         }
 
@@ -295,6 +308,12 @@ class XuiConfigService
         });
 
         if (! is_array($matchedClient)) {
+            if ($shouldPersist) {
+                $config->save();
+
+                return $config->fresh();
+            }
+
             return $config;
         }
 

@@ -94,9 +94,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                 ...$service->buildLocalConfigAttributes($row, [
                     ...$mergedClient,
                     'email' => $mergedClient['email'] ?? null,
-                    'enable' => array_key_exists('enable', $mergedClient)
-                        ? (bool) $mergedClient['enable']
-                        : true,
+                    'enable' => !array_key_exists('enable', $mergedClient) || $mergedClient['enable'],
                     'id' => $uuid,
                     'subId' => $mergedClient['subId'] ?? null,
                     'password' => $mergedClient['password'] ?? null,
@@ -107,10 +105,23 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                 'updated_at' => now(),
             ];
 
+            $lookupAttributes = $this->resolveLookupAttributes($server, $row, $mergedClient, $vlessConfig);
+            $existingConfig = VlessConfigModel::query()->where($lookupAttributes)->first();
+
+            if (! $existingConfig) {
+                continue;
+            }
+
+            if (empty($existingConfig->user_id)) {
+                $existingConfig->delete();
+
+                continue;
+            }
+
             unset($vlessConfig['user_id']);
 
             $config = VlessConfigModel::query()->updateOrCreate(
-                $this->resolveLookupAttributes($server, $row, $mergedClient, $vlessConfig),
+                $lookupAttributes,
                 $vlessConfig,
             );
 

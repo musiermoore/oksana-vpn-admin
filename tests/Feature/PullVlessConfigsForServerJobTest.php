@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Jobs\PullVlessConfigsForServerJob;
 use App\Models\Server;
+use App\Models\User;
+use App\Models\VlessConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -89,10 +91,30 @@ class PullVlessConfigsForServerJobTest extends TestCase
             ]),
         ]);
 
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 3,
+            'name' => 'musiermoore_latviia_329',
+            'uuid' => 'd666060e-1b37-4aa7-908a-7728b913181d',
+            'protocol' => 'hysteria',
+            'type' => 'hysteria',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 59885,
+        ]);
+
         (new PullVlessConfigsForServerJob($server->id))->handle();
 
         $this->assertDatabaseHas('vless_configs', [
             'server_id' => $server->id,
+            'user_id' => $user->id,
             'uuid' => 'd666060e-1b37-4aa7-908a-7728b913181d',
             'sub_id' => 'fdlznawhvuqlcq1r',
             'password' => 'tylydnqytfr0txtx',
@@ -163,6 +185,25 @@ class PullVlessConfigsForServerJobTest extends TestCase
                     'inboundIds' => [8],
                 ]],
             ]),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Bob',
+            'telegram' => '@bob',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 8,
+            'name' => 'WG-8pf78qlqc6-wg',
+            'uuid' => 'WG-8pf78qlqc6-wg',
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 20466,
         ]);
 
         (new PullVlessConfigsForServerJob($server->id))->handle();
@@ -239,6 +280,25 @@ class PullVlessConfigsForServerJobTest extends TestCase
             ]),
         ]);
 
+        $user = User::query()->create([
+            'name' => 'Charlie',
+            'telegram' => '@charlie',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 8,
+            'name' => 'WG-8pf78qlqc6-wg',
+            'uuid' => 'WG-8pf78qlqc6-wg',
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 20466,
+        ]);
+
         (new PullVlessConfigsForServerJob($server->id))->handle();
 
         $config = \App\Models\VlessConfig::query()
@@ -253,5 +313,66 @@ class PullVlessConfigsForServerJobTest extends TestCase
         $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
         $this->assertStringNotContainsString('%252F', $config->extra);
         $this->assertStringNotContainsString('%253D', $config->extra);
+    }
+
+    public function test_job_skips_panel_configs_without_existing_owned_local_record(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Latvia',
+            'code' => 'LV',
+            'ip' => '10.0.0.6',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [3],
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 3,
+                    'protocol' => 'hysteria',
+                    'port' => 59885,
+                    'settings' => [
+                        'clients' => [[
+                            'id' => 'd666060e-1b37-4aa7-908a-7728b913181d',
+                            'email' => 'musiermoore_latviia_329',
+                            'enable' => true,
+                        ]],
+                    ],
+                    'streamSettings' => json_encode([
+                        'network' => 'hysteria',
+                        'security' => 'tls',
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'email' => 'musiermoore_latviia_329',
+                    'subId' => 'fdlznawhvuqlcq1r',
+                    'uuid' => 'd666060e-1b37-4aa7-908a-7728b913181d',
+                    'enable' => true,
+                    'inboundIds' => [3],
+                ]],
+            ]),
+        ]);
+
+        (new PullVlessConfigsForServerJob($server->id))->handle();
+
+        $this->assertDatabaseCount('vless_configs', 0);
     }
 }

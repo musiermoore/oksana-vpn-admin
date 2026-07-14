@@ -200,21 +200,19 @@ class XuiConfigService
             return [];
         }
 
-        $existingConfigs = $user->vlessConfigs()
+        $existingConfigs = VlessConfig::query()
             ->where('server_id', $this->server->id)
+            ->where(function ($query) use ($user) {
+                $query
+                    ->where('user_id', $user->id)
+                    ->orWhereNull('user_id');
+            })
             ->get();
 
         return collect($allowedInbounds)
             ->map(function (array $inbound) use ($existingConfigs, $user) {
-                $existingConfig = $existingConfigs->first(function (VlessConfig $config) use ($inbound) {
-                    $inboundId = (int) ($inbound['id'] ?? 0);
-
-                    if (! empty($config->inbound_id)) {
-                        return (int) $config->inbound_id === $inboundId;
-                    }
-
-                    return mb_strtolower((string) $config->type) === mb_strtolower((string) ($inbound['type'] ?? ''));
-                });
+                $existingConfig = $this->findExistingUserConfig($existingConfigs, $inbound, $user)
+                    ?? $this->findClaimableOrphanConfig($existingConfigs, $inbound, $user);
 
                 if ($existingConfig instanceof VlessConfig) {
                     return $this->refreshExistingClientConfig($existingConfig, $user, $inbound);
@@ -224,6 +222,55 @@ class XuiConfigService
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Collection<int, VlessConfig>  $existingConfigs
+     */
+    private function findExistingUserConfig($existingConfigs, array $inbound, User $user): ?VlessConfig
+    {
+        return $existingConfigs
+            ->where('user_id', $user->id)
+            ->first(fn (VlessConfig $config) => $this->matchesInbound($config, $inbound));
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Collection<int, VlessConfig>  $existingConfigs
+     */
+    private function findClaimableOrphanConfig($existingConfigs, array $inbound, User $user): ?VlessConfig
+    {
+        return $existingConfigs
+            ->whereNull('user_id')
+            ->first(function (VlessConfig $config) use ($inbound, $user): bool {
+                return $this->matchesInbound($config, $inbound)
+                    && $this->looksLikeUsersConfig($config, $user);
+            });
+    }
+
+    private function matchesInbound(VlessConfig $config, array $inbound): bool
+    {
+        $inboundId = (int) ($inbound['id'] ?? 0);
+
+        if (! empty($config->inbound_id)) {
+            return (int) $config->inbound_id === $inboundId;
+        }
+
+        return mb_strtolower((string) $config->type) === mb_strtolower((string) ($inbound['type'] ?? ''));
+    }
+
+    private function looksLikeUsersConfig(VlessConfig $config, User $user): bool
+    {
+        $telegram = ltrim(trim((string) $user->telegram), '@');
+        $configName = mb_strtolower(trim((string) $config->name));
+
+        if ($telegram === '' || $configName === '') {
+            return false;
+        }
+
+        $normalizedTelegram = mb_strtolower($telegram);
+
+        return $configName === $normalizedTelegram
+            || str_starts_with($configName, $normalizedTelegram.'_');
     }
 
     private function refreshExistingClientConfig(VlessConfig $config, User $user, array $inbound): VlessConfig

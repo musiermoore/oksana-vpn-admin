@@ -13,8 +13,10 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class XuiConfigService
 {
@@ -214,12 +216,28 @@ class XuiConfigService
                 $existingConfig = $this->findExistingUserConfig($existingConfigs, $inbound, $user)
                     ?? $this->findClaimableOrphanConfig($existingConfigs, $inbound, $user);
 
-                if ($existingConfig instanceof VlessConfig) {
-                    return $this->refreshExistingClientConfig($existingConfig, $user, $inbound);
-                }
+                try {
+                    if ($existingConfig instanceof VlessConfig) {
+                        return $this->refreshExistingClientConfig($existingConfig, $user, $inbound);
+                    }
 
-                return $this->createClientOnInbound($user, $inbound);
+                    return $this->createClientOnInbound($user, $inbound);
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    Log::warning('Failed to provision XUI client on inbound.', [
+                        'server_id' => $this->server->id,
+                        'user_id' => $user->id,
+                        'inbound_id' => $inbound['id'] ?? null,
+                        'protocol' => $inbound['protocol'] ?? null,
+                        'network' => $inbound['type'] ?? null,
+                        'message' => $exception->getMessage(),
+                    ]);
+
+                    return null;
+                }
             })
+            ->filter(fn (mixed $config) => $config instanceof VlessConfig)
             ->values()
             ->all();
     }
@@ -1622,7 +1640,7 @@ class XuiConfigService
         }
 
         return collect($rows)
-            ->filter(is_array(...))
+            ->filter(fn (mixed $row): bool => is_array($row))
             ->map(function (array $row): array {
                 if (filled($row['uuid'] ?? null)) {
                     $row['panel_client_id'] = $row['id'] ?? null;

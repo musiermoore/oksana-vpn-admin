@@ -260,8 +260,13 @@ class XuiConfigService
 
     private function looksLikeUsersConfig(VlessConfig $config, User $user): bool
     {
+        return $this->looksLikeUsersConfigName((string) $config->name, $user);
+    }
+
+    private function looksLikeUsersConfigName(string $configName, User $user): bool
+    {
         $telegram = ltrim(trim((string) $user->telegram), '@');
-        $configName = mb_strtolower(trim((string) $config->name));
+        $configName = mb_strtolower(trim($configName));
 
         if ($telegram === '' || $configName === '') {
             return false;
@@ -571,6 +576,21 @@ class XuiConfigService
 
         $settings = $this->getConfigSettings((string) $user->telegram, $inbound);
 
+        $existingPanelClient = $this->findExistingPanelClient($inbound, $user, $settings);
+
+        if (is_array($existingPanelClient)) {
+            $resolvedSettings = [
+                ...$settings,
+                ...$existingPanelClient,
+            ];
+            $attributes = $this->buildLocalConfigAttributes($inbound, $resolvedSettings, $user->id);
+
+            return VlessConfig::query()->updateOrCreate(
+                $this->resolveLocalConfigLookupAttributes($inbound, $attributes),
+                $attributes,
+            );
+        }
+
         $this->addClient($inboundId, (string) $user->telegram, $settings);
 
         $refreshedInbound = $this->findInboundById($inboundId) ?? $inbound;
@@ -581,6 +601,38 @@ class XuiConfigService
             $this->resolveLocalConfigLookupAttributes($refreshedInbound, $attributes),
             $attributes,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $inbound
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>|null
+     */
+    private function findExistingPanelClient(array $inbound, User $user, array $settings): ?array
+    {
+        $expectedEmail = mb_strtolower(trim((string) ($settings['email'] ?? '')));
+        $clients = $inbound['settings']['clients'] ?? [];
+
+        if (! is_array($clients)) {
+            return null;
+        }
+
+        $matchedClient = collect($clients)->first(function (mixed $client) use ($expectedEmail, $user): bool {
+            if (! is_array($client)) {
+                return false;
+            }
+
+            $email = mb_strtolower(trim((string) ($client['email'] ?? '')));
+
+            if ($email === '') {
+                return false;
+            }
+
+            return $email === $expectedEmail
+                || $this->looksLikeUsersConfigName($email, $user);
+        });
+
+        return is_array($matchedClient) ? $matchedClient : null;
     }
 
     private function setSession(): void

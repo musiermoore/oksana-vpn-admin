@@ -389,6 +389,124 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
     }
 
+    public function test_job_claims_existing_panel_client_without_creating_duplicate(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Ready Mixed',
+            'code' => 'RMX',
+            'ip' => '10.0.0.9',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10, 11],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'settings' => [
+                        'clients' => [[
+                            'id' => 'existing-vless-uuid',
+                            'email' => 'alice_ready_mixed_1',
+                            'enable' => true,
+                            'subId' => 'existing-sub-id',
+                            'password' => 'existing-password',
+                            'auth' => 'existing-auth',
+                        ]],
+                    ],
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ], [
+                    'id' => 11,
+                    'protocol' => 'hysteria',
+                    'port' => 8443,
+                    'settings' => [
+                        'clients' => [[
+                            'id' => 'existing-hysteria-uuid',
+                            'email' => 'alice_ready_mixed_2',
+                            'auth' => 'existing-hysteria-auth',
+                            'enable' => true,
+                        ]],
+                    ],
+                    'streamSettings' => json_encode([
+                        'network' => 'hysteria',
+                        'security' => 'tls',
+                        'tlsSettings' => [
+                            'serverName' => 'hy.example.com',
+                            'alpn' => ['h3'],
+                            'settings' => [
+                                'fingerprint' => 'firefox',
+                            ],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'inbound_id' => 10,
+            'name' => 'alice_ready_mixed_1',
+            'uuid' => 'existing-vless-uuid',
+            'protocol' => 'vless',
+        ]);
+
+        $this->assertDatabaseHas('vless_configs', [
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'inbound_id' => 11,
+            'name' => 'alice_ready_mixed_2',
+            'uuid' => 'existing-hysteria-uuid',
+            'auth' => 'existing-hysteria-auth',
+            'protocol' => 'hysteria',
+        ]);
+
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/addClient'));
+    }
+
     public function test_job_does_not_create_vless_config_when_auto_pull_types_are_not_configured(): void
     {
         $server = Server::query()->create([

@@ -507,6 +507,105 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/addClient'));
     }
 
+    public function test_job_keeps_uuid_from_clients_list_uuid_field_instead_of_numeric_panel_id(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Ready VLESS',
+            'code' => 'RVL',
+            'ip' => '10.0.0.2',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'panel_api_version' => Server::PANEL_API_V3_2_8,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'settings' => json_encode([
+                        'clients' => [[
+                            'id' => '44444444-4444-4444-4444-444444444444',
+                            'email' => '123456789_ready_vless_1',
+                            'enable' => true,
+                            'subId' => 'sub-id-1',
+                            'password' => 'password-1',
+                            'auth' => 'auth-1',
+                        ]],
+                    ], JSON_UNESCAPED_SLASHES),
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/add' => Http::response([
+                'success' => true,
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 1218,
+                    'uuid' => '44444444-4444-4444-4444-444444444444',
+                    'email' => '123456789_ready_vless_1',
+                    'subId' => 'sub-id-1',
+                    'password' => 'password-1',
+                    'auth' => 'auth-1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
+            ]),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+            'name' => '123456789_ready_vless_1',
+            'uuid' => '44444444-4444-4444-4444-444444444444',
+        ]);
+    }
+
     public function test_job_does_not_create_vless_config_when_auto_pull_types_are_not_configured(): void
     {
         $server = Server::query()->create([
@@ -642,6 +741,81 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'sni' => 'ws.example.com',
             'flow' => null,
         ]);
+    }
+
+    public function test_job_uses_telegram_id_as_config_name_prefix(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Ready VLESS',
+            'code' => 'RVL',
+            'ip' => '10.0.0.2',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/inbounds/addClient' => Http::response([
+                'success' => true,
+            ]),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $config = VlessConfig::query()
+            ->where('server_id', $server->id)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $this->assertStringStartsWith('123456789_ready_vless_', $config->name);
     }
 
     public function test_job_creates_trojan_config_for_allowed_trojan_inbound(): void

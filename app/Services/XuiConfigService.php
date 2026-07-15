@@ -69,9 +69,9 @@ class XuiConfigService
             ->all();
     }
 
-    public function addClient(int $inboundId, string $telegram, array $clientSettings = []): array
+    public function addClient(int $inboundId, string $ownerKey, array $clientSettings = []): array
     {
-        $settings = array_merge($this->getConfigSettings($telegram), $clientSettings);
+        $settings = array_merge($this->getConfigSettings($ownerKey), $clientSettings);
 
         return $this->postClientSettings($inboundId, $settings);
     }
@@ -148,7 +148,7 @@ class XuiConfigService
             throw new RuntimeException("Shadowsocks inbound [{$inboundId}] not found for server [{$this->server->id}]");
         }
 
-        $settings = $this->getShadowsocksConfigSettings((string) $user->telegram, $inbound);
+        $settings = $this->getShadowsocksConfigSettings($this->resolveConfigOwnerKey($user), $inbound);
 
         $this->addShadowsocksClient($inboundId, $settings);
 
@@ -574,7 +574,7 @@ class XuiConfigService
             throw new RuntimeException("VLESS inbound does not contain id for server [{$this->server->id}]");
         }
 
-        $settings = $this->getConfigSettings((string) $user->telegram, $inbound);
+        $settings = $this->getConfigSettings($this->resolveConfigOwnerKey($user), $inbound);
 
         $existingPanelClient = $this->findExistingPanelClient($inbound, $user, $settings);
 
@@ -591,7 +591,7 @@ class XuiConfigService
             );
         }
 
-        $this->addClient($inboundId, (string) $user->telegram, $settings);
+        $this->addClient($inboundId, $this->resolveConfigOwnerKey($user), $settings);
 
         $refreshedInbound = $this->findInboundById($inboundId) ?? $inbound;
         $resolvedSettings = $this->resolveClientSettingsAfterCreation($refreshedInbound, $settings);
@@ -760,7 +760,7 @@ class XuiConfigService
         return is_array($data) ? array_values($data) : [];
     }
 
-    private function getConfigSettings(string $telegram, array $inbound = []): array
+    private function getConfigSettings(string $ownerKey, array $inbound = []): array
     {
         $nextConfigId = ((int) VlessConfig::query()
             ->whereServerId($this->server->id)
@@ -771,7 +771,7 @@ class XuiConfigService
             return array_filter([
                 'email' => sprintf(
                     '%s_%s_%d',
-                    ltrim($telegram, '@'),
+                    $ownerKey,
                     Str::slug(Str::snake($this->server->name), '_'),
                     $nextConfigId,
                 ),
@@ -788,7 +788,7 @@ class XuiConfigService
             'flow' => $flow,
             'email' => sprintf(
                 '%s_%s_%d',
-                ltrim($telegram, '@'),
+                $ownerKey,
                 Str::slug(Str::snake($this->server->name), '_'),
                 $nextConfigId,
             ),
@@ -823,7 +823,7 @@ class XuiConfigService
         ];
     }
 
-    private function getShadowsocksConfigSettings(string $telegram, array $inbound = []): array
+    private function getShadowsocksConfigSettings(string $ownerKey, array $inbound = []): array
     {
         $nextConfigId = ((int) ShadowsocksConfig::query()
             ->whereServerId($this->server->id)
@@ -840,7 +840,7 @@ class XuiConfigService
             'password' => Str::random(24),
             'email' => sprintf(
                 '%s_%s_%d',
-                ltrim($telegram, '@'),
+                $ownerKey,
                 Str::slug(Str::snake($this->server->name), '_'),
                 $nextConfigId,
             ),
@@ -1617,7 +1617,35 @@ class XuiConfigService
 
         $rows = $payload['obj']['items'] ?? $payload['data']['items'] ?? $payload['obj'] ?? $payload['data'] ?? [];
 
-        return is_array($rows) ? array_values(array_filter($rows, is_array(...))) : [];
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        return collect($rows)
+            ->filter(is_array(...))
+            ->map(function (array $row): array {
+                if (filled($row['uuid'] ?? null)) {
+                    $row['panel_client_id'] = $row['id'] ?? null;
+                    $row['id'] = (string) $row['uuid'];
+                }
+
+                return $row;
+            })
+            ->values()
+            ->all();
+    }
+
+    private function resolveConfigOwnerKey(User $user): string
+    {
+        $telegramId = trim((string) $user->telegram_id);
+
+        if ($telegramId !== '') {
+            return $telegramId;
+        }
+
+        $telegram = ltrim(trim((string) $user->telegram), '@');
+
+        return $telegram !== '' ? $telegram : 'user_'.$user->id;
     }
 
     /**

@@ -395,4 +395,108 @@ class PullVlessConfigsForServerJobTest extends TestCase
 
         $this->assertDatabaseCount('vless_configs', 1);
     }
+
+    public function test_job_does_not_delete_owned_local_configs_missing_from_panel_payload(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Latvia',
+            'code' => 'LV',
+            'ip' => '10.0.0.6',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [3, 8],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        $missingConfig = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 3,
+            'name' => 'alice_latvia_1',
+            'uuid' => '11111111-1111-1111-1111-111111111111',
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 443,
+        ]);
+
+        $keptConfig = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 8,
+            'name' => 'alice_latvia_2',
+            'uuid' => '22222222-2222-2222-2222-222222222222',
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 20466,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 8,
+                    'protocol' => 'wireguard',
+                    'port' => 20466,
+                    'settings' => [
+                        'publicKey' => 'X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=',
+                        'clients' => [[
+                            'email' => 'alice_latvia_2',
+                            'privateKey' => 'aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=',
+                            'address' => '10.0.0.2/32',
+                            'enable' => true,
+                        ]],
+                    ],
+                    'streamSettings' => json_encode([], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'email' => 'alice_latvia_2',
+                    'privateKey' => 'aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=',
+                    'address' => '10.0.0.2/32',
+                    'enable' => true,
+                    'inboundIds' => [8],
+                ]],
+            ]),
+        ]);
+
+        (new PullVlessConfigsForServerJob($server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'id' => $missingConfig->id,
+            'user_id' => $user->id,
+            'uuid' => '11111111-1111-1111-1111-111111111111',
+        ]);
+
+        $this->assertDatabaseHas('vless_configs', [
+            'id' => $keptConfig->id,
+            'user_id' => $user->id,
+            'name' => 'alice_latvia_2',
+        ]);
+
+        $this->assertDatabaseCount('vless_configs', 2);
+    }
 }

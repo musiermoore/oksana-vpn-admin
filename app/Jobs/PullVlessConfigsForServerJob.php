@@ -54,6 +54,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
         if ($localConfigIds !== []) {
             VlessConfigModel::query()
                 ->where('server_id', '=', $server->id)
+                ->whereNull('user_id')
                 ->whereNotIn('id', $localConfigIds)
                 ->delete();
         }

@@ -123,7 +123,7 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('#'.rawurlencode('Латвия WG • WIREGUARD • UDP'), $decoded);
     }
 
-    public function test_connect_json_returns_profile_with_hardcoded_dns_and_route_settings(): void
+    public function test_connect_json_returns_xray_profile_array_with_hardcoded_dns_and_route_settings(): void
     {
         $user = User::query()->create([
             'name' => 'JSON User',
@@ -165,19 +165,73 @@ class VlessConnectTest extends TestCase
         $payload = json_decode((string) $response->getContent(), true);
 
         $this->assertIsArray($payload);
-        $this->assertSame('warn', data_get($payload, 'log.level'));
-        $this->assertSame('ipv4_only', data_get($payload, 'dns.strategy'));
-        $this->assertSame('dns-remote', data_get($payload, 'dns.final'));
-        $this->assertSame('1.1.1.1', data_get($payload, 'dns.servers.1.address'));
-        $this->assertSame(['openai.com', 'chatgpt.com', 'oaistatic.com', 'oaiusercontent.com', 'codex.com'], data_get($payload, 'dns.rules.0.domain_suffix'));
-        $this->assertSame('Manual', data_get($payload, 'route.final'));
-        $this->assertSame('dns-out', data_get($payload, 'route.rules.0.outbound'));
-        $this->assertSame('vless', data_get($payload, 'outbounds.0.type'));
-        $this->assertSame('nl.oksana1984.ru', data_get($payload, 'outbounds.0.server'));
-        $this->assertSame('xtls-rprx-vision', data_get($payload, 'outbounds.0.flow'));
-        $this->assertSame('urltest', data_get($payload, 'outbounds.1.type'));
-        $this->assertSame('selector', data_get($payload, 'outbounds.2.type'));
-        $this->assertSame('dns', data_get($payload, 'outbounds.5.type'));
+        $this->assertCount(1, $payload);
+        $this->assertSame('Нидерланды • VLESS • TCP', data_get($payload, '0.remarks'));
+        $this->assertSame('warning', data_get($payload, '0.log.loglevel'));
+        $this->assertSame('UseIPv4', data_get($payload, '0.dns.queryStrategy'));
+        $this->assertSame('8.8.8.8', data_get($payload, '0.dns.servers.0.address'));
+        $this->assertSame(['domain:openai.com', 'domain:chatgpt.com', 'domain:codex.com', 'domain:oaistatic.com', 'domain:oaiusercontent.com'], data_get($payload, '0.dns.servers.0.domains'));
+        $this->assertSame('AsIs', data_get($payload, '0.routing.domainStrategy'));
+        $this->assertSame('proxy', data_get($payload, '0.routing.rules.4.outboundTag'));
+        $this->assertSame('socks', data_get($payload, '0.inbounds.0.tag'));
+        $this->assertSame('http', data_get($payload, '0.inbounds.1.tag'));
+        $this->assertSame('vless', data_get($payload, '0.outbounds.0.protocol'));
+        $this->assertSame('proxy', data_get($payload, '0.outbounds.0.tag'));
+        $this->assertSame('nl.oksana1984.ru', data_get($payload, '0.outbounds.0.settings.vnext.0.address'));
+        $this->assertSame('xtls-rprx-vision', data_get($payload, '0.outbounds.0.settings.vnext.0.users.0.flow'));
+        $this->assertSame('reality', data_get($payload, '0.outbounds.0.streamSettings.security'));
+        $this->assertSame('freedom', data_get($payload, '0.outbounds.1.protocol'));
+        $this->assertSame('blackhole', data_get($payload, '0.outbounds.2.protocol'));
+    }
+
+    public function test_connect_json_can_return_base64_encoded_profile_array(): void
+    {
+        $user = User::query()->create([
+            'name' => 'JSON Base64 User',
+            'telegram' => '@json-base64-user',
+            'telegram_id' => '445566',
+        ]);
+
+        $server = $this->createServer('Латвия', 'LV1', 'lv.oksana1984.ru');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'json-vless-base64',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => '10cd4746-6752-4c3c-b360-1704af468393',
+            'port' => 11517,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'sni' => 'www.ya.ru',
+            'pbk' => 'rv_7uV8oMgoMv9D0e-WZwSs3siVB93caGjL5A_6MP0U',
+            'sid' => '81ad',
+            'fp' => 'firefox',
+            'flow' => 'xtls-rprx-vision',
+            'spx' => '/',
+        ]);
+
+        $response = $this->get(route('vless.connect-json', [
+            'tg' => Crypt::encrypt('445566'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'base64' => 'true',
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/json; charset=UTF-8');
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+
+        $payload = json_decode($decoded, true);
+
+        $this->assertIsArray($payload);
+        $this->assertSame('Латвия • VLESS • TCP', data_get($payload, '0.remarks'));
+        $this->assertSame('lv.oksana1984.ru', data_get($payload, '0.outbounds.0.settings.vnext.0.address'));
     }
 
     public function test_deep_link_route_redirects_to_v2rayng_subscription_import(): void

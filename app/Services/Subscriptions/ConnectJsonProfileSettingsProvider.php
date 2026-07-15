@@ -6,19 +6,19 @@ namespace App\Services\Subscriptions;
 
 class ConnectJsonProfileSettingsProvider
 {
-    public function logLevel(): string
+    /**
+     * @return array<string, mixed>
+     */
+    public function log(): array
     {
-        return (string) config('connect_json.log.level', 'warn');
+        return [
+            'loglevel' => (string) config('connect_json.log.level', 'warning'),
+        ];
     }
 
-    public function autoTag(): string
+    public function proxyTag(): string
     {
-        return (string) config('connect_json.outbounds.auto_tag', 'Auto');
-    }
-
-    public function selectorTag(): string
-    {
-        return (string) config('connect_json.outbounds.selector_tag', 'Manual');
+        return (string) config('connect_json.outbounds.proxy_tag', 'proxy');
     }
 
     public function directTag(): string
@@ -31,34 +31,55 @@ class ConnectJsonProfileSettingsProvider
         return (string) config('connect_json.outbounds.block_tag', 'block');
     }
 
-    public function dnsOutboundTag(): string
-    {
-        return (string) config('connect_json.outbounds.dns_tag', 'dns-out');
-    }
-
     /**
      * @return array<string, mixed>
      */
     public function dns(): array
     {
         return [
-            'strategy' => (string) config('connect_json.dns.strategy', 'ipv4_only'),
-            'independent_cache' => (bool) config('connect_json.dns.independent_cache', true),
+            'queryStrategy' => (string) config('connect_json.dns.query_strategy', 'UseIPv4'),
             'servers' => config('connect_json.dns.servers', []),
-            'rules' => config('connect_json.dns.rules', []),
-            'final' => (string) config('connect_json.dns.final', 'dns-remote'),
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function route(): array
+    public function routing(): array
     {
         return [
-            'auto_detect_interface' => (bool) config('connect_json.route.auto_detect_interface', true),
-            'final' => (string) config('connect_json.route.final', $this->selectorTag()),
-            'rules' => config('connect_json.route.rules', []),
+            'domainStrategy' => (string) config('connect_json.routing.domain_strategy', 'AsIs'),
+            'rules' => config('connect_json.routing.rules', []),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function directOutbound(): array
+    {
+        return [
+            'protocol' => 'freedom',
+            'tag' => $this->directTag(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function blockOutbound(): array
+    {
+        return [
+            'protocol' => 'blackhole',
+            'tag' => $this->blockTag(),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function inbounds(): array
+    {
+        return config('connect_json.inbounds', []);
     }
 }

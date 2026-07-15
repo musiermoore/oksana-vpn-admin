@@ -218,8 +218,11 @@ class VlessConfigController extends Controller
         }
 
         $subscription = $subscriptionService->buildJsonProfile($user);
+        $content = $request->boolean('base64')
+            ? base64_encode($subscription->content)
+            : $subscription->content;
 
-        $response = response($subscription->content);
+        $response = response($content);
 
         foreach ($metadataService->buildHeaders(
             $user,

@@ -7,6 +7,7 @@ use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Models\User;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
+use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
 
 class UserSubscriptionService
 {
@@ -15,6 +16,7 @@ class UserSubscriptionService
         private readonly NodeNameService $nodeNameService,
         private readonly SubscriptionBuilderFactory $builderFactory,
         private readonly VlessExternalSubscriptionAccessService $externalSubscriptions,
+        private readonly ConnectJsonBuilder $connectJsonBuilder,
     ) {}
 
     public function build(User $user, ?string $format = null): SubscriptionBuildResult
@@ -38,6 +40,11 @@ class UserSubscriptionService
         return $this->builderFactory
             ->make((string) $format)
             ->build($nodes);
+    }
+
+    public function buildJsonProfile(User $user): SubscriptionBuildResult
+    {
+        return $this->connectJsonBuilder->build($this->buildNamedNodes($user));
     }
 
     /**

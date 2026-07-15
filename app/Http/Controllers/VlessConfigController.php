@@ -206,6 +206,37 @@ class VlessConfigController extends Controller
         return $response;
     }
 
+    public function connectJson(
+        Request $request,
+        SubscriptionMetadataService $metadataService,
+        UserSubscriptionService $subscriptionService
+    ) {
+        $user = $this->resolveUserFromConnectionRequest($request);
+
+        if (! $user) {
+            return null;
+        }
+
+        $subscription = $subscriptionService->buildJsonProfile($user);
+
+        $response = response($subscription->content);
+
+        foreach ($metadataService->buildHeaders(
+            $user,
+            $subscription->fileExtension,
+            $subscription->contentType,
+            'Oksana VPN JSON',
+            true,
+            true,
+            true,
+            '1',
+        ) as $name => $value) {
+            $response->header($name, $value);
+        }
+
+        return $response;
+    }
+
     public function connectWhiteList(
         Request $request,
         SubscriptionMetadataService $metadataService,

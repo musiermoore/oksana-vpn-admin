@@ -606,6 +606,137 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
     }
 
+    public function test_job_continues_creating_other_inbounds_when_one_inbound_fails(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Ready VLESS',
+            'code' => 'RVL',
+            'ip' => '10.0.0.2',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10, 11, 12],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ], [
+                    'id' => 11,
+                    'protocol' => 'hysteria',
+                    'port' => 8443,
+                    'streamSettings' => json_encode([
+                        'network' => 'hysteria',
+                        'security' => 'tls',
+                        'tlsSettings' => [
+                            'serverName' => 'hy.example.com',
+                            'alpn' => ['h3'],
+                            'settings' => [
+                                'fingerprint' => 'firefox',
+                            ],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ], [
+                    'id' => 12,
+                    'protocol' => 'vless',
+                    'port' => 9443,
+                    'streamSettings' => json_encode([
+                        'network' => 'xhttp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key-2',
+                                'fingerprint' => 'edge',
+                            ],
+                            'serverNames' => ['example.net'],
+                            'shortIds' => ['efgh'],
+                        ],
+                        'xhttpSettings' => [
+                            'path' => '/search',
+                            'mode' => 'auto',
+                            'extra' => [
+                                'xPaddingBytes' => '100-500',
+                            ],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/inbounds/addClient' => function (Request $request) {
+                $payload = json_decode((string) $request['settings'], true);
+                $email = $payload['clients'][0]['email'] ?? '';
+
+                if ($request['id'] === 11 || str_contains((string) $email, '_ready_vless_2')) {
+                    return Http::response(['message' => 'boom'], 500);
+                }
+
+                return Http::response(['success' => true], 200);
+            },
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+        ]);
+
+        $this->assertDatabaseMissing('vless_configs', [
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 11,
+        ]);
+
+        $this->assertDatabaseHas('vless_configs', [
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 12,
+        ]);
+    }
+
     public function test_job_does_not_create_vless_config_when_auto_pull_types_are_not_configured(): void
     {
         $server = Server::query()->create([

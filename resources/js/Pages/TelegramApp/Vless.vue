@@ -36,6 +36,15 @@ const qrStatus = ref('');
 let copyToastTimeoutId = null;
 
 const hasWhiteListRoute = computed(() => Boolean(user.value?.has_vless_wl_configs && props.routes?.vless_wl));
+const whiteListLinkHref = computed(() => {
+    const route = props.routes?.vless_wl;
+
+    if (!route) {
+        return '';
+    }
+
+    return `${route}?step=links`;
+});
 
 const preferredLinks = computed(() => ([
     {
@@ -232,7 +241,7 @@ onBeforeUnmount(() => {
                     <button class="button tg-button-full" type="button" :disabled="loadingQr" @click="openQrResult">
                         {{ loadingQr ? 'Загружаем...' : 'QR-Code' }}
                     </button>
-                    <Link v-if="hasWhiteListRoute" :href="routes?.vless_wl" class="button button--secondary tg-button-full">
+                    <Link v-if="hasWhiteListRoute" :href="whiteListLinkHref" class="button button--secondary tg-button-full">
                         Белые списки
                     </Link>
                     <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
@@ -292,7 +301,7 @@ onBeforeUnmount(() => {
                     <button class="button button--secondary tg-button-full" type="button" @click="step = 'menu'">
                         Назад
                     </button>
-                    <Link v-if="hasWhiteListRoute" :href="routes?.vless_wl" class="button button--secondary tg-button-full">
+                    <Link v-if="hasWhiteListRoute" :href="whiteListLinkHref" class="button button--secondary tg-button-full">
                         Белые списки
                     </Link>
                     <Link :href="routes?.home" class="button tg-button-full">К началу</Link>

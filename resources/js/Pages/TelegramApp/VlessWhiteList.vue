@@ -20,8 +20,14 @@ const props = defineProps({
     vless_wl_send_qr_url: String,
 });
 
+const initialStep = (() => {
+    const requestedStep = new URLSearchParams(window.location.search).get('step');
+
+    return requestedStep === 'links' ? 'links' : 'menu';
+})();
+
 const state = ref('loading');
-const step = ref('menu');
+const step = ref(initialStep);
 const error = ref('');
 const debtMessage = ref('');
 const actionError = ref('');

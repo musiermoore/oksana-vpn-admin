@@ -83,7 +83,7 @@ WIREGUARD
 VLESS
   menu -> links
   menu -> qr
-  menu -> VLESS_WL (если доступно)
+  menu -> VLESS_WL(links) (если доступно, переход по кнопке `Белые списки`)
   debt -> PAYMENTS
 
 VLESS_WL
@@ -273,7 +273,7 @@ Support-боту важно:
 
 - `Link` -> шаг `links`
 - `QR-Code` -> шаг `qr`
-- `Белые списки` -> `/telegram-app/vless-wl`
+- `Белые списки` -> `/telegram-app/vless-wl?step=links`
   - только если `has_vless_wl_configs === true`
 - `К началу`
 
@@ -672,7 +672,7 @@ Support-боту важно:
 
 - `VLESS(menu) -> Link -> VLESS(links)`
 - `VLESS(menu) -> QR-Code -> VLESS(qr)`
-- `VLESS(menu) -> Белые списки -> VLESS_WL`
+- `VLESS(menu) -> Белые списки -> VLESS_WL(links)`
 - `VLESS(links) -> Назад -> VLESS(menu)`
 - `VLESS(qr) -> Назад -> VLESS(menu)`
 - `VLESS(debt) -> Подписка -> PAYMENTS`
@@ -763,4 +763,3 @@ Support-боту важно:
 - "Как написать в поддержку?" -> `Home -> Помощь -> Поддержка`
 - "Где мой подарочный код?" -> `Подписка -> Мои подарочные коды`
 - "Как активировать код?" -> `Подписка -> Код активации`
-

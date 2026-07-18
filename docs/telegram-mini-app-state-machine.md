@@ -81,6 +81,7 @@
 | `VLESS_HOME` | auto | Проверить доступ к VLESS и получить базовые ссылки | `GET /api/users/{telegramId}/vless/link` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
 | `VLESS_HOME` | `Link` | Показать deep links и raw link | `GET /api/users/{telegramId}/vless/link` | `VLESS_LINK_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
 | `VLESS_HOME` | `QR-Code` | Получить QR | `GET /api/users/{telegramId}/vless/qr-code` | `VLESS_QR_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
+| `VLESS_HOME` | `Белые списки` | Открыть WL-страницу сразу на шаге deep links | none, переход на `/telegram-app/vless-wl?step=links` | `VLESS_WL_LINK_RESULT` | none |
 | `VLESS_HOME` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
 | `VLESS_LINK_RESULT` | `Назад` | Вернуться на VLESS-экран | none или локальный возврат | `VLESS_HOME` | none |
 | `VLESS_LINK_RESULT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |

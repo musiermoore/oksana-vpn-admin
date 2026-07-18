@@ -188,6 +188,7 @@ class VlessConfigController extends Controller
 
         $subscription = $subscriptionService->build($user, $request->query('format'));
 
+        return response(base64_decode($subscription->content));
         $response = response($subscription->content);
 
         foreach ($metadataService->buildHeaders(

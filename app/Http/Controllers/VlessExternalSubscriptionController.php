@@ -101,15 +101,9 @@ class VlessExternalSubscriptionController extends Controller
 
     public function sync(VlessExternalSubscription $vlessExternalSubscription): RedirectResponse
     {
-        try {
-            SyncVlessExternalSubscriptionJob::dispatchSync($vlessExternalSubscription->id);
-        } catch (RuntimeException $exception) {
-            $this->syncService->failSync($vlessExternalSubscription, $exception->getMessage());
+        SyncVlessExternalSubscriptionJob::dispatch($vlessExternalSubscription->id);
 
-            return redirect()->back()->with('error', $exception->getMessage());
-        }
-
-        return redirect()->back()->with('success', 'Синхронизация завершена.');
+        return redirect()->back()->with('success', 'Синхронизация поставлена в очередь.');
     }
 
     /**

@@ -26,6 +26,7 @@ class NormalizedNodeService
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
+            ->where('protocol', 'wireguard')
             ->with('server')
             ->get()
             ->map(fn (VlessConfig $config) => [
@@ -100,6 +101,8 @@ class NormalizedNodeService
                 ->map(fn (string $uri, int $index) => $this->buildNode($uri, $item, $index))
                 ->filter()
                 ->values();
+
+            dd($directNodes);
 
             if ($proxies->isEmpty()) {
                 return $directNodes->all();

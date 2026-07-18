@@ -57,6 +57,7 @@ class SubscriptionUriParser
 
     private function parseWireGuard(string $uri): ?array
     {
+        dd($uri);
         $parts = parse_url($uri);
 
         if (! is_array($parts)) {

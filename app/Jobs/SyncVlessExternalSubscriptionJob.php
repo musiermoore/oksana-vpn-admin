@@ -22,9 +22,7 @@ class SyncVlessExternalSubscriptionJob implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly int $subscriptionId,
-    ) {
-        $this->onQueue('vless-external-subscriptions');
-    }
+    ) {}
 
     public function uniqueId(): string
     {

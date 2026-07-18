@@ -25,6 +25,16 @@ const referralStatus = ref('');
 const referralInput = ref('');
 const claimingReferral = ref(false);
 
+const whiteListRoute = computed(() => {
+    const route = props.routes?.vless_wl;
+
+    if (!route) {
+        return '';
+    }
+
+    return `${route}?step=links`;
+});
+
 const primaryNavItems = computed(() => ([
     {
         key: 'wireguard',
@@ -43,6 +53,7 @@ const primaryNavItems = computed(() => ([
         title: 'VLESS Белые списки',
         description: 'Отдельная подборка конфигов с белыми списками.',
         glyph: 'WL',
+        href: whiteListRoute.value,
     }] : []),
 ]));
 
@@ -226,7 +237,7 @@ onMounted(async () => {
                         <Link
                             v-for="item in primaryNavItems"
                             :key="item.key"
-                            :href="routes?.[item.key]"
+                            :href="item.href ?? routes?.[item.key]"
                             class="tg-menu-card"
                         >
                             <div class="tg-menu-card__badge" aria-hidden="true">{{ item.glyph }}</div>

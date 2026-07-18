@@ -137,7 +137,7 @@ SUPPORT_SHOW
 
 - `WireGuard` -> переход на `/telegram-app/wireguard`
 - `VLESS` -> переход на `/telegram-app/vless`
-- `VLESS Белые списки` -> переход на `/telegram-app/vless-wl`
+- `VLESS Белые списки` -> переход на `/telegram-app/vless-wl?step=links`
   - показывается только если `user.has_vless_wl_configs === true`
 - `Подписка` -> переход на `/telegram-app/payments`
 - `Помощь` -> переход на `/telegram-app/help`
@@ -652,7 +652,7 @@ Support-боту важно:
 - `BOOTSTRAP -> start_param ticket_{id} -> SUPPORT_SHOW`
 - `HOME -> WireGuard -> WIREGUARD`
 - `HOME -> VLESS -> VLESS`
-- `HOME -> VLESS Белые списки -> VLESS_WL`
+- `HOME -> VLESS Белые списки -> VLESS_WL(links)`
 - `HOME -> Подписка -> PAYMENTS`
 - `HOME -> Помощь -> HELP`
 - `любая страница с bottom nav -> Чаты -> CHATS`

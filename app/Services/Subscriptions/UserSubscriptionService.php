@@ -125,8 +125,6 @@ class UserSubscriptionService
             ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, VlessExternalSubscriptionSyncService::PURPOSE_MAIN),
         ];
 
-        dd($nodes);
-
         if (! $user->hasActiveAccess()) {
             array_unshift($nodes, $this->buildExpiredPlaceholderNode());
         }

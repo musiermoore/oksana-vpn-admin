@@ -26,7 +26,6 @@ class NormalizedNodeService
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
-            ->where('protocol', 'wireguard')
             ->with('server')
             ->get()
             ->map(fn (VlessConfig $config) => [

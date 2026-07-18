@@ -101,8 +101,6 @@ class NormalizedNodeService
                 ->filter()
                 ->values();
 
-            dd($directNodes);
-
             if ($proxies->isEmpty()) {
                 return $directNodes->all();
             }

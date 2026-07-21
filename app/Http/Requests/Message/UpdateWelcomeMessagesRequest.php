@@ -22,6 +22,14 @@ class UpdateWelcomeMessagesRequest extends DataFormRequest
         ];
     }
 
+    protected function dtoPayload(): array
+    {
+        return [
+            'basicText' => (string) ($this->validated('basic_text') ?? ''),
+            'extendedText' => (string) ($this->validated('extended_text') ?? ''),
+        ];
+    }
+
     protected function dtoClass(): string
     {
         return WelcomeMessagesData::class;

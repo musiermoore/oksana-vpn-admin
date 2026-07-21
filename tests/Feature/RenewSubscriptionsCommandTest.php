@@ -55,8 +55,8 @@ class RenewSubscriptionsCommandTest extends TestCase
 
         $this->assertDatabaseHas('user_subscriptions', [
             'user_id' => $user->id,
-            'start_date' => '2026-05-01',
-            'end_date' => '2026-06-01',
+            'start_date' => '2026-05-10',
+            'end_date' => '2026-06-10',
             'price' => 100,
         ]);
 

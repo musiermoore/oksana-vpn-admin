@@ -33,6 +33,7 @@ class XuiSyncServicesTest extends TestCase
             'panel_link' => 'https://panel.test',
             'panel_username' => 'admin',
             'panel_password' => 'secret',
+            'is_active' => true,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
             'allowed_inbound_ids' => [10],

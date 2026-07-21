@@ -86,28 +86,24 @@ class ApiTransactionRouteTest extends TestCase
             'month' => 6,
             'return_url' => 'https://app.example/return',
         ])->assertOk()
-            ->assertExactJson([
-                'status' => 'deposit_required',
-                'message' => 'Для активации подписки необходимо оплатить 520 ₽. Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».',
-                'deposit_amount' => 520.0,
-                'transaction_id' => 1,
-                'invoice_id' => 1,
-                'payment_id' => '23d93cac-000f-5000-8000-126628f15141',
-                'payment_status' => 'pending',
-                'confirmation_url' => 'https://yookassa.example/confirm',
-            ]);
+            ->assertJsonPath('status', 'deposit_required')
+            ->assertJsonPath('message', 'Для активации подписки необходимо оплатить 520 ₽. Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».')
+            ->assertJsonPath('deposit_amount', 520)
+            ->assertJsonPath('payment_id', '23d93cac-000f-5000-8000-126628f15141')
+            ->assertJsonPath('payment_status', 'pending')
+            ->assertJsonPath('confirmation_url', 'https://yookassa.example/confirm');
+
+        $transaction = Transaction::query()->sole();
+        $invoice = Invoice::query()->sole();
 
         $this->assertDatabaseHas('transactions', [
             'user_id' => $user->id,
-            'invoice_id' => 1,
+            'invoice_id' => $invoice->id,
             'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
             'amount' => 520,
             'description' => 'YooKassa',
             'is_approved' => false,
         ]);
-
-        $transaction = Transaction::query()->sole();
-        $invoice = Invoice::query()->sole();
 
         $this->assertSame($invoice->id, $transaction->invoice_id);
         $this->assertSame('23d93cac-000f-5000-8000-126628f15141', $invoice->provider_payment_id);

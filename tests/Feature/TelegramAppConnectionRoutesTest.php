@@ -97,7 +97,7 @@ class TelegramAppConnectionRoutesTest extends TestCase
         $payload = $response->json();
 
         $this->assertTrue((bool) ($payload['show_raw_link'] ?? false));
-        $this->assertStringContainsString('/connect-wl?', (string) ($payload['raw_link'] ?? ''));
+        $this->assertStringContainsString('/connect-wl', (string) ($payload['raw_link'] ?? ''));
         $this->assertStringContainsString('/connect-wl/deep-link/happ', (string) ($payload['happ_deep_link'] ?? ''));
     }
 

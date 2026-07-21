@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +12,7 @@ class VlessConfig extends Model
     protected $fillable = [
         'server_id',
         'inbound_id',
+        'xray_inbound_id',
         'user_id',
         'name', // email in 3x-ui
         'description',
@@ -50,6 +53,7 @@ class VlessConfig extends Model
         return [
             'is_active' => 'boolean',
             'enable' => 'boolean',
+            'xray_inbound_id' => 'integer',
         ];
     }
 
@@ -62,6 +66,11 @@ class VlessConfig extends Model
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function xrayInbound(): BelongsTo
+    {
+        return $this->belongsTo(XrayInbound::class);
     }
 
     public function getLinkAttribute(): string

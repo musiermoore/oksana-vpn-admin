@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Entities\VlessConfig as VlessConfigData;
 use App\Models\Server;
-use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
+use App\Models\XrayInbound;
 use App\Services\WireGuardSubscriptionLinkService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -59,28 +61,11 @@ class XuiConfigService
             ->all();
     }
 
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAllShadowsocksInbounds(): array
-    {
-        return collect($this->getInbounds())
-            ->map(fn (array $row) => $this->normalizeInbound($row))
-            ->filter(fn (array $row) => ($row['protocol'] ?? null) === 'shadowsocks' && ! empty($row['id']))
-            ->values()
-            ->all();
-    }
-
     public function addClient(int $inboundId, string $ownerKey, array $clientSettings = []): array
     {
         $settings = array_merge($this->getConfigSettings($ownerKey), $clientSettings);
 
         return $this->postClientSettings($inboundId, $settings);
-    }
-
-    public function addShadowsocksClient(int $inboundId, array $clientSettings): array
-    {
-        return $this->postClientSettings($inboundId, $clientSettings);
     }
 
     /**
@@ -141,41 +126,6 @@ class XuiConfigService
         return $this->createClientOnInboundIdFromList($user, $inboundId, $this->getAllVlessInbounds());
     }
 
-    public function createShadowsocksClientOnAnyInboundId(User $user, int $inboundId): ShadowsocksConfig
-    {
-        $inbound = collect($this->getAllShadowsocksInbounds())
-            ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
-
-        if (! $inbound) {
-            throw new RuntimeException("Shadowsocks inbound [{$inboundId}] not found for server [{$this->server->id}]");
-        }
-
-        $settings = $this->getShadowsocksConfigSettings($this->resolveConfigOwnerKey($user), $inbound);
-
-        $this->addShadowsocksClient($inboundId, $settings);
-
-        $attributes = [
-            'server_id' => $this->server->id,
-            'inbound_id' => $inboundId,
-            'user_id' => $user->id,
-            'name' => $settings['email'],
-            'description' => null,
-            'is_active' => true,
-            'enable' => (bool) ($settings['enable'] ?? true),
-            'port' => $inbound['port'] ?? null,
-            'method' => $settings['method'] ?? $inbound['method'] ?? 'chacha20-ietf-poly1305',
-            'password' => $settings['password'] ?? null,
-            'plugin' => null,
-            'plugin_opts' => null,
-            'network' => $inbound['type'] ?? null,
-            'security' => $inbound['security'] ?? null,
-            'host' => $inbound['host'] ?? null,
-            'path' => $inbound['path'] ?? null,
-        ];
-
-        return ShadowsocksConfig::query()->create($attributes);
-    }
-
     /**
      * @param  array<int, array<string, mixed>>  $inbounds
      */
@@ -196,7 +146,12 @@ class XuiConfigService
      */
     public function createClientsOnAllowedInbounds(User $user): array
     {
-        $allowedInbounds = $this->getVlessInbounds();
+        $allowedInboundIds = $this->server->getAvailableInboundIdsForUser($user);
+
+        $allowedInbounds = collect($this->getAllVlessInbounds())
+            ->filter(fn (array $inbound) => in_array((int) ($inbound['id'] ?? 0), $allowedInboundIds, true))
+            ->values()
+            ->all();
 
         if ($allowedInbounds === []) {
             return [];
@@ -790,7 +745,7 @@ class XuiConfigService
                 'email' => sprintf(
                     '%s_%s_%d',
                     $ownerKey,
-                    Str::slug(Str::snake($this->server->name), '_'),
+                    Str::slug((string) $this->server->name, '_'),
                     $nextConfigId,
                 ),
                 'totalGB' => 0,
@@ -807,7 +762,7 @@ class XuiConfigService
             'email' => sprintf(
                 '%s_%s_%d',
                 $ownerKey,
-                Str::slug(Str::snake($this->server->name), '_'),
+                Str::slug((string) $this->server->name, '_'),
                 $nextConfigId,
             ),
             'enable' => true,
@@ -841,34 +796,6 @@ class XuiConfigService
         ];
     }
 
-    private function getShadowsocksConfigSettings(string $ownerKey, array $inbound = []): array
-    {
-        $nextConfigId = ((int) ShadowsocksConfig::query()
-            ->whereServerId($this->server->id)
-            ->latest('id')
-            ->value('id')) + 1;
-
-        $method = $inbound['method']
-            ?? $inbound['settings']['method']
-            ?? $inbound['settings']['clients'][0]['method']
-            ?? 'chacha20-ietf-poly1305';
-
-        return [
-            'method' => $method,
-            'password' => Str::random(24),
-            'email' => sprintf(
-                '%s_%s_%d',
-                $ownerKey,
-                Str::slug(Str::snake($this->server->name), '_'),
-                $nextConfigId,
-            ),
-            'limitIp' => 0,
-            'totalGB' => 0,
-            'expiryTime' => 0,
-            'enable' => true,
-        ];
-    }
-
     private function shouldUseVisionFlow(array $inbound): bool
     {
         return ($inbound['type'] ?? null) === 'tcp'
@@ -886,7 +813,7 @@ class XuiConfigService
      */
     private function filterAllowedInbounds(array $inbounds): array
     {
-        $allowedInboundIds = $this->server->getAllowedInboundIds();
+        $allowedInboundIds = $this->server->getAvailableInboundIdsForUser();
 
         if ($allowedInboundIds === []) {
             return [];
@@ -1001,7 +928,10 @@ class XuiConfigService
             $inbound['spx'] ?? '/'
         );
 
-        return $config->toArray();
+        return [
+            ...$config->toArray(),
+            'xray_inbound_id' => $this->resolveXrayInboundId($inbound['id'] ?? null),
+        ];
     }
 
     /**
@@ -1058,6 +988,7 @@ class XuiConfigService
         return [
             'server_id' => $this->server->id,
             'inbound_id' => $inbound['id'] ?? null,
+            'xray_inbound_id' => $this->resolveXrayInboundId($inbound['id'] ?? null),
             'user_id' => $userId,
             'name' => $email !== '' ? $email : $identifier,
             'description' => null,
@@ -1298,6 +1229,20 @@ class XuiConfigService
         return collect($this->getInbounds())
             ->map(fn (array $row) => $this->normalizeInbound($row))
             ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
+    }
+
+    private function resolveXrayInboundId(mixed $externalId): ?int
+    {
+        $normalizedExternalId = (int) $externalId;
+
+        if ($normalizedExternalId < 1) {
+            return null;
+        }
+
+        return (int) XrayInbound::query()->firstOrCreate([
+            'server_id' => $this->server->id,
+            'external_id' => $normalizedExternalId,
+        ])->getKey();
     }
 
     /**

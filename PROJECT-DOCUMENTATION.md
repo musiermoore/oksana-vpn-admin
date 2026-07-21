@@ -83,6 +83,20 @@ Each payment period has:
 
 The active payment period is used as the source of truth for subscription renewal price.
 
+### Xray Inbounds
+
+Xray/3x-ui inbound identifiers are normalized through the `xray_inbounds` table.
+
+Each inbound record has:
+
+- `server_id`
+- `external_id`
+- `params`
+
+`external_id` is the inbound id from 3x-ui.
+
+`params` stores the raw inbound payload from 3x-ui so app logic does not depend on a rigid local schema for inbound settings.
+
 ### User Subscriptions
 
 Subscriptions are stored in `user_subscriptions`.

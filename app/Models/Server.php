@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
@@ -81,9 +83,9 @@ class Server extends Model
         return $this->hasMany(Config::class);
     }
 
-    public function shadowsocksConfigs(): HasMany
+    public function xrayInbounds(): HasMany
     {
-        return $this->hasMany(ShadowsocksConfig::class);
+        return $this->hasMany(XrayInbound::class);
     }
 
     public function proxies(): BelongsToMany
@@ -94,7 +96,7 @@ class Server extends Model
 
     public function getSlugCodeAttribute(): string
     {
-        return str($this->code)->slug()->lower();
+        return (string) str($this->code)->slug()->lower();
     }
 
     public function getSshCommandAttribute(): string
@@ -171,6 +173,29 @@ class Server extends Model
             ->filter(fn (int $id) => $id > 0)
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function getAvailableInboundIdsForUser(?User $user = null): array
+    {
+        $xrayInbounds = $this->relationLoaded('xrayInbounds')
+            ? $this->xrayInbounds
+            : $this->xrayInbounds()->get(['external_id', 'is_active', 'is_public']);
+
+        if ($xrayInbounds->isNotEmpty()) {
+            return $xrayInbounds
+                ->filter(fn (mixed $inbound) => (bool) data_get($inbound, 'is_active', false))
+                ->filter(fn (mixed $inbound) => (bool) data_get($inbound, 'is_public', false) || (bool) ($user?->is_admin))
+                ->map(fn (mixed $inbound) => (int) data_get($inbound, 'external_id'))
+                ->filter(fn (int $id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $this->getAllowedInboundIds();
     }
 
     public function getPanelApiVersion(): string

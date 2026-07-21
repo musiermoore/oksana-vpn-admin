@@ -1,4 +1,5 @@
 <script setup>
+import { watch } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -12,6 +13,18 @@ const props = defineProps({
     users: Array,
     available_inbounds: Array,
 });
+
+const isUserAllowedForInbound = (item, userId) => {
+    const user = props.users.find((candidate) => Number(candidate.id) === Number(userId));
+
+    if (!user) {
+        return false;
+    }
+
+    return item.is_public || user.is_admin;
+};
+
+const filteredInbounds = () => props.available_inbounds.filter((item) => isUserAllowedForInbound(item, form.user_id));
 
 const selectedInbound = props.available_inbounds[0] ?? null;
 
@@ -34,6 +47,23 @@ const updateInboundSelection = (value) => {
     form.server_id = Number(serverId);
     form.inbound_id = Number(inboundId);
 };
+
+const syncInboundSelection = () => {
+    const available = filteredInbounds();
+    const selected = selectedInboundDetails();
+
+    if (selected && isUserAllowedForInbound(selected, form.user_id)) {
+        return;
+    }
+
+    const nextInbound = available[0] ?? null;
+
+    form.protocol = nextInbound?.protocol ?? '';
+    form.server_id = nextInbound?.server_id ?? '';
+    form.inbound_id = nextInbound?.inbound_id ?? '';
+};
+
+watch(() => form.user_id, syncInboundSelection, { immediate: true });
 
 const submit = () => {
     if (props.mode === 'edit') {
@@ -68,7 +98,7 @@ const submit = () => {
                     @change="({ target }) => updateInboundSelection(target.value)"
                 >
                     <option
-                        v-for="item in available_inbounds"
+                        v-for="item in filteredInbounds()"
                         :key="`${item.protocol}:${item.server_id}:${item.inbound_id}`"
                         :value="`${item.protocol}:${item.server_id}:${item.inbound_id}`"
                     >
@@ -77,7 +107,7 @@ const submit = () => {
                 </select>
             </label>
 
-            <label v-if="mode === 'create' && available_inbounds.length === 0" class="field" style="grid-column: 1 / -1;">
+            <label v-if="mode === 'create' && filteredInbounds().length === 0" class="field" style="grid-column: 1 / -1;">
                 <span>Доступные входы</span>
                 <input value="Нет доступных Xray-входов" readonly>
             </label>
@@ -125,7 +155,7 @@ const submit = () => {
             </template>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing || (mode === 'create' && available_inbounds.length === 0)">Сохранить</button>
+                <button class="button" type="submit" :disabled="form.processing || (mode === 'create' && filteredInbounds().length === 0)">Сохранить</button>
                 <Link class="button button--secondary" href="/xray-configs">Назад</Link>
             </div>
         </form>

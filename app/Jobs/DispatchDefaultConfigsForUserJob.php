@@ -40,7 +40,7 @@ class DispatchDefaultConfigsForUserJob implements ShouldQueue
         $existingWireGuardServerIds = $user->configs->pluck('server_id')->all();
         foreach ($servers as $server) {
             if ($server->isVlessType()) {
-                $allowedInboundIds = $server->getAllowedInboundIds();
+                $allowedInboundIds = $server->getAvailableInboundIdsForUser($user);
 
                 if ($allowedInboundIds === []) {
                     continue;

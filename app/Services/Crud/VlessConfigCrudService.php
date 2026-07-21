@@ -36,6 +36,10 @@ class VlessConfigCrudService
             throw new RuntimeException('Сервер VLESS не найден');
         }
 
+        if (! in_array($inboundId, $server->getAvailableInboundIdsForUser($user), true)) {
+            throw new RuntimeException('Выбранный VLESS-вход недоступен для пользователя');
+        }
+
         $xui = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $inbound = collect($xui->getAllVlessInbounds())
             ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);

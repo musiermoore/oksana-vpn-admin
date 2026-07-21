@@ -187,6 +187,14 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'https://panel.test/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
             ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 'admin-private-client-uuid',
+                    'email' => 'admin_private_vless_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
+            ]),
         ]);
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
@@ -708,12 +716,27 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
                 $payload = json_decode((string) $request['settings'], true);
                 $email = $payload['clients'][0]['email'] ?? '';
 
-                if ($request['id'] === 11 || str_contains((string) $email, '_ready_vless_2')) {
+                if ((int) $request['id'] === 11) {
                     return Http::response(['message' => 'boom'], 500);
                 }
 
                 return Http::response(['success' => true], 200);
             },
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 1218,
+                    'uuid' => '11111111-1111-1111-1111-111111111111',
+                    'email' => '123456789_ready_vless_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ], [
+                    'id' => 1219,
+                    'uuid' => '22222222-2222-2222-2222-222222222222',
+                    'email' => '123456789_ready_vless_2',
+                    'enable' => true,
+                    'inboundIds' => [12],
+                ]],
+            ]),
         ]);
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
@@ -848,6 +871,14 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'https://panel.test/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
             ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 'admin-private-client-uuid',
+                    'email' => 'admin_private_vless_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
+            ]),
         ]);
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
@@ -937,6 +968,14 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'https://panel.test/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
             ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 'admin-private-client-uuid',
+                    'email' => 'admin_private_vless_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
+            ]),
         ]);
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
@@ -1005,6 +1044,14 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             ]),
             'https://panel.test/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 'admin-private-client-uuid',
+                    'email' => 'admin_private_vless_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
             ]),
         ]);
 
@@ -1085,6 +1132,15 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'https://panel.test/panel/api/inbounds/addClient' => Http::response([], 404),
             'https://panel.test/panel/inbound/addClient' => Http::response([
                 'success' => true,
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 1218,
+                    'uuid' => '11111111-1111-1111-1111-111111111111',
+                    'email' => 'alice_legacy_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
             ]),
         ]);
 
@@ -1168,6 +1224,15 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             ]),
             'https://panel.test/panel/api/clients/add' => Http::response([
                 'success' => true,
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 'modern-client-uuid',
+                    'uuid' => '11111111-1111-1111-1111-111111111111',
+                    'email' => 'alice_modern_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
             ]),
         ]);
 
@@ -1302,5 +1367,139 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
         ]);
 
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/addClient'));
+    }
+
+    public function test_job_does_not_create_vless_config_for_private_inbound_for_non_admin_user(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Private VLESS',
+            'code' => 'PVL',
+            'ip' => '10.0.0.20',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $server->xrayInbounds()->create([
+            'external_id' => 10,
+            'is_active' => true,
+            'is_public' => false,
+            'params' => [],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+            'is_admin' => false,
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake();
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseCount('vless_configs', 0);
+        Http::assertNothingSent();
+    }
+
+    public function test_job_creates_vless_config_for_private_inbound_for_admin_user(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Private VLESS',
+            'code' => 'PVL',
+            'ip' => '10.0.0.21',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $server->xrayInbounds()->create([
+            'external_id' => 10,
+            'is_active' => true,
+            'is_public' => false,
+            'params' => [],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Admin',
+            'telegram' => '@admin',
+            'join_at' => now()->toDateString(),
+            'is_admin' => true,
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'price' => 10,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                        'realitySettings' => [
+                            'settings' => [
+                                'publicKey' => 'public-key',
+                                'fingerprint' => 'chrome',
+                            ],
+                            'serverNames' => ['example.com'],
+                            'shortIds' => ['abcd'],
+                        ],
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/inbounds/addClient' => Http::response([
+                'success' => true,
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'id' => 'admin-private-client-uuid',
+                    'email' => 'admin_private_vless_1',
+                    'enable' => true,
+                    'inboundIds' => [10],
+                ]],
+            ]),
+        ]);
+
+        (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
+
+        $this->assertDatabaseHas('vless_configs', [
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'inbound_id' => 10,
+            'enable' => true,
+        ]);
     }
 }

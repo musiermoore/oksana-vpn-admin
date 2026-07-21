@@ -5,7 +5,6 @@ namespace App\Services\Subscriptions;
 use App\DTOs\Subscription\NormalizedNode;
 use App\Models\Proxy;
 use App\Models\Server;
-use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Support\Collection;
@@ -26,7 +25,15 @@ class NormalizedNodeService
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
-            ->with('server')
+            ->where(function ($query) {
+                $query
+                    ->whereNull('vless_configs.xray_inbound_id')
+                    ->orWhereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true));
+            })
+            ->with([
+                'server',
+                'xrayInbound:id,is_active',
+            ])
             ->get()
             ->map(fn (VlessConfig $config) => [
                 'type' => 'vless',
@@ -37,23 +44,7 @@ class NormalizedNodeService
                 'config' => $config,
             ]);
 
-        $shadowsocksConfigs = $user->shadowsocksConfigs()
-            ->where('shadowsocks_configs.is_active', true)
-            ->where('shadowsocks_configs.enable', true)
-            ->whereHas('server', fn ($query) => $query->where('is_active', true))
-            ->with('server')
-            ->get()
-            ->map(fn (ShadowsocksConfig $config) => [
-                'type' => 'shadowsocks',
-                'server_id' => (int) $config->server->getKey(),
-                'server' => (string) $config->server->name,
-                'server_sort' => mb_strtolower((string) $config->server->name),
-                'config_id' => (int) $config->getKey(),
-                'config' => $config,
-            ]);
-
         $items = $vlessConfigs
-            ->concat($shadowsocksConfigs)
             ->sortBy([
                 fn (array $item) => (int) $item['server_id'],
                 fn (array $item) => (string) $item['server_sort'],
@@ -81,7 +72,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig|ShadowsocksConfig}  $item
+     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
      * @param  array<string, Collection<int, Proxy>>  $proxyIndex
      * @return array<int, NormalizedNode>
      */
@@ -117,39 +108,11 @@ class NormalizedNodeService
                 ->all();
         }
 
-        if ($config instanceof ShadowsocksConfig) {
-            $proxies = $this->resolveReadyProxies(
-                serverId: (int) $config->server_id,
-                inboundId: $config->inbound_id ?? null,
-                proxyIndex: $proxyIndex,
-            );
-            $node = $this->buildNode($config->getLink(), $item, 0);
-
-            if (! $node) {
-                return [];
-            }
-
-            if ($proxies->isEmpty()) {
-                return [$node];
-            }
-
-            $proxyNodes = $proxies
-                ->map(fn (Proxy $proxy) => $this->buildProxyNode($node, $proxy, 0))
-                ->filter()
-                ->values()
-                ->all();
-
-            return [
-                $node,
-                ...$proxyNodes,
-            ];
-        }
-
         return [];
     }
 
     /**
-     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig|ShadowsocksConfig}  $item
+     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
      */
     private function buildNode(string $uri, array $item, int $index): ?NormalizedNode
     {
@@ -178,9 +141,7 @@ class NormalizedNodeService
             meta: [
                 'config_name' => (string) $config->name,
                 'config_port' => (int) $config->port,
-                'config_protocol' => $config instanceof VlessConfig
-                    ? (string) ($config->protocol ?: 'vless')
-                    : 'shadowsocks',
+                'config_protocol' => (string) ($config->protocol ?: 'vless'),
                 'config_inbound_id' => $config->inbound_id === null ? null : (int) $config->inbound_id,
             ],
         );
@@ -226,7 +187,7 @@ class NormalizedNodeService
     {
         return in_array(
             $this->parser->detectProtocol($line),
-            ['vless', 'trojan', 'shadowsocks', 'hysteria', 'hysteria2'],
+            ['vless', 'trojan', 'hysteria', 'hysteria2'],
             true
         );
     }
@@ -236,10 +197,9 @@ class NormalizedNodeService
         return match ($type) {
             'vless' => 0,
             'trojan' => 1,
-            'shadowsocks' => 2,
-            'hysteria' => 3,
-            'hysteria2' => 4,
-            'wireguard' => 5,
+            'hysteria' => 2,
+            'hysteria2' => 3,
+            'wireguard' => 4,
             default => 99,
         };
     }
@@ -268,7 +228,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  Collection<int, array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig|ShadowsocksConfig}>  $items
+     * @param  Collection<int, array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig}>  $items
      * @return array<string, Collection<int, Proxy>>
      */
     private function buildProxyIndex(Collection $items, User $user): array

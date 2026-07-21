@@ -5,9 +5,9 @@ namespace Tests\Feature;
 use App\Models\Config;
 use App\Models\CurrentPayment;
 use App\Models\Server;
-use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Models\VlessConfig;
 use App\Support\BotApiMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -171,6 +171,54 @@ class ApiUserRoutesTest extends TestCase
             ]);
     }
 
+    public function test_vless_configs_route_hides_configs_from_inactive_xray_inbound(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = Server::query()->create([
+            'name' => 'VLESS Server',
+            'code' => 'VLS',
+            'ip' => '127.0.0.2',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $xrayInbound = $server->xrayInbounds()->create([
+            'external_id' => 10,
+            'is_active' => false,
+            'is_public' => true,
+            'params' => [],
+        ]);
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $xrayInbound->id,
+            'inbound_id' => 10,
+            'user_id' => $user->id,
+            'name' => 'inactive-inbound-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'api-hidden-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/vless/configs")
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [],
+            ]);
+
+        $this->get("/api/users/{$user->telegram_id}/configs/vless/{$config->id}/download")
+            ->assertNotFound()
+            ->assertExactJson([
+                'message' => BotApiMessages::configNotFound(),
+            ]);
+    }
+
     public function test_wireguard_download_route_builds_temporary_file_for_modern_wireguard_server(): void
     {
         $user = $this->createActiveUser(balance: 500);
@@ -306,56 +354,26 @@ class ApiUserRoutesTest extends TestCase
         $this->assertSame((string) $user->id, (string) $deepLinkCredentials['i']);
     }
 
-    public function test_shadowsocks_configs_route_returns_config_resource_payload(): void
+    public function test_unsupported_shadowsocks_configs_route_returns_not_found(): void
     {
         $user = $this->createActiveUser(balance: 500);
-        $server = $this->createServer(code: 'SS');
-        $config = ShadowsocksConfig::query()->create([
-            'server_id' => $server->id,
-            'user_id' => $user->id,
-            'name' => 'android-ss',
-            'description' => 'Primary Shadowsocks config',
-            'is_active' => true,
-            'enable' => true,
-            'port' => 8388,
-            'method' => 'chacha20-ietf-poly1305',
-            'password' => 'secret',
-        ]);
 
         $this->getJson("/api/users/{$user->telegram_id}/shadowsocks/configs")
-            ->assertOk()
+            ->assertNotFound()
             ->assertExactJson([
-                'configs' => [
-                    [
-                        'id' => $config->id,
-                        'name' => 'android-ss',
-                        'download_url' => "/api/users/{$user->telegram_id}/configs/shadowsocks/{$config->id}/download",
-                        'qr_code_url' => "/api/users/{$user->telegram_id}/configs/shadowsocks/{$config->id}/qr-code",
-                    ],
-                ],
+                'message' => BotApiMessages::configNotFound(),
             ]);
     }
 
-    public function test_shadowsocks_download_route_returns_ss_link_for_active_user(): void
+    public function test_unsupported_shadowsocks_download_route_returns_not_found(): void
     {
         $user = $this->createActiveUser(balance: 500);
-        $server = $this->createServer(code: 'SS');
-        $config = ShadowsocksConfig::query()->create([
-            'server_id' => $server->id,
-            'user_id' => $user->id,
-            'name' => 'android-ss',
-            'description' => null,
-            'is_active' => true,
-            'enable' => true,
-            'port' => 8388,
-            'method' => 'chacha20-ietf-poly1305',
-            'password' => 'secret',
-        ]);
 
-        $response = $this->get("/api/users/{$user->telegram_id}/configs/shadowsocks/{$config->id}/download");
-
-        $response->assertOk();
-        $this->assertStringStartsWith('ss://', $response->getContent());
+        $this->get("/api/users/{$user->telegram_id}/configs/shadowsocks/999/download")
+            ->assertNotFound()
+            ->assertExactJson([
+                'message' => BotApiMessages::configNotFound(),
+            ]);
     }
 
     private function createUser(float $balance): User

@@ -6,7 +6,6 @@ use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Models\Server;
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Builder;
 
 class CreateDefaultConfigsForActiveSubscribersCommand extends Command
 {
@@ -21,42 +20,50 @@ class CreateDefaultConfigsForActiveSubscribersCommand extends Command
         $servers = Server::query()
             ->where('is_active', true)
             ->where('is_ready', true)
+            ->with('xrayInbounds')
             ->get();
 
         $users = User::query()
             ->whereHas('activeSubscription')
             ->when($userId, fn ($query) => $query->whereKey($userId))
-            ->where(function (Builder $query) use ($servers) {
-                $hasMissingRequirement = false;
+            ->with([
+                'configs:id,user_id,server_id',
+                'vlessConfigs:id,user_id,server_id,inbound_id',
+            ])
+            ->get();
 
-                foreach ($servers as $server) {
-                    if ($server->isVlessType()) {
-                        foreach ($server->getAllowedInboundIds() as $inboundId) {
-                            $hasMissingRequirement = true;
+        $users = $users->filter(function (User $user) use ($servers): bool {
+            foreach ($servers as $server) {
+                if ($server->isVlessType()) {
+                    $allowedInboundIds = $server->getAvailableInboundIdsForUser($user);
 
-                            $query->orWhereDoesntHave('vlessConfigs', function (Builder $configQuery) use ($server, $inboundId) {
-                                $configQuery
-                                    ->where('server_id', $server->id)
-                                    ->where('inbound_id', $inboundId);
-                            });
-                        }
-
+                    if ($allowedInboundIds === []) {
                         continue;
                     }
 
-                    $hasMissingRequirement = true;
+                    $existingInboundIds = $user->vlessConfigs
+                        ->where('server_id', $server->id)
+                        ->pluck('inbound_id')
+                        ->filter(fn (mixed $inboundId) => $inboundId !== null)
+                        ->map(fn (mixed $inboundId) => (int) $inboundId)
+                        ->unique()
+                        ->values()
+                        ->all();
 
-                    $query->orWhereDoesntHave('configs', function (Builder $configQuery) use ($server) {
-                        $configQuery->where('server_id', $server->id);
-                    });
+                    if (collect($allowedInboundIds)->diff($existingInboundIds)->isNotEmpty()) {
+                        return true;
+                    }
+
+                    continue;
                 }
 
-                if (! $hasMissingRequirement) {
-                    $query->whereRaw('1 = 0');
+                if (! $user->configs->contains(fn (mixed $config) => (int) $config->server_id === (int) $server->id)) {
+                    return true;
                 }
-            })
-            ->select('id')
-            ->get();
+            }
+
+            return false;
+        })->values();
 
         foreach ($users as $user) {
             DispatchDefaultConfigsForUserJob::dispatch($user->id);

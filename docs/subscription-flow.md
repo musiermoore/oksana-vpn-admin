@@ -174,7 +174,7 @@ Flow:
 
 - `/connect` собирается через [UserSubscriptionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Subscriptions/UserSubscriptionService.php)
 - в основную подписку входят:
-  - обычные пользовательские узлы
+  - обычные пользовательские VLESS-узлы
   - внешние `vless_external_subscriptions`, у которых включён `include_in_main_subscription`
 - `/connect-json` использует тот же набор узлов, но отдаёт JSON-массив полных Xray-style конфигов, по одному объекту на узел
 - каждый объект в `/connect-json` содержит индивидуальный `remarks` и `outbounds`, а общие `dns`/`routing`/`inbounds` подмешиваются из конфигурации приложения

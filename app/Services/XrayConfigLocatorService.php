@@ -4,14 +4,13 @@ namespace App\Services;
 
 use App\Models\ActiveConnection;
 use App\Models\Server;
-use App\Models\ShadowsocksConfig;
 use App\Models\VlessConfig;
 use Illuminate\Database\Eloquent\Model;
 
 class XrayConfigLocatorService
 {
     /**
-     * @return array{type: string, config: VlessConfig|ShadowsocksConfig, protocol: string}|null
+     * @return array{type: string, config: VlessConfig, protocol: string}|null
      */
     public function findByServerAndEmail(Server $server, string $email): ?array
     {
@@ -24,6 +23,11 @@ class XrayConfigLocatorService
         $vlessConfig = VlessConfig::query()
             ->where('server_id', $server->id)
             ->where('name', $email)
+            ->where(function ($query) {
+                $query
+                    ->whereNull('xray_inbound_id')
+                    ->orWhereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true));
+            })
             ->first();
 
         if ($vlessConfig) {
@@ -34,27 +38,13 @@ class XrayConfigLocatorService
             ];
         }
 
-        $shadowsocksConfig = ShadowsocksConfig::query()
-            ->where('server_id', $server->id)
-            ->where('name', $email)
-            ->first();
-
-        if ($shadowsocksConfig) {
-            return [
-                'type' => ActiveConnection::CONFIG_TYPE_SHADOWSOCKS,
-                'config' => $shadowsocksConfig,
-                'protocol' => 'shadowsocks',
-            ];
-        }
-
         return null;
     }
 
-    public function findModel(string $type, int $configId): VlessConfig|ShadowsocksConfig|null
+    public function findModel(string $type, int $configId): ?VlessConfig
     {
         return match ($type) {
             ActiveConnection::CONFIG_TYPE_VLESS => VlessConfig::query()->find($configId),
-            ActiveConnection::CONFIG_TYPE_SHADOWSOCKS => ShadowsocksConfig::query()->find($configId),
             default => null,
         };
     }

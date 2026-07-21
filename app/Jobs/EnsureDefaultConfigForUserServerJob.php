@@ -61,7 +61,7 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
 
     private function assignVlessConfig(User $user, Server $server): void
     {
-        if ($server->getAllowedInboundIds() === []) {
+        if ($server->getAvailableInboundIdsForUser($user) === []) {
             return;
         }
 

@@ -7,7 +7,6 @@ use App\DTOs\User\ApiUserRegistrationResultData;
 use App\Models\PaymentPeriod;
 use App\Models\User;
 use App\Repositories\ConfigRepository;
-use App\Repositories\ShadowsocksConfigRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
 use App\Services\ReferralService;
@@ -25,7 +24,6 @@ class ApiUserService
         private readonly UserRepository $users,
         private readonly ConfigRepository $configs,
         private readonly VlessConfigRepository $vlessConfigs,
-        private readonly ShadowsocksConfigRepository $shadowsocksConfigs,
         private readonly SubscriptionService $subscriptionService,
         private readonly VlessDeepLinkService $vlessDeepLinks,
         private readonly ReferralService $referrals,
@@ -108,11 +106,17 @@ class ApiUserService
 
     public function getUserConfigs(User $user, string $type): Collection
     {
-        $configs = match (true) {
-            $this->isVlessType($type) => $this->vlessConfigs->allForUser($user),
-            $this->isShadowsocksType($type) => $this->shadowsocksConfigs->allForUser($user),
-            default => $this->configs->allForUser($user),
-        };
+        if (! $this->isSupportedConfigType($type)) {
+            return collect();
+        }
+
+        $configs = $this->isVlessType($type)
+            ? $this->vlessConfigs->allForUser($user)
+            : $this->configs->allForUser($user);
+
+        $configs = $this->isVlessType($type)
+            ? $configs->filter(fn (Model $config) => $this->isVisibleVlessConfig($config))->values()
+            : $configs;
 
         return $user->is_admin
             ? $configs
@@ -121,21 +125,40 @@ class ApiUserService
 
     public function findUserConfig(User $user, string $type, string $configId): ?Model
     {
-        $config = match (true) {
-            $this->isVlessType($type) => $this->vlessConfigs->findForUser($user, $configId),
-            $this->isShadowsocksType($type) => $this->shadowsocksConfigs->findForUser($user, $configId),
-            default => $this->configs->findForUser($user, $configId),
-        };
+        if (! $this->isSupportedConfigType($type)) {
+            return null;
+        }
+
+        $config = $this->isVlessType($type)
+            ? $this->vlessConfigs->findForUser($user, $configId)
+            : $this->configs->findForUser($user, $configId);
 
         if (! $config instanceof Model) {
             return null;
         }
 
         if ($user->is_admin) {
-            return $config;
+            return $this->isVisibleVlessConfig($config) ? $config : null;
         }
 
-        return (bool) $config->server?->hide_configs_for_non_admins ? null : $config;
+        if ((bool) $config->server?->hide_configs_for_non_admins) {
+            return null;
+        }
+
+        return $this->isVisibleVlessConfig($config) ? $config : null;
+    }
+
+    private function isVisibleVlessConfig(Model $config): bool
+    {
+        if (! $config instanceof \App\Models\VlessConfig) {
+            return true;
+        }
+
+        if (! $config->relationLoaded('xrayInbound')) {
+            $config->loadMissing('xrayInbound:id,is_active');
+        }
+
+        return $config->xrayInbound === null || (bool) $config->xrayInbound->is_active;
     }
 
     public function getVlessLink(User $user): string
@@ -214,14 +237,19 @@ class ApiUserService
         return trim(mb_strtolower($type)) === 'vless';
     }
 
-    public function isShadowsocksType(string $type): bool
-    {
-        return trim(mb_strtolower($type)) === 'shadowsocks';
-    }
-
     public function isLinkConfigType(string $type): bool
     {
-        return $this->isVlessType($type) || $this->isShadowsocksType($type);
+        return $this->isVlessType($type);
+    }
+
+    public function isWireGuardType(string $type): bool
+    {
+        return trim(mb_strtolower($type)) === 'wireguard';
+    }
+
+    public function isSupportedConfigType(string $type): bool
+    {
+        return $this->isVlessType($type) || $this->isWireGuardType($type);
     }
 
     private function normalizeTelegram(string $telegram): string

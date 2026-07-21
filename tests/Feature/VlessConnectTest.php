@@ -4,12 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\Proxy;
 use App\Models\Server;
-use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\UserServerStat;
+use App\Models\UserSubscription;
 use App\Models\VlessConfig;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
+use App\Models\XrayInbound;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -33,11 +35,7 @@ class VlessConnectTest extends TestCase
             )),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $latviaOne = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
         $latviaTwo = $this->createServer('Латвия', 'LV2', 'lv-2.example.com');
@@ -75,11 +73,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_includes_wireguard_configs_in_uri_subscription(): void
     {
-        $user = User::query()->create([
-            'name' => 'WireGuard User',
-            'telegram' => '@wg-user',
-            'telegram_id' => '223344',
-        ]);
+        $user = $this->createActiveUser('WireGuard User', '@wg-user', '223344');
 
         $server = Server::query()->create([
             'name' => 'Латвия WG',
@@ -125,11 +119,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_json_returns_xray_profile_array_with_hardcoded_dns_and_route_settings(): void
     {
-        $user = User::query()->create([
-            'name' => 'JSON User',
-            'telegram' => '@json-user',
-            'telegram_id' => '112233',
-        ]);
+        $user = $this->createActiveUser('JSON User', '@json-user', '112233');
 
         $server = $this->createServer('Нидерланды', 'NL1', 'nl.oksana1984.ru');
 
@@ -172,7 +162,7 @@ class VlessConnectTest extends TestCase
         $this->assertSame('8.8.8.8', data_get($payload, '0.dns.servers.0.address'));
         $this->assertSame(['domain:openai.com', 'domain:chatgpt.com', 'domain:codex.com', 'domain:oaistatic.com', 'domain:oaiusercontent.com'], data_get($payload, '0.dns.servers.0.domains'));
         $this->assertSame('AsIs', data_get($payload, '0.routing.domainStrategy'));
-        $this->assertSame('proxy', data_get($payload, '0.routing.rules.4.outboundTag'));
+        $this->assertSame('direct', data_get($payload, '0.routing.rules.4.outboundTag'));
         $this->assertSame('socks', data_get($payload, '0.inbounds.0.tag'));
         $this->assertSame('http', data_get($payload, '0.inbounds.1.tag'));
         $this->assertSame('vless', data_get($payload, '0.outbounds.0.protocol'));
@@ -186,11 +176,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_json_can_return_base64_encoded_profile_array(): void
     {
-        $user = User::query()->create([
-            'name' => 'JSON Base64 User',
-            'telegram' => '@json-base64-user',
-            'telegram_id' => '445566',
-        ]);
+        $user = $this->createActiveUser('JSON Base64 User', '@json-base64-user', '445566');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv.oksana1984.ru');
 
@@ -234,6 +220,56 @@ class VlessConnectTest extends TestCase
         $this->assertSame('lv.oksana1984.ru', data_get($payload, '0.outbounds.0.settings.vnext.0.address'));
     }
 
+    public function test_connect_does_not_include_configs_from_inactive_xray_inbound(): void
+    {
+        $user = $this->createActiveUser('Hidden Inbound User', '@hidden-inbound-user', '991122');
+
+        $server = $this->createServer('Швеция', 'SE1', 'se.oksana1984.ru');
+
+        $xrayInbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 10,
+            'is_active' => false,
+            'is_public' => true,
+            'params' => [],
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $xrayInbound->id,
+            'inbound_id' => 10,
+            'user_id' => $user->id,
+            'name' => 'inactive-vless',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'inactive-vless-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'sni' => 'example.com',
+            'pbk' => 'public-key',
+            'sid' => 'short-id',
+            'fp' => 'chrome',
+            'flow' => 'xtls-rprx-vision',
+            'spx' => '/',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('991122'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringNotContainsString('inactive-vless-uuid', $decoded);
+        $this->assertStringNotContainsString('Швеция • VLESS • TCP', $decoded);
+    }
+
     public function test_deep_link_route_redirects_to_v2rayng_subscription_import(): void
     {
         Http::fake([
@@ -242,11 +278,7 @@ class VlessConnectTest extends TestCase
             )),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
         $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
@@ -275,11 +307,7 @@ class VlessConnectTest extends TestCase
             )),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
         $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
@@ -307,25 +335,29 @@ class VlessConnectTest extends TestCase
             'auth.basic_auth.password' => 'debug-pass',
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Debug User',
-            'telegram' => '@debug',
-            'telegram_id' => '654321',
-        ]);
+        $user = $this->createActiveUser('Debug User', '@debug', '654321');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
 
-        $config = ShadowsocksConfig::query()->create([
+        $config = VlessConfig::query()->create([
             'server_id' => $server->id,
             'inbound_id' => 12,
             'user_id' => $user->id,
-            'name' => 'android-ss',
+            'name' => 'debug-vless',
             'description' => null,
             'is_active' => true,
             'enable' => true,
-            'port' => 8388,
-            'method' => 'chacha20-ietf-poly1305',
-            'password' => 'secret',
+            'uuid' => 'debug-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
         ]);
 
         $query = [
@@ -347,10 +379,10 @@ class VlessConnectTest extends TestCase
                     'url' => $config->getLink(),
                     'config' => [
                         'id' => $config->id,
-                        'name' => 'Латвия • SHADOWSOCKS • TCP',
+                        'name' => 'Латвия • VLESS • TCP',
                         'domain' => 'lv-1.example.com',
-                        'port' => 8388,
-                        'protocol' => 'shadowsocks',
+                        'port' => 443,
+                        'protocol' => 'vless',
                         'transport' => 'tcp',
                         'inbound_id' => 12,
                     ],
@@ -364,12 +396,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_wl_returns_named_external_subscription_content(): void
     {
-        $user = User::query()->create([
-            'name' => 'WL User',
-            'telegram' => '@wl-user',
-            'telegram_id' => '777777',
-            'is_admin' => false,
-        ]);
+        $user = $this->createActiveUser('WL User', '@wl-user', '777777');
 
         $subscription = VlessExternalSubscription::query()->create([
             'name' => 'White List',
@@ -425,12 +452,7 @@ class VlessConnectTest extends TestCase
             'auth.basic_auth.password' => 'debug-pass',
         ]);
 
-        $user = User::query()->create([
-            'name' => 'WL Debug User',
-            'telegram' => '@wl-debug',
-            'telegram_id' => '888888',
-            'is_admin' => false,
-        ]);
+        $user = $this->createActiveUser('WL Debug User', '@wl-debug', '888888');
 
         $subscription = VlessExternalSubscription::query()->create([
             'name' => 'Admin only WL',
@@ -474,11 +496,7 @@ class VlessConnectTest extends TestCase
             )),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
         $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
@@ -508,11 +526,7 @@ class VlessConnectTest extends TestCase
             )),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
         $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
@@ -543,11 +557,7 @@ class VlessConnectTest extends TestCase
             'https://crypto.happ.su/api-v2.php' => Http::response('happ://crypt5/some-encrypted-value'),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
         $this->createConfig($user->id, $server->id, 'uuid-1', 'sub-lv-1');
@@ -653,11 +663,7 @@ class VlessConnectTest extends TestCase
     {
         Http::fake();
 
-        $user = User::query()->create([
-            'name' => 'XHTTP User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('XHTTP User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV1', 'lv.oksana1984.ru');
 
@@ -705,19 +711,15 @@ class VlessConnectTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_connect_returns_mixed_vless_and_shadowsocks_links_sorted_by_type_server_and_config_id(): void
+    public function test_connect_returns_local_and_remote_links_sorted_by_server_and_config_id(): void
     {
         Http::fake([
             'https://fi.example.com/sub/sub-fi' => Http::response(base64_encode(
-                "vless://uuid-fi@fi.example.com?type=tcp&security=reality#old-fi\nss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpzZWNyZXQtcmVtb3Rl@fi.example.com:8388#old-ss\n"
+                "vless://uuid-fi@fi.example.com?type=tcp&security=reality#old-fi\n"
             )),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $finland = $this->createServer('Финляндия', 'FI', 'fi.example.com');
         $latvia = $this->createServer('Латвия', 'LV', 'lv.example.com');
@@ -760,26 +762,22 @@ class VlessConnectTest extends TestCase
             'spx' => '/',
         ]);
 
-        $ssFinland = ShadowsocksConfig::query()->create([
-            'server_id' => $finland->id,
-            'user_id' => $user->id,
-            'name' => 'ss-fi',
-            'is_active' => true,
-            'enable' => true,
-            'port' => 8388,
-            'method' => 'chacha20-ietf-poly1305',
-            'password' => 'secret-1',
-        ]);
-
-        $ssEstonia = ShadowsocksConfig::query()->create([
+        VlessConfig::query()->create([
             'server_id' => $estonia->id,
             'user_id' => $user->id,
-            'name' => 'ss-ee',
+            'name' => 'vless-ee',
             'is_active' => true,
             'enable' => true,
-            'port' => 8388,
-            'method' => 'chacha20-ietf-poly1305',
-            'password' => 'secret-2',
+            'uuid' => 'uuid-ee',
+            'port' => 443,
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
         ]);
 
         $response = $this->get(route('vless.connect', [
@@ -798,30 +796,25 @@ class VlessConnectTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertCount(4, $lines);
+        $this->assertCount(3, $lines);
         $names = $this->extractNames($decoded);
         sort($names);
 
         $expectedNames = [
             'Латвия • VLESS • TCP',
-            'Финляндия • SHADOWSOCKS • TCP',
             'Финляндия • VLESS • TCP',
-            'Эстония • SHADOWSOCKS • TCP',
+            'Эстония • VLESS • TCP',
         ];
         sort($expectedNames);
 
         $this->assertSame($expectedNames, $names);
-        $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'vless://')));
-        $this->assertCount(2, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
+        $this->assertCount(3, array_filter($lines, fn (string $line) => str_starts_with($line, 'vless://')));
+        $this->assertCount(0, array_filter($lines, fn (string $line) => str_starts_with($line, 'ss://')));
     }
 
     public function test_connect_returns_direct_and_proxy_links_when_ready_proxy_is_linked_to_server(): void
     {
-        $user = User::query()->create([
-            'name' => 'Proxy User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Proxy User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
         $this->createProxy($server, 'Ru Proxy', 'proxy.example.com', 8443);
@@ -868,11 +861,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_prefers_proxy_with_matching_inbound_id_over_generic_proxy(): void
     {
-        $user = User::query()->create([
-            'name' => 'Proxy User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Proxy User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
         $this->createProxy($server, 'Generic Proxy', 'generic.example.com', 8443, null);
@@ -915,11 +904,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_does_not_use_generic_proxy_for_vless_when_exact_inbound_proxy_is_missing(): void
     {
-        $user = User::query()->create([
-            'name' => 'Proxy User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Proxy User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
         $this->createProxy($server, 'Generic Proxy', 'generic.example.com', 8443, null);
@@ -960,18 +945,9 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_includes_not_ready_proxy_for_admin_user_only(): void
     {
-        $admin = User::query()->create([
-            'name' => 'Admin User',
-            'telegram' => '@admin',
-            'telegram_id' => '111111',
-            'is_admin' => true,
-        ]);
+        $admin = $this->createActiveUser('Admin User', '@admin', '111111', true);
 
-        $regularUser = User::query()->create([
-            'name' => 'Regular User',
-            'telegram' => '@tester',
-            'telegram_id' => '222222',
-        ]);
+        $regularUser = $this->createActiveUser('Regular User', '@tester', '222222');
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
         $this->createProxy($server, 'Ru Proxy', 'proxy.example.com', 8443, 10, false);
@@ -1025,11 +1001,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_hides_configs_from_inactive_servers(): void
     {
-        $user = User::query()->create([
-            'name' => 'Inactive Server User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Inactive Server User', '@tester', '123456');
 
         $activeServer = $this->createServer('Латвия', 'LV', 'lv.example.com');
         $inactiveServer = $this->createServer('Финляндия', 'FI', 'fi.example.com');
@@ -1098,11 +1070,7 @@ class VlessConnectTest extends TestCase
             )),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Sort User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Sort User', '@tester', '123456');
 
         $firstServer = $this->createServer('Латвия', 'LV1', 'lv-1.example.com');
         $secondServer = $this->createServer('Латвия', 'LV2', 'lv-2.example.com');
@@ -1129,11 +1097,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_static_trojan_links_for_local_trojan_configs(): void
     {
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $latvia = $this->createServer('Латвия', 'LV', 'lv.example.com');
 
@@ -1171,11 +1135,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_full_hysteria2_links_for_local_hysteria_configs(): void
     {
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $latvia = $this->createServer('Латвия', 'LV', 'lv.oksana1984.ru');
 
@@ -1245,14 +1205,17 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_subscription_metadata_headers_from_local_database(): void
     {
-        $user = User::query()->create([
-            'name' => 'Premium Subscription',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-            'max_devices' => 5,
-            'traffic_limit_bytes' => 107374182400,
-            'subscription_expires_at' => now()->addDays(7)->endOfDay(),
-        ]);
+        $user = $this->createActiveUser(
+            'Premium Subscription',
+            '@tester',
+            '123456',
+            false,
+            [
+                'max_devices' => 5,
+                'traffic_limit_bytes' => 107374182400,
+                'subscription_expires_at' => now()->addDays(7)->endOfDay(),
+            ],
+        );
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
 
@@ -1310,11 +1273,7 @@ class VlessConnectTest extends TestCase
             ]))),
         ]);
 
-        $user = User::query()->create([
-            'name' => 'Test User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Test User', '@tester', '123456');
 
         $server = $this->createServer('Германия', 'DE', 'de.example.com');
 
@@ -1350,11 +1309,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_clash_subscription_with_auto_and_manual_groups(): void
     {
-        $user = User::query()->create([
-            'name' => 'Clash User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Clash User', '@tester', '123456');
 
         $server = $this->createServer('Германия', 'DE', 'de.example.com');
 
@@ -1420,11 +1375,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_sing_box_subscription_with_auto_and_manual_outbounds(): void
     {
-        $user = User::query()->create([
-            'name' => 'Sing User',
-            'telegram' => '@tester',
-            'telegram_id' => '123456',
-        ]);
+        $user = $this->createActiveUser('Sing User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
 
@@ -1468,11 +1419,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_sing_box_wireguard_subscription_with_decoded_keys_and_address(): void
     {
-        $user = User::query()->create([
-            'name' => 'WireGuard JSON User',
-            'telegram' => '@wg-json',
-            'telegram_id' => '998877',
-        ]);
+        $user = $this->createActiveUser('WireGuard JSON User', '@wg-json', '998877');
 
         $server = $this->createServer('Латвия WG', 'LVWG', 'lv.oksana1984.ru');
 
@@ -1522,11 +1469,7 @@ class VlessConnectTest extends TestCase
 
     public function test_connect_returns_clash_wireguard_subscription_with_decoded_keys_and_address(): void
     {
-        $user = User::query()->create([
-            'name' => 'WireGuard Clash User',
-            'telegram' => '@wg-clash',
-            'telegram_id' => '556677',
-        ]);
+        $user = $this->createActiveUser('WireGuard Clash User', '@wg-clash', '556677');
 
         $server = $this->createServer('Латвия WG', 'LVWG', 'lv.oksana1984.ru');
 
@@ -1598,6 +1541,34 @@ class VlessConnectTest extends TestCase
             'sid' => 'abcd',
             'spx' => '/',
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createActiveUser(
+        string $name,
+        string $telegram,
+        string $telegramId,
+        bool $isAdmin = false,
+        array $attributes = [],
+    ): User {
+        $user = User::query()->create([
+            'name' => $name,
+            'telegram' => $telegram,
+            'telegram_id' => $telegramId,
+            'is_admin' => $isAdmin,
+            ...$attributes,
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => Carbon::now()->subDay()->toDateString(),
+            'end_date' => Carbon::now()->addMonth()->toDateString(),
+            'price' => 100,
+        ]);
+
+        return $user;
     }
 
     private function createProxy(Server $server, string $name, string $host, int $port, ?int $inboundId = null, bool $isReady = true): Proxy

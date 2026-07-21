@@ -19,7 +19,7 @@ class StoreXrayConfigRequest extends DataFormRequest
     public function rules(): array
     {
         return [
-            'protocol' => ['required', 'string', 'in:vless,shadowsocks'],
+            'protocol' => ['required', 'string', 'in:vless'],
             'user_id' => ['required', 'exists:users,id'],
             'server_id' => [
                 'required',

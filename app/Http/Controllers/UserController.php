@@ -76,8 +76,6 @@ class UserController extends Controller
             'configs',
             'vlessConfigs.server',
             'vlessConfigs.user',
-            'shadowsocksConfigs.server',
-            'shadowsocksConfigs.user',
         ]);
 
         return $this->inertia('Users/Form', [

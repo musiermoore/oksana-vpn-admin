@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Models\ShadowsocksConfig;
 use App\Models\VlessConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,6 +19,7 @@ class UserResource extends JsonResource
             'join_at' => $this->join_at,
             'balance' => (float) ($this->balance ?? 0),
             'is_active' => $this->is_active,
+            'is_admin' => (bool) ($this->is_admin ?? false),
             'max_devices' => (int) ($this->max_devices ?? 0),
             'traffic_limit_bytes' => (int) ($this->traffic_limit_bytes ?? 0),
             'subscription_expires_at' => optional($this->subscription_expires_at)?->toAtomString(),
@@ -28,14 +28,9 @@ class UserResource extends JsonResource
             'payment_amount' => (float) ($this->payment_amount ?? 0),
             'configs' => $this->whenLoaded('configs', fn () => ConfigResource::collection($this->configs)->toArray($request)),
             'xray_configs' => $this->when(
-                $this->relationLoaded('vlessConfigs') || $this->relationLoaded('shadowsocksConfigs'),
+                $this->relationLoaded('vlessConfigs'),
                 fn () => collect($this->relationLoaded('vlessConfigs') ? $this->vlessConfigs->all() : [])
-                    ->concat($this->relationLoaded('shadowsocksConfigs') ? $this->shadowsocksConfigs->all() : [])
-                    ->map(function (VlessConfig|ShadowsocksConfig $config) use ($request) {
-                        $protocol = $config instanceof VlessConfig ? 'vless' : 'shadowsocks';
-
-                        return (new XrayConfigResource($config, $protocol))->toArray($request);
-                    })
+                    ->map(fn (VlessConfig $config) => (new XrayConfigResource($config, 'vless'))->toArray($request))
                     ->sortBy([
                         fn (array $config) => $config['protocol'],
                         fn (array $config) => $config['server']['code'] ?? '',

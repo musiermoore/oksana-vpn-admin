@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Server;
-use App\Models\ShadowsocksConfig;
 use App\Models\VlessConfig;
 use RuntimeException;
 
@@ -52,24 +51,6 @@ class XrayClientAccessService
                     'uuid' => $config->uuid,
                     'subId' => $config->sub_id,
                     'flow' => $config->flow,
-                ],
-            );
-
-            $config->forceFill(['enable' => $enabled])->save();
-
-            return;
-        }
-
-        if ($config instanceof ShadowsocksConfig) {
-            $service->setClientEnabledByIdentifier(
-                identifier: $config->name,
-                email: $config->name,
-                inboundId: (int) $config->inbound_id,
-                enabled: $enabled,
-                context: [
-                    'protocol' => 'shadowsocks',
-                    'password' => $config->password,
-                    'method' => $config->method,
                 ],
             );
 

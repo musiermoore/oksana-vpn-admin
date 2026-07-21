@@ -9,7 +9,6 @@ use App\Http\Resources\Api\ApiBalanceResource;
 use App\Http\Resources\Api\ApiConfigResource;
 use App\Http\Resources\Api\ApiRegisteredUserResource;
 use App\Http\Resources\Api\ApiRegistrationStatusResource;
-use App\Http\Resources\Api\ApiShadowsocksConfigResource;
 use App\Http\Resources\Api\ApiSubscriptionPackageResource;
 use App\Http\Resources\Api\ApiVlessConfigResource;
 use App\Http\Resources\Api\ApiVlessDeepLinksResource;
@@ -90,13 +89,17 @@ class UserController extends Controller
             return $user;
         }
 
+        if (! $this->userService->isSupportedConfigType($type)) {
+            return response()->json([
+                'message' => BotApiMessages::configNotFound(),
+            ], 404);
+        }
+
         $configs = $this->userService->getUserConfigs($user, $type);
 
-        $resource = match (true) {
-            $this->userService->isVlessType($type) => ApiVlessConfigResource::collection($configs),
-            $this->userService->isShadowsocksType($type) => ApiShadowsocksConfigResource::collection($configs),
-            default => ApiConfigResource::collection($configs),
-        };
+        $resource = $this->userService->isVlessType($type)
+            ? ApiVlessConfigResource::collection($configs)
+            : ApiConfigResource::collection($configs);
 
         return response()->json([
             'configs' => $resource->resolve(),
@@ -109,6 +112,12 @@ class UserController extends Controller
 
         if ($user instanceof JsonResponse) {
             return $user;
+        }
+
+        if (! $this->userService->isSupportedConfigType($type)) {
+            return response()->json([
+                'message' => BotApiMessages::configNotFound(),
+            ], 404);
         }
 
         /** @var Config $config */
@@ -139,6 +148,12 @@ class UserController extends Controller
 
         if ($user instanceof JsonResponse) {
             return $user;
+        }
+
+        if (! $this->userService->isSupportedConfigType($type)) {
+            return response()->json([
+                'message' => BotApiMessages::configNotFound(),
+            ], 404);
         }
 
         $config = $this->userService->findUserConfig($user, $type, $configId);

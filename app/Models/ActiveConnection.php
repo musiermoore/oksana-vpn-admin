@@ -10,8 +10,6 @@ class ActiveConnection extends Model
 {
     public const CONFIG_TYPE_VLESS = 'vless';
 
-    public const CONFIG_TYPE_SHADOWSOCKS = 'shadowsocks';
-
     protected $fillable = [
         'user_id',
         'server_id',

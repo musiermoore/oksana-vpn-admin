@@ -2,14 +2,13 @@
 
 namespace App\Http\Resources;
 
-use App\Models\ShadowsocksConfig;
 use App\Models\VlessConfig;
 use Illuminate\Http\Request;
 
 class XrayConfigResource
 {
     public function __construct(
-        private readonly VlessConfig|ShadowsocksConfig $resource,
+        private readonly VlessConfig $resource,
         private readonly string $routeProtocol,
     ) {}
 
@@ -28,16 +27,14 @@ class XrayConfigResource
             ]),
         ];
 
-        if ($this->resource instanceof VlessConfig) {
-            $links['enable'] = route('xray-configs.enable', [
-                'protocol' => $this->routeProtocol,
-                'config' => $this->resource->getKey(),
-            ]);
-            $links['disable'] = route('xray-configs.disable', [
-                'protocol' => $this->routeProtocol,
-                'config' => $this->resource->getKey(),
-            ]);
-        }
+        $links['enable'] = route('xray-configs.enable', [
+            'protocol' => $this->routeProtocol,
+            'config' => $this->resource->getKey(),
+        ]);
+        $links['disable'] = route('xray-configs.disable', [
+            'protocol' => $this->routeProtocol,
+            'config' => $this->resource->getKey(),
+        ]);
 
         return [
             'id' => $this->resource->getKey(),
@@ -46,9 +43,9 @@ class XrayConfigResource
             'name' => $this->resource->name,
             'is_active' => (bool) $this->resource->is_active,
             'enable' => (bool) $this->resource->enable,
-            'password' => $this->resource instanceof VlessConfig ? $this->resource->password : null,
-            'auth' => $this->resource instanceof VlessConfig ? $this->resource->auth : null,
-            'supports_toggle' => $this->resource instanceof VlessConfig,
+            'password' => $this->resource->password,
+            'auth' => $this->resource->auth,
+            'supports_toggle' => true,
             'link' => $this->resource->link,
             'server' => $this->resource->server ? (new ServerResource($this->resource->server))->toArray($request) : null,
             'user' => $this->resource->user ? [
@@ -62,10 +59,6 @@ class XrayConfigResource
 
     private function resolveDisplayProtocol(): string
     {
-        if ($this->resource instanceof ShadowsocksConfig) {
-            return 'shadowsocks';
-        }
-
         return mb_strtolower((string) ($this->resource->protocol ?: 'vless'));
     }
 
@@ -76,7 +69,6 @@ class XrayConfigResource
             'trojan' => 'Trojan',
             'hysteria' => 'Hysteria',
             'hysteria2', 'hy2' => 'Hysteria2',
-            'shadowsocks' => 'Shadowsocks',
             default => mb_strtoupper($protocol),
         };
     }

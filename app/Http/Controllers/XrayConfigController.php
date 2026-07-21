@@ -2,19 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\VlessConfig\VlessConfigUpdateData;
 use App\Http\Requests\XrayConfig\StoreXrayConfigRequest;
 use App\Http\Requests\XrayConfig\UpdateXrayConfigRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\XrayConfigResource;
 use App\Models\Server;
-use App\Models\ShadowsocksConfig;
 use App\Models\User;
 use App\Models\VlessConfig;
-use App\Services\Crud\ShadowsocksConfigCrudService;
 use App\Services\Crud\VlessConfigCrudService;
 use App\Services\XuiConfigServiceFactory;
 use Exception;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use RuntimeException;
 
@@ -22,7 +20,6 @@ class XrayConfigController extends Controller
 {
     public function __construct(
         private readonly VlessConfigCrudService $vlessConfigService,
-        private readonly ShadowsocksConfigCrudService $shadowsocksConfigService,
     ) {}
 
     public function index(Request $request)
@@ -31,13 +28,8 @@ class XrayConfigController extends Controller
             ->with([
                 'vlessConfigs.user',
                 'vlessConfigs.server',
-                'shadowsocksConfigs.user',
-                'shadowsocksConfigs.server',
             ])
-            ->where(function ($query) {
-                $query->whereHas('vlessConfigs')
-                    ->orWhereHas('shadowsocksConfigs');
-            })
+            ->whereHas('vlessConfigs')
             ->orderByDesc('deleted_at')
             ->orderBy('created_at')
             ->get();
@@ -69,7 +61,7 @@ class XrayConfigController extends Controller
             'config' => null,
             'selected_user_id' => $request->integer('user_id') ?: null,
             'users' => UserResource::collection($users)->toArray($request),
-            'available_inbounds' => $this->getAvailableInbounds(),
+            'available_inbounds' => $this->getAvailableInbounds($request->user()),
         ]);
     }
 
@@ -77,12 +69,7 @@ class XrayConfigController extends Controller
     {
         try {
             $data = $request->toDto();
-
-            if ($data->protocol === 'vless') {
-                $this->vlessConfigService->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
-            } else {
-                $this->shadowsocksConfigService->create($data->userId, $data->serverId, $data->inboundId);
-            }
+            $this->vlessConfigService->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
         } catch (RuntimeException $exception) {
             return redirect()->back()
                 ->with('error', $exception->getMessage());
@@ -113,11 +100,7 @@ class XrayConfigController extends Controller
         $model = $this->resolveConfig($protocol, $config);
         $userId = $request->toDto()->userId;
 
-        if ($protocol === 'vless') {
-            $this->vlessConfigService->update($model, new \App\DTOs\VlessConfig\VlessConfigUpdateData($userId));
-        } else {
-            $this->shadowsocksConfigService->update($model, $userId);
-        }
+        $this->vlessConfigService->update($model, new VlessConfigUpdateData($userId));
 
         return redirect()->route('xray-configs.index')
             ->with('success', 'Конфиг успешно обновлён');
@@ -126,12 +109,7 @@ class XrayConfigController extends Controller
     public function destroy(string $protocol, string $config)
     {
         $model = $this->resolveConfig($protocol, $config);
-
-        if ($protocol === 'vless') {
-            $this->vlessConfigService->unassign($model);
-        } else {
-            $this->shadowsocksConfigService->unassign($model);
-        }
+        $this->vlessConfigService->unassign($model);
 
         return redirect()->back()
             ->with('success', 'Конфиг отвязан от пользователя');
@@ -180,7 +158,6 @@ class XrayConfigController extends Controller
     {
         return collect([
             ...$user->vlessConfigs->map(fn (VlessConfig $config) => new XrayConfigResource($config, 'vless'))->all(),
-            ...$user->shadowsocksConfigs->map(fn (ShadowsocksConfig $config) => new XrayConfigResource($config, 'shadowsocks'))->all(),
         ])
             ->map(fn (XrayConfigResource $resource) => $resource->toArray($request))
             ->sortBy([
@@ -195,7 +172,7 @@ class XrayConfigController extends Controller
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function getAvailableInbounds(): array
+    private function getAvailableInbounds(?User $viewer = null): array
     {
         return Server::query()
             ->vless()
@@ -205,13 +182,32 @@ class XrayConfigController extends Controller
             ->get()
             ->flatMap(function (Server $server) {
                 try {
-                    $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
-                    $vless = collect($service->getAllVlessInbounds())
-                        ->map(fn (array $inbound) => $this->mapInboundForForm($server, $inbound, 'vless'));
-                    $shadowsocks = collect($service->getAllShadowsocksInbounds())
-                        ->map(fn (array $inbound) => $this->mapInboundForForm($server, $inbound, 'shadowsocks'));
+                    $visibilityByInboundId = $server->xrayInbounds()
+                        ->get(['external_id', 'is_active', 'is_public'])
+                        ->keyBy(fn ($inbound) => (int) $inbound->external_id);
 
-                    return $vless->concat($shadowsocks)->values()->all();
+                    return collect(XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server)->getAllVlessInbounds())
+                        ->filter(function (array $inbound) use ($viewer, $visibilityByInboundId): bool {
+                            $meta = $visibilityByInboundId->get((int) ($inbound['id'] ?? 0));
+
+                            if ($meta !== null && ! $meta->is_active) {
+                                return false;
+                            }
+
+                            return $meta === null || $meta->is_public || (bool) ($viewer?->is_admin);
+                        })
+                        ->map(function (array $inbound) use ($server, $visibilityByInboundId): array {
+                            $meta = $visibilityByInboundId->get((int) ($inbound['id'] ?? 0));
+
+                            return $this->mapInboundForForm(
+                                $server,
+                                $inbound,
+                                'vless',
+                                $meta === null ? true : (bool) $meta->is_public,
+                            );
+                        })
+                        ->values()
+                        ->all();
                 } catch (Exception $exception) {
                     report($exception);
 
@@ -226,7 +222,7 @@ class XrayConfigController extends Controller
      * @param  array<string, mixed>  $inbound
      * @return array<string, mixed>
      */
-    private function mapInboundForForm(Server $server, array $inbound, string $protocol): array
+    private function mapInboundForForm(Server $server, array $inbound, string $protocol, bool $isPublic = true): array
     {
         $displayProtocol = mb_strtoupper((string) ($inbound['protocol'] ?? $protocol));
 
@@ -259,17 +255,17 @@ class XrayConfigController extends Controller
             'server_name' => $server->name,
             'server_code' => $server->code,
             'inbound_id' => $inbound['id'],
+            'is_public' => $isPublic,
             'type' => $inbound['type'],
             'security' => $inbound['security'],
             'label' => $server->code.': '.implode(', ', array_filter($parts)),
         ];
     }
 
-    private function resolveConfig(string $protocol, string $config): Model
+    private function resolveConfig(string $protocol, string $config): VlessConfig
     {
         return match ($protocol) {
             'vless' => VlessConfig::query()->findOrFail($config),
-            'shadowsocks' => ShadowsocksConfig::query()->findOrFail($config),
             default => abort(404),
         };
     }

@@ -31,15 +31,14 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
-        $vlessServer = Server::query()->create([
+        $vlessServer = $this->createVlessServer([
             'name' => 'Existing VLESS',
             'code' => 'EVL',
             'ip' => '10.0.0.11',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $missingBothUser = User::query()->create([
             'name' => 'Alice',
@@ -138,15 +137,14 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
     {
         Queue::fake();
 
-        $vlessServer = Server::query()->create([
+        $vlessServer = $this->createVlessServer([
             'name' => 'Multi Inbound VLESS',
             'code' => 'MVL',
             'ip' => '10.0.0.12',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10, 11],
-        ]);
+        ], [10, 11]);
 
         $completeUser = User::query()->create([
             'name' => 'Alice',
@@ -229,15 +227,14 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
-        $readyVlessServer = Server::query()->create([
+        $readyVlessServer = $this->createVlessServer([
             'name' => 'Ready VLESS',
             'code' => 'RVL',
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $readyWireGuardAgentServer = Server::query()->create([
             'name' => 'Ready WG Agent',
@@ -300,25 +297,23 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
-        $latviaVlessServer = Server::query()->create([
+        $latviaVlessServer = $this->createVlessServer([
             'name' => 'Latvia VLESS',
             'code' => 'LV-VL',
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
-        $finlandVlessServer = Server::query()->create([
+        $finlandVlessServer = $this->createVlessServer([
             'name' => 'Finland VLESS',
             'code' => 'FI-VL',
             'ip' => '10.0.0.3',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -382,15 +377,14 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
             'type' => Server::TYPE_WIREGUARD_OLD,
         ]);
 
-        $latviaVlessServer = Server::query()->create([
+        $latviaVlessServer = $this->createVlessServer([
             'name' => 'Latvia VLESS',
             'code' => 'LV-VL',
             'ip' => '10.0.0.2',
             'app_path' => '/opt/app',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -436,5 +430,26 @@ class CreateDefaultConfigsForActiveSubscribersCommandTest extends TestCase
 
         $this->assertNotNull($event);
         $this->assertSame('*/5 * * * *', $event->expression);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @param  array<int, int>  $inboundIds
+     */
+    private function createVlessServer(array $attributes, array $inboundIds): Server
+    {
+        $server = Server::query()->create($attributes);
+
+        $server->xrayInbounds()->createMany(
+            collect($inboundIds)
+                ->map(fn (int $externalId) => [
+                    'external_id' => $externalId,
+                    'is_active' => true,
+                    'is_public' => true,
+                ])
+                ->all(),
+        );
+
+        return $server;
     }
 }

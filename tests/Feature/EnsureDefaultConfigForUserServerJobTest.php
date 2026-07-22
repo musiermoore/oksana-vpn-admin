@@ -127,7 +127,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
     public function test_job_creates_one_vless_config_for_ready_server(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready VLESS',
             'code' => 'RVL',
             'ip' => '10.0.0.2',
@@ -137,8 +137,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -199,18 +198,16 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
-            'user_id' => $user->id,
-            'server_id' => $server->id,
-            'port' => 443,
-            'type' => 'tcp',
-            'security' => 'reality',
-            'pbk' => 'public-key',
-            'fp' => 'chrome',
-            'sni' => 'example.com',
-            'sid' => 'abcd',
-            'enable' => true,
-        ]);
+        $config = VlessConfig::query()
+            ->where('user_id', $user->id)
+            ->where('server_id', $server->id)
+            ->with('xrayInbound:id,external_id')
+            ->firstOrFail();
+
+        $this->assertSame(443, $config->port);
+        $this->assertSame('tcp', $config->type);
+        $this->assertTrue((bool) $config->enable);
+        $this->assertSame(10, $config->getResolvedInboundId());
     }
 
     public function test_job_claims_orphan_vless_config_for_user_when_local_row_exists_without_user_id(): void
@@ -225,7 +222,6 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
         ]);
 
         $user = User::query()->create([
@@ -300,14 +296,20 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'server_id' => $server->id,
             'user_id' => $user->id,
-            'inbound_id' => 10,
             'name' => $orphanName,
             'uuid' => $orphanUuid,
             'enable' => true,
         ]);
+        $this->assertVlessConfigUsesInbound([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => $orphanName,
+            'uuid' => $orphanUuid,
+            'enable' => true,
+        ], 10);
 
         $this->assertDatabaseCount('vless_configs', 1);
     }
@@ -324,7 +326,6 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
         ]);
 
         $user = User::query()->create([
@@ -388,18 +389,23 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'server_id' => $server->id,
             'user_id' => $user->id,
-            'inbound_id' => 10,
             'name' => 'alice_ready_vless_1',
             'uuid' => '44444444-4444-4444-4444-444444444444',
         ]);
+        $this->assertVlessConfigUsesInbound([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'alice_ready_vless_1',
+            'uuid' => '44444444-4444-4444-4444-444444444444',
+        ], 10);
     }
 
     public function test_job_claims_existing_panel_client_without_creating_duplicate(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready Mixed',
             'code' => 'RMX',
             'ip' => '10.0.0.9',
@@ -409,8 +415,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10, 11],
-        ]);
+        ], [10, 11]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -493,31 +498,44 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'user_id' => $user->id,
             'server_id' => $server->id,
-            'inbound_id' => 10,
             'name' => 'alice_ready_mixed_1',
             'uuid' => 'existing-vless-uuid',
             'protocol' => 'vless',
         ]);
-
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigUsesInbound([
             'user_id' => $user->id,
             'server_id' => $server->id,
-            'inbound_id' => 11,
+            'name' => 'alice_ready_mixed_1',
+            'uuid' => 'existing-vless-uuid',
+            'protocol' => 'vless',
+        ], 10);
+
+        $this->assertVlessConfigHas([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
             'name' => 'alice_ready_mixed_2',
             'uuid' => 'existing-hysteria-uuid',
             'auth' => 'existing-hysteria-auth',
             'protocol' => 'hysteria',
         ]);
+        $this->assertVlessConfigUsesInbound([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'name' => 'alice_ready_mixed_2',
+            'uuid' => 'existing-hysteria-uuid',
+            'auth' => 'existing-hysteria-auth',
+            'protocol' => 'hysteria',
+        ], 11);
 
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/addClient'));
     }
 
     public function test_job_keeps_uuid_from_clients_list_uuid_field_instead_of_numeric_panel_id(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready VLESS',
             'code' => 'RVL',
             'ip' => '10.0.0.2',
@@ -528,8 +546,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_api_version' => Server::PANEL_API_V3_2_8,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -605,18 +622,23 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'server_id' => $server->id,
             'user_id' => $user->id,
-            'inbound_id' => 10,
             'name' => '123456789_ready_vless_1',
             'uuid' => '44444444-4444-4444-4444-444444444444',
         ]);
+        $this->assertVlessConfigUsesInbound([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => '123456789_ready_vless_1',
+            'uuid' => '44444444-4444-4444-4444-444444444444',
+        ], 10);
     }
 
     public function test_job_continues_creating_other_inbounds_when_one_inbound_fails(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready VLESS',
             'code' => 'RVL',
             'ip' => '10.0.0.2',
@@ -626,8 +648,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10, 11, 12],
-        ]);
+        ], [10, 11, 12]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -741,23 +762,20 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'server_id' => $server->id,
             'user_id' => $user->id,
             'inbound_id' => 10,
+            'name' => '123456789_ready_vless_1',
         ]);
 
-        $this->assertDatabaseMissing('vless_configs', [
+        $this->assertVlessConfigMissing([
             'server_id' => $server->id,
             'user_id' => $user->id,
             'inbound_id' => 11,
         ]);
 
-        $this->assertDatabaseHas('vless_configs', [
-            'server_id' => $server->id,
-            'user_id' => $user->id,
-            'inbound_id' => 12,
-        ]);
+        $this->assertDatabaseCount('vless_configs', 2);
     }
 
     public function test_job_does_not_create_vless_config_when_auto_pull_types_are_not_configured(): void
@@ -794,7 +812,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
     public function test_job_creates_configs_for_all_allowed_inbounds_including_ws(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready VLESS',
             'code' => 'RVL',
             'ip' => '10.0.0.2',
@@ -804,8 +822,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10, 11],
-        ]);
+        ], [10, 11]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -883,7 +900,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'user_id' => $user->id,
             'server_id' => $server->id,
             'inbound_id' => 10,
@@ -892,7 +909,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'flow' => 'xtls-rprx-vision',
         ]);
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'user_id' => $user->id,
             'server_id' => $server->id,
             'inbound_id' => 11,
@@ -907,7 +924,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
     public function test_job_uses_telegram_id_as_config_name_prefix(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready VLESS',
             'code' => 'RVL',
             'ip' => '10.0.0.2',
@@ -917,8 +934,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -990,7 +1006,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
     public function test_job_creates_trojan_config_for_allowed_trojan_inbound(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready Trojan',
             'code' => 'RTJ',
             'ip' => '10.0.0.20',
@@ -1000,8 +1016,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [12],
-        ]);
+        ], [12]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -1057,7 +1072,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'user_id' => $user->id,
             'server_id' => $server->id,
             'inbound_id' => 12,
@@ -1072,7 +1087,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
     public function test_job_falls_back_to_legacy_add_client_endpoint_when_modern_route_returns_404(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Legacy VLESS',
             'code' => 'LVL',
             'ip' => '10.0.0.3',
@@ -1082,8 +1097,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -1146,7 +1160,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'user_id' => $user->id,
             'server_id' => $server->id,
             'inbound_id' => 10,
@@ -1164,7 +1178,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
     public function test_job_creates_vless_config_via_v3_client_api(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Modern VLESS',
             'code' => 'MVL',
             'ip' => '10.0.0.4',
@@ -1175,8 +1189,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_api_version' => Server::PANEL_API_V3_2_8,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -1238,7 +1251,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'user_id' => $user->id,
             'server_id' => $server->id,
             'inbound_id' => 10,
@@ -1255,7 +1268,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
     public function test_job_refreshes_existing_hysteria_config_from_panel_client_settings(): void
     {
-        $server = Server::query()->create([
+        $server = $this->createVlessServer([
             'name' => 'Ready Hysteria',
             'code' => 'RHY',
             'ip' => '10.0.0.5',
@@ -1265,8 +1278,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
-        ]);
+        ], [10]);
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -1355,7 +1367,7 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'id' => $config->id,
             'auth' => 'xrp11ixkmlsebrwe',
             'alpn' => 'h2,http/1.1,h3',
@@ -1381,7 +1393,6 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
         ]);
 
         $server->xrayInbounds()->create([
@@ -1425,7 +1436,6 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
             'panel_password' => 'secret',
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10],
         ]);
 
         $server->xrayInbounds()->create([
@@ -1495,11 +1505,90 @@ class EnsureDefaultConfigForUserServerJobTest extends TestCase
 
         (new EnsureDefaultConfigForUserServerJob($user->id, $server->id))->handle();
 
-        $this->assertDatabaseHas('vless_configs', [
+        $this->assertVlessConfigHas([
             'user_id' => $user->id,
             'server_id' => $server->id,
             'inbound_id' => 10,
             'enable' => true,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @param  array<int, int>  $inboundIds
+     */
+    private function createVlessServer(array $attributes, array $inboundIds): Server
+    {
+        $server = Server::query()->create($attributes);
+
+        $server->xrayInbounds()->createMany(
+            collect($inboundIds)
+                ->map(fn (int $externalId) => [
+                    'external_id' => $externalId,
+                    'is_active' => true,
+                    'is_public' => true,
+                ])
+                ->all(),
+        );
+
+        return $server;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function assertVlessConfigHas(array $attributes): void
+    {
+        $inboundId = isset($attributes['inbound_id']) ? (int) $attributes['inbound_id'] : null;
+        unset($attributes['inbound_id']);
+
+        if ($inboundId === null) {
+            $this->assertDatabaseHas('vless_configs', $attributes);
+
+            return;
+        }
+
+        $config = VlessConfig::query()
+            ->where($attributes)
+            ->with('xrayInbound:id,external_id')
+            ->get()
+            ->first(fn (VlessConfig $config) => $config->getResolvedInboundId() === $inboundId);
+
+        $this->assertNotNull($config);
+        $this->assertSame($inboundId, $config->getResolvedInboundId());
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function assertVlessConfigUsesInbound(array $attributes, int $inboundId): void
+    {
+        $this->assertVlessConfigHas([
+            ...$attributes,
+            'inbound_id' => $inboundId,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function assertVlessConfigMissing(array $attributes): void
+    {
+        $inboundId = isset($attributes['inbound_id']) ? (int) $attributes['inbound_id'] : null;
+        unset($attributes['inbound_id']);
+
+        if ($inboundId === null) {
+            $this->assertDatabaseMissing('vless_configs', $attributes);
+
+            return;
+        }
+
+        $exists = VlessConfig::query()
+            ->where($attributes)
+            ->with('xrayInbound:id,external_id')
+            ->get()
+            ->contains(fn (VlessConfig $config) => $config->getResolvedInboundId() === $inboundId);
+
+        $this->assertFalse($exists);
     }
 }

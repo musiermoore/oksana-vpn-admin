@@ -26,7 +26,11 @@ class PullVlessConfigsForServerJobTest extends TestCase
             'is_active' => true,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [3],
+        ]);
+        $server->xrayInbounds()->create([
+            'external_id' => 3,
+            'is_active' => true,
+            'is_public' => true,
         ]);
 
         Http::fake([
@@ -143,7 +147,11 @@ class PullVlessConfigsForServerJobTest extends TestCase
             'is_active' => true,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [8],
+        ]);
+        $server->xrayInbounds()->create([
+            'external_id' => 8,
+            'is_active' => true,
+            'is_public' => true,
         ]);
 
         Http::fake([
@@ -208,11 +216,12 @@ class PullVlessConfigsForServerJobTest extends TestCase
 
         (new PullVlessConfigsForServerJob($server->id))->handle();
 
-        $config = \App\Models\VlessConfig::query()
+        $config = VlessConfig::query()
             ->where('server_id', $server->id)
-            ->where('inbound_id', 8)
             ->where('name', 'WG-8pf78qlqc6-wg')
-            ->first();
+            ->with('xrayInbound')
+            ->get()
+            ->first(fn (VlessConfig $config) => $config->getResolvedInboundId() === 8);
 
         $this->assertNotNull($config);
         $this->assertSame('wireguard', $config->protocol);
@@ -236,7 +245,11 @@ class PullVlessConfigsForServerJobTest extends TestCase
             'is_active' => true,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [8],
+        ]);
+        $server->xrayInbounds()->create([
+            'external_id' => 8,
+            'is_active' => true,
+            'is_public' => true,
         ]);
 
         Http::fake([
@@ -301,11 +314,12 @@ class PullVlessConfigsForServerJobTest extends TestCase
 
         (new PullVlessConfigsForServerJob($server->id))->handle();
 
-        $config = \App\Models\VlessConfig::query()
+        $config = VlessConfig::query()
             ->where('server_id', $server->id)
-            ->where('inbound_id', 8)
             ->where('name', 'WG-8pf78qlqc6-wg')
-            ->first();
+            ->with('xrayInbound')
+            ->get()
+            ->first(fn (VlessConfig $config) => $config->getResolvedInboundId() === 8);
 
         $this->assertNotNull($config);
         $this->assertNotNull($config->extra);
@@ -327,7 +341,11 @@ class PullVlessConfigsForServerJobTest extends TestCase
             'is_active' => true,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [3],
+        ]);
+        $server->xrayInbounds()->create([
+            'external_id' => 3,
+            'is_active' => true,
+            'is_public' => true,
         ]);
 
         Http::fake([
@@ -408,7 +426,10 @@ class PullVlessConfigsForServerJobTest extends TestCase
             'is_active' => true,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [3, 8],
+        ]);
+        $server->xrayInbounds()->createMany([
+            ['external_id' => 3, 'is_active' => true, 'is_public' => true],
+            ['external_id' => 8, 'is_active' => true, 'is_public' => true],
         ]);
 
         $user = User::query()->create([

@@ -17,7 +17,7 @@ class SyncXrayInboundsCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_command_syncs_legacy_and_panel_inbounds_and_backfills_vless_relation(): void
+    public function test_command_syncs_panel_inbounds_and_updates_existing_vless_relation(): void
     {
         $server = Server::query()->create([
             'name' => 'Germany',
@@ -29,7 +29,6 @@ class SyncXrayInboundsCommandTest extends TestCase
             'is_active' => true,
             'is_ready' => true,
             'type' => Server::TYPE_VLESS,
-            'allowed_inbound_ids' => [10, 11],
         ]);
 
         $config = VlessConfig::query()->create([
@@ -84,14 +83,9 @@ class SyncXrayInboundsCommandTest extends TestCase
 
         $this->assertDatabaseHas('xray_inbounds', [
             'server_id' => $server->id,
-            'external_id' => 10,
+            'external_id' => 11,
             'is_active' => true,
             'is_public' => true,
-        ]);
-
-        $this->assertDatabaseHas('xray_inbounds', [
-            'server_id' => $server->id,
-            'external_id' => 11,
         ]);
 
         $this->assertDatabaseHas('xray_inbounds', [

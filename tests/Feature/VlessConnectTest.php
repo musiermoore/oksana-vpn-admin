@@ -126,6 +126,7 @@ class VlessConnectTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $server->id,
             'user_id' => $user->id,
+            'inbound_id' => 10,
             'name' => 'json-vless',
             'is_active' => true,
             'enable' => true,
@@ -183,6 +184,7 @@ class VlessConnectTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $server->id,
             'user_id' => $user->id,
+            'inbound_id' => 10,
             'name' => 'json-vless-base64',
             'is_active' => true,
             'enable' => true,
@@ -579,6 +581,7 @@ class VlessConnectTest extends TestCase
 
         $config = VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => null,
             'name' => 'ws-config',
             'is_active' => true,
@@ -605,6 +608,7 @@ class VlessConnectTest extends TestCase
 
         $config = VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => null,
             'name' => 'trojan-config',
             'is_active' => true,
@@ -631,6 +635,7 @@ class VlessConnectTest extends TestCase
 
         $config = VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => null,
             'name' => 'xhttp-config',
             'is_active' => true,
@@ -728,6 +733,7 @@ class VlessConnectTest extends TestCase
         $vlessFinland = VlessConfig::query()->create([
             'server_id' => $finland->id,
             'user_id' => $user->id,
+            'inbound_id' => 10,
             'name' => 'vless-fi',
             'is_active' => true,
             'enable' => true,
@@ -747,6 +753,7 @@ class VlessConnectTest extends TestCase
         $vlessLatvia = VlessConfig::query()->create([
             'server_id' => $latvia->id,
             'user_id' => $user->id,
+            'inbound_id' => 10,
             'name' => 'vless-lv',
             'is_active' => true,
             'enable' => true,
@@ -765,6 +772,7 @@ class VlessConnectTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $estonia->id,
             'user_id' => $user->id,
+            'inbound_id' => 10,
             'name' => 'vless-ee',
             'is_active' => true,
             'enable' => true,
@@ -817,11 +825,12 @@ class VlessConnectTest extends TestCase
         $user = $this->createActiveUser('Proxy User', '@tester', '123456');
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
-        $this->createProxy($server, 'Ru Proxy', 'proxy.example.com', 8443);
+        $this->createProxy($server, 'Ru Proxy', 'proxy.example.com', 8443, 10);
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
             'user_id' => $user->id,
+            'inbound_id' => 10,
             'name' => 'proxy-config',
             'is_active' => true,
             'enable' => true,
@@ -1009,6 +1018,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $activeServer->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'active-config',
             'is_active' => true,
@@ -1028,6 +1038,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $inactiveServer->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'inactive-config',
             'is_active' => true,
@@ -1103,6 +1114,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $latvia->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'trojan-lv',
             'is_active' => true,
@@ -1141,6 +1153,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $latvia->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'hysteria-lv',
             'is_active' => true,
@@ -1181,6 +1194,7 @@ class VlessConnectTest extends TestCase
 
         $config = VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => null,
             'name' => 'hysteria-config',
             'is_active' => true,
@@ -1221,6 +1235,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'config-metadata',
             'is_active' => true,
@@ -1279,6 +1294,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'remote-sub',
             'is_active' => true,
@@ -1315,6 +1331,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'xhttp-config',
             'is_active' => true,
@@ -1337,6 +1354,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 11,
             'user_id' => $user->id,
             'name' => 'hy2-config',
             'is_active' => true,
@@ -1381,6 +1399,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'grpc-config',
             'is_active' => true,
@@ -1425,6 +1444,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'wg-json-config',
             'is_active' => true,
@@ -1475,6 +1495,7 @@ class VlessConnectTest extends TestCase
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
+            'inbound_id' => 10,
             'user_id' => $user->id,
             'name' => 'wg-clash-config',
             'is_active' => true,
@@ -1525,6 +1546,7 @@ class VlessConnectTest extends TestCase
         VlessConfig::query()->create([
             'server_id' => $serverId,
             'user_id' => $userId,
+            'inbound_id' => 10,
             'name' => 'config-'.$uuid,
             'is_active' => true,
             'enable' => true,

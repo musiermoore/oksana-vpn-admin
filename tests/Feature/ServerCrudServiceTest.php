@@ -68,7 +68,6 @@ class ServerCrudServiceTest extends TestCase
             isActive: true,
             isReady: false,
             hideConfigsForNonAdmins: false,
-            allowedInboundIds: $type === Server::TYPE_VLESS ? [10] : null,
         );
     }
 }

@@ -28,7 +28,6 @@ class ServerResource extends JsonResource
             'is_active' => (bool) $this->is_active,
             'is_ready' => (bool) $this->is_ready,
             'hide_configs_for_non_admins' => (bool) $this->hide_configs_for_non_admins,
-            'allowed_inbound_ids' => $this->allowed_inbound_ids,
             'links' => [
                 'edit' => route('servers.edit', $this->resource),
                 'destroy' => route('servers.destroy', $this->resource),

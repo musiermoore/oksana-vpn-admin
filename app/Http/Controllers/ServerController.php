@@ -8,8 +8,6 @@ use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
 use App\Services\Crud\ServerCrudService;
-use App\Services\XuiConfigServiceFactory;
-use Exception;
 use Illuminate\Http\Request;
 use RuntimeException;
 
@@ -41,7 +39,6 @@ class ServerController extends Controller
             'submit_url' => route('servers.store'),
             'method' => 'post',
             'server' => null,
-            'inbound_options' => [],
         ]);
     }
 
@@ -66,7 +63,6 @@ class ServerController extends Controller
             'submit_url' => route('servers.update', $server),
             'method' => 'patch',
             'server' => (new ServerFormResource($server))->toArray(request()),
-            'inbound_options' => $this->getInboundOptions($server),
         ]);
     }
 
@@ -111,58 +107,5 @@ class ServerController extends Controller
 
         return redirect()->back()
             ->with('success', 'Сервер успешно отключён.');
-    }
-
-    private function getInboundOptions(Server $server): array
-    {
-        if (
-            ! $server->is_active
-            || ! $server->isVlessType()
-            || blank($server->panel_link)
-            || blank($server->panel_username)
-            || blank($server->panel_password)
-        ) {
-            return [];
-        }
-
-        try {
-            $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
-
-            return collect($service->getInbounds())
-                ->map(fn (array $row) => $service->normalizeInbound($row))
-                ->filter(fn (array $inbound) => ! empty($inbound['id']))
-                ->map(function (array $inbound) {
-                    $parts = [
-                        '#'.$inbound['id'],
-                        strtoupper((string) ($inbound['protocol'] ?? 'unknown')),
-                        strtoupper((string) ($inbound['type'] ?? 'unknown')),
-                        strtoupper((string) ($inbound['security'] ?? 'none')),
-                        'port '.$inbound['port'],
-                    ];
-
-                    if (! empty($inbound['host'])) {
-                        $parts[] = 'host '.$inbound['host'];
-                    }
-
-                    if (! empty($inbound['path'])) {
-                        $parts[] = 'path '.$inbound['path'];
-                    }
-
-                    if (! empty($inbound['service_name'])) {
-                        $parts[] = 'service '.$inbound['service_name'];
-                    }
-
-                    return [
-                        'value' => (int) $inbound['id'],
-                        'label' => implode(', ', array_filter($parts)),
-                    ];
-                })
-                ->values()
-                ->all();
-        } catch (Exception $exception) {
-            report($exception);
-
-            return [];
-        }
     }
 }

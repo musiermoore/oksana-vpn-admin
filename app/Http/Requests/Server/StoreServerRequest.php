@@ -38,8 +38,6 @@ class StoreServerRequest extends DataFormRequest
             'is_active' => ['nullable', 'boolean'],
             'is_ready' => ['nullable', 'boolean'],
             'hide_configs_for_non_admins' => ['nullable', 'boolean'],
-            'allowed_inbound_ids' => ['nullable', 'array'],
-            'allowed_inbound_ids.*' => ['integer', 'min:1'],
         ];
     }
 
@@ -48,26 +46,4 @@ class StoreServerRequest extends DataFormRequest
         return ServerData::class;
     }
 
-    private function normalizeAllowedInboundIds(?array $value): ?array
-    {
-        $inboundIds = collect($value ?? [])
-            ->map(fn (mixed $id) => (int) $id)
-            ->filter(fn (int $id) => $id > 0)
-            ->values()
-            ->all();
-
-        return $inboundIds === [] ? null : $inboundIds;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function additionalDtoData(): array
-    {
-        return [
-            'allowedInboundIds' => (string) $this->input('type') === Server::TYPE_VLESS
-                ? $this->normalizeAllowedInboundIds($this->validated('allowed_inbound_ids', null))
-                : null,
-        ];
-    }
 }

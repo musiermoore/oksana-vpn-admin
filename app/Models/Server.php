@@ -39,7 +39,6 @@ class Server extends Model
         'is_active',
         'is_ready',
         'hide_configs_for_non_admins',
-        'allowed_inbound_ids',
     ];
 
     protected function casts(): array
@@ -51,7 +50,6 @@ class Server extends Model
             'is_active' => 'boolean',
             'is_ready' => 'boolean',
             'hide_configs_for_non_admins' => 'boolean',
-            'allowed_inbound_ids' => 'array',
         ];
     }
 
@@ -166,18 +164,6 @@ class Server extends Model
     /**
      * @return array<int, int>
      */
-    public function getAllowedInboundIds(): array
-    {
-        return collect($this->allowed_inbound_ids ?? [])
-            ->map(fn (mixed $id) => (int) $id)
-            ->filter(fn (int $id) => $id > 0)
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @return array<int, int>
-     */
     public function getAvailableInboundIdsForUser(?User $user = null): array
     {
         $xrayInbounds = $this->relationLoaded('xrayInbounds')
@@ -195,7 +181,7 @@ class Server extends Model
                 ->all();
         }
 
-        return $this->getAllowedInboundIds();
+        return [];
     }
 
     public function getPanelApiVersion(): string

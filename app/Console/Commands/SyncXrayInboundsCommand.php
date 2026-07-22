@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Server;
-use App\Models\VlessConfig;
 use App\Models\XrayInbound;
 use App\Services\XuiConfigServiceFactory;
 use Illuminate\Console\Command;
@@ -15,7 +14,7 @@ class SyncXrayInboundsCommand extends Command
 {
     protected $signature = 'xray-inbounds:sync';
 
-    protected $description = 'Sync Xray inbound records from legacy ids and 3x-ui panels';
+    protected $description = 'Sync Xray inbound records from 3x-ui panels';
 
     public function handle(): int
     {
@@ -25,37 +24,10 @@ class SyncXrayInboundsCommand extends Command
             ->get();
 
         foreach ($servers as $server) {
-            $this->syncLegacyInboundIds($server);
             $this->syncPanelInbounds($server);
-            $this->syncConfigRelations($server);
         }
 
         return self::SUCCESS;
-    }
-
-    private function syncLegacyInboundIds(Server $server): void
-    {
-        $inboundIds = collect([
-            $server->getAttribute('inbound_id'),
-            ...$server->getAllowedInboundIds(),
-        ])
-            ->map(fn (mixed $id) => (int) $id)
-            ->filter(fn (int $id) => $id > 0)
-            ->unique()
-            ->values();
-
-        foreach ($inboundIds as $externalId) {
-            XrayInbound::query()->firstOrCreate(
-                [
-                    'server_id' => $server->id,
-                    'external_id' => $externalId,
-                ],
-                [
-                    'is_active' => true,
-                    'is_public' => true,
-                ],
-            );
-        }
     }
 
     private function syncPanelInbounds(Server $server): void
@@ -93,28 +65,5 @@ class SyncXrayInboundsCommand extends Command
                 ],
             );
         }
-    }
-
-    private function syncConfigRelations(Server $server): void
-    {
-        $inboundIds = XrayInbound::query()
-            ->where('server_id', $server->id)
-            ->pluck('id', 'external_id');
-
-        VlessConfig::query()
-            ->where('server_id', $server->id)
-            ->whereNotNull('inbound_id')
-            ->get()
-            ->each(function (VlessConfig $config) use ($inboundIds): void {
-                $xrayInboundId = $inboundIds->get((int) $config->inbound_id);
-
-                if ($xrayInboundId === null || (int) $config->xray_inbound_id === (int) $xrayInboundId) {
-                    return;
-                }
-
-                $config->update([
-                    'xray_inbound_id' => (int) $xrayInboundId,
-                ]);
-            });
     }
 }

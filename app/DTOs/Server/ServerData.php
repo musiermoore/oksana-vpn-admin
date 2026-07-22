@@ -26,7 +26,6 @@ class ServerData extends Data
         public ?string $panelPassword = null,
         public ?string $sshPrivateKey = null,
         public ?string $sshPublicKey = null,
-        public ?array $allowedInboundIds = null,
     ) {}
 
     public function toArray(): array
@@ -48,7 +47,6 @@ class ServerData extends Data
             'is_active' => $this->isActive,
             'is_ready' => $this->isReady,
             'hide_configs_for_non_admins' => $this->hideConfigsForNonAdmins,
-            'allowed_inbound_ids' => $this->allowedInboundIds,
         ];
     }
 }

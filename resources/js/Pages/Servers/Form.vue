@@ -9,7 +9,6 @@ const props = defineProps({
     submit_url: String,
     method: String,
     server: Object,
-    inbound_options: Array,
 });
 
 const form = useForm({
@@ -29,7 +28,6 @@ const form = useForm({
     is_active: props.server?.is_active ?? true,
     is_ready: props.server?.is_ready ?? false,
     hide_configs_for_non_admins: props.server?.hide_configs_for_non_admins ?? false,
-    allowed_inbound_ids: props.server?.allowed_inbound_ids ?? [],
 });
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
@@ -69,18 +67,6 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Is Active</span><input v-model="form.is_active" type="checkbox"></label>
             <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field"><span>Hide configs for non-admins</span><input v-model="form.hide_configs_for_non_admins" type="checkbox"></label>
-            <label class="field" style="grid-column: 1 / -1;">
-                <span>Allowed Inbound IDs</span>
-                <select v-model="form.allowed_inbound_ids" multiple :disabled="form.type !== 'vless' || inbound_options.length === 0">
-                    <option v-for="option in inbound_options" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                    </option>
-                </select>
-                <small v-if="form.type === 'vless' && inbound_options.length === 0">
-                    Inbounds appear here after the server has panel access configured and saved.
-                </small>
-            </label>
-
             <div class="actions" style="grid-column: 1 / -1;">
                 <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
                 <Link class="button button--secondary" href="/servers">Назад</Link>

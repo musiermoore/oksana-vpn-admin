@@ -28,7 +28,8 @@ class CreateDefaultConfigsForActiveSubscribersCommand extends Command
             ->when($userId, fn ($query) => $query->whereKey($userId))
             ->with([
                 'configs:id,user_id,server_id',
-                'vlessConfigs:id,user_id,server_id,inbound_id',
+                'vlessConfigs:id,user_id,server_id,xray_inbound_id',
+                'vlessConfigs.xrayInbound:id,external_id',
             ])
             ->get();
 

@@ -155,10 +155,10 @@ class ApiUserService
         }
 
         if (! $config->relationLoaded('xrayInbound')) {
-            $config->loadMissing('xrayInbound:id,is_active');
+            $config->loadMissing('xrayInbound:id,external_id,is_active');
         }
 
-        return $config->xrayInbound === null || (bool) $config->xrayInbound->is_active;
+        return $config->xrayInbound !== null && (bool) $config->xrayInbound->is_active;
     }
 
     public function getVlessLink(User $user): string

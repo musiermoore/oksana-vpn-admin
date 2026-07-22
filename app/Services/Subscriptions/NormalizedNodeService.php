@@ -25,14 +25,10 @@ class NormalizedNodeService
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
-            ->where(function ($query) {
-                $query
-                    ->whereNull('vless_configs.xray_inbound_id')
-                    ->orWhereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true));
-            })
+            ->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true))
             ->with([
                 'server',
-                'xrayInbound:id,is_active',
+                'xrayInbound:id,external_id,is_active',
             ])
             ->get()
             ->map(fn (VlessConfig $config) => [
@@ -142,7 +138,7 @@ class NormalizedNodeService
                 'config_name' => (string) $config->name,
                 'config_port' => (int) $config->port,
                 'config_protocol' => (string) ($config->protocol ?: 'vless'),
-                'config_inbound_id' => $config->inbound_id === null ? null : (int) $config->inbound_id,
+                'config_inbound_id' => $config->getResolvedInboundId(),
             ],
         );
     }

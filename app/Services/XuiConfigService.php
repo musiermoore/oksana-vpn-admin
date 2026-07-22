@@ -164,6 +164,7 @@ class XuiConfigService
                     ->where('user_id', $user->id)
                     ->orWhereNull('user_id');
             })
+            ->with('xrayInbound:id,external_id')
             ->get();
 
         return collect($allowedInbounds)
@@ -224,8 +225,8 @@ class XuiConfigService
     {
         $inboundId = (int) ($inbound['id'] ?? 0);
 
-        if (! empty($config->inbound_id)) {
-            return (int) $config->inbound_id === $inboundId;
+        if (($config->getResolvedInboundId() ?? 0) > 0) {
+            return (int) $config->getResolvedInboundId() === $inboundId;
         }
 
         return mb_strtolower((string) $config->type) === mb_strtolower((string) ($inbound['type'] ?? ''));
@@ -987,7 +988,6 @@ class XuiConfigService
 
         return [
             'server_id' => $this->server->id,
-            'inbound_id' => $inbound['id'] ?? null,
             'xray_inbound_id' => $this->resolveXrayInboundId($inbound['id'] ?? null),
             'user_id' => $userId,
             'name' => $email !== '' ? $email : $identifier,
@@ -1216,7 +1216,7 @@ class XuiConfigService
 
         return [
             'server_id' => $this->server->id,
-            'inbound_id' => $attributes['inbound_id'] ?? null,
+            'xray_inbound_id' => $attributes['xray_inbound_id'] ?? null,
             'name' => $attributes['name'],
         ];
     }
@@ -1395,8 +1395,14 @@ class XuiConfigService
 
     protected function extractClientFromInboundsPayload(VlessConfig $config, bool $enabled): array
     {
+        $inboundId = $config->getResolvedInboundId();
+
+        if ($inboundId === null) {
+            throw new RuntimeException("Inbound for config [{$config->getKey()}] was not found.");
+        }
+
         return $this->extractClientFromInboundSettings(
-            inboundId: (int) $config->inbound_id,
+            inboundId: $inboundId,
             identifier: (string) $config->uuid,
             email: (string) $config->name,
             enabled: $enabled,

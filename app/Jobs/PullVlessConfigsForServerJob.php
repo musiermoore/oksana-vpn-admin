@@ -145,7 +145,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
 
         return [
             'server_id' => $server->id,
-            'inbound_id' => (int) ($inbound['id'] ?? 0),
+            'xray_inbound_id' => $attributes['xray_inbound_id'] ?? null,
             'name' => (string) ($attributes['name'] ?? $client['email'] ?? ''),
         ];
     }

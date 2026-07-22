@@ -23,7 +23,8 @@ class DispatchDefaultConfigsForUserJob implements ShouldQueue
         $user = User::query()
             ->with([
                 'configs:id,user_id,server_id',
-                'vlessConfigs:id,user_id,server_id,inbound_id,type',
+                'vlessConfigs:id,user_id,server_id,xray_inbound_id,type',
+                'vlessConfigs.xrayInbound:id,external_id',
             ])
             ->find($this->userId);
 

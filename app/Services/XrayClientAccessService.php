@@ -39,10 +39,16 @@ class XrayClientAccessService
         $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
 
         if ($config instanceof VlessConfig) {
+            $inboundId = $config->getResolvedInboundId();
+
+            if ($inboundId === null) {
+                throw new RuntimeException("Inbound for config [{$configType}:{$configId}] was not found.");
+            }
+
             $service->setClientEnabledByIdentifier(
                 identifier: $config->name,
                 email: $config->name,
-                inboundId: (int) $config->inbound_id,
+                inboundId: $inboundId,
                 enabled: $enabled,
                 context: [
                     'protocol' => (string) ($config->protocol ?: 'vless'),

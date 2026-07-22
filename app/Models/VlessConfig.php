@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VlessConfig extends Model
 {
+    private ?int $pendingInboundExternalId = null;
+
     protected $fillable = [
         'server_id',
         'inbound_id',
@@ -57,6 +59,55 @@ class VlessConfig extends Model
         ];
     }
 
+    public function setServerIdAttribute(mixed $value): void
+    {
+        $this->attributes['server_id'] = $value;
+
+        $this->syncPendingInboundExternalId();
+    }
+
+    public function setInboundIdAttribute(mixed $value): void
+    {
+        $normalizedExternalId = (int) $value;
+
+        if ($normalizedExternalId < 1) {
+            $this->attributes['xray_inbound_id'] = null;
+            $this->pendingInboundExternalId = null;
+
+            return;
+        }
+
+        $serverId = (int) ($this->attributes['server_id'] ?? 0);
+
+        if ($serverId < 1) {
+            $this->pendingInboundExternalId = $normalizedExternalId;
+
+            return;
+        }
+
+        $this->attributes['xray_inbound_id'] = XrayInbound::query()->firstOrCreate([
+            'server_id' => $serverId,
+            'external_id' => $normalizedExternalId,
+        ])->getKey();
+
+        $this->pendingInboundExternalId = null;
+    }
+
+    public function getInboundIdAttribute(): ?int
+    {
+        if ($this->relationLoaded('xrayInbound')) {
+            return $this->xrayInbound?->external_id === null ? null : (int) $this->xrayInbound->external_id;
+        }
+
+        if ((int) ($this->xray_inbound_id ?? 0) < 1) {
+            return null;
+        }
+
+        $externalId = $this->xrayInbound()->value('external_id');
+
+        return $externalId === null ? null : (int) $externalId;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)
@@ -71,6 +122,11 @@ class VlessConfig extends Model
     public function xrayInbound(): BelongsTo
     {
         return $this->belongsTo(XrayInbound::class);
+    }
+
+    public function getResolvedInboundId(): ?int
+    {
+        return $this->inbound_id;
     }
 
     public function getLinkAttribute(): string
@@ -295,5 +351,14 @@ class VlessConfig extends Model
     public function getQrCodeContent(): string
     {
         return $this->getLink();
+    }
+
+    private function syncPendingInboundExternalId(): void
+    {
+        if ($this->pendingInboundExternalId === null) {
+            return;
+        }
+
+        $this->setInboundIdAttribute($this->pendingInboundExternalId);
     }
 }

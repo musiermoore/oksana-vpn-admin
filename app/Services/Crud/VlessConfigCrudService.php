@@ -51,10 +51,10 @@ class VlessConfigCrudService
         $existingConfig = $user->vlessConfigs()
             ->where('server_id', $server->id)
             ->where(function ($query) use ($inboundId, $inbound) {
-                $query->where('inbound_id', $inboundId)
+                $query->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('external_id', $inboundId))
                     ->orWhere(function ($fallbackQuery) use ($inbound) {
                         $fallbackQuery
-                            ->whereNull('inbound_id')
+                            ->whereNull('xray_inbound_id')
                             ->where('type', $inbound['type'] ?? null);
                     });
             })

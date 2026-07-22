@@ -23,11 +23,7 @@ class XrayConfigLocatorService
         $vlessConfig = VlessConfig::query()
             ->where('server_id', $server->id)
             ->where('name', $email)
-            ->where(function ($query) {
-                $query
-                    ->whereNull('xray_inbound_id')
-                    ->orWhereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true));
-            })
+            ->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true))
             ->first();
 
         if ($vlessConfig) {

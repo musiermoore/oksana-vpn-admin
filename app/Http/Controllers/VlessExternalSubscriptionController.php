@@ -11,6 +11,7 @@ use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Bus;
 use RuntimeException;
 
 class VlessExternalSubscriptionController extends Controller
@@ -101,7 +102,7 @@ class VlessExternalSubscriptionController extends Controller
 
     public function sync(VlessExternalSubscription $vlessExternalSubscription): RedirectResponse
     {
-        SyncVlessExternalSubscriptionJob::dispatch($vlessExternalSubscription->id);
+        Bus::dispatch(new SyncVlessExternalSubscriptionJob($vlessExternalSubscription->id));
 
         return redirect()->back()->with('success', 'Синхронизация поставлена в очередь.');
     }

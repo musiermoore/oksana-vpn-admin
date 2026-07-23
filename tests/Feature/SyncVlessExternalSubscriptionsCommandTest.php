@@ -7,7 +7,8 @@ use App\Jobs\SyncVlessExternalSubscriptionJob;
 use App\Models\User;
 use App\Models\VlessExternalSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Schedule;
 use Tests\TestCase;
 
@@ -15,9 +16,16 @@ class SyncVlessExternalSubscriptionsCommandTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Cache::flush();
+    }
+
     public function test_command_dispatches_jobs_only_for_active_subscriptions(): void
     {
-        Queue::fake();
+        Bus::fake();
 
         $active = VlessExternalSubscription::query()->create([
             'name' => 'Active WL',
@@ -38,12 +46,12 @@ class SyncVlessExternalSubscriptionsCommandTest extends TestCase
         $this->artisan(SyncVlessExternalSubscriptionsCommand::class)
             ->assertSuccessful();
 
-        Queue::assertPushed(SyncVlessExternalSubscriptionJob::class, function (SyncVlessExternalSubscriptionJob $job) use ($active) {
+        Bus::assertDispatched(SyncVlessExternalSubscriptionJob::class, function (SyncVlessExternalSubscriptionJob $job) use ($active) {
             return $job->subscriptionId === $active->id
                 && $job->queue === null;
         });
 
-        Queue::assertPushed(SyncVlessExternalSubscriptionJob::class, 1);
+        Bus::assertDispatchedTimes(SyncVlessExternalSubscriptionJob::class, 1);
     }
 
     public function test_command_is_scheduled_every_fifteen_minutes(): void
@@ -60,7 +68,7 @@ class SyncVlessExternalSubscriptionsCommandTest extends TestCase
 
     public function test_manual_sync_queues_job_on_default_queue(): void
     {
-        Queue::fake();
+        Bus::fake();
 
         $admin = User::query()->create([
             'name' => 'Admin',
@@ -81,7 +89,7 @@ class SyncVlessExternalSubscriptionsCommandTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('success', 'Синхронизация поставлена в очередь.');
 
-        Queue::assertPushed(SyncVlessExternalSubscriptionJob::class, function (SyncVlessExternalSubscriptionJob $job) use ($subscription) {
+        Bus::assertDispatched(SyncVlessExternalSubscriptionJob::class, function (SyncVlessExternalSubscriptionJob $job) use ($subscription) {
             return $job->subscriptionId === $subscription->id
                 && $job->queue === null;
         });

@@ -227,9 +227,9 @@ class PullVlessConfigsForServerJobTest extends TestCase
         $this->assertSame('wireguard', $config->protocol);
         $this->assertSame('wireguard', $config->type);
         $this->assertNotNull($config->extra);
-        $this->assertStringStartsWith('wireguard://aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=@lv.oksana1984.ru:20466', $config->extra);
-        $this->assertStringContainsString('address=10.0.0.2/32', $config->extra);
-        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
+        $this->assertStringStartsWith('wireguard://aGGq0lnDIL1MLZoKPriZkFp%2B4qME1WdApNPoxduT0Hs%3D@lv.oksana1984.ru:20466', $config->extra);
+        $this->assertStringContainsString('address=10.0.0.2%2F32', $config->extra);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $config->extra);
     }
 
     public function test_job_normalizes_encoded_wireguard_candidate_uri_from_panel(): void
@@ -323,10 +323,104 @@ class PullVlessConfigsForServerJobTest extends TestCase
 
         $this->assertNotNull($config);
         $this->assertNotNull($config->extra);
-        $this->assertStringContainsString('address=10.0.0.2/32', $config->extra);
-        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
+        $this->assertStringContainsString('address=10.0.0.2%2F32', $config->extra);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $config->extra);
         $this->assertStringNotContainsString('%252F', $config->extra);
         $this->assertStringNotContainsString('%253D', $config->extra);
+    }
+
+    public function test_job_percent_encodes_wireguard_keys_when_building_subscription_uri(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'WireGuard Panel',
+            'code' => 'WGP',
+            'ip' => '10.0.0.7',
+            'link_host' => 'lv.oksana1984.ru',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+        $server->xrayInbounds()->create([
+            'external_id' => 8,
+            'is_active' => true,
+            'is_public' => true,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 8,
+                    'protocol' => 'wireguard',
+                    'port' => 51822,
+                    'settings' => [
+                        'publicKey' => 'X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=',
+                        'mtu' => 1420,
+                        'clients' => [[
+                            'email' => 'WG-encoded-wg',
+                            'privateKey' => 'aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk=',
+                            'address' => '10.0.0.3/32',
+                            'enable' => true,
+                        ]],
+                    ],
+                    'streamSettings' => json_encode([], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'email' => 'WG-encoded-wg',
+                    'privateKey' => 'aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk=',
+                    'address' => '10.0.0.3/32',
+                    'enable' => true,
+                    'inboundIds' => [8],
+                ]],
+            ]),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Encoded User',
+            'telegram' => '@encoded',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 8,
+            'name' => 'WG-encoded-wg',
+            'uuid' => 'WG-encoded-wg',
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 51822,
+        ]);
+
+        (new PullVlessConfigsForServerJob($server->id))->handle();
+
+        $config = VlessConfig::query()
+            ->where('server_id', $server->id)
+            ->where('name', 'WG-encoded-wg')
+            ->first();
+
+        $this->assertNotNull($config);
+        $this->assertNotNull($config->extra);
+        $this->assertStringContainsString('wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68%2Bnnk%3D@lv.oksana1984.ru:51822', $config->extra);
+        $this->assertStringContainsString('address=10.0.0.3%2F32', $config->extra);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $config->extra);
     }
 
     public function test_job_skips_panel_configs_without_existing_owned_local_record(): void

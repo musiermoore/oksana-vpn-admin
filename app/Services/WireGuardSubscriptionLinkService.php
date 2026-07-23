@@ -299,11 +299,11 @@ class WireGuardSubscriptionLinkService
         ], fn (mixed $value) => ! in_array($value, [null, ''], true));
 
         $queryString = collect($query)
-            ->map(fn (mixed $value, string $key) => $key.'='.$this->stringifyQueryValue($value))
+            ->map(fn (mixed $value, string $key) => $key.'='.rawurlencode($this->stringifyQueryValue($value)))
             ->implode('&');
 
         return 'wireguard://'
-            .$privateKey
+            .rawurlencode($privateKey)
             .'@'
             .$this->formatHost($host)
             .':'

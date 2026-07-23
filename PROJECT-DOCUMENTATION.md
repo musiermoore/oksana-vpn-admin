@@ -97,6 +97,17 @@ Each inbound record has:
 
 `params` stores the raw inbound payload from 3x-ui so app logic does not depend on a rigid local schema for inbound settings.
 
+### Subscription Output
+
+The main `/connect` subscription is built from normalized local and external nodes.
+
+Important WireGuard rule:
+
+- WireGuard URIs are normalized before output
+- private keys and query values are percent-encoded
+- this protects client import for keys containing characters such as `+`, `/`, and `=`
+- the same normalization is applied even for older records that already store a `wireguard://...` string in `vless_configs.extra`
+
 ### User Subscriptions
 
 Subscriptions are stored in `user_subscriptions`.
@@ -169,6 +180,14 @@ Responsibility:
 - create the approved negative subscription transaction
 - sync balances again
 
+### `vless-external-subscriptions:sync`
+
+Responsibility:
+
+- find active external VLESS subscriptions
+- queue a sync job per active subscription
+- use explicit bus dispatch for the sync job path so command and admin-triggered sync behave consistently
+
 ## Payment Flow
 
 Current deposit flow:
@@ -214,3 +233,4 @@ Transactions in the admin UI should expose:
 - When changing billing behavior, check `app/Models/User.php` and `app/Services/SubscriptionService.php`.
 - When changing transaction fields, update both API and admin controllers plus Vue pages.
 - When changing scheduled behavior, update `routes/console.php`.
+- When changing `/connect` output, verify WireGuard URI encoding and JSON builders together.

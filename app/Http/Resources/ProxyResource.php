@@ -15,6 +15,7 @@ class ProxyResource extends JsonResource
             'host' => $this->host,
             'port' => (int) $this->port,
             'inbound_id' => $this->inbound_id !== null ? (int) $this->inbound_id : null,
+            'xray_inbound_id' => $this->xray_inbound_id !== null ? (int) $this->xray_inbound_id : null,
             'is_https' => (bool) $this->is_https,
             'is_ready' => (bool) $this->is_ready,
             'description' => $this->description,

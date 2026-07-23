@@ -38,6 +38,10 @@ class StoreServerRequest extends DataFormRequest
             'is_active' => ['nullable', 'boolean'],
             'is_ready' => ['nullable', 'boolean'],
             'hide_configs_for_non_admins' => ['nullable', 'boolean'],
+            'inbounds' => ['nullable', 'array'],
+            'inbounds.*.id' => ['required', 'integer', Rule::exists('xray_inbounds', 'id')],
+            'inbounds.*.is_active' => ['required', 'boolean'],
+            'inbounds.*.is_public' => ['required', 'boolean'],
         ];
     }
 

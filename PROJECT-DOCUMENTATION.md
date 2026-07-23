@@ -91,11 +91,15 @@ Each inbound record has:
 
 - `server_id`
 - `external_id`
+- `is_active`
+- `is_public`
 - `params`
 
 `external_id` is the inbound id from 3x-ui.
 
 `params` stores the raw inbound payload from 3x-ui so app logic does not depend on a rigid local schema for inbound settings.
+
+Deleted or broken 3x-ui inbounds with empty payloads should not stay active locally.
 
 ### Subscription Output
 

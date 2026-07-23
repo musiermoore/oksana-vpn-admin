@@ -8,6 +8,7 @@ use App\Models\Server;
 use App\Models\XrayInbound;
 use App\Services\XuiConfigServiceFactory;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Throwable;
 
 class SyncXrayInboundsCommand extends Command
@@ -41,19 +42,28 @@ class SyncXrayInboundsCommand extends Command
         }
 
         try {
-            $inbounds = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server)->getInbounds();
+            $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
+            $inbounds = $service->getInbounds();
         } catch (Throwable $exception) {
             report($exception);
 
             return;
         }
 
-        foreach ($inbounds as $inbound) {
-            $externalId = (int) ($inbound['id'] ?? 0);
+        $syncedExternalIds = collect();
 
-            if ($externalId < 1) {
+        foreach ($inbounds as $inbound) {
+            if (! is_array($inbound)) {
                 continue;
             }
+
+            $externalId = (int) ($inbound['id'] ?? 0);
+
+            if ($externalId < 1 || ! $this->hasPersistableParams($service->normalizeInbound($inbound))) {
+                continue;
+            }
+
+            $syncedExternalIds->push($externalId);
 
             XrayInbound::query()->updateOrCreate(
                 [
@@ -65,5 +75,34 @@ class SyncXrayInboundsCommand extends Command
                 ],
             );
         }
+
+        $this->markMissingInboundsAsInactive($server, $syncedExternalIds);
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalizedInbound
+     */
+    private function hasPersistableParams(array $normalizedInbound): bool
+    {
+        return $normalizedInbound['settings'] !== []
+            || $normalizedInbound['stream_settings'] !== [];
+    }
+
+    /**
+     * @param  Collection<int, int>  $syncedExternalIds
+     */
+    private function markMissingInboundsAsInactive(Server $server, Collection $syncedExternalIds): void
+    {
+        $query = XrayInbound::query()
+            ->where('server_id', $server->id);
+
+        if ($syncedExternalIds->isNotEmpty()) {
+            $query->whereNotIn('external_id', $syncedExternalIds->unique()->values()->all());
+        }
+
+        $query->update([
+            'is_active' => false,
+            'params' => null,
+        ]);
     }
 }

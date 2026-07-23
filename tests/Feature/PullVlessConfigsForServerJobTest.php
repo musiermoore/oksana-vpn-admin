@@ -232,6 +232,74 @@ class PullVlessConfigsForServerJobTest extends TestCase
         $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
     }
 
+    public function test_job_skips_deleted_inbounds_with_empty_payload(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Latvia',
+            'code' => 'LV',
+            'ip' => '10.0.0.6',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 3,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'settings' => null,
+                    'streamSettings' => null,
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'email' => 'deleted-client',
+                    'uuid' => 'deleted-client-uuid',
+                    'enable' => true,
+                    'inboundIds' => [3],
+                ]],
+            ]),
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => null,
+            'inbound_id' => 3,
+            'name' => 'deleted-client',
+            'uuid' => 'deleted-client-uuid',
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 443,
+        ]);
+
+        (new PullVlessConfigsForServerJob($server->id))->handle();
+
+        $this->assertDatabaseCount('vless_configs', 1);
+        $this->assertDatabaseHas('vless_configs', [
+            'server_id' => $server->id,
+            'name' => 'deleted-client',
+            'uuid' => 'deleted-client-uuid',
+        ]);
+    }
+
     public function test_job_normalizes_encoded_wireguard_candidate_uri_from_panel(): void
     {
         $server = Server::query()->create([

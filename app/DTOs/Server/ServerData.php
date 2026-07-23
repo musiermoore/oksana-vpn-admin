@@ -26,9 +26,11 @@ class ServerData extends Data
         public ?string $panelPassword = null,
         public ?string $sshPrivateKey = null,
         public ?string $sshPublicKey = null,
+        /** @var array<int, array{id:int, is_active:bool, is_public:bool}> */
+        public array $inbounds = [],
     ) {}
 
-    public function toArray(): array
+    public function toServerAttributes(): array
     {
         return [
             'name' => $this->name,
@@ -48,5 +50,10 @@ class ServerData extends Data
             'is_ready' => $this->isReady,
             'hide_configs_for_non_admins' => $this->hideConfigsForNonAdmins,
         ];
+    }
+
+    public function toArray(): array
+    {
+        return $this->toServerAttributes();
     }
 }

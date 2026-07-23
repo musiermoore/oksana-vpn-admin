@@ -28,7 +28,6 @@ class ProxyData extends Data
             'name' => $this->name,
             'host' => $this->host,
             'port' => $this->port,
-            'inbound_id' => $this->inboundId,
             'is_https' => $this->isHttps,
             'is_ready' => $this->isReady,
             'description' => $this->description,

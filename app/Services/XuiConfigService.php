@@ -56,6 +56,7 @@ class XuiConfigService
     {
         return collect($this->getInbounds())
             ->map(fn (array $row) => $this->normalizeInbound($row))
+            ->filter(fn (array $row) => $this->hasUsableInboundDefinition($row))
             ->filter(fn (array $row) => $this->isSupportedVlessInboundProtocol($row['protocol'] ?? null) && ! empty($row['id']))
             ->values()
             ->all();
@@ -887,6 +888,17 @@ class XuiConfigService
                 ? (string) $xhttpSettings['xPaddingBytes']
                 : (isset($xhttpSettings['x_padding_bytes']) ? (string) $xhttpSettings['x_padding_bytes'] : null),
         ];
+    }
+
+    /**
+     * Deleted inbounds can still leak out of 3x-ui with empty payloads.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public function hasUsableInboundDefinition(array $row): bool
+    {
+        return ($row['settings'] ?? []) !== []
+            || ($row['stream_settings'] ?? []) !== [];
     }
 
     public function buildLocalConfigAttributes(array $inbound, array $settings, ?int $userId = null): array

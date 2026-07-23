@@ -1685,11 +1685,26 @@ class VlessConnectTest extends TestCase
 
     private function createProxy(Server $server, string $name, string $host, int $port, ?int $inboundId = null, bool $isReady = true): Proxy
     {
+        $xrayInboundId = null;
+
+        if ($inboundId !== null) {
+            $xrayInboundId = (int) $server->xrayInbounds()->firstOrCreate(
+                [
+                    'external_id' => $inboundId,
+                ],
+                [
+                    'is_active' => true,
+                    'is_public' => true,
+                    'params' => ['id' => $inboundId, 'protocol' => 'vless'],
+                ],
+            )->getKey();
+        }
+
         $proxy = Proxy::query()->create([
             'name' => $name,
             'host' => $host,
             'port' => $port,
-            'inbound_id' => $inboundId,
+            'xray_inbound_id' => $xrayInboundId,
             'is_https' => true,
             'is_ready' => $isReady,
         ]);

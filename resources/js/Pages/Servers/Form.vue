@@ -28,6 +28,7 @@ const form = useForm({
     is_active: props.server?.is_active ?? true,
     is_ready: props.server?.is_ready ?? false,
     hide_configs_for_non_admins: props.server?.hide_configs_for_non_admins ?? false,
+    inbounds: props.server?.inbounds ?? [],
 });
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
@@ -67,6 +68,36 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Is Active</span><input v-model="form.is_active" type="checkbox"></label>
             <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field"><span>Hide configs for non-admins</span><input v-model="form.hide_configs_for_non_admins" type="checkbox"></label>
+
+            <div class="field" style="grid-column: 1 / -1;">
+                <span>Inbounds</span>
+
+                <div v-if="form.inbounds.length === 0" class="hint">
+                    Для этого сервера пока нет синхронизированных inbound'ов. Сначала выполните sync с 3x-ui.
+                </div>
+
+                <table v-else>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Remark</th>
+                            <th>Protocol</th>
+                            <th>Is Active</th>
+                            <th>Is Public</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="inbound in form.inbounds" :key="inbound.id">
+                            <td>{{ inbound.external_id }}</td>
+                            <td>{{ inbound.remark || '—' }}</td>
+                            <td>{{ inbound.protocol || '—' }}</td>
+                            <td><input v-model="inbound.is_active" type="checkbox"></td>
+                            <td><input v-model="inbound.is_public" type="checkbox"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
             <div class="actions" style="grid-column: 1 / -1;">
                 <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
                 <Link class="button button--secondary" href="/servers">Назад</Link>

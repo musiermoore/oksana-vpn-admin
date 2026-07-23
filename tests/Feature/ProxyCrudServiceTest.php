@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\Proxy\ProxyData;
 use App\Models\Proxy;
 use App\Models\Server;
+use App\Models\XrayInbound;
 use App\Services\Crud\ProxyCrudService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -17,6 +18,13 @@ class ProxyCrudServiceTest extends TestCase
     {
         $serverOne = $this->createServer('LV1');
         $serverTwo = $this->createServer('FI1');
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $serverOne->id,
+            'external_id' => 10,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 10, 'protocol' => 'vless'],
+        ]);
 
         $service = app(ProxyCrudService::class);
 
@@ -36,7 +44,7 @@ class ProxyCrudServiceTest extends TestCase
             'name' => 'Ru Proxy',
             'host' => 'proxy.example.com',
             'port' => 443,
-            'inbound_id' => 10,
+            'xray_inbound_id' => $inbound->id,
             'is_ready' => true,
         ]);
         $this->assertSame([$serverOne->id], $proxy->servers->pluck('id')->all());
@@ -57,7 +65,7 @@ class ProxyCrudServiceTest extends TestCase
             'id' => $proxy->id,
             'host' => 'proxy-updated.example.com',
             'port' => 8443,
-            'inbound_id' => null,
+            'xray_inbound_id' => null,
             'is_https' => false,
             'is_ready' => false,
         ]);
@@ -70,11 +78,18 @@ class ProxyCrudServiceTest extends TestCase
     public function test_delete_removes_proxy_and_pivot_rows(): void
     {
         $server = $this->createServer('LV1');
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 10,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 10, 'protocol' => 'vless'],
+        ]);
         $proxy = Proxy::query()->create([
             'name' => 'Ru Proxy',
             'host' => 'proxy.example.com',
             'port' => 443,
-            'inbound_id' => 10,
+            'xray_inbound_id' => $inbound->id,
             'is_https' => true,
             'is_ready' => true,
         ]);

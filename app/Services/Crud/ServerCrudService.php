@@ -5,6 +5,7 @@ namespace App\Services\Crud;
 use App\DTOs\Server\ServerData;
 use App\Jobs\InstallWireGuardAgentForServerJob;
 use App\Models\Server;
+use App\Models\XrayInbound;
 use App\Repositories\ServerRepository;
 use RuntimeException;
 
@@ -16,7 +17,7 @@ class ServerCrudService
 
     public function create(ServerData $data): Server
     {
-        $server = $this->servers->create($data->toArray());
+        $server = $this->servers->create($data->toServerAttributes());
 
         $this->dispatchWireGuardInstallIfNeeded($server);
 
@@ -25,7 +26,7 @@ class ServerCrudService
 
     public function update(Server $server, ServerData $data): Server
     {
-        $attributes = $data->toArray();
+        $attributes = $data->toServerAttributes();
 
         if (blank($attributes['ssh_private_key'])) {
             unset($attributes['ssh_private_key']);
@@ -37,6 +38,8 @@ class ServerCrudService
         if ($previousType !== $updatedServer->type) {
             $this->dispatchWireGuardInstallIfNeeded($updatedServer);
         }
+
+        $this->syncXrayInbounds($updatedServer, $data->inbounds);
 
         return $updatedServer;
     }
@@ -71,5 +74,40 @@ class ServerCrudService
         }
 
         InstallWireGuardAgentForServerJob::dispatch($server->id);
+    }
+
+    /**
+     * @param  array<int, array{id:int, is_active:bool, is_public:bool}>  $inbounds
+     */
+    private function syncXrayInbounds(Server $server, array $inbounds): void
+    {
+        if ($inbounds === []) {
+            return;
+        }
+
+        $payloadById = collect($inbounds)
+            ->filter(fn (mixed $item): bool => is_array($item) && isset($item['id']))
+            ->keyBy(fn (array $item): int => (int) $item['id']);
+
+        if ($payloadById->isEmpty()) {
+            return;
+        }
+
+        XrayInbound::query()
+            ->where('server_id', $server->id)
+            ->whereIn('id', $payloadById->keys()->all())
+            ->get()
+            ->each(function (XrayInbound $inbound) use ($payloadById): void {
+                $payload = $payloadById->get((int) $inbound->getKey());
+
+                if (! is_array($payload)) {
+                    return;
+                }
+
+                $inbound->update([
+                    'is_active' => (bool) ($payload['is_active'] ?? false),
+                    'is_public' => (bool) ($payload['is_public'] ?? false),
+                ]);
+            });
     }
 }

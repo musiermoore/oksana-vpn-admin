@@ -58,6 +58,8 @@ class ServerController extends Controller
      */
     public function edit(Server $server)
     {
+        $server->load(['xrayInbounds' => fn ($query) => $query->orderBy('external_id')->orderBy('id')]);
+
         return $this->inertia('Servers/Form', [
             'mode' => 'edit',
             'submit_url' => route('servers.update', $server),

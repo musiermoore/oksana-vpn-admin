@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\Server\ServerData;
 use App\Jobs\InstallWireGuardAgentForServerJob;
 use App\Models\Server;
+use App\Models\XrayInbound;
 use App\Services\Crud\ServerCrudService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -47,6 +48,50 @@ class ServerCrudServiceTest extends TestCase
 
         $server = $service->enable($server);
         $this->assertTrue((bool) $server->is_active);
+    }
+
+    public function test_update_syncs_server_inbound_flags(): void
+    {
+        $service = app(ServerCrudService::class);
+        $server = $service->create($this->makeServerData(Server::TYPE_VLESS, 'VLS'));
+
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 10,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 10, 'protocol' => 'vless', 'remark' => 'Main'],
+        ]);
+
+        $service->update($server, new ServerData(
+            name: 'Server VLS',
+            code: 'VLS',
+            ip: '10.0.0.1',
+            type: Server::TYPE_VLESS,
+            isHttps: true,
+            linkHost: null,
+            panelLink: 'https://agent.test',
+            panelUsername: 'admin',
+            panelPassword: 'secret',
+            panelApiVersion: Server::PANEL_API_V2_9,
+            appPath: '/opt/app',
+            sshPrivateKey: null,
+            sshPublicKey: null,
+            isActive: true,
+            isReady: false,
+            hideConfigsForNonAdmins: false,
+            inbounds: [[
+                'id' => $inbound->id,
+                'is_active' => false,
+                'is_public' => false,
+            ]],
+        ));
+
+        $this->assertDatabaseHas('xray_inbounds', [
+            'id' => $inbound->id,
+            'is_active' => false,
+            'is_public' => false,
+        ]);
     }
 
     private function makeServerData(string $type, string $code = 'WGA'): ServerData

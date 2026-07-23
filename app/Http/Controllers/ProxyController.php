@@ -20,6 +20,7 @@ class ProxyController extends Controller
     public function index(Request $request)
     {
         $proxies = Proxy::query()
+            ->with('xrayInbound:id,external_id')
             ->withCount('servers')
             ->orderBy('id')
             ->get();
@@ -50,7 +51,7 @@ class ProxyController extends Controller
 
     public function edit(Proxy $proxy)
     {
-        $proxy->load('servers');
+        $proxy->load(['servers', 'xrayInbound:id,external_id']);
 
         return $this->inertia('Proxies/Form', [
             'mode' => 'edit',

@@ -203,26 +203,24 @@ class WireGuardSubscriptionLinkService
 
     private function normalizeExistingUri(string $uri, ?string $name = null): ?string
     {
-        $parts = parse_url($uri);
+        $parsed = $this->parseWireGuardUri($uri);
 
-        if (! is_array($parts)) {
+        if ($parsed === null) {
             return $this->withName($uri, $name);
         }
 
-        parse_str((string) ($parts['query'] ?? ''), $query);
-
         return $this->buildUri(
-            privateKey: $this->decodeUriComponent((string) ($parts['user'] ?? '')),
-            host: (string) ($parts['host'] ?? ''),
-            port: isset($parts['port']) ? (int) $parts['port'] : null,
-            address: $this->decodeUriComponent((string) Arr::get($query, 'address', '')),
-            publicKey: $this->decodeUriComponent((string) Arr::get($query, 'publickey', '')),
-            name: $name ?? $this->decodeUriComponent((string) ($parts['fragment'] ?? '')),
-            mtu: $this->nullableInt(Arr::get($query, 'mtu')),
-            dns: $this->decodeUriComponent((string) Arr::get($query, 'dns', '')) ?: null,
-            presharedKey: $this->decodeUriComponent((string) Arr::get($query, 'presharedkey', '')) ?: null,
-            keepalive: $this->nullableInt(Arr::get($query, 'keepalive')),
-            reserved: $this->decodeUriComponent((string) Arr::get($query, 'reserved', '')) ?: null,
+            privateKey: $parsed['private_key'],
+            host: $parsed['host'],
+            port: $parsed['port'],
+            address: $parsed['address'],
+            publicKey: $parsed['public_key'],
+            name: $name ?? $parsed['fragment'],
+            mtu: $parsed['mtu'],
+            dns: $parsed['dns'],
+            presharedKey: $parsed['preshared_key'],
+            keepalive: $parsed['keepalive'],
+            reserved: $parsed['reserved'],
         );
     }
 
@@ -299,11 +297,11 @@ class WireGuardSubscriptionLinkService
         ], fn (mixed $value) => ! in_array($value, [null, ''], true));
 
         $queryString = collect($query)
-            ->map(fn (mixed $value, string $key) => $key.'='.rawurlencode($this->stringifyQueryValue($value)))
+            ->map(fn (mixed $value, string $key) => $key.'='.$this->stringifyQueryValue($value))
             ->implode('&');
 
         return 'wireguard://'
-            .rawurlencode($privateKey)
+            .$privateKey
             .'@'
             .$this->formatHost($host)
             .':'
@@ -429,6 +427,90 @@ class WireGuardSubscriptionLinkService
         }
 
         return $decoded;
+    }
+
+    /**
+     * @return array{
+     *     private_key:string,
+     *     host:string,
+     *     port:?int,
+     *     address:string,
+     *     public_key:string,
+     *     mtu:?int,
+     *     dns:?string,
+     *     preshared_key:?string,
+     *     keepalive:?int,
+     *     reserved:?string,
+     *     fragment:string
+     * }|null
+     */
+    private function parseWireGuardUri(string $uri): ?array
+    {
+        $normalized = Str::after($uri, 'wireguard://');
+        [$mainPart, $fragment] = array_pad(explode('#', $normalized, 2), 2, '');
+        [$authority, $queryPart] = array_pad(explode('?', $mainPart, 2), 2, '');
+
+        $atPosition = strrpos($authority, '@');
+
+        if ($atPosition === false) {
+            return null;
+        }
+
+        $privateKey = substr($authority, 0, $atPosition);
+        $endpoint = substr($authority, $atPosition + 1);
+        $parts = parse_url(str_contains($endpoint, '://') ? $endpoint : 'udp://'.$endpoint);
+
+        if (! is_array($parts)) {
+            return null;
+        }
+
+        $query = $this->parseQueryString($queryPart);
+
+        return [
+            'private_key' => $this->decodeUriComponent($privateKey),
+            'host' => (string) ($parts['host'] ?? ''),
+            'port' => isset($parts['port']) ? (int) $parts['port'] : null,
+            'address' => $this->decodeUriComponent((string) Arr::get($query, 'address', '')),
+            'public_key' => $this->decodeUriComponent((string) Arr::get($query, 'publickey', '')),
+            'mtu' => $this->nullableInt(Arr::get($query, 'mtu')),
+            'dns' => $this->decodeUriComponent((string) Arr::get($query, 'dns', '')) ?: null,
+            'preshared_key' => $this->decodeUriComponent((string) Arr::get($query, 'presharedkey', '')) ?: null,
+            'keepalive' => $this->nullableInt(Arr::get($query, 'keepalive')),
+            'reserved' => $this->decodeUriComponent((string) Arr::get($query, 'reserved', '')) ?: null,
+            'fragment' => $this->decodeUriComponent($fragment),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function parseQueryString(string $query): array
+    {
+        $query = trim($query);
+
+        if ($query === '') {
+            return [];
+        }
+
+        $pairs = explode('&', $query);
+        $result = [];
+
+        foreach ($pairs as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+
+            [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $key = rawurldecode($key);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $result[$key] = $value;
+        }
+
+        return $result;
     }
 
     private function formatHost(string $host): string

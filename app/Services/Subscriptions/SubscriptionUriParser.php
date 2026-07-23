@@ -57,17 +57,30 @@ class SubscriptionUriParser
 
     private function parseWireGuard(string $uri): ?array
     {
-        $parts = parse_url($uri);
+        $normalized = Str::after($uri, 'wireguard://');
+        [$mainPart, $fragment] = array_pad(explode('#', $normalized, 2), 2, '');
+        [$authority, $queryPart] = array_pad(explode('?', $mainPart, 2), 2, '');
+
+        $atPosition = strrpos($authority, '@');
+
+        if ($atPosition === false) {
+            return null;
+        }
+
+        $privateKey = substr($authority, 0, $atPosition);
+        $endpoint = substr($authority, $atPosition + 1);
+
+        $parts = parse_url(str_contains($endpoint, '://') ? $endpoint : 'udp://'.$endpoint);
 
         if (! is_array($parts)) {
             return null;
         }
 
-        parse_str((string) ($parts['query'] ?? ''), $query);
+        $query = $this->parseQueryString($queryPart);
 
         return [
             'protocol' => 'wireguard',
-            'private_key' => rawurldecode((string) ($parts['user'] ?? '')),
+            'private_key' => rawurldecode($privateKey),
             'server' => (string) ($parts['host'] ?? ''),
             'port' => (int) ($parts['port'] ?? 0),
             'address' => rawurldecode((string) Arr::get($query, 'address', '')),
@@ -77,8 +90,40 @@ class SubscriptionUriParser
             'keepalive' => (int) Arr::get($query, 'keepalive', 0),
             'dns' => rawurldecode((string) Arr::get($query, 'dns', '')),
             'reserved' => rawurldecode((string) Arr::get($query, 'reserved', '')),
-            'fragment' => rawurldecode((string) ($parts['fragment'] ?? '')),
+            'fragment' => rawurldecode($fragment),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function parseQueryString(string $query): array
+    {
+        $query = trim($query);
+
+        if ($query === '') {
+            return [];
+        }
+
+        $pairs = explode('&', $query);
+        $result = [];
+
+        foreach ($pairs as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+
+            [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $key = rawurldecode($key);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $result[$key] = $value;
+        }
+
+        return $result;
     }
 
     private function parseVless(string $uri): ?array

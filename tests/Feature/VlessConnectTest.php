@@ -111,13 +111,13 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode($response->getContent(), true);
 
         $this->assertNotFalse($decoded);
-        $this->assertStringContainsString('wireguard://aGGq0lnDIL1MLZoKPriZkFp%2B4qME1WdApNPoxduT0Hs%3D@lv.oksana1984.ru:20466', $decoded);
-        $this->assertStringContainsString('address=10.0.0.2%2F32', $decoded);
-        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $decoded);
+        $this->assertStringContainsString('wireguard://aGGq0lnDIL1MLZoKPriZkFp+4qME1WdApNPoxduT0Hs=@lv.oksana1984.ru:20466', $decoded);
+        $this->assertStringContainsString('address=10.0.0.2/32', $decoded);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $decoded);
         $this->assertStringContainsString('#'.rawurlencode('Латвия WG • WIREGUARD • UDP'), $decoded);
     }
 
-    public function test_connect_percent_encodes_wireguard_keys_in_uri_subscription(): void
+    public function test_connect_keeps_wireguard_keys_raw_in_uri_subscription(): void
     {
         $user = $this->createActiveUser('WireGuard Encoded User', '@wg-encoded-user', '223355');
 
@@ -157,10 +157,54 @@ class VlessConnectTest extends TestCase
         $decoded = base64_decode((string) $response->getContent(), true);
 
         $this->assertNotFalse($decoded);
-        $this->assertStringContainsString('wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68%2Bnnk%3D@lv.oksana1984.ru:51822', $decoded);
-        $this->assertStringContainsString('address=10.0.0.3%2F32', $decoded);
-        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39%2Fw2NumpTOHfK0zA6Q2Q%3D', $decoded);
-        $this->assertStringNotContainsString('wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk=@lv.oksana1984.ru:51822', $decoded);
+        $this->assertStringContainsString('wireguard://aCBriJh7qvg6tKO8zEybIyICRc3JS6AuqWWdx68+nnk=@lv.oksana1984.ru:51822', $decoded);
+        $this->assertStringContainsString('address=10.0.0.3/32', $decoded);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $decoded);
+    }
+
+    public function test_connect_keeps_wireguard_secret_key_with_slash_raw_in_uri_subscription(): void
+    {
+        $user = $this->createActiveUser('WireGuard Slash User', '@wg-slash-user', '223356');
+
+        $server = Server::query()->create([
+            'name' => 'Латвия WG',
+            'code' => 'LWG',
+            'ip' => '10.10.10.12',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+            'name' => 'WG-slash-config',
+            'description' => null,
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-client-10',
+            'port' => 28475,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://4MFczJVKcx8cKwVEIEtjyyb/Aq02lvy1UhrqiXXSxWA=@lv.oksana1984.ru:28475?address=10.0.0.3/32&mtu=1420&publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=&keepalive=0&dns=1.1.1.1,9.9.9.9',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('223356'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('wireguard://4MFczJVKcx8cKwVEIEtjyyb/Aq02lvy1UhrqiXXSxWA=@lv.oksana1984.ru:28475', $decoded);
+        $this->assertStringContainsString('address=10.0.0.3/32', $decoded);
+        $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $decoded);
     }
 
     public function test_connect_json_returns_xray_profile_array_with_hardcoded_dns_and_route_settings(): void

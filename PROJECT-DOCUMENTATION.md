@@ -104,8 +104,8 @@ The main `/connect` subscription is built from normalized local and external nod
 Important WireGuard rule:
 
 - WireGuard URIs are normalized before output
-- private keys and query values are percent-encoded
-- this protects client import for keys containing characters such as `+`, `/`, and `=`
+- the app accepts both raw and legacy-encoded `wireguard://...` values during parsing
+- URI subscription output keeps WireGuard keys raw so clients that import subscriptions do not break on secret keys containing `/`
 - the same normalization is applied even for older records that already store a `wireguard://...` string in `vless_configs.extra`
 
 ### User Subscriptions
@@ -233,4 +233,4 @@ Transactions in the admin UI should expose:
 - When changing billing behavior, check `app/Models/User.php` and `app/Services/SubscriptionService.php`.
 - When changing transaction fields, update both API and admin controllers plus Vue pages.
 - When changing scheduled behavior, update `routes/console.php`.
-- When changing `/connect` output, verify WireGuard URI encoding and JSON builders together.
+- When changing `/connect` output, verify WireGuard URI raw output and JSON builders together.

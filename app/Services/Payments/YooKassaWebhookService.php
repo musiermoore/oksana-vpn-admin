@@ -2,14 +2,13 @@
 
 namespace App\Services\Payments;
 
+use App\Jobs\EditTelegramMessageTextJob;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Services\Crud\TransactionCrudService;
 use App\Services\TelegramDevChatService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Telegram\Bot\Laravel\Facades\Telegram;
-use Throwable;
 
 class YooKassaWebhookService
 {
@@ -128,10 +127,6 @@ class YooKassaWebhookService
 
     private function editTelegramPaymentMessage(array $payload): void
     {
-        try {
-            Telegram::editMessageText($payload);
-        } catch (Throwable $throwable) {
-            report($throwable);
-        }
+        EditTelegramMessageTextJob::dispatch($payload)->afterCommit();
     }
 }

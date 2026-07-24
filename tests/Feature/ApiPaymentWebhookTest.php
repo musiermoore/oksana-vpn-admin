@@ -7,10 +7,11 @@ use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
+use App\Jobs\EditTelegramMessageTextJob;
+use App\Jobs\SendTelegramMessageJob;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
-use Telegram\Bot\Laravel\Facades\Telegram;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ApiPaymentWebhookTest extends TestCase
@@ -34,17 +35,7 @@ class ApiPaymentWebhookTest extends TestCase
 
     public function test_webhook_approves_pending_transaction_when_payment_succeeds(): void
     {
-        $telegram = Mockery::mock();
-        $telegram->shouldReceive('sendMessage')
-            ->once()
-            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === '123456789'
-                && $payload['text'] === 'Подписка успешно активирована до 12.12.2026.');
-        $telegram->shouldReceive('editMessageText')
-            ->once()
-            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === 777
-                && $payload['message_id'] === 999
-                && $payload['text'] === "Оплата получена.\n\nПодписка успешно активирована до 12.12.2026.");
-        Telegram::swap($telegram);
+        Queue::fake();
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -143,22 +134,17 @@ class ApiPaymentWebhookTest extends TestCase
             'end_date' => '2026-12-12',
             'price' => 720,
         ]);
+
+        Queue::assertPushed(SendTelegramMessageJob::class, fn (SendTelegramMessageJob $job): bool => $job->payload['chat_id'] === '123456789'
+            && $job->payload['text'] === 'Подписка успешно активирована до 12.12.2026.');
+        Queue::assertPushed(EditTelegramMessageTextJob::class, fn (EditTelegramMessageTextJob $job): bool => $job->payload['chat_id'] === 777
+            && $job->payload['message_id'] === 999
+            && $job->payload['text'] === "Оплата получена.\n\nПодписка успешно активирована до 12.12.2026.");
     }
 
     public function test_webhook_notifies_dev_chat_when_paid_payment_is_canceled(): void
     {
-        $telegram = Mockery::mock();
-        $telegram->shouldReceive('sendMessage')
-            ->once()
-            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === '999999'
-                && str_contains($payload['text'], 'отменён после оплаты')
-                && str_contains($payload['text'], '23d93cac-000f-5000-8000-126628f15141'));
-        $telegram->shouldReceive('editMessageText')
-            ->once()
-            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === 777
-                && $payload['message_id'] === 999
-                && $payload['text'] === 'Платёж отменён. Ссылка на оплату больше не действует.');
-        Telegram::swap($telegram);
+        Queue::fake();
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -231,22 +217,18 @@ class ApiPaymentWebhookTest extends TestCase
         $this->assertCount(2, $invoice->history);
         $this->assertSame('payment.canceled', $invoice->history[1]['type']);
         $this->assertSame('canceled', $invoice->history[1]['status']);
+
+        Queue::assertPushed(SendTelegramMessageJob::class, fn (SendTelegramMessageJob $job): bool => $job->payload['chat_id'] === '999999'
+            && str_contains((string) $job->payload['text'], 'отменён после оплаты')
+            && str_contains((string) $job->payload['text'], '23d93cac-000f-5000-8000-126628f15141'));
+        Queue::assertPushed(EditTelegramMessageTextJob::class, fn (EditTelegramMessageTextJob $job): bool => $job->payload['chat_id'] === 777
+            && $job->payload['message_id'] === 999
+            && $job->payload['text'] === 'Платёж отменён. Ссылка на оплату больше не действует.');
     }
 
     public function test_webhook_generates_gift_code_when_gift_payment_succeeds(): void
     {
-        $telegram = Mockery::mock();
-        $telegram->shouldReceive('sendMessage')
-            ->once()
-            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === '123456789'
-                && str_contains($payload['text'], 'Подарочный код на 6 мес. готов:')
-                && str_contains($payload['text'], 'Передайте его получателю для активации в mini-app.'));
-        $telegram->shouldReceive('editMessageText')
-            ->once()
-            ->withArgs(fn (array $payload): bool => $payload['chat_id'] === 777
-                && $payload['message_id'] === 999
-                && str_contains($payload['text'], "Оплата получена.\n\nПодарочный код на 6 мес. готов:"));
-        Telegram::swap($telegram);
+        Queue::fake();
 
         $user = User::query()->create([
             'name' => 'Alice',
@@ -327,5 +309,99 @@ class ApiPaymentWebhookTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('user_subscriptions', 0);
+
+        Queue::assertPushed(SendTelegramMessageJob::class, fn (SendTelegramMessageJob $job): bool => $job->payload['chat_id'] === '123456789'
+            && str_contains((string) $job->payload['text'], 'Подарочный код на 6 мес. готов:')
+            && str_contains((string) $job->payload['text'], 'Передайте его получателю для активации в mini-app.'));
+        Queue::assertPushed(EditTelegramMessageTextJob::class, fn (EditTelegramMessageTextJob $job): bool => $job->payload['chat_id'] === 777
+            && $job->payload['message_id'] === 999
+            && str_contains((string) $job->payload['text'], "Оплата получена.\n\nПодарочный код на 6 мес. готов:"));
+    }
+
+    public function test_webhook_queues_telegram_side_effects_without_calling_them_synchronously(): void
+    {
+        Queue::fake();
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'balance' => 0,
+        ]);
+
+        $invoice = Invoice::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => '23d93cac-000f-5000-8000-126628f15141',
+            'status' => 'pending',
+            'paid' => false,
+            'amount' => 520,
+            'currency' => 'RUB',
+            'description' => 'Подписка 6 мес. для @alice',
+            'history' => [[
+                'type' => 'payment.created',
+                'status' => 'pending',
+                'paid' => false,
+                'amount' => [
+                    'value' => '520.00',
+                    'currency' => 'RUB',
+                ],
+                'occurred_at' => '2026-06-12T09:50:00.000Z',
+                'payload' => ['status' => 'pending'],
+            ]],
+        ]);
+
+        Transaction::query()->create([
+            'user_id' => $user->id,
+            'invoice_id' => $invoice->id,
+            'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
+            'amount' => 520,
+            'is_approved' => false,
+            'description' => 'YooKassa',
+            'telegram_chat_id' => 777,
+            'telegram_message_id' => 999,
+            'extra_data' => [
+                'subscription_months' => 6,
+                'package_price' => 720,
+            ],
+        ]);
+
+        $this->postJson('/api/payment/webhook', [
+            'type' => 'notification',
+            'event' => 'payment.succeeded',
+            'object' => [
+                'id' => '23d93cac-000f-5000-8000-126628f15141',
+                'status' => 'succeeded',
+                'paid' => true,
+                'amount' => [
+                    'value' => '520.00',
+                    'currency' => 'RUB',
+                ],
+                'description' => 'Подписка 6 мес. для @alice',
+                'confirmation' => [
+                    'type' => 'redirect',
+                    'confirmation_url' => 'https://yookassa.example/confirm',
+                ],
+                'created_at' => '2026-06-12T10:00:00.000Z',
+            ],
+        ])->assertOk()
+            ->assertExactJson([
+                'ok' => true,
+            ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'invoice_id' => $invoice->id,
+            'is_approved' => true,
+        ]);
+
+        $this->assertDatabaseHas('user_subscriptions', [
+            'user_id' => $user->id,
+            'start_date' => '2026-06-12',
+            'end_date' => '2026-12-12',
+            'price' => 720,
+        ]);
+
+        Queue::assertPushed(SendTelegramMessageJob::class);
+        Queue::assertPushed(EditTelegramMessageTextJob::class);
     }
 }

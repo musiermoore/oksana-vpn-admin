@@ -32,4 +32,9 @@ return [
     'shared_commands' => [],
 
     'proxy' => env('TELEGRAM_PROXY'),
+
+    'timeouts' => [
+        'connect' => (float) env('TELEGRAM_CONNECT_TIMEOUT', 3.0),
+        'request' => (float) env('TELEGRAM_REQUEST_TIMEOUT', 5.0),
+    ],
 ];

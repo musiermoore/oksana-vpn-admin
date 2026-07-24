@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Crud;
 
 use App\DTOs\Transaction\TransactionData;
 use App\Enums\SubscriptionPurchaseType;
 use App\Events\TransactionApproved;
+use App\Jobs\SendTelegramMessageJob;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Repositories\TransactionRepository;
 use Carbon\Carbon;
-use Telegram\Bot\Laravel\Facades\Telegram;
 
 class TransactionCrudService
 {
@@ -44,7 +46,7 @@ class TransactionCrudService
 
         $transaction = $transaction->refresh();
 
-        Telegram::sendMessage([
+        $this->sendTelegramMessage([
             'chat_id' => $transaction->user->telegram_id,
             'text' => $this->buildApprovalTelegramMessage($transaction),
         ]);
@@ -59,7 +61,7 @@ class TransactionCrudService
 
         $this->transactions->delete($transaction);
 
-        Telegram::sendMessage([
+        $this->sendTelegramMessage([
             'chat_id' => $telegramId,
             'text' => "Пополнение баланса на $amount отклонено",
         ]);
@@ -123,5 +125,13 @@ class TransactionCrudService
         }
 
         return $transaction->approval_message_text;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function sendTelegramMessage(array $payload): void
+    {
+        SendTelegramMessageJob::dispatch($payload)->afterCommit();
     }
 }

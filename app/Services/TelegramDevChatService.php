@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
-use Telegram\Bot\Laravel\Facades\Telegram;
+use App\Jobs\SendTelegramMessageJob;
 
 class TelegramDevChatService
 {
@@ -14,9 +16,9 @@ class TelegramDevChatService
             return;
         }
 
-        Telegram::sendMessage([
+        SendTelegramMessageJob::dispatch([
             'chat_id' => $chatId,
             'text' => $message,
-        ]);
+        ])->afterCommit();
     }
 }

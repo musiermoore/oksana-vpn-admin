@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\Transaction\TransactionData;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
+use App\Jobs\SendTelegramMessageJob;
 use App\Models\CurrentPayment;
 use App\Models\Server;
 use App\Models\Transaction;
@@ -14,8 +15,6 @@ use App\Services\Crud\TransactionCrudService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Mockery;
-use Telegram\Bot\Laravel\Facades\Telegram;
 use Tests\TestCase;
 
 class TransactionCrudServiceTest extends TestCase
@@ -93,15 +92,6 @@ class TransactionCrudServiceTest extends TestCase
     public function test_approving_a_deposit_creates_subscription_and_dispatches_default_configs_for_user(): void
     {
         Queue::fake();
-        $telegram = Mockery::mock();
-        $telegram->shouldReceive('sendMessage')
-            ->once()
-            ->withArgs(function (array $payload): bool {
-                return $payload['chat_id'] === '654321'
-                    && $payload['text'] === 'Подписка успешно активирована до 18.11.2026.';
-            })
-            ->andReturnTrue();
-        Telegram::swap($telegram);
 
         CurrentPayment::query()->create([
             'start_date' => '2026-05-01',
@@ -166,19 +156,16 @@ class TransactionCrudServiceTest extends TestCase
         Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($user) {
             return $job->userId === $user->id;
         });
+
+        Queue::assertPushed(SendTelegramMessageJob::class, function (SendTelegramMessageJob $job): bool {
+            return $job->payload['chat_id'] === '654321'
+                && $job->payload['text'] === 'Подписка успешно активирована до 18.11.2026.';
+        });
     }
 
     public function test_approving_regular_deposit_keeps_balance_top_up_message(): void
     {
-        $telegram = Mockery::mock();
-        $telegram->shouldReceive('sendMessage')
-            ->once()
-            ->withArgs(function (array $payload): bool {
-                return $payload['chat_id'] === '777000'
-                    && $payload['text'] === 'Баланс был пополнен на 100';
-            })
-            ->andReturnTrue();
-        Telegram::swap($telegram);
+        Queue::fake();
 
         $user = $this->createUser(balance: 0, telegramId: '777000');
 
@@ -193,21 +180,16 @@ class TransactionCrudServiceTest extends TestCase
         app(TransactionCrudService::class)->approve($transaction);
 
         $this->assertSame(100.0, $user->fresh()->balance);
+
+        Queue::assertPushed(SendTelegramMessageJob::class, function (SendTelegramMessageJob $job): bool {
+            return $job->payload['chat_id'] === '777000'
+                && $job->payload['text'] === 'Баланс был пополнен на 100';
+        });
     }
 
     public function test_approving_package_deposit_creates_next_subscription_record_when_current_subscription_is_active(): void
     {
         Queue::fake();
-
-        $telegram = Mockery::mock();
-        $telegram->shouldReceive('sendMessage')
-            ->once()
-            ->withArgs(function (array $payload): bool {
-                return $payload['chat_id'] === '654322'
-                    && $payload['text'] === 'Подписка успешно продлена до 13.07.2026.';
-            })
-            ->andReturnTrue();
-        Telegram::swap($telegram);
 
         CurrentPayment::query()->create([
             'start_date' => '2026-06-01',
@@ -263,6 +245,11 @@ class TransactionCrudServiceTest extends TestCase
             'is_approved' => true,
             'description' => 'Покупка подписки на 1 мес.',
         ]);
+
+        Queue::assertPushed(SendTelegramMessageJob::class, function (SendTelegramMessageJob $job): bool {
+            return $job->payload['chat_id'] === '654322'
+                && $job->payload['text'] === 'Подписка успешно продлена до 13.07.2026.';
+        });
     }
 
     private function createUser(float $balance, string $telegramId = '100200'): User

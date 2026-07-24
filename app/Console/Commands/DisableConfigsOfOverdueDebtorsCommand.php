@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Models\Config;
@@ -131,6 +133,13 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
 
         foreach ($users as $user) {
             foreach ($user->vlessConfigs as $config) {
+                if ($config->getResolvedInboundId() === null) {
+                    $ids[] = $config->id;
+                    $this->warn("Skipping remote disable for VLESS config [{$config->id}] because inbound is missing; config will be disabled locally.");
+
+                    continue;
+                }
+
                 try {
                     $service->disable($config);
                     $ids[] = $config->id;

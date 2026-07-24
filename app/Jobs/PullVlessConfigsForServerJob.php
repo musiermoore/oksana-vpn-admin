@@ -1,15 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\Models\Server;
-use App\Models\VlessConfig as VlessConfigModel;
+use App\Models\VlessConfig;
 use App\Services\XuiConfigService;
 use App\Services\XuiConfigServiceFactory;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Bus;
 use Throwable;
 
 class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
@@ -18,7 +21,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
 
     public int $tries = 3;
 
-    public int $timeout = 120;
+    public int $timeout = 300;
 
     public int $uniqueFor = 300;
 
@@ -41,23 +44,56 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
             return;
         }
 
-        $localConfigIds = [];
-
         $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
-        $data = $service->getAllVlessInbounds();
+        $inbounds = $service->getAllVlessInbounds();
         $clientIndex = $this->buildClientIndex($service->getClientListEntries());
+        $existingConfigIndex = $this->buildExistingConfigIndex($server);
+        $retainedConfigIds = [];
+        $jobs = [];
 
-        foreach ($data as $row) {
-            $this->handleInbound($row, $server, $localConfigIds, $service, $clientIndex);
+        foreach ($inbounds as $row) {
+            $updates = $this->buildInboundUpdates(
+                row: $row,
+                server: $server,
+                service: $service,
+                clientIndex: $clientIndex,
+                existingConfigIndex: $existingConfigIndex,
+                retainedConfigIds: $retainedConfigIds,
+            );
+
+            if ($updates === []) {
+                continue;
+            }
+
+            $jobs[] = new PersistPulledVlessInboundJob(
+                serverId: $server->id,
+                inboundId: (int) ($row['id'] ?? 0),
+                updates: $updates,
+            );
         }
 
-        if ($localConfigIds !== []) {
-            VlessConfigModel::query()
-                ->where('server_id', '=', $server->id)
-                ->whereNull('user_id')
-                ->whereNotIn('id', $localConfigIds)
-                ->delete();
+        if ($retainedConfigIds !== []) {
+            $jobs[] = new CleanupPulledVlessConfigsJob(
+                serverId: $server->id,
+                retainedConfigIds: array_values(array_unique($retainedConfigIds)),
+            );
         }
+
+        if ($jobs === []) {
+            return;
+        }
+
+        if (app()->runningUnitTests() || config('queue.default') === 'sync') {
+            foreach ($jobs as $job) {
+                Bus::dispatchSync($job);
+            }
+
+            return;
+        }
+
+        Bus::chain($jobs)
+            ->onQueue('vless-configs')
+            ->dispatch();
     }
 
     public function failed(Throwable $exception): void
@@ -65,17 +101,23 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
         report($exception);
     }
 
-    private function handleInbound(
+    /**
+     * @param  array<string, array<string, mixed>>  $clientIndex
+     * @param  array<string, VlessConfig>  $existingConfigIndex
+     * @param  array<int, int>  $retainedConfigIds
+     * @return array<int, array{id:int, attributes:array<string, mixed>}>
+     */
+    private function buildInboundUpdates(
         array $row,
         Server $server,
-        array &$localConfigIds,
         XuiConfigService $service,
         array $clientIndex,
-    ): void
-    {
+        array $existingConfigIndex,
+        array &$retainedConfigIds,
+    ): array {
         $settings = $row['settings'] ?? [];
-
         $clients = collect($settings['clients'] ?? []);
+        $updates = [];
 
         foreach ($clients as $client) {
             $uuid = $client['id'] ?? $client['uuid'] ?? null;
@@ -91,41 +133,40 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
                 clientIndex: $clientIndex,
             );
 
-            $vlessConfig = [
-                ...$service->buildLocalConfigAttributes($row, [
-                    ...$mergedClient,
-                    'email' => $mergedClient['email'] ?? null,
-                    'enable' => !array_key_exists('enable', $mergedClient) || $mergedClient['enable'],
-                    'id' => $uuid,
-                    'subId' => $mergedClient['subId'] ?? null,
-                    'password' => $mergedClient['password'] ?? null,
-                    'auth' => $mergedClient['auth'] ?? null,
-                    'flow' => $mergedClient['flow'] ?? null,
-                ]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+            $vlessConfig = $service->buildLocalConfigAttributes($row, [
+                ...$mergedClient,
+                'email' => $mergedClient['email'] ?? null,
+                'enable' => ! array_key_exists('enable', $mergedClient) || $mergedClient['enable'],
+                'id' => $uuid,
+                'subId' => $mergedClient['subId'] ?? null,
+                'password' => $mergedClient['password'] ?? null,
+                'auth' => $mergedClient['auth'] ?? null,
+                'flow' => $mergedClient['flow'] ?? null,
+            ]);
 
             $lookupAttributes = $this->resolveLookupAttributes($server, $row, $mergedClient, $vlessConfig);
-            $existingConfig = VlessConfigModel::query()->where($lookupAttributes)->first();
+            $existingConfig = $existingConfigIndex[$this->existingConfigIndexKey($lookupAttributes)] ?? null;
 
-            if (! $existingConfig) {
+            if (! $existingConfig instanceof VlessConfig) {
                 continue;
             }
 
-            if (empty($existingConfig->user_id)) {
-                continue;
-            }
-
-            unset($vlessConfig['user_id']);
-
-            $config = VlessConfigModel::query()->updateOrCreate(
-                $lookupAttributes,
-                $vlessConfig,
+            $retainedConfigIds[] = (int) $existingConfig->getKey();
+            unset(
+                $vlessConfig['inbound_id'],
+                $vlessConfig['user_id'],
+                $vlessConfig['created_at'],
             );
-
-            $localConfigIds[] = (int) $config->getKey();
+            $updates[] = [
+                'id' => (int) $existingConfig->getKey(),
+                'attributes' => [
+                    ...$vlessConfig,
+                    'updated_at' => now(),
+                ],
+            ];
         }
+
+        return $updates;
     }
 
     /**
@@ -148,6 +189,56 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
             'xray_inbound_id' => $attributes['xray_inbound_id'] ?? null,
             'name' => (string) ($attributes['name'] ?? $client['email'] ?? ''),
         ];
+    }
+
+    /**
+     * @return array<string, VlessConfig>
+     */
+    private function buildExistingConfigIndex(Server $server): array
+    {
+        $index = [];
+
+        VlessConfig::query()
+            ->where('server_id', $server->id)
+            ->whereNotNull('user_id')
+            ->get()
+            ->each(function (VlessConfig $config) use (&$index): void {
+                if (filled($config->uuid)) {
+                    $index[$this->existingConfigIndexKey([
+                        'server_id' => (int) $config->server_id,
+                        'uuid' => (string) $config->uuid,
+                    ])] = $config;
+                }
+
+                $index[$this->existingConfigIndexKey([
+                    'server_id' => (int) $config->server_id,
+                    'xray_inbound_id' => $config->xray_inbound_id !== null ? (int) $config->xray_inbound_id : null,
+                    'name' => (string) $config->name,
+                ])] = $config;
+            });
+
+        return $index;
+    }
+
+    /**
+     * @param  array<string, mixed>  $lookupAttributes
+     */
+    private function existingConfigIndexKey(array $lookupAttributes): string
+    {
+        if (array_key_exists('uuid', $lookupAttributes)) {
+            return sprintf(
+                'uuid:%d:%s',
+                (int) ($lookupAttributes['server_id'] ?? 0),
+                (string) ($lookupAttributes['uuid'] ?? ''),
+            );
+        }
+
+        return sprintf(
+            'inbound:%d:%s:%s',
+            (int) ($lookupAttributes['server_id'] ?? 0),
+            $lookupAttributes['xray_inbound_id'] === null ? 'null' : (string) (int) $lookupAttributes['xray_inbound_id'],
+            (string) ($lookupAttributes['name'] ?? ''),
+        );
     }
 
     /**
@@ -218,5 +309,4 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
     {
         return $inboundId.':'.$identifier;
     }
-
 }

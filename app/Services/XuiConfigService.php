@@ -719,7 +719,8 @@ class XuiConfigService
         }
 
         return Http::baseUrl($this->getBaseUrl())
-            ->timeout(15)
+            ->connectTimeout(15)
+            ->timeout(30)
             ->withHeaders($headers)
             ->withOptions($options);
     }

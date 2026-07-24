@@ -682,4 +682,9 @@ class PullVlessConfigsForServerJobTest extends TestCase
 
         $this->assertDatabaseCount('vless_configs', 2);
     }
+
+    public function test_job_timeout_is_increased_for_orchestration(): void
+    {
+        $this->assertSame(300, (new PullVlessConfigsForServerJob(1))->timeout);
+    }
 }

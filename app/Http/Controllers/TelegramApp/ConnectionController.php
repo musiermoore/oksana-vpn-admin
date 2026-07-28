@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\ApiVlessDeepLinksResource;
 use App\Models\Config;
 use App\Models\User;
+use App\Models\VlessConfig;
 use App\Services\Api\ApiUserService;
+use App\Services\WireGuardClientConfigBuilder;
 use App\Services\WireGuardAgentConfigService;
+use App\Support\WireGuardConfigPublicId;
 use App\Support\BotApiMessages;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +26,7 @@ class ConnectionController extends Controller
 {
     public function __construct(
         private readonly ApiUserService $users,
+        private readonly WireGuardClientConfigBuilder $wireGuardClientConfigBuilder,
     ) {}
 
     public function wireGuardConfigs(Request $request): JsonResponse
@@ -38,28 +42,32 @@ class ConnectionController extends Controller
 
         return response()->json([
             'configs' => $configs
-                ->map(fn (Config $config) => [
-                    'id' => $config->id,
-                    'name' => $config->name,
-                    'download_url' => route('telegram-app.wireguard.configs.download', [
-                        'configId' => $config->id,
-                    ], absolute: false),
-                    'qr_code_url' => route('telegram-app.wireguard.configs.qr-code', [
-                        'configId' => $config->id,
-                    ], absolute: false),
-                    'send_file_to_bot_url' => route('telegram-app.wireguard.configs.send-file', [
-                        'configId' => $config->id,
-                    ], absolute: false),
-                    'send_qr_to_bot_url' => route('telegram-app.wireguard.configs.send-qr', [
-                        'configId' => $config->id,
-                    ], absolute: false),
-                ])
+                ->map(function (Config|VlessConfig $config): array {
+                    $configId = WireGuardConfigPublicId::encode($config);
+
+                    return [
+                        'id' => $configId,
+                        'name' => $config->name,
+                        'download_url' => route('telegram-app.wireguard.configs.download', [
+                            'configId' => $configId,
+                        ], absolute: false),
+                        'qr_code_url' => route('telegram-app.wireguard.configs.qr-code', [
+                            'configId' => $configId,
+                        ], absolute: false),
+                        'send_file_to_bot_url' => route('telegram-app.wireguard.configs.send-file', [
+                            'configId' => $configId,
+                        ], absolute: false),
+                        'send_qr_to_bot_url' => route('telegram-app.wireguard.configs.send-qr', [
+                            'configId' => $configId,
+                        ], absolute: false),
+                    ];
+                })
                 ->values()
                 ->all(),
         ]);
     }
 
-    public function wireGuardDownload(Request $request, int $configId): Response
+    public function wireGuardDownload(Request $request, string $configId): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -70,13 +78,17 @@ class ConnectionController extends Controller
 
         $config = $this->users->findUserConfig($user, 'wireguard', $configId);
 
-        if (! $config instanceof Config) {
+        if (! ($config instanceof Config || $config instanceof VlessConfig)) {
             return response()->json([
                 'message' => BotApiMessages::configNotFound(),
             ], 404);
         }
 
         try {
+            if ($config instanceof VlessConfig) {
+                return $this->downloadXrayWireGuardConfig($config);
+            }
+
             if (! $config->server->isModernWireGuardType()) {
                 return response()->download($config->path, $config->download_filename);
             }
@@ -102,7 +114,7 @@ class ConnectionController extends Controller
         }
     }
 
-    public function wireGuardQrCode(Request $request, int $configId): Response
+    public function wireGuardQrCode(Request $request, string $configId): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -113,16 +125,18 @@ class ConnectionController extends Controller
 
         $config = $this->users->findUserConfig($user, 'wireguard', $configId);
 
-        if (! $config instanceof Config) {
+        if (! ($config instanceof Config || $config instanceof VlessConfig)) {
             return response()->json([
                 'message' => BotApiMessages::configNotFound(),
             ], 404);
         }
 
         try {
-            $content = $config->server->isModernWireGuardType()
-                ? WireGuardAgentConfigService::instance($config)->getClientConfig()
-                : $config->getQrCodeContent();
+            $content = $config instanceof VlessConfig
+                ? $this->wireGuardClientConfigBuilder->buildFromVlessConfig($config)
+                : ($config->server->isModernWireGuardType()
+                    ? WireGuardAgentConfigService::instance($config)->getClientConfig()
+                    : $config->getQrCodeContent());
 
             $png = QrCode::format('png')
                 ->margin(5)
@@ -141,7 +155,7 @@ class ConnectionController extends Controller
         }
     }
 
-    public function wireGuardSendFile(Request $request, int $configId): JsonResponse
+    public function wireGuardSendFile(Request $request, string $configId): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -152,7 +166,7 @@ class ConnectionController extends Controller
 
         $config = $this->users->findUserConfig($user, 'wireguard', $configId);
 
-        if (! $config instanceof Config) {
+        if (! ($config instanceof Config || $config instanceof VlessConfig)) {
             return response()->json([
                 'message' => BotApiMessages::configNotFound(),
             ], 404);
@@ -161,7 +175,9 @@ class ConnectionController extends Controller
         $temporaryPath = null;
 
         try {
-            [$path, $filename, $temporaryPath] = $this->resolveWireGuardDocument($config);
+            [$path, $filename, $temporaryPath] = $config instanceof VlessConfig
+                ? $this->resolveXrayWireGuardDocument($config)
+                : $this->resolveWireGuardDocument($config);
 
             Telegram::sendDocument([
                 'chat_id' => (string) $user->telegram_id,
@@ -185,7 +201,7 @@ class ConnectionController extends Controller
         }
     }
 
-    public function wireGuardSendQr(Request $request, int $configId): JsonResponse
+    public function wireGuardSendQr(Request $request, string $configId): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -196,7 +212,7 @@ class ConnectionController extends Controller
 
         $config = $this->users->findUserConfig($user, 'wireguard', $configId);
 
-        if (! $config instanceof Config) {
+        if (! ($config instanceof Config || $config instanceof VlessConfig)) {
             return response()->json([
                 'message' => BotApiMessages::configNotFound(),
             ], 404);
@@ -205,7 +221,9 @@ class ConnectionController extends Controller
         $temporaryPath = null;
 
         try {
-            $png = $this->buildWireGuardQrPng($config);
+            $png = $config instanceof VlessConfig
+                ? $this->buildXrayWireGuardQrPng($config)
+                : $this->buildWireGuardQrPng($config);
             $temporaryPath = $this->storeTemporaryTelegramFile($png, 'wireguard-qrcode.png');
 
             Telegram::sendPhoto([
@@ -228,6 +246,46 @@ class ConnectionController extends Controller
                 @unlink($temporaryPath);
             }
         }
+    }
+
+    private function downloadXrayWireGuardConfig(VlessConfig $config): Response
+    {
+        $content = $this->wireGuardClientConfigBuilder->buildFromVlessConfig($config);
+        $filename = $this->wireGuardClientConfigBuilder->buildDownloadFilename($config);
+
+        return response()->streamDownload(function () use ($content): void {
+            echo $content;
+        }, $filename, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function resolveXrayWireGuardDocument(VlessConfig $config): array
+    {
+        $directory = storage_path('app/tmp/wireguard-downloads');
+
+        File::ensureDirectoryExists($directory);
+
+        $temporaryPath = $directory.'/'.Str::uuid().'.conf';
+
+        File::put($temporaryPath, $this->wireGuardClientConfigBuilder->buildFromVlessConfig($config));
+
+        return [
+            $temporaryPath,
+            $this->wireGuardClientConfigBuilder->buildDownloadFilename($config),
+            $temporaryPath,
+        ];
+    }
+
+    private function buildXrayWireGuardQrPng(VlessConfig $config): string
+    {
+        return QrCode::format('png')
+            ->margin(5)
+            ->size(512)
+            ->generate($this->wireGuardClientConfigBuilder->buildFromVlessConfig($config));
     }
 
     public function vlessLinks(Request $request): JsonResponse

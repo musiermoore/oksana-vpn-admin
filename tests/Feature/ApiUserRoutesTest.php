@@ -143,6 +143,56 @@ class ApiUserRoutesTest extends TestCase
             ]);
     }
 
+    public function test_wireguard_configs_route_includes_xray_wireguard_configs(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = Server::query()->create([
+            'name' => 'Xray WG Server',
+            'code' => 'XWG',
+            'ip' => '127.0.0.20',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $xrayInbound = $server->xrayInbounds()->create([
+            'external_id' => 77,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => [],
+        ]);
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $xrayInbound->id,
+            'inbound_id' => 77,
+            'user_id' => $user->id,
+            'name' => 'wg-xray-mobile',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-api-route-77',
+            'port' => 51820,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://privateKey123=@xwg.example.com:51820?address=10.0.0.2/32&publickey=serverPublicKey123=&mtu=1420&dns=1.1.1.1,8.8.8.8&keepalive=25',
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/wireguard/configs")
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [
+                    [
+                        'id' => 'xray-'.$config->id,
+                        'name' => 'wg-xray-mobile',
+                        'download_url' => "/api/users/{$user->telegram_id}/configs/wireguard/xray-{$config->id}/download",
+                        'qr_code_url' => "/api/users/{$user->telegram_id}/configs/wireguard/xray-{$config->id}/qr-code",
+                    ],
+                ],
+            ]);
+    }
+
     public function test_configs_route_hides_server_configs_for_non_admin_user(): void
     {
         $user = $this->createActiveUser(balance: 500);
@@ -313,6 +363,113 @@ class ApiUserRoutesTest extends TestCase
         });
     }
 
+    public function test_wireguard_download_route_builds_conf_file_for_xray_wireguard_config(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        [$server, $xrayInbound] = $this->createActiveVlessServerWithInbound();
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $xrayInbound->id,
+            'inbound_id' => 31,
+            'user_id' => $user->id,
+            'name' => 'xray-wireguard-ios',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-download-31',
+            'port' => 51820,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://privateKey123=@xwg.example.com:51820?address=10.0.0.2/32&publickey=serverPublicKey123=&mtu=1420&dns=1.1.1.1,8.8.8.8&keepalive=25',
+        ]);
+
+        $response = $this->get("/api/users/{$user->telegram_id}/configs/wireguard/xray-{$config->id}/download");
+
+        $response->assertOk();
+        $response->assertDownload('xraywgserver.conf');
+        $this->assertSame(
+            "[Interface]\n"
+            .'PrivateKey = privateKey123='."\n"
+            .'Address = 10.0.0.2/32'."\n"
+            .'MTU = 1420'."\n"
+            .'DNS = 1.1.1.1,8.8.8.8'."\n"
+            ."\n"
+            .'[Peer]'."\n"
+            .'PublicKey = serverPublicKey123='."\n"
+            .'Endpoint = xwg.example.com:51820'."\n"
+            .'AllowedIPs = 0.0.0.0/0, ::/0'."\n"
+            .'PersistentKeepalive = 25'."\n",
+            $response->streamedContent(),
+        );
+    }
+
+    public function test_wireguard_qr_code_route_uses_generated_conf_for_xray_wireguard_config(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        [$server, $xrayInbound] = $this->createActiveVlessServerWithInbound();
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $xrayInbound->id,
+            'inbound_id' => 31,
+            'user_id' => $user->id,
+            'name' => 'xray-wireguard-ios',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-qr-31',
+            'port' => 51820,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://privateKey123=@xwg.example.com:51820?address=10.0.0.2/32&publickey=serverPublicKey123=&mtu=1420&dns=1.1.1.1,8.8.8.8&keepalive=25',
+        ]);
+
+        QrCode::swap(new class
+        {
+            public function format(string $format): self
+            {
+                return $this;
+            }
+
+            public function margin(int $margin): self
+            {
+                return $this;
+            }
+
+            public function size(int $size): self
+            {
+                return $this;
+            }
+
+            public function generate(string $content): string
+            {
+                return 'png-binary:' . $content;
+            }
+        });
+
+        $response = $this->get("/api/users/{$user->telegram_id}/configs/wireguard/xray-{$config->id}/qr-code");
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'image/png');
+        $this->assertSame(
+            'png-binary:[Interface]' . "\n"
+            .'PrivateKey = privateKey123='."\n"
+            .'Address = 10.0.0.2/32'."\n"
+            .'MTU = 1420'."\n"
+            .'DNS = 1.1.1.1,8.8.8.8'."\n"
+            ."\n"
+            .'[Peer]'."\n"
+            .'PublicKey = serverPublicKey123='."\n"
+            .'Endpoint = xwg.example.com:51820'."\n"
+            .'AllowedIPs = 0.0.0.0/0, ::/0'."\n"
+            .'PersistentKeepalive = 25'."\n",
+            $response->getContent(),
+        );
+    }
+
     public function test_vless_link_route_returns_connect_url_for_active_user(): void
     {
         config(['vless.domain' => 'https://vpn.example']);
@@ -419,5 +576,29 @@ class ApiUserRoutesTest extends TestCase
             'is_https' => true,
             'link_host' => strtolower($code).'.example.com',
         ] + $attributes);
+    }
+
+    /**
+     * @return array{0: Server, 1: \App\Models\XrayInbound}
+     */
+    private function createActiveVlessServerWithInbound(): array
+    {
+        $server = Server::query()->create([
+            'name' => 'Xray WG Server',
+            'code' => 'XWG',
+            'ip' => '127.0.0.20',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $xrayInbound = $server->xrayInbounds()->create([
+            'external_id' => 31,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => [],
+        ]);
+
+        return [$server, $xrayInbound];
     }
 }

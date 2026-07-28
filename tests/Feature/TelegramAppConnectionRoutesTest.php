@@ -46,6 +46,57 @@ class TelegramAppConnectionRoutesTest extends TestCase
             ]);
     }
 
+    public function test_authenticated_user_can_load_xray_wireguard_configs_via_telegram_app_routes(): void
+    {
+        [$user, $token] = $this->createAuthorizedActiveUser();
+        $server = Server::query()->create([
+            'name' => 'Xray WG Server',
+            'code' => 'XWG',
+            'ip' => '127.0.0.20',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $xrayInbound = $server->xrayInbounds()->create([
+            'external_id' => 77,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => [],
+        ]);
+
+        $config = \App\Models\VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $xrayInbound->id,
+            'inbound_id' => 77,
+            'user_id' => $user->id,
+            'name' => 'wg-xray-mobile',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'telegram-xray-wg-77',
+            'port' => 51820,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://privateKey123=@xwg.example.com:51820?address=10.0.0.2/32&publickey=serverPublicKey123=',
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/wireguard/configs')
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [[
+                    'id' => 'xray-'.$config->id,
+                    'name' => 'wg-xray-mobile',
+                    'download_url' => "/telegram-app/wireguard/configs/xray-{$config->id}/download",
+                    'qr_code_url' => "/telegram-app/wireguard/configs/xray-{$config->id}/qr-code",
+                    'send_file_to_bot_url' => "/telegram-app/wireguard/configs/xray-{$config->id}/send-file",
+                    'send_qr_to_bot_url' => "/telegram-app/wireguard/configs/xray-{$config->id}/send-qr",
+                ]],
+            ]);
+    }
+
     public function test_wireguard_and_vless_routes_return_debt_payload_for_user_without_active_access(): void
     {
         [, $token] = $this->createAuthorizedUser(balance: 0);

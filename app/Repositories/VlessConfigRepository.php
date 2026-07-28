@@ -27,7 +27,16 @@ class VlessConfigRepository
                 'server:id,hide_configs_for_non_admins',
                 'xrayInbound:id,external_id,is_active',
             ])
-            ->get(['id', 'user_id', 'server_id', 'xray_inbound_id', 'name', 'password', 'auth']);
+            ->get([
+                'id',
+                'user_id',
+                'server_id',
+                'xray_inbound_id',
+                'name',
+                'password',
+                'auth',
+                'protocol',
+            ]);
     }
 
     public function findForUser(User $user, int|string $id): ?VlessConfig

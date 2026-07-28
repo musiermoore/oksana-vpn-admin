@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Api;
 
 use App\DTOs\User\ApiUserRegistrationData;
 use App\DTOs\User\ApiUserRegistrationResultData;
+use App\Models\Config;
 use App\Models\PaymentPeriod;
 use App\Models\User;
+use App\Models\VlessConfig;
 use App\Repositories\ConfigRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\VlessConfigRepository;
@@ -13,6 +17,7 @@ use App\Services\ReferralService;
 use App\Services\SubscriptionService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use App\Services\VlessDeepLinkService;
+use App\Support\WireGuardConfigPublicId;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -110,6 +115,10 @@ class ApiUserService
             return collect();
         }
 
+        if ($this->isWireGuardType($type)) {
+            return $this->getUserWireGuardConfigs($user);
+        }
+
         $configs = $this->isVlessType($type)
             ? $this->vlessConfigs->allForUser($user)
             : $this->configs->allForUser($user);
@@ -127,6 +136,10 @@ class ApiUserService
     {
         if (! $this->isSupportedConfigType($type)) {
             return null;
+        }
+
+        if ($this->isWireGuardType($type)) {
+            return $this->findUserWireGuardConfig($user, $configId);
         }
 
         $config = $this->isVlessType($type)
@@ -159,6 +172,65 @@ class ApiUserService
         }
 
         return $config->xrayInbound !== null && (bool) $config->xrayInbound->is_active;
+    }
+
+    private function isVisibleWireGuardVlessConfig(Model $config): bool
+    {
+        return $config instanceof VlessConfig
+            && trim(mb_strtolower((string) $config->protocol)) === 'wireguard'
+            && $this->isVisibleVlessConfig($config);
+    }
+
+    private function getUserWireGuardConfigs(User $user): Collection
+    {
+        $configs = $this->configs->allForUser($user)
+            ->concat(
+                $this->vlessConfigs->allForUser($user)
+                    ->filter(fn (Model $config) => $this->isVisibleWireGuardVlessConfig($config))
+                    ->values()
+            );
+
+        if (! $user->is_admin) {
+            $configs = $configs
+                ->filter(fn (Model $config) => ! (bool) $config->server?->hide_configs_for_non_admins)
+                ->values();
+        }
+
+        return $configs
+            ->sortBy(fn (Model $config) => sprintf(
+                '%010d:%s:%s',
+                (int) ($config->server_id ?? 0),
+                mb_strtolower((string) ($config->name ?? '')),
+                $config instanceof VlessConfig ? '1' : '0',
+            ))
+            ->values();
+    }
+
+    private function findUserWireGuardConfig(User $user, string $configId): ?Model
+    {
+        $resolved = WireGuardConfigPublicId::decode($configId);
+
+        if (! is_array($resolved)) {
+            return null;
+        }
+
+        $config = $resolved['source'] === 'xray'
+            ? $this->vlessConfigs->findForUser($user, $resolved['id'])
+            : $this->configs->findForUser($user, $resolved['id']);
+
+        if (! $config instanceof Model) {
+            return null;
+        }
+
+        if ($config instanceof VlessConfig && ! $this->isVisibleWireGuardVlessConfig($config)) {
+            return null;
+        }
+
+        if (! $user->is_admin && (bool) $config->server?->hide_configs_for_non_admins) {
+            return null;
+        }
+
+        return $config;
     }
 
     public function getVlessLink(User $user): string

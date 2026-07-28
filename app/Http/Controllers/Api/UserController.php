@@ -12,10 +12,13 @@ use App\Http\Resources\Api\ApiRegistrationStatusResource;
 use App\Http\Resources\Api\ApiSubscriptionPackageResource;
 use App\Http\Resources\Api\ApiVlessConfigResource;
 use App\Http\Resources\Api\ApiVlessDeepLinksResource;
+use App\Http\Resources\Api\ApiWireGuardConfigResource;
 use App\Models\Config;
 use App\Models\User;
+use App\Models\VlessConfig;
 use App\Services\Api\ApiUserService;
 use App\Services\WelcomeMessageService;
+use App\Services\WireGuardClientConfigBuilder;
 use App\Services\WireGuardAgentConfigService;
 use App\Support\BotApiMessages;
 use Exception;
@@ -32,6 +35,7 @@ class UserController extends Controller
     public function __construct(
         private readonly ApiUserService $userService,
         private readonly WelcomeMessageService $welcomeMessages,
+        private readonly WireGuardClientConfigBuilder $wireGuardClientConfigBuilder,
     ) {}
 
     public function registrationStatus(string $telegramId)
@@ -97,9 +101,11 @@ class UserController extends Controller
 
         $configs = $this->userService->getUserConfigs($user, $type);
 
-        $resource = $this->userService->isVlessType($type)
-            ? ApiVlessConfigResource::collection($configs)
-            : ApiConfigResource::collection($configs);
+        $resource = match (true) {
+            $this->userService->isWireGuardType($type) => ApiWireGuardConfigResource::collection($configs),
+            $this->userService->isVlessType($type) => ApiVlessConfigResource::collection($configs),
+            default => ApiConfigResource::collection($configs),
+        };
 
         return response()->json([
             'configs' => $resource->resolve(),
@@ -120,7 +126,6 @@ class UserController extends Controller
             ], 404);
         }
 
-        /** @var Config $config */
         $config = $this->userService->findUserConfig($user, $type, $configId);
 
         if (empty($config)) {
@@ -130,6 +135,10 @@ class UserController extends Controller
         }
 
         try {
+            if ($this->userService->isWireGuardType($type) && $config instanceof VlessConfig) {
+                return $this->downloadXrayWireGuardConfig($config);
+            }
+
             return $this->userService->isLinkConfigType($type)
                 ? response($config->getLink())
                 : $this->downloadWireGuardConfig($config);
@@ -165,7 +174,11 @@ class UserController extends Controller
         }
 
         try {
-            $configBody = $this->resolveQrCodeContent($config);
+            if ($this->userService->isWireGuardType($type) && $config instanceof VlessConfig) {
+                $configBody = $this->wireGuardClientConfigBuilder->buildFromVlessConfig($config);
+            } else {
+                $configBody = $this->resolveQrCodeContent($config);
+            }
 
             $png = QrCode::format('png')->margin(5)->size(512)->generate($configBody);
 
@@ -179,6 +192,18 @@ class UserController extends Controller
                 'message' => BotApiMessages::unexpectedError(),
             ], 500);
         }
+    }
+
+    private function downloadXrayWireGuardConfig(VlessConfig $config): Response
+    {
+        $content = $this->wireGuardClientConfigBuilder->buildFromVlessConfig($config);
+        $filename = $this->wireGuardClientConfigBuilder->buildDownloadFilename($config);
+
+        return response()->streamDownload(function () use ($content): void {
+            echo $content;
+        }, $filename, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
     }
 
     public function register(RegisterApiUserRequest $request)

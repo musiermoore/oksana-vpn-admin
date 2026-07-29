@@ -181,9 +181,26 @@ class ApiUserService
             && $this->isVisibleVlessConfig($config);
     }
 
+    private function isVisibleLegacyWireGuardConfig(Model $config): bool
+    {
+        if (! $config instanceof Config) {
+            return false;
+        }
+
+        $server = $config->server;
+
+        if ($server === null || ! $server->isLegacyWireGuardType()) {
+            return true;
+        }
+
+        return (bool) $server->is_active && (bool) $server->is_ready;
+    }
+
     private function getUserWireGuardConfigs(User $user): Collection
     {
         $configs = $this->configs->allForUser($user)
+            ->filter(fn (Model $config) => $this->isVisibleLegacyWireGuardConfig($config))
+            ->values()
             ->concat(
                 $this->vlessConfigs->allForUser($user)
                     ->filter(fn (Model $config) => $this->isVisibleWireGuardVlessConfig($config))
@@ -219,6 +236,10 @@ class ApiUserService
             : $this->configs->findForUser($user, $resolved['id']);
 
         if (! $config instanceof Model) {
+            return null;
+        }
+
+        if ($config instanceof Config && ! $this->isVisibleLegacyWireGuardConfig($config)) {
             return null;
         }
 

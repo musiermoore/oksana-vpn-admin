@@ -28,7 +28,7 @@ class ConfigRepository
     public function allForUser(User $user): Collection
     {
         return $user->configs()
-            ->with('server:id,hide_configs_for_non_admins')
+            ->with('server:id,type,is_active,is_ready,hide_configs_for_non_admins')
             ->get(['id', 'user_id', 'server_id', 'name']);
     }
 

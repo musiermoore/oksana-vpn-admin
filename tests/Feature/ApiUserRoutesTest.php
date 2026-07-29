@@ -221,6 +221,66 @@ class ApiUserRoutesTest extends TestCase
             ]);
     }
 
+    public function test_wireguard_configs_route_hides_legacy_wireguard_configs_from_inactive_server(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = $this->createServer(code: 'OLDOFF', attributes: [
+            'type' => Server::TYPE_WIREGUARD_OLD,
+            'is_active' => false,
+            'is_ready' => true,
+        ]);
+
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'legacy-inactive-config',
+            'description' => null,
+            'is_active' => true,
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/wireguard/configs")
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [],
+            ]);
+
+        $this->get("/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/download")
+            ->assertNotFound()
+            ->assertExactJson([
+                'message' => BotApiMessages::configNotFound(),
+            ]);
+    }
+
+    public function test_wireguard_configs_route_hides_legacy_wireguard_configs_from_not_ready_server(): void
+    {
+        $user = $this->createActiveUser(balance: 500);
+        $server = $this->createServer(code: 'OLDNR', attributes: [
+            'type' => Server::TYPE_WIREGUARD_OLD,
+            'is_active' => true,
+            'is_ready' => false,
+        ]);
+
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'legacy-not-ready-config',
+            'description' => null,
+            'is_active' => true,
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/wireguard/configs")
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [],
+            ]);
+
+        $this->get("/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/download")
+            ->assertNotFound()
+            ->assertExactJson([
+                'message' => BotApiMessages::configNotFound(),
+            ]);
+    }
+
     public function test_vless_configs_route_hides_configs_from_inactive_xray_inbound(): void
     {
         $user = $this->createActiveUser(balance: 500);
@@ -575,7 +635,8 @@ class ApiUserRoutesTest extends TestCase
             'type' => Server::TYPE_WIREGUARD_OLD,
             'is_https' => true,
             'link_host' => strtolower($code).'.example.com',
-        ] + $attributes);
+            ...$attributes,
+        ]);
     }
 
     /**

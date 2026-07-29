@@ -211,7 +211,7 @@ class VlessConnectTest extends TestCase
     {
         $user = $this->createActiveUser('WireGuard Sweden JSON User', '@wg-sweden-json', '223357');
 
-        $server = $this->createServer('Швеция', 'SE1', 'swiss.oksana1984.ru');
+        $server = $this->createServer('🇸🇪 Швеция', 'SE1', 'swiss.oksana1984.ru');
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
@@ -250,7 +250,7 @@ class VlessConnectTest extends TestCase
     {
         $user = $this->createActiveUser('WireGuard Sweden URI User', '@wg-sweden-uri', '223358');
 
-        $server = $this->createServer('Швеция', 'SE1', 'swiss.oksana1984.ru');
+        $server = $this->createServer('🇸🇪 Швеция', 'SE1', 'swiss.oksana1984.ru');
 
         VlessConfig::query()->create([
             'server_id' => $server->id,
@@ -571,7 +571,7 @@ class VlessConnectTest extends TestCase
         ]);
 
         $user = $this->createActiveUser('WG Debug User', '@wg-debug', '654322');
-        $server = $this->createServer('Швеция', 'SE1', 'swiss.oksana1984.ru');
+        $server = $this->createServer('🇸🇪 Швеция', 'SE1', 'swiss.oksana1984.ru');
 
         $config = VlessConfig::query()->create([
             'server_id' => $server->id,
@@ -1479,11 +1479,19 @@ class VlessConnectTest extends TestCase
         $response->assertOk();
         $response->assertHeader('Profile-Update-Interval', '1');
         $response->assertHeader('Profile-Title', 'Oksana VPN');
+        $response->assertHeader('Pragma', 'no-cache');
+        $response->assertHeader('Expires', 'Thu, 01 Jan 1970 00:00:00 GMT');
         $response->assertHeader('X-Subscription-Devices-Limit', '5');
         $response->assertHeader('X-Subscription-Devices-Used', '0');
 
+        $cacheControl = $response->headers->get('Cache-Control');
         $userinfo = $response->headers->get('Subscription-Userinfo');
 
+        $this->assertNotNull($cacheControl);
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('no-cache', $cacheControl);
+        $this->assertStringContainsString('must-revalidate', $cacheControl);
+        $this->assertStringContainsString('max-age=0', $cacheControl);
         $this->assertNotNull($userinfo);
         $this->assertStringContainsString('upload=1073741824', $userinfo);
         $this->assertStringContainsString('download=5368709120', $userinfo);

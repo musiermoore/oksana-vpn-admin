@@ -62,6 +62,9 @@ class SubscriptionMetadataService
         $headers = [
             'Profile-Update-Interval' => $profileUpdateInterval,
             'Profile-Title' => $resolvedProfileTitle,
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Thu, 01 Jan 1970 00:00:00 GMT',
         ];
 
         if ($includeTrafficUsage) {

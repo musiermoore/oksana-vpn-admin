@@ -69,10 +69,9 @@ class SubscriptionUriParser
 
         $privateKey = substr($authority, 0, $atPosition);
         $endpoint = substr($authority, $atPosition + 1);
+        [$host, $port] = $this->parseHostAndPort($endpoint);
 
-        $parts = parse_url(str_contains($endpoint, '://') ? $endpoint : 'udp://'.$endpoint);
-
-        if (! is_array($parts)) {
+        if ($host === '') {
             return null;
         }
 
@@ -81,8 +80,8 @@ class SubscriptionUriParser
         return [
             'protocol' => 'wireguard',
             'private_key' => rawurldecode($privateKey),
-            'server' => (string) ($parts['host'] ?? ''),
-            'port' => (int) ($parts['port'] ?? 0),
+            'server' => $host,
+            'port' => $port,
             'address' => rawurldecode((string) Arr::get($query, 'address', '')),
             'public_key' => rawurldecode((string) Arr::get($query, 'publickey', '')),
             'mtu' => (int) Arr::get($query, 'mtu', 0),
@@ -124,6 +123,48 @@ class SubscriptionUriParser
         }
 
         return $result;
+    }
+
+    /**
+     * @return array{0: string, 1: int}
+     */
+    private function parseHostAndPort(string $endpoint): array
+    {
+        $normalized = trim($endpoint);
+
+        if ($normalized === '') {
+            return ['', 0];
+        }
+
+        if (str_contains($normalized, '://')) {
+            $normalized = (string) parse_url($normalized, PHP_URL_HOST)
+                .':'
+                .(int) (parse_url($normalized, PHP_URL_PORT) ?? 0);
+        }
+
+        if (str_starts_with($normalized, '[')) {
+            $closingBracketPosition = strpos($normalized, ']');
+
+            if ($closingBracketPosition === false) {
+                return ['', 0];
+            }
+
+            $host = substr($normalized, 1, $closingBracketPosition - 1);
+            $portPart = ltrim(substr($normalized, $closingBracketPosition + 1), ':');
+
+            return [$host, (int) $portPart];
+        }
+
+        $lastColonPosition = strrpos($normalized, ':');
+
+        if ($lastColonPosition === false) {
+            return [$normalized, 0];
+        }
+
+        return [
+            substr($normalized, 0, $lastColonPosition),
+            (int) substr($normalized, $lastColonPosition + 1),
+        ];
     }
 
     private function parseVless(string $uri): ?array

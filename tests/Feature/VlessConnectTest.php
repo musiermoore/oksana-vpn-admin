@@ -207,6 +207,45 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $decoded);
     }
 
+    public function test_connect_json_keeps_wireguard_secret_key_host_and_port_for_real_sweden_uri(): void
+    {
+        $user = $this->createActiveUser('WireGuard Sweden JSON User', '@wg-sweden-json', '223357');
+
+        $server = $this->createServer('Швеция', 'SE1', 'swiss.oksana1984.ru');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 34,
+            'name' => 'WG-sweden-json-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-sweden-json-34',
+            'port' => 35157,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://oHFwSwVE7Cbz9vw1QEPGahvGTZq1uQ/T9PYtUnInS0A=@swiss.oksana1984.ru:35157?address=10.0.0.5/32&mtu=1420&publickey=Q8SuCZNpNTvNPrfs2B+hhIM5tbLoXQHbZ5YX6QkYQ0c=&keepalive=0&dns=1.1.1.1,9.9.9.9',
+        ]);
+
+        $response = $this->get(route('vless.connect-json', [
+            'tg' => Crypt::encrypt('223357'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $payload = json_decode((string) $response->getContent(), true);
+
+        $this->assertIsArray($payload);
+        $this->assertSame('wireguard', data_get($payload, '0.outbounds.0.protocol'));
+        $this->assertSame('oHFwSwVE7Cbz9vw1QEPGahvGTZq1uQ/T9PYtUnInS0A=', data_get($payload, '0.outbounds.0.settings.secretKey'));
+        $this->assertSame('Q8SuCZNpNTvNPrfs2B+hhIM5tbLoXQHbZ5YX6QkYQ0c=', data_get($payload, '0.outbounds.0.settings.peers.0.publicKey'));
+        $this->assertSame('swiss.oksana1984.ru:35157', data_get($payload, '0.outbounds.0.settings.peers.0.endpoint'));
+        $this->assertSame(['10.0.0.5/32'], data_get($payload, '0.outbounds.0.settings.address'));
+    }
+
     public function test_connect_json_returns_xray_profile_array_with_hardcoded_dns_and_route_settings(): void
     {
         $user = $this->createActiveUser('JSON User', '@json-user', '112233');

@@ -318,11 +318,10 @@ class WireGuardSubscriptionLinkService
         $endpoint = trim((string) $endpoint);
 
         if ($endpoint !== '') {
-            $parsedHost = parse_url(str_contains($endpoint, '://') ? $endpoint : 'udp://'.$endpoint, PHP_URL_HOST);
-            $parsedPort = parse_url(str_contains($endpoint, '://') ? $endpoint : 'udp://'.$endpoint, PHP_URL_PORT);
+            [$parsedHost, $parsedPort] = $this->parseHostAndPort($endpoint);
 
-            if (is_string($parsedHost) && $parsedHost !== '') {
-                return [$parsedHost, is_int($parsedPort) ? $parsedPort : $defaultPort];
+            if ($parsedHost !== '') {
+                return [$parsedHost, $parsedPort > 0 ? $parsedPort : $defaultPort];
             }
         }
 
@@ -458,9 +457,9 @@ class WireGuardSubscriptionLinkService
 
         $privateKey = substr($authority, 0, $atPosition);
         $endpoint = substr($authority, $atPosition + 1);
-        $parts = parse_url(str_contains($endpoint, '://') ? $endpoint : 'udp://'.$endpoint);
+        [$host, $port] = $this->parseHostAndPort($endpoint);
 
-        if (! is_array($parts)) {
+        if ($host === '') {
             return null;
         }
 
@@ -468,8 +467,8 @@ class WireGuardSubscriptionLinkService
 
         return [
             'private_key' => $this->decodeUriComponent($privateKey),
-            'host' => (string) ($parts['host'] ?? ''),
-            'port' => isset($parts['port']) ? (int) $parts['port'] : null,
+            'host' => $host,
+            'port' => $port > 0 ? $port : null,
             'address' => $this->decodeUriComponent((string) Arr::get($query, 'address', '')),
             'public_key' => $this->decodeUriComponent((string) Arr::get($query, 'publickey', '')),
             'mtu' => $this->nullableInt(Arr::get($query, 'mtu')),
@@ -526,6 +525,52 @@ class WireGuardSubscriptionLinkService
         }
 
         return $host;
+    }
+
+    /**
+     * @return array{0: string, 1: int}
+     */
+    private function parseHostAndPort(string $endpoint): array
+    {
+        $normalized = trim($endpoint);
+
+        if ($normalized === '') {
+            return ['', 0];
+        }
+
+        if (str_contains($normalized, '://')) {
+            $parsedHost = parse_url($normalized, PHP_URL_HOST);
+            $parsedPort = parse_url($normalized, PHP_URL_PORT);
+
+            return [
+                is_string($parsedHost) ? $parsedHost : '',
+                is_int($parsedPort) ? $parsedPort : 0,
+            ];
+        }
+
+        if (str_starts_with($normalized, '[')) {
+            $closingBracketPosition = strpos($normalized, ']');
+
+            if ($closingBracketPosition === false) {
+                return ['', 0];
+            }
+
+            $host = substr($normalized, 1, $closingBracketPosition - 1);
+            $portPart = ltrim(substr($normalized, $closingBracketPosition + 1), ':');
+
+            return [$host, (int) $portPart];
+        }
+
+        $lastColonPosition = strrpos($normalized, ':');
+
+        if ($lastColonPosition === false) {
+            return [$normalized, 0];
+        }
+
+        return [
+            substr($normalized, 0, $lastColonPosition),
+            (int) substr($normalized, $lastColonPosition + 1),
+        ];
     }
 
     private function derivePublicKeyFromPrivateKey(mixed $privateKey): ?string

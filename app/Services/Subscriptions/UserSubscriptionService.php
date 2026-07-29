@@ -17,6 +17,7 @@ class UserSubscriptionService
         private readonly SubscriptionBuilderFactory $builderFactory,
         private readonly VlessExternalSubscriptionAccessService $externalSubscriptions,
         private readonly ConnectJsonBuilder $connectJsonBuilder,
+        private readonly SubscriptionUriParser $subscriptionUriParser,
     ) {}
 
     public function build(User $user, ?string $format = null): SubscriptionBuildResult
@@ -205,6 +206,12 @@ class UserSubscriptionService
 
     private function extractDomain(string $uri): string
     {
+        $parsed = $this->subscriptionUriParser->parse($uri);
+
+        if (is_array($parsed) && is_string($parsed['server'] ?? null)) {
+            return (string) $parsed['server'];
+        }
+
         $host = parse_url($uri, PHP_URL_HOST);
 
         return is_string($host) ? $host : '';

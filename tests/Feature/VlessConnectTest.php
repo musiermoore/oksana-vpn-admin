@@ -525,6 +525,50 @@ class VlessConnectTest extends TestCase
             ]);
     }
 
+    public function test_connect_raw_returns_wireguard_host_in_domain_field(): void
+    {
+        config([
+            'auth.basic_auth.login' => 'debug-user',
+            'auth.basic_auth.password' => 'debug-pass',
+        ]);
+
+        $user = $this->createActiveUser('WG Debug User', '@wg-debug', '654322');
+        $server = $this->createServer('Швеция', 'SE1', 'swiss.oksana1984.ru');
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'inbound_id' => 34,
+            'user_id' => $user->id,
+            'name' => 'wg-debug-config',
+            'description' => null,
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'wg-debug-uuid',
+            'port' => 35157,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://oHFwSwVE7Cbz9vw1QEPGahvGTZq1uQ/T9PYtUnInS0A=@swiss.oksana1984.ru:35157?address=10.0.0.5/32&mtu=1420&publickey=Q8SuCZNpNTvNPrfs2B+hhIM5tbLoXQHbZ5YX6QkYQ0c=&keepalive=0&dns=1.1.1.1,9.9.9.9',
+        ]);
+
+        $query = [
+            'tg' => Crypt::encrypt('654322'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ];
+
+        $response = $this->withServerVariables([
+            'PHP_AUTH_USER' => 'debug-user',
+            'PHP_AUTH_PW' => 'debug-pass',
+        ])->get(route('vless.connect-raw', $query));
+
+        $response->assertOk()
+            ->assertJsonPath('0.url', $config->getLink())
+            ->assertJsonPath('0.config.domain', 'swiss.oksana1984.ru')
+            ->assertJsonPath('0.config.port', 35157)
+            ->assertJsonPath('0.config.protocol', 'wireguard');
+    }
+
     public function test_connect_wl_returns_named_external_subscription_content(): void
     {
         $user = $this->createActiveUser('WL User', '@wl-user', '777777');

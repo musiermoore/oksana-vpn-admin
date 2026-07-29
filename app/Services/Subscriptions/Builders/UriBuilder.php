@@ -3,16 +3,11 @@
 namespace App\Services\Subscriptions\Builders;
 
 use App\DTOs\Subscription\NormalizedNode;
-use App\Services\WireGuardSubscriptionLinkService;
 use App\DTOs\Subscription\SubscriptionBuildResult;
 use Illuminate\Support\Str;
 
 class UriBuilder implements SubscriptionBuilder
 {
-    public function __construct(
-        private readonly WireGuardSubscriptionLinkService $wireGuardSubscriptionLinkService,
-    ) {}
-
     /**
      * @param  array<int, NormalizedNode>  $nodes
      */
@@ -32,9 +27,14 @@ class UriBuilder implements SubscriptionBuilder
     private function renameUri(string $uri, string $name): string
     {
         if (Str::startsWith($uri, 'wireguard://')) {
-            return $this->wireGuardSubscriptionLinkService->fromConfigContent($uri, null, $name) ?? $uri;
+            return $this->replaceFragment($uri, $name);
         }
 
+        return $this->replaceFragment($uri, $name);
+    }
+
+    private function replaceFragment(string $uri, string $name): string
+    {
         if (! str_contains($uri, '#')) {
             return $uri.'#'.rawurlencode($name);
         }

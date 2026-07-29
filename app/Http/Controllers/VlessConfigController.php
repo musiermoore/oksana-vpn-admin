@@ -20,6 +20,7 @@ use App\Services\XuiConfigServiceFactory;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -186,7 +187,19 @@ class VlessConfigController extends Controller
             return null;
         }
 
+        Log::info('connect.req', [
+            'user_id' => (int) $user->id,
+            'tg' => (string) $user->telegram_id,
+            'format' => (string) $request->query('format', ''),
+        ]);
+
         $subscription = $subscriptionService->build($user, $request->query('format'));
+
+        Log::info('connect.res', [
+            'user_id' => (int) $user->id,
+            'bytes' => strlen($subscription->content),
+            'ext' => $subscription->fileExtension,
+        ]);
 
         $response = response($subscription->content);
 

@@ -5,6 +5,7 @@ namespace App\Services\Subscriptions\Builders;
 use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class UriBuilder implements SubscriptionBuilder
 {
@@ -27,7 +28,14 @@ class UriBuilder implements SubscriptionBuilder
     private function renameUri(string $uri, string $name): string
     {
         if (Str::startsWith($uri, 'wireguard://')) {
-            return $this->replaceFragment($uri, $name);
+            $renamed = $this->replaceFragment($uri, $name);
+
+            Log::info('connect.wg', [
+                'in' => $uri,
+                'out' => $renamed,
+            ]);
+
+            return $renamed;
         }
 
         return $this->replaceFragment($uri, $name);

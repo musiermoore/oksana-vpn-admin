@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
+use Illuminate\Support\Facades\Log;
 
 class UserSubscriptionService
 {
@@ -23,6 +24,19 @@ class UserSubscriptionService
     public function build(User $user, ?string $format = null): SubscriptionBuildResult
     {
         $namedNodes = $this->buildNamedNodes($user);
+
+        Log::info('connect.nodes', [
+            'user_id' => (int) $user->id,
+            'format' => (string) $format,
+            'count' => count($namedNodes),
+            'wg' => array_values(array_map(
+                fn (NormalizedNode $node): array => [
+                    'config_id' => $node->configId,
+                    'uri' => $node->uri,
+                ],
+                array_filter($namedNodes, fn (NormalizedNode $node): bool => $node->protocol === 'wireguard')
+            )),
+        ]);
 
         return $this->buildFromNodes($namedNodes, $format);
     }

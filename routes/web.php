@@ -64,6 +64,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'edit']);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::resource('servers', ServerController::class);
+    Route::post('servers/connect-groups/sort', [ServerController::class, 'sortConnectGroups'])
+        ->name('servers.sort-connect-groups');
+    Route::post('servers/{server}/connect-items/sort', [ServerController::class, 'sortConnectItems'])
+        ->name('servers.sort-connect-items');
     Route::post('servers/{server}/enable', [ServerController::class, 'enable'])
         ->name('servers.enable');
     Route::post('servers/{server}/disable', [ServerController::class, 'disable'])

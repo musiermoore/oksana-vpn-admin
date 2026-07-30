@@ -15,6 +15,7 @@ class ServerResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'code' => $this->code,
+            'sort_order' => (int) $this->sort_order,
             'ip' => $this->ip,
             'type' => $this->type,
             'is_https' => (bool) $this->is_https,

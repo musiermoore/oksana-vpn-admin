@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Proxy extends Model
 {
@@ -17,6 +16,8 @@ class Proxy extends Model
         'name',
         'host',
         'port',
+        'server_id',
+        'sort_order',
         'xray_inbound_id',
         'is_https',
         'is_ready',
@@ -29,6 +30,8 @@ class Proxy extends Model
             'is_https' => 'boolean',
             'is_ready' => 'boolean',
             'port' => 'integer',
+            'server_id' => 'integer',
+            'sort_order' => 'integer',
             'xray_inbound_id' => 'integer',
         ];
     }
@@ -53,9 +56,8 @@ class Proxy extends Model
         return $externalId === null ? null : (int) $externalId;
     }
 
-    public function servers(): BelongsToMany
+    public function server(): BelongsTo
     {
-        return $this->belongsToMany(Server::class)
-            ->withTimestamps();
+        return $this->belongsTo(Server::class);
     }
 }

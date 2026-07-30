@@ -150,6 +150,8 @@ class UserSubscriptionService
             fn (NormalizedNode $node) => new NormalizedNode(
                 id: $node->id,
                 serverName: $node->serverName,
+                sortGroupOrder: $node->sortGroupOrder,
+                sortItemOrder: $node->sortItemOrder,
                 protocol: $node->protocol,
                 transport: $node->transport,
                 uri: $node->uri,
@@ -164,6 +166,8 @@ class UserSubscriptionService
 
         usort($namedNodes, function (NormalizedNode $left, NormalizedNode $right): int {
             $comparisons = [
+                $left->sortGroupOrder <=> $right->sortGroupOrder,
+                $left->sortItemOrder <=> $right->sortItemOrder,
                 $left->serverId <=> $right->serverId,
                 $left->sortServerName <=> $right->sortServerName,
                 $this->getTypeSortOrder($left->protocol) <=> $this->getTypeSortOrder($right->protocol),
@@ -189,6 +193,8 @@ class UserSubscriptionService
         return new NormalizedNode(
             id: 'expired-placeholder',
             serverName: 'Ваша подписка закончилась 🚨',
+            sortGroupOrder: -1,
+            sortItemOrder: -1,
             protocol: 'vless',
             transport: 'ws',
             uri: 'vless://00000000-0000-0000-0000-000000000000@expired.invalid:443?type=ws&security=tls&host=expired.invalid&path=%2F#expired',

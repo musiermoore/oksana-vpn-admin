@@ -12,6 +12,7 @@ class VlessExternalSubscriptionResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'sort_order' => (int) $this->sort_order,
             'description' => $this->description,
             'type' => $this->type,
             'source_url' => $this->source_url,

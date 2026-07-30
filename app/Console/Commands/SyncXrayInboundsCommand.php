@@ -51,6 +51,9 @@ class SyncXrayInboundsCommand extends Command
         }
 
         $syncedExternalIds = collect();
+        $nextSortOrder = (int) (XrayInbound::query()
+            ->where('server_id', $server->id)
+            ->max('sort_order') ?? -1) + 1;
 
         foreach ($inbounds as $inbound) {
             if (! is_array($inbound)) {
@@ -65,15 +68,17 @@ class SyncXrayInboundsCommand extends Command
 
             $syncedExternalIds->push($externalId);
 
-            XrayInbound::query()->updateOrCreate(
-                [
-                    'server_id' => $server->id,
-                    'external_id' => $externalId,
-                ],
-                [
-                    'params' => $inbound,
-                ],
-            );
+            $record = XrayInbound::query()->firstOrNew([
+                'server_id' => $server->id,
+                'external_id' => $externalId,
+            ]);
+
+            if (! $record->exists) {
+                $record->sort_order = $nextSortOrder++;
+            }
+
+            $record->params = $inbound;
+            $record->save();
         }
 
         $this->markMissingInboundsAsInactive($server, $syncedExternalIds);

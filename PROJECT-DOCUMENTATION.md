@@ -99,11 +99,33 @@ Each inbound record has:
 
 `params` stores the raw inbound payload from 3x-ui so app logic does not depend on a rigid local schema for inbound settings.
 
+`sort_order` stores the explicit `/connect` order of inbounds inside a server.
+
 Deleted or broken 3x-ui inbounds with empty payloads should not stay active locally.
+
+### Proxies
+
+Proxy nodes are stored in `proxies`.
+
+Current connect behavior assumes one proxy belongs to one server through `server_id`.
+
+Important fields:
+
+- `server_id`
+- `xray_inbound_id`
+- `sort_order`
+
+`sort_order` stores the explicit position of the proxy in the mixed per-server `/connect` list alongside Xray inbounds.
 
 ### Subscription Output
 
 The main `/connect` subscription is built from normalized local and external nodes.
+
+Its order is explicit rather than inferred from ids:
+
+- `servers.sort_order` controls local server order
+- `vless_external_subscriptions.sort_order` controls where external groups appear among local servers
+- `xray_inbounds.sort_order` and `proxies.sort_order` control order inside one server
 
 Important WireGuard rule:
 

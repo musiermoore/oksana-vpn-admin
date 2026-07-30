@@ -1,5 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 defineOptions({ layout: AppLayout });
@@ -9,6 +10,7 @@ const props = defineProps({
     submit_url: String,
     method: String,
     server: Object,
+    sort_connect_items_url: String,
 });
 
 const form = useForm({
@@ -30,6 +32,43 @@ const form = useForm({
     hide_configs_for_non_admins: props.server?.hide_configs_for_non_admins ?? false,
     inbounds: props.server?.inbounds ?? [],
 });
+
+const sortItems = ref([...(props.server?.connect_items ?? [])]);
+const sortForm = useForm({
+    items: [],
+});
+const dragKey = ref(null);
+const hasSortableItems = computed(() => sortItems.value.length > 0 && !!props.sort_connect_items_url);
+
+const moveSortItem = (targetKey) => {
+    const fromIndex = sortItems.value.findIndex((item) => item.key === dragKey.value);
+    const toIndex = sortItems.value.findIndex((item) => item.key === targetKey);
+
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return;
+    }
+
+    const next = [...sortItems.value];
+    const [movedItem] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, movedItem);
+    sortItems.value = next;
+};
+
+const saveConnectItemsOrder = () => {
+    if (!props.sort_connect_items_url) {
+        return;
+    }
+
+    sortForm.transform(() => ({
+        items: sortItems.value.map((item, index) => ({
+            type: item.type,
+            id: item.entity_id,
+            sort_order: index,
+        })),
+    })).post(props.sort_connect_items_url, {
+        preserveScroll: true,
+    });
+};
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
 </script>
@@ -69,6 +108,38 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field"><span>Hide configs for non-admins</span><input v-model="form.hide_configs_for_non_admins" type="checkbox"></label>
 
+            <div v-if="hasSortableItems" class="field" style="grid-column: 1 / -1;">
+                <div class="page-header">
+                    <div>
+                        <span>Порядок элементов в connect</span>
+                        <p class="hint">Перетаскивайте inbound'ы и proxy, чтобы поменять порядок внутри этого сервера.</p>
+                    </div>
+                    <div class="actions">
+                        <button class="button button--secondary" type="button" :disabled="sortForm.processing" @click="saveConnectItemsOrder">
+                            Сохранить порядок connect
+                        </button>
+                    </div>
+                </div>
+
+                <div class="server-sort-list">
+                    <div
+                        v-for="item in sortItems"
+                        :key="item.key"
+                        class="server-sort-item"
+                        draggable="true"
+                        @dragstart="dragKey = item.key"
+                        @dragover.prevent
+                        @drop="moveSortItem(item.key)"
+                    >
+                        <div class="server-sort-item__handle">::</div>
+                        <div class="server-sort-item__body">
+                            <strong>{{ item.title }}</strong>
+                            <div class="hint">{{ item.subtitle || '—' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="field" style="grid-column: 1 / -1;">
                 <span>Inbounds</span>
 
@@ -79,6 +150,7 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
                 <table v-else>
                     <thead>
                         <tr>
+                            <th>Sort</th>
                             <th>ID</th>
                             <th>Remark</th>
                             <th>Protocol</th>
@@ -88,6 +160,7 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
                     </thead>
                     <tbody>
                         <tr v-for="inbound in form.inbounds" :key="inbound.id">
+                            <td>{{ inbound.sort_order }}</td>
                             <td>{{ inbound.external_id }}</td>
                             <td>{{ inbound.remark || '—' }}</td>
                             <td>{{ inbound.protocol || '—' }}</td>
@@ -105,3 +178,33 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
         </form>
     </section>
 </template>
+
+<style scoped>
+.server-sort-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.server-sort-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 14px;
+    background: rgba(248, 250, 252, 0.92);
+    cursor: grab;
+}
+
+.server-sort-item__handle {
+    font-weight: 700;
+    color: #64748b;
+    user-select: none;
+}
+
+.server-sort-item__body {
+    display: grid;
+    gap: 4px;
+}
+</style>

@@ -13,6 +13,7 @@ class XrayInbound extends Model
     protected $fillable = [
         'server_id',
         'external_id',
+        'sort_order',
         'is_active',
         'is_public',
         'params',
@@ -23,6 +24,7 @@ class XrayInbound extends Model
         return [
             'server_id' => 'integer',
             'external_id' => 'integer',
+            'sort_order' => 'integer',
             'is_active' => 'boolean',
             'is_public' => 'boolean',
             'params' => 'array',

@@ -34,24 +34,26 @@ const destroyProxy = (proxy) => {
             <thead>
                 <tr>
                     <th>ID</th>
+                    <th>Сервер</th>
+                    <th>Порядок</th>
                     <th>Имя</th>
                     <th>Host</th>
                     <th>Port</th>
                     <th>HTTPS</th>
                     <th>Ready</th>
-                    <th>Серверов</th>
                     <th>Действия</th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-for="proxy in proxies" :key="proxy.id">
                     <td>{{ proxy.id }}</td>
+                    <td>{{ proxy.server_name || '—' }}</td>
+                    <td>{{ proxy.sort_order }}</td>
                     <td>{{ proxy.name }}</td>
                     <td>{{ proxy.host }}</td>
                     <td>{{ proxy.port }}</td>
                     <td>{{ proxy.is_https ? 'Да' : 'Нет' }}</td>
                     <td>{{ proxy.is_ready ? 'Да' : 'Нет' }}</td>
-                    <td>{{ proxy.linked_servers_count }}</td>
                     <td>
                         <div class="actions">
                             <Link v-if="proxy.links?.edit" class="button button--secondary" :href="proxy.links.edit">Изменить</Link>

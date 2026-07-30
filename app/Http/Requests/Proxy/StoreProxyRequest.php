@@ -21,12 +21,11 @@ class StoreProxyRequest extends DataFormRequest
             'name' => ['required', 'string', 'max:255'],
             'host' => ['required', 'string', 'max:255'],
             'port' => ['required', 'integer', 'between:1,65535'],
+            'server_id' => ['required', 'integer', Rule::exists('servers', 'id')],
             'inbound_id' => ['nullable', 'integer', 'min:1'],
             'is_https' => ['required', 'boolean'],
             'is_ready' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
-            'server_ids' => ['array'],
-            'server_ids.*' => ['integer', Rule::exists('servers', 'id')],
         ];
     }
 

@@ -45,6 +45,8 @@ class VlessExternalSubscriptionAccessService
             fn (NormalizedNode $node) => new NormalizedNode(
                 id: $node->id,
                 serverName: $node->serverName,
+                sortGroupOrder: $node->sortGroupOrder,
+                sortItemOrder: $node->sortItemOrder,
                 protocol: $node->protocol,
                 transport: $node->transport,
                 uri: $node->uri,
@@ -100,6 +102,8 @@ class VlessExternalSubscriptionAccessService
         return new NormalizedNode(
             id: 'wl:'.$config->id,
             serverName: $serverName,
+            sortGroupOrder: (int) $config->subscription->sort_order,
+            sortItemOrder: (int) $config->sort_order,
             protocol: (string) ($parsed['protocol'] ?? 'unknown'),
             transport: $this->parser->detectTransport($config->url),
             uri: $config->url,

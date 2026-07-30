@@ -14,7 +14,7 @@ class ProxyCrudServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_create_and_update_sync_server_links(): void
+    public function test_create_and_update_replace_proxy_server(): void
     {
         $serverOne = $this->createServer('LV1');
         $serverTwo = $this->createServer('FI1');
@@ -32,11 +32,11 @@ class ProxyCrudServiceTest extends TestCase
             name: 'Ru Proxy',
             host: 'proxy.example.com',
             port: 443,
+            serverId: $serverOne->id,
             inboundId: 10,
             isHttps: true,
             isReady: true,
             description: 'Primary proxy',
-            serverIds: [$serverOne->id],
         ));
 
         $this->assertDatabaseHas('proxies', [
@@ -44,38 +44,36 @@ class ProxyCrudServiceTest extends TestCase
             'name' => 'Ru Proxy',
             'host' => 'proxy.example.com',
             'port' => 443,
+            'server_id' => $serverOne->id,
             'xray_inbound_id' => $inbound->id,
             'is_ready' => true,
         ]);
-        $this->assertSame([$serverOne->id], $proxy->servers->pluck('id')->all());
+        $this->assertSame($serverOne->id, $proxy->server?->id);
 
         $proxy = $service->update($proxy, new ProxyData(
             name: 'Ru Proxy',
             host: 'proxy-updated.example.com',
             port: 8443,
+            serverId: $serverTwo->id,
             inboundId: null,
             isHttps: false,
             isReady: false,
             description: null,
-            serverIds: [$serverTwo->id],
         ));
 
-        $this->assertSame([$serverTwo->id], $proxy->servers->pluck('id')->all());
+        $this->assertSame($serverTwo->id, $proxy->server?->id);
         $this->assertDatabaseHas('proxies', [
             'id' => $proxy->id,
             'host' => 'proxy-updated.example.com',
             'port' => 8443,
+            'server_id' => $serverTwo->id,
             'xray_inbound_id' => null,
             'is_https' => false,
             'is_ready' => false,
         ]);
-        $this->assertDatabaseMissing('proxy_server', [
-            'proxy_id' => $proxy->id,
-            'server_id' => $serverOne->id,
-        ]);
     }
 
-    public function test_delete_removes_proxy_and_pivot_rows(): void
+    public function test_delete_removes_proxy(): void
     {
         $server = $this->createServer('LV1');
         $inbound = XrayInbound::query()->create([
@@ -89,19 +87,15 @@ class ProxyCrudServiceTest extends TestCase
             'name' => 'Ru Proxy',
             'host' => 'proxy.example.com',
             'port' => 443,
+            'server_id' => $server->id,
             'xray_inbound_id' => $inbound->id,
             'is_https' => true,
             'is_ready' => true,
         ]);
-        $proxy->servers()->attach($server);
 
         app(ProxyCrudService::class)->delete($proxy);
 
         $this->assertDatabaseMissing('proxies', ['id' => $proxy->id]);
-        $this->assertDatabaseMissing('proxy_server', [
-            'proxy_id' => $proxy->id,
-            'server_id' => $server->id,
-        ]);
     }
 
     private function createServer(string $code): Server

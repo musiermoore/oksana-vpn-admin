@@ -15,23 +15,29 @@ class ProxyCrudService
 
     public function create(ProxyData $data): Proxy
     {
-        $proxy = $this->proxies->create($this->buildProxyAttributes($data));
-        $proxy->servers()->sync($data->serverIds);
+        $proxy = $this->proxies->create([
+            ...$this->buildProxyAttributes($data),
+            'sort_order' => $this->resolveNextSortOrder($data->serverId),
+        ]);
 
-        return $proxy->load(['servers', 'xrayInbound']);
+        return $proxy->load(['server', 'xrayInbound']);
     }
 
     public function update(Proxy $proxy, ProxyData $data): Proxy
     {
         $updatedProxy = $this->proxies->update($proxy, $this->buildProxyAttributes($data));
-        $updatedProxy->servers()->sync($data->serverIds);
 
-        return $updatedProxy->load(['servers', 'xrayInbound']);
+        if ((int) $proxy->server_id !== (int) $data->serverId) {
+            $updatedProxy->update([
+                'sort_order' => $this->resolveNextSortOrder($data->serverId),
+            ]);
+        }
+
+        return $updatedProxy->load(['server', 'xrayInbound']);
     }
 
     public function delete(Proxy $proxy): void
     {
-        $proxy->servers()->detach();
         $this->proxies->delete($proxy);
     }
 
@@ -42,26 +48,31 @@ class ProxyCrudService
     {
         return [
             ...$data->toArray(),
-            'xray_inbound_id' => $this->resolveXrayInboundId($data->inboundId, $data->serverIds),
+            'xray_inbound_id' => $this->resolveXrayInboundId($data->inboundId, $data->serverId),
         ];
     }
 
-    /**
-     * @param  array<int, int>  $serverIds
-     */
-    private function resolveXrayInboundId(?int $inboundId, array $serverIds): ?int
+    private function resolveXrayInboundId(?int $inboundId, int $serverId): ?int
     {
-        if ($inboundId === null || $inboundId < 1 || $serverIds === []) {
+        if ($inboundId === null || $inboundId < 1 || $serverId < 1) {
             return null;
         }
 
         $record = XrayInbound::query()
-            ->whereIn('server_id', $serverIds)
+            ->where('server_id', $serverId)
             ->where('external_id', $inboundId)
-            ->orderBy('server_id')
             ->orderBy('id')
             ->first();
 
         return $record ? (int) $record->getKey() : null;
+    }
+
+    private function resolveNextSortOrder(int $serverId): int
+    {
+        $maxSortOrder = Proxy::query()
+            ->where('server_id', $serverId)
+            ->max('sort_order');
+
+        return is_numeric($maxSortOrder) ? ((int) $maxSortOrder + 1) : 0;
     }
 }

@@ -13,6 +13,7 @@ class VlessExternalSubscription extends Model
 
     protected $fillable = [
         'name',
+        'sort_order',
         'description',
         'type',
         'source_url',
@@ -36,12 +37,20 @@ class VlessExternalSubscription extends Model
             'is_active' => 'boolean',
             'is_ready' => 'boolean',
             'last_synced_at' => 'datetime',
+            'sort_order' => 'integer',
         ];
     }
 
     public function configs(): HasMany
     {
         return $this->hasMany(VlessExternalSubscriptionConfig::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function scopeOrdered($query)
+    {
+        return $query
             ->orderBy('sort_order')
             ->orderBy('id');
     }

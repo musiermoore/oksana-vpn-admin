@@ -11,6 +11,7 @@ use App\Models\VlessConfig;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Models\XrayInbound;
+use App\Services\Subscriptions\UserSubscriptionService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -437,6 +438,147 @@ class VlessConnectTest extends TestCase
         $this->assertNotFalse($decoded);
         $this->assertStringNotContainsString('inactive-vless-uuid', $decoded);
         $this->assertStringNotContainsString('Швеция • VLESS • TCP', $decoded);
+    }
+
+    public function test_connect_respects_combined_server_and_external_subscription_sort_order(): void
+    {
+        $user = $this->createActiveUser('Sorted User', '@sorted-user', '778899');
+
+        $serverBottom = $this->createServer('Низ', 'BOT', 'bottom.example.com');
+        $serverTop = $this->createServer('Верх', 'TOP', 'top.example.com');
+
+        $serverBottom->update(['sort_order' => 2]);
+        $serverTop->update(['sort_order' => 1]);
+
+        $this->createConfig($user->id, $serverBottom->id, 'bottom-uuid');
+        $this->createConfig($user->id, $serverTop->id, 'top-uuid');
+
+        $externalSubscription = VlessExternalSubscription::query()->create([
+            'name' => 'External First',
+            'sort_order' => 0,
+            'type' => VlessExternalSubscription::TYPE_DIRECT,
+            'source_url' => 'vless://external-uuid@external.example.com:443?type=tcp&security=reality#legacy',
+            'connect_name_prefix' => 'External First',
+            'include_in_main_subscription' => true,
+            'include_in_whitelist' => false,
+            'is_free' => true,
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $externalSubscription->id,
+            'config_key' => 'external-first',
+            'name' => 'legacy',
+            'normalized_name' => 'legacy',
+            'protocol' => 'vless',
+            'url' => 'vless://external-uuid@external.example.com:443?type=tcp&security=reality#legacy',
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('778899'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertSame([
+            'External First • VLESS • TCP',
+            'Верх • VLESS • TCP',
+            'Низ • VLESS • TCP',
+        ], $this->extractNames($decoded));
+    }
+
+    public function test_connect_debug_respects_mixed_proxy_and_inbound_sort_order_inside_server(): void
+    {
+        $user = $this->createActiveUser('Mixed Sort User', '@mixed-sort-user', '667788');
+        $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
+        $server->update(['sort_order' => 0]);
+
+        $firstInbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 11,
+            'sort_order' => 1,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 11, 'protocol' => 'vless', 'remark' => 'First'],
+        ]);
+
+        $secondInbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 22,
+            'sort_order' => 2,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 22, 'protocol' => 'vless', 'remark' => 'Second'],
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $firstInbound->id,
+            'inbound_id' => 11,
+            'user_id' => $user->id,
+            'name' => 'first-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'first-config-uuid',
+            'port' => 1001,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $secondInbound->id,
+            'inbound_id' => 22,
+            'user_id' => $user->id,
+            'name' => 'second-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'second-config-uuid',
+            'port' => 1002,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abce',
+            'spx' => '/',
+        ]);
+
+        Proxy::query()->create([
+            'name' => 'Proxy First',
+            'host' => 'proxy.example.com',
+            'port' => 8443,
+            'server_id' => $server->id,
+            'sort_order' => 0,
+            'xray_inbound_id' => $firstInbound->id,
+            'is_https' => true,
+            'is_ready' => true,
+        ]);
+
+        $debugNodes = app(UserSubscriptionService::class)->buildDebug($user);
+
+        $this->assertCount(3, $debugNodes);
+        $this->assertSame('proxy.example.com', data_get($debugNodes, '0.config.domain'));
+        $this->assertSame(1001, data_get($debugNodes, '0.config.port'));
+        $this->assertSame(11, data_get($debugNodes, '1.config.inbound_id'));
+        $this->assertSame(1001, data_get($debugNodes, '1.config.port'));
+        $this->assertSame(22, data_get($debugNodes, '2.config.inbound_id'));
+        $this->assertSame(1002, data_get($debugNodes, '2.config.port'));
     }
 
     public function test_deep_link_route_redirects_to_v2rayng_subscription_import(): void
@@ -1833,12 +1975,11 @@ class VlessConnectTest extends TestCase
             'name' => $name,
             'host' => $host,
             'port' => $port,
+            'server_id' => $server->id,
             'xray_inbound_id' => $xrayInboundId,
             'is_https' => true,
             'is_ready' => $isReady,
         ]);
-
-        $proxy->servers()->attach($server);
 
         return $proxy;
     }

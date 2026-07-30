@@ -17,7 +17,10 @@ class ServerCrudService
 
     public function create(ServerData $data): Server
     {
-        $server = $this->servers->create($data->toServerAttributes());
+        $server = $this->servers->create([
+            ...$data->toServerAttributes(),
+            'sort_order' => $this->resolveNextServerSortOrder(),
+        ]);
 
         $this->dispatchWireGuardInstallIfNeeded($server);
 
@@ -77,7 +80,7 @@ class ServerCrudService
     }
 
     /**
-     * @param  array<int, array{id:int, is_active:bool, is_public:bool}>  $inbounds
+     * @param  array<int, array{id:int, sort_order?:int, is_active:bool, is_public:bool}>  $inbounds
      */
     private function syncXrayInbounds(Server $server, array $inbounds): void
     {
@@ -105,9 +108,17 @@ class ServerCrudService
                 }
 
                 $inbound->update([
+                    'sort_order' => (int) ($payload['sort_order'] ?? $inbound->sort_order ?? 0),
                     'is_active' => (bool) ($payload['is_active'] ?? false),
                     'is_public' => (bool) ($payload['is_public'] ?? false),
                 ]);
             });
+    }
+
+    private function resolveNextServerSortOrder(): int
+    {
+        $maxSortOrder = Server::query()->max('sort_order');
+
+        return is_numeric($maxSortOrder) ? ((int) $maxSortOrder + 1) : 0;
     }
 }

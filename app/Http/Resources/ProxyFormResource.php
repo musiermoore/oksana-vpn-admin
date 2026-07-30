@@ -10,7 +10,7 @@ class ProxyFormResource extends ProxyResource
     {
         return [
             ...parent::toArray($request),
-            'server_ids' => $this->servers->pluck('id')->map(fn (mixed $id) => (int) $id)->values()->all(),
+            'server_id' => $this->server_id !== null ? (int) $this->server_id : null,
         ];
     }
 }

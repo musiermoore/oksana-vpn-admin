@@ -4,7 +4,6 @@ namespace App\Services\Subscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\Models\Proxy;
-use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
 use Illuminate\Support\Collection;
@@ -27,13 +26,15 @@ class NormalizedNodeService
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
             ->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true))
             ->with([
-                'server',
-                'xrayInbound:id,external_id,is_active',
+                'server:id,name,code,ip,link_host,is_https,sort_order',
+                'xrayInbound:id,server_id,external_id,is_active,sort_order',
             ])
             ->get()
             ->map(fn (VlessConfig $config) => [
                 'type' => 'vless',
                 'server_id' => (int) $config->server->getKey(),
+                'group_sort_order' => (int) $config->server->sort_order,
+                'item_sort_order' => (int) ($config->xrayInbound?->sort_order ?? PHP_INT_MAX),
                 'server' => (string) $config->server->name,
                 'server_sort' => mb_strtolower((string) $config->server->name),
                 'config_id' => (int) $config->getKey(),
@@ -42,6 +43,8 @@ class NormalizedNodeService
 
         $items = $vlessConfigs
             ->sortBy([
+                fn (array $item) => (int) $item['group_sort_order'],
+                fn (array $item) => (int) $item['item_sort_order'],
                 fn (array $item) => (int) $item['server_id'],
                 fn (array $item) => (string) $item['server_sort'],
                 fn (array $item) => $this->getTypeSortOrder((string) $item['type']),
@@ -55,6 +58,8 @@ class NormalizedNodeService
             ->flatMap(fn (array $item) => $this->buildNodesForItem($item, $proxyIndex))
             ->unique(fn (NormalizedNode $node) => $node->uri)
             ->sortBy([
+                fn (NormalizedNode $node) => $node->sortGroupOrder,
+                fn (NormalizedNode $node) => $node->sortItemOrder,
                 fn (NormalizedNode $node) => $node->serverId,
                 fn (NormalizedNode $node) => $node->sortServerName,
                 fn (NormalizedNode $node) => $this->getTypeSortOrder($node->protocol),
@@ -68,8 +73,8 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
-     * @param  array<string, Collection<int, Proxy>>  $proxyIndex
+     * @param  array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
+     * @param  array<string, Collection<int, array{proxy:Proxy,sort_order:int}>>  $proxyIndex
      * @return array<int, NormalizedNode>
      */
     private function buildNodesForItem(array $item, array $proxyIndex): array
@@ -94,7 +99,12 @@ class NormalizedNodeService
 
             $proxyNodes = $directNodes
                 ->flatMap(fn (NormalizedNode $node, int $index) => $proxies
-                    ->map(fn (Proxy $proxy) => $this->buildProxyNode($node, $proxy, $index)))
+                    ->map(fn (array $proxyItem) => $this->buildProxyNode(
+                        $node,
+                        $proxyItem['proxy'],
+                        (int) $proxyItem['sort_order'],
+                        $index,
+                    )))
                 ->filter()
                 ->values();
 
@@ -108,7 +118,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
+     * @param  array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
      */
     private function buildNode(string $uri, array $item, int $index): ?NormalizedNode
     {
@@ -127,6 +137,8 @@ class NormalizedNodeService
         return new NormalizedNode(
             id: implode(':', [$item['server_id'], $item['config_id'], $index, md5($uri)]),
             serverName: $item['server'],
+            sortGroupOrder: (int) $item['group_sort_order'],
+            sortItemOrder: (int) $item['item_sort_order'],
             protocol: (string) $parsed['protocol'],
             transport: $this->parser->detectTransport($uri),
             uri: $uri,
@@ -143,7 +155,7 @@ class NormalizedNodeService
         );
     }
 
-    private function buildProxyNode(NormalizedNode $node, Proxy $proxy, int $index): ?NormalizedNode
+    private function buildProxyNode(NormalizedNode $node, Proxy $proxy, int $sortOrder, int $index): ?NormalizedNode
     {
         $proxyUri = $this->uriTransformer->replaceAddress($node->uri, (string) $proxy->host, (int) $proxy->port);
 
@@ -156,6 +168,8 @@ class NormalizedNodeService
         return new NormalizedNode(
             id: $node->id.':proxy:'.$proxy->id.':'.$index,
             serverName: $serverName,
+            sortGroupOrder: $node->sortGroupOrder,
+            sortItemOrder: $sortOrder,
             protocol: $node->protocol,
             transport: $node->transport,
             uri: $proxyUri,
@@ -201,7 +215,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @return Collection<int, Proxy>
+     * @return Collection<int, array{proxy:Proxy,sort_order:int}>
      */
     private function resolveReadyProxies(
         int $serverId,
@@ -224,8 +238,8 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  Collection<int, array{type:string, server_id:int, server:string, server_sort:string, config_id:int, config:VlessConfig}>  $items
-     * @return array<string, Collection<int, Proxy>>
+     * @param  Collection<int, array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig}>  $items
+     * @return array<string, Collection<int, array{proxy:Proxy,sort_order:int}>>
      */
     private function buildProxyIndex(Collection $items, User $user): array
     {
@@ -243,12 +257,10 @@ class NormalizedNodeService
         $proxyIndex = [];
 
         $proxyQuery = Proxy::query()
-            ->whereHas('servers', fn ($query) => $query->whereIn('servers.id', $serverIds))
-            ->with([
-                'servers' => fn ($query) => $query
-                    ->whereIn('servers.id', $serverIds)
-                    ->select('servers.id'),
-            ])
+            ->whereIn('server_id', $serverIds)
+            ->with('xrayInbound:id,external_id')
+            ->orderBy('server_id')
+            ->orderBy('sort_order')
             ->orderBy('id');
 
         if (! $user->is_admin) {
@@ -258,18 +270,32 @@ class NormalizedNodeService
         $proxyQuery
             ->get()
             ->each(function (Proxy $proxy) use (&$proxyIndex): void {
-                $proxy->servers->each(function (Server $server) use (&$proxyIndex, $proxy): void {
-                    $key = $this->proxyIndexKey((int) $server->getKey(), $proxy->inbound_id);
+                $serverId = (int) ($proxy->server_id ?? 0);
 
-                    if (! array_key_exists($key, $proxyIndex)) {
-                        $proxyIndex[$key] = collect();
-                    }
+                if ($serverId < 1) {
+                    return;
+                }
 
-                    $proxyIndex[$key]->push($proxy);
-                });
+                $key = $this->proxyIndexKey($serverId, $proxy->inbound_id);
+
+                if (! array_key_exists($key, $proxyIndex)) {
+                    $proxyIndex[$key] = collect();
+                }
+
+                $proxyIndex[$key]->push([
+                    'proxy' => $proxy,
+                    'sort_order' => (int) $proxy->sort_order,
+                ]);
             });
 
-        return $proxyIndex;
+        return collect($proxyIndex)
+            ->map(fn (Collection $proxies) => $proxies
+                ->sortBy([
+                    fn (array $item) => (int) $item['sort_order'],
+                    fn (array $item) => (int) $item['proxy']->id,
+                ])
+                ->values())
+            ->all();
     }
 
     private function proxyIndexKey(int $serverId, ?int $inboundId): string

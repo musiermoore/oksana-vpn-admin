@@ -39,6 +39,7 @@ const syncSubscription = (subscription) => {
         <table>
             <thead>
                 <tr>
+                    <th>Порядок</th>
                     <th>ID</th>
                     <th>Имя</th>
                     <th>Тип</th>
@@ -54,6 +55,7 @@ const syncSubscription = (subscription) => {
             </thead>
             <tbody>
                 <tr v-for="subscription in subscriptions" :key="subscription.id">
+                    <td>{{ subscription.sort_order }}</td>
                     <td>{{ subscription.id }}</td>
                     <td>
                         <strong>{{ subscription.name }}</strong>

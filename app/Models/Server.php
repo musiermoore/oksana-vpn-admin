@@ -7,7 +7,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\File;
 
@@ -24,6 +23,7 @@ class Server extends Model
     protected $fillable = [
         'name',
         'code',
+        'sort_order',
         'ip',
         'is_https',
         'link_host',
@@ -50,6 +50,7 @@ class Server extends Model
             'is_active' => 'boolean',
             'is_ready' => 'boolean',
             'hide_configs_for_non_admins' => 'boolean',
+            'sort_order' => 'integer',
         ];
     }
 
@@ -86,10 +87,16 @@ class Server extends Model
         return $this->hasMany(XrayInbound::class);
     }
 
-    public function proxies(): BelongsToMany
+    public function proxies(): HasMany
     {
-        return $this->belongsToMany(Proxy::class)
-            ->withTimestamps();
+        return $this->hasMany(Proxy::class);
+    }
+
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     public function getSlugCodeAttribute(): string

@@ -97,7 +97,7 @@ class VlessExternalSubscriptionSyncService
     {
         return $this->visibleSubscriptionsQuery($user, $purpose)
             ->with('configs')
-            ->orderBy('id')
+            ->ordered()
             ->get()
             ->flatMap(fn (VlessExternalSubscription $subscription) => $subscription->configs
                 ->map(fn (VlessExternalSubscriptionConfig $config) => $config->setRelation('subscription', $subscription)))

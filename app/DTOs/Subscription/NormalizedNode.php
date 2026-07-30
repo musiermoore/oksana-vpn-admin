@@ -10,6 +10,8 @@ class NormalizedNode
     public function __construct(
         public readonly string $id,
         public readonly string $serverName,
+        public readonly int $sortGroupOrder,
+        public readonly int $sortItemOrder,
         public readonly string $protocol,
         public readonly string $transport,
         public readonly string $uri,

@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ServerFormResource;
 use App\Http\Resources\ServerResource;
+use App\Http\Resources\VlessExternalSubscriptionResource;
+use App\Http\Requests\Server\SortConnectGroupsRequest;
+use App\Http\Requests\Server\SortServerConnectItemsRequest;
 use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
+use App\Models\VlessExternalSubscription;
 use App\Services\Crud\ServerCrudService;
+use App\Services\ServerConnectSortService;
 use Illuminate\Http\Request;
 use RuntimeException;
 
@@ -15,6 +20,7 @@ class ServerController extends Controller
 {
     public function __construct(
         private readonly ServerCrudService $serverService,
+        private readonly ServerConnectSortService $sortService,
     ) {}
 
     /**
@@ -22,10 +28,42 @@ class ServerController extends Controller
      */
     public function index(Request $request)
     {
-        $servers = Server::all();
+        $servers = Server::query()->ordered()->get();
+        $externalSubscriptions = VlessExternalSubscription::query()->ordered()->get();
+        $connectSortItems = collect([
+            ...collect(ServerResource::collection($servers)->toArray($request))
+                ->map(fn (array $server) => [
+                    'id' => (int) $server['id'],
+                    'type' => 'server',
+                    'sort_order' => (int) $server['sort_order'],
+                    'name' => (string) $server['name'],
+                    'code' => (string) $server['code'],
+                    'label' => 'Сервер',
+                ])
+                ->all(),
+            ...collect(VlessExternalSubscriptionResource::collection($externalSubscriptions)->toArray($request))
+                ->map(fn (array $subscription) => [
+                    'id' => (int) $subscription['id'],
+                    'type' => 'external_subscription',
+                    'sort_order' => (int) $subscription['sort_order'],
+                    'name' => (string) $subscription['name'],
+                    'code' => 'EXT',
+                    'label' => 'Внешняя подписка',
+                ])
+                ->all(),
+        ])
+            ->sortBy([
+                fn (array $item) => (int) $item['sort_order'],
+                fn (array $item) => (string) $item['type'],
+                fn (array $item) => (int) $item['id'],
+            ])
+            ->values()
+            ->all();
 
         return $this->inertia('Servers/Index', [
             'servers' => ServerResource::collection($servers)->toArray($request),
+            'connect_sort_items' => $connectSortItems,
+            'sort_connect_groups_url' => route('servers.sort-connect-groups'),
         ]);
     }
 
@@ -39,6 +77,7 @@ class ServerController extends Controller
             'submit_url' => route('servers.store'),
             'method' => 'post',
             'server' => null,
+            'sort_connect_items_url' => null,
         ]);
     }
 
@@ -58,13 +97,17 @@ class ServerController extends Controller
      */
     public function edit(Server $server)
     {
-        $server->load(['xrayInbounds' => fn ($query) => $query->orderBy('external_id')->orderBy('id')]);
+        $server->load([
+            'xrayInbounds' => fn ($query) => $query->orderBy('sort_order')->orderBy('external_id')->orderBy('id'),
+            'proxies' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+        ]);
 
         return $this->inertia('Servers/Form', [
             'mode' => 'edit',
             'submit_url' => route('servers.update', $server),
             'method' => 'patch',
             'server' => (new ServerFormResource($server))->toArray(request()),
+            'sort_connect_items_url' => route('servers.sort-connect-items', $server),
         ]);
     }
 
@@ -109,5 +152,21 @@ class ServerController extends Controller
 
         return redirect()->back()
             ->with('success', 'Сервер успешно отключён.');
+    }
+
+    public function sortConnectGroups(SortConnectGroupsRequest $request)
+    {
+        $this->sortService->sortGroups($request->toDto());
+
+        return redirect()->back()
+            ->with('success', 'Порядок connect-групп обновлён.');
+    }
+
+    public function sortConnectItems(SortServerConnectItemsRequest $request, Server $server)
+    {
+        $this->sortService->sortServerItems($server, $request->toDto());
+
+        return redirect()->back()
+            ->with('success', 'Порядок connect-элементов обновлён.');
     }
 }

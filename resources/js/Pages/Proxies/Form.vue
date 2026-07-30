@@ -16,11 +16,11 @@ const form = useForm({
     name: props.proxy?.name ?? '',
     host: props.proxy?.host ?? '',
     port: props.proxy?.port ?? 443,
+    server_id: props.proxy?.server_id ?? '',
     inbound_id: props.proxy?.inbound_id ?? '',
     is_https: props.proxy?.is_https ?? true,
     is_ready: props.proxy?.is_ready ?? false,
     description: props.proxy?.description ?? '',
-    server_ids: props.proxy?.server_ids ?? [],
 });
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
@@ -36,17 +36,17 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Имя</span><input v-model="form.name" required></label>
             <label class="field"><span>Host</span><input v-model="form.host" required></label>
             <label class="field"><span>Port</span><input v-model="form.port" type="number" min="1" max="65535" required></label>
-            <label class="field"><span>Inbound ID</span><input v-model="form.inbound_id" type="number" min="1" placeholder="Пусто = для всех inbound"></label>
-            <label class="field"><span>HTTPS</span><input v-model="form.is_https" type="checkbox"></label>
-            <label class="field"><span>Ready</span><input v-model="form.is_ready" type="checkbox"></label>
-            <label class="field" style="grid-column: 1 / -1;">
-                <span>Серверы</span>
-                <select v-model="form.server_ids" multiple>
+            <label class="field"><span>Сервер</span>
+                <select v-model="form.server_id" required>
+                    <option value="" disabled>Выберите сервер</option>
                     <option v-for="option in server_options" :key="option.value" :value="option.value">
                         {{ option.label }}
                     </option>
                 </select>
             </label>
+            <label class="field"><span>Inbound ID</span><input v-model="form.inbound_id" type="number" min="1" placeholder="Пусто = для всех inbound"></label>
+            <label class="field"><span>HTTPS</span><input v-model="form.is_https" type="checkbox"></label>
+            <label class="field"><span>Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
                 <textarea v-model="form.description" />

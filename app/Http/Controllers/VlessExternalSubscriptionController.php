@@ -24,7 +24,7 @@ class VlessExternalSubscriptionController extends Controller
     {
         $subscriptions = VlessExternalSubscription::query()
             ->withCount('configs')
-            ->orderByDesc('id')
+            ->ordered()
             ->get();
 
         return $this->inertia('VlessExternalSubscriptions/Index', [
@@ -46,7 +46,12 @@ class VlessExternalSubscriptionController extends Controller
 
     public function store(StoreVlessExternalSubscriptionRequest $request): RedirectResponse
     {
-        $subscription = VlessExternalSubscription::query()->create($request->validated());
+        $subscription = VlessExternalSubscription::query()->create([
+            ...$request->validated(),
+            'sort_order' => (($maxSortOrder = VlessExternalSubscription::query()->max('sort_order')) !== null)
+                ? ((int) $maxSortOrder + 1)
+                : 0,
+        ]);
 
         try {
             $this->syncService->sync($subscription);

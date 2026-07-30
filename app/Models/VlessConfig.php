@@ -85,10 +85,24 @@ class VlessConfig extends Model
             return;
         }
 
-        $this->attributes['xray_inbound_id'] = XrayInbound::query()->firstOrCreate([
-            'server_id' => $serverId,
-            'external_id' => $normalizedExternalId,
-        ])->getKey();
+        $record = XrayInbound::query()
+            ->where('server_id', $serverId)
+            ->where('external_id', $normalizedExternalId)
+            ->first();
+
+        if (! $record) {
+            $record = XrayInbound::query()->create([
+                'server_id' => $serverId,
+                'external_id' => $normalizedExternalId,
+                'sort_order' => (($maxSortOrder = XrayInbound::query()
+                    ->where('server_id', $serverId)
+                    ->max('sort_order')) !== null)
+                    ? ((int) $maxSortOrder + 1)
+                    : 0,
+            ]);
+        }
+
+        $this->attributes['xray_inbound_id'] = $record->getKey();
 
         $this->pendingInboundExternalId = null;
     }

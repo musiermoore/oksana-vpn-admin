@@ -10,6 +10,7 @@ use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProxyController;
 use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\TaxDebugController;
@@ -47,6 +48,7 @@ Route::middleware('auth')->group(function () {
     Route::get('api-request-logs', [ApiRequestLogController::class, 'index'])->name('api-request-logs.index');
     Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
     Route::get('referrals/{user}', [ReferralController::class, 'show'])->name('referrals.show');
+    Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
 
     Route::resource('users', UserController::class);
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);

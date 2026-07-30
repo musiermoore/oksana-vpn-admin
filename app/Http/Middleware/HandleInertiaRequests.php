@@ -19,6 +19,7 @@ class HandleInertiaRequests extends Middleware
             ['label' => 'Xray Configs', 'href' => route('xray-configs.index'), 'badge' => 'XR'],
             ['label' => 'Транзакции', 'href' => route('transactions.index'), 'badge' => 'TR'],
             ['label' => 'Инвойсы', 'href' => route('invoices.index'), 'badge' => 'IV'],
+            ['label' => 'Отчеты', 'href' => route('reports.index'), 'badge' => 'RP'],
             ['label' => 'Подписки', 'href' => route('subscriptions.index'), 'badge' => 'SB'],
             ['label' => 'Периоды оплаты', 'href' => route('current-payments.index'), 'badge' => 'PP'],
             ['label' => 'Доп. оплаты', 'href' => route('extra-payments.index'), 'badge' => 'DP'],

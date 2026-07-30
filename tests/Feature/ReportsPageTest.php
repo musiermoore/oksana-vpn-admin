@@ -26,6 +26,7 @@ class ReportsPageTest extends TestCase
         Invoice::query()->create([
             'user_id' => $admin->id,
             'provider' => 'manual',
+            'provider_payment_id' => 'reports-main-invoice-1',
             'status' => 'paid',
             'tax_status' => Invoice::TAX_STATUS_SENT,
             'paid' => true,
@@ -38,6 +39,7 @@ class ReportsPageTest extends TestCase
         Invoice::query()->create([
             'user_id' => $admin->id,
             'provider' => 'manual',
+            'provider_payment_id' => 'reports-draft-invoice-1',
             'status' => 'pending',
             'tax_status' => Invoice::TAX_STATUS_NOT_SENT,
             'paid' => false,
@@ -84,16 +86,16 @@ class ReportsPageTest extends TestCase
                 ->component('Reports/Index')
                 ->where('filters.date_from', '2026-07-01')
                 ->where('filters.date_to', '2026-07-31')
-                ->where('summary.revenue', 1000.0)
-                ->where('summary.total_server_costs', 630.0)
-                ->where('summary.estimated_taxes', 40.0)
-                ->where('summary.net_profit', 330.0)
-                ->where('summary.margin_percent', 33.0)
+                ->where('summary.revenue', 1000)
+                ->where('summary.total_server_costs', 630)
+                ->where('summary.estimated_taxes', 40)
+                ->where('summary.net_profit', 330)
+                ->where('summary.margin_percent', 33)
                 ->where('summary.paid_invoices_count', 1)
                 ->where('top_servers.0.name', 'Active Node')
-                ->where('top_servers.0.total_cost', 320.0)
+                ->where('top_servers.0.total_cost', 320)
                 ->where('top_servers.1.name', 'Deleted Node')
-                ->where('top_servers.1.total_cost', 310.0)
+                ->where('top_servers.1.total_cost', 310)
                 ->where('top_servers.1.is_deleted', true)
             );
     }

@@ -165,24 +165,6 @@ class ReportsService
             ->values();
 
         $total = 0.0;
-        $firstPrice = $sorted->first();
-
-        if (! $firstPrice instanceof ServerPrice) {
-            return 0.0;
-        }
-
-        if ($from->lt(CarbonImmutable::parse($firstPrice->effective_from?->format('Y-m-d')))) {
-            $leadingEnd = CarbonImmutable::parse($firstPrice->effective_from?->format('Y-m-d'))->subDay();
-            $overlapEnd = $leadingEnd->lt($to) ? $leadingEnd : $to;
-
-            if ($overlapEnd->gte($from)) {
-                $total += $this->calculateProratedMonthlyCost(
-                    amount: (float) $firstPrice->price,
-                    from: $from,
-                    to: $overlapEnd,
-                );
-            }
-        }
 
         foreach ($sorted as $index => $price) {
             $segmentStart = CarbonImmutable::parse($price->effective_from?->format('Y-m-d'));
@@ -216,9 +198,11 @@ class ReportsService
     {
         $total = 0.0;
         $cursor = $from->startOfDay();
+        $periodEnd = $to->startOfDay();
 
-        while ($cursor->lte($to)) {
-            $segmentEnd = $cursor->endOfMonth()->lt($to) ? $cursor->endOfMonth() : $to;
+        while ($cursor->lte($periodEnd)) {
+            $monthEnd = $cursor->endOfMonth()->startOfDay();
+            $segmentEnd = $monthEnd->lt($periodEnd) ? $monthEnd : $periodEnd;
             $daysInSegment = $cursor->diffInDays($segmentEnd) + 1;
             $total += ($amount / $cursor->daysInMonth) * $daysInSegment;
             $cursor = $segmentEnd->addDay()->startOfDay();

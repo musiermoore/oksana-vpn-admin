@@ -4,6 +4,7 @@ namespace App\Services\Crud;
 
 use App\DTOs\Server\ServerData;
 use App\Jobs\InstallWireGuardAgentForServerJob;
+use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\ServerPrice;
 use App\Models\XrayInbound;
@@ -49,6 +50,7 @@ class ServerCrudService
             $updatedServer = $this->servers->update($server, $attributes);
             $this->syncPrices($updatedServer, $data->prices);
             $this->syncXrayInbounds($updatedServer, $data->inbounds);
+            $this->syncConnectItems($updatedServer, $data->connectItems);
 
             return $updatedServer;
         });
@@ -121,10 +123,41 @@ class ServerCrudService
                 }
 
                 $inbound->update([
-                    'sort_order' => (int) ($payload['sort_order'] ?? $inbound->sort_order ?? 0),
                     'is_active' => (bool) ($payload['is_active'] ?? false),
                     'is_public' => (bool) ($payload['is_public'] ?? false),
                 ]);
+            });
+    }
+
+    /**
+     * @param  array<int, array{type:string,id:int}>  $connectItems
+     */
+    private function syncConnectItems(Server $server, array $connectItems): void
+    {
+        if ($connectItems === []) {
+            return;
+        }
+
+        collect(array_values($connectItems))
+            ->each(function (array $item, int $index) use ($server): void {
+                $type = (string) ($item['type'] ?? '');
+                $id = (int) ($item['id'] ?? 0);
+
+                if ($id < 1) {
+                    return;
+                }
+
+                match ($type) {
+                    'inbound' => XrayInbound::query()
+                        ->where('server_id', $server->id)
+                        ->whereKey($id)
+                        ->update(['sort_order' => $index]),
+                    'proxy' => Proxy::query()
+                        ->where('server_id', $server->id)
+                        ->whereKey($id)
+                        ->update(['sort_order' => $index]),
+                    default => null,
+                };
             });
     }
 

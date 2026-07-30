@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\Server\ServerData;
 use App\Jobs\InstallWireGuardAgentForServerJob;
+use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\ServerPrice;
 use App\Models\XrayInbound;
@@ -92,6 +93,90 @@ class ServerCrudServiceTest extends TestCase
             'id' => $inbound->id,
             'is_active' => false,
             'is_public' => false,
+        ]);
+    }
+
+    public function test_update_syncs_mixed_connect_item_order(): void
+    {
+        $service = app(ServerCrudService::class);
+        $server = $service->create($this->makeServerData(Server::TYPE_VLESS, 'ORD'));
+
+        $firstInbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 10,
+            'sort_order' => 0,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 10, 'protocol' => 'vless', 'remark' => 'Main'],
+        ]);
+
+        $proxy = Proxy::query()->create([
+            'name' => 'Proxy First',
+            'host' => 'proxy.example.com',
+            'port' => 8443,
+            'server_id' => $server->id,
+            'sort_order' => 1,
+            'xray_inbound_id' => $firstInbound->id,
+            'is_https' => true,
+            'is_ready' => true,
+        ]);
+
+        $secondInbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 20,
+            'sort_order' => 2,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 20, 'protocol' => 'vless', 'remark' => 'Backup'],
+        ]);
+
+        $service->update($server, new ServerData(
+            name: 'Server ORD',
+            code: 'ORD',
+            ip: '10.0.0.1',
+            type: Server::TYPE_VLESS,
+            isHttps: true,
+            linkHost: null,
+            panelLink: 'https://agent.test',
+            panelUsername: 'admin',
+            panelPassword: 'secret',
+            panelApiVersion: Server::PANEL_API_V2_9,
+            appPath: '/opt/app',
+            sshPrivateKey: null,
+            sshPublicKey: null,
+            isActive: true,
+            isReady: false,
+            hideConfigsForNonAdmins: false,
+            inbounds: [
+                [
+                    'id' => $firstInbound->id,
+                    'is_active' => true,
+                    'is_public' => true,
+                ],
+                [
+                    'id' => $secondInbound->id,
+                    'is_active' => true,
+                    'is_public' => true,
+                ],
+            ],
+            connectItems: [
+                ['type' => 'proxy', 'id' => $proxy->id],
+                ['type' => 'inbound', 'id' => $secondInbound->id],
+                ['type' => 'inbound', 'id' => $firstInbound->id],
+            ],
+        ));
+
+        $this->assertDatabaseHas('proxies', [
+            'id' => $proxy->id,
+            'sort_order' => 0,
+        ]);
+        $this->assertDatabaseHas('xray_inbounds', [
+            'id' => $secondInbound->id,
+            'sort_order' => 1,
+        ]);
+        $this->assertDatabaseHas('xray_inbounds', [
+            'id' => $firstInbound->id,
+            'sort_order' => 2,
         ]);
     }
 

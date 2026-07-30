@@ -32,6 +32,7 @@ const form = useForm({
     hide_configs_for_non_admins: props.server?.hide_configs_for_non_admins ?? false,
     prices: props.server?.prices ?? [],
     inbounds: props.server?.inbounds ?? [],
+    connect_items: props.server?.connect_items ?? [],
 });
 
 const sortItems = ref([...(props.server?.connect_items ?? [])]);
@@ -53,6 +54,10 @@ const moveSortItem = (targetKey) => {
     const [movedItem] = next.splice(fromIndex, 1);
     next.splice(toIndex, 0, movedItem);
     sortItems.value = next;
+    form.connect_items = next.map((item) => ({
+        type: item.type,
+        id: item.entity_id,
+    }));
 };
 
 const saveConnectItemsOrder = () => {
@@ -70,6 +75,11 @@ const saveConnectItemsOrder = () => {
         preserveScroll: true,
     });
 };
+
+form.connect_items = sortItems.value.map((item) => ({
+    type: item.type,
+    id: item.entity_id,
+}));
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
 

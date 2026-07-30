@@ -20,6 +20,11 @@ class ServerFormResource extends ServerResource
                 ->values()
                 ->all(), []),
             'inbounds' => $this->whenLoaded('xrayInbounds', fn () => $this->xrayInbounds
+                ->sortBy([
+                    fn ($inbound) => (int) $inbound->sort_order,
+                    fn ($inbound) => (int) $inbound->external_id,
+                    fn ($inbound) => (int) $inbound->id,
+                ])
                 ->map(fn ($inbound) => [
                     'id' => (int) $inbound->id,
                     'external_id' => (int) $inbound->external_id,

@@ -99,8 +99,8 @@ class ServerController extends Controller
     {
         $server->load([
             'prices',
-            'xrayInbounds' => fn ($query) => $query->orderBy('sort_order')->orderBy('external_id')->orderBy('id'),
-            'proxies' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
+            'xrayInbounds',
+            'proxies',
         ]);
 
         return $this->inertia('Servers/Form', [

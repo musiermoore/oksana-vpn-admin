@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,4 +42,11 @@ class XrayInbound extends Model
         return $this->hasMany(VlessConfig::class);
     }
 
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query
+            ->orderBy('sort_order')
+            ->orderBy('external_id')
+            ->orderBy('id');
+    }
 }

@@ -28,6 +28,7 @@ class ReportsService
     public function build(ReportsFilterData $filters): array
     {
         [$from, $to] = $this->resolveRange($filters);
+        $servers = $this->loadServersWithPrices();
 
         $paidInvoices = $this->invoices->visibleQuery()
             ->where('paid', true)
@@ -40,7 +41,7 @@ class ReportsService
             ->get();
 
         $revenue = round((float) $paidInvoices->sum('amount'), 2);
-        $serverCosts = $this->buildServerCostBreakdown($from, $to);
+        $serverCosts = $this->buildServerCostBreakdown($servers, $from, $to);
         $totalServerCosts = round((float) $serverCosts->sum('total_cost'), 2);
         $estimatedTaxes = round($revenue * self::TAX_RATE, 2);
         $netProfit = round($revenue - $totalServerCosts - $estimatedTaxes, 2);
@@ -103,7 +104,7 @@ class ReportsService
             'invoice_state_segments' => $invoiceStateSegments,
             'server_costs' => $serverCosts->values()->all(),
             'top_servers' => $serverCosts->sortByDesc('total_cost')->take(6)->values()->all(),
-            'monthly_trend' => $this->buildMonthlyTrend($to),
+            'monthly_trend' => $this->buildMonthlyTrend($servers, $to),
         ];
     }
 
@@ -128,13 +129,22 @@ class ReportsService
     }
 
     /**
-     * @return Collection<int, array{id:int,name:string,code:string,is_deleted:bool,total_cost:float,price_points:int}>
+     * @return Collection<int, Server>
      */
-    private function buildServerCostBreakdown(CarbonImmutable $from, CarbonImmutable $to): Collection
+    private function loadServersWithPrices(): Collection
     {
         return Server::withTrashed()
             ->with('prices')
-            ->get()
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, Server>  $servers
+     * @return Collection<int, array{id:int,name:string,code:string,is_deleted:bool,total_cost:float,price_points:int}>
+     */
+    private function buildServerCostBreakdown(Collection $servers, CarbonImmutable $from, CarbonImmutable $to): Collection
+    {
+        return $servers
             ->map(function (Server $server) use ($from, $to): array {
                 $totalCost = $this->calculateServerCostForRange($server->prices, $from, $to);
 
@@ -212,12 +222,13 @@ class ReportsService
     }
 
     /**
+     * @param  Collection<int, Server>  $servers
      * @return array<int, array{label:string,revenue:float,server_costs:float,estimated_taxes:float,net_profit:float}>
      */
-    private function buildMonthlyTrend(CarbonImmutable $periodEnd): array
+    private function buildMonthlyTrend(Collection $servers, CarbonImmutable $periodEnd): array
     {
         return collect(range(5, 0))
-            ->map(function (int $offset) use ($periodEnd): array {
+            ->map(function (int $offset) use ($servers, $periodEnd): array {
                 $month = $periodEnd->startOfMonth()->subMonths($offset);
                 $monthEnd = $month->endOfMonth();
 
@@ -227,7 +238,7 @@ class ReportsService
                     ->whereBetween('paid_at', [$month->startOfDay(), $monthEnd->endOfDay()])
                     ->sum('amount'), 2);
 
-                $serverCosts = round((float) $this->buildServerCostBreakdown($month, $monthEnd)->sum('total_cost'), 2);
+                $serverCosts = round((float) $this->buildServerCostBreakdown($servers, $month, $monthEnd)->sum('total_cost'), 2);
                 $estimatedTaxes = round($revenue * self::TAX_RATE, 2);
 
                 return [

@@ -31,9 +31,10 @@ class ServerFormResource extends ServerResource
                 ])
                 ->values()
                 ->all(), []),
-            'connect_items' => $this->mergeWhen(
+            'connect_items' => $this->when(
                 $this->relationLoaded('xrayInbounds') && $this->relationLoaded('proxies'),
                 fn () => $this->buildConnectItems(),
+                [],
             ),
         ];
     }

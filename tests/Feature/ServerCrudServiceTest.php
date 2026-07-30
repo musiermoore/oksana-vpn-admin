@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\Server\ServerData;
 use App\Jobs\InstallWireGuardAgentForServerJob;
 use App\Models\Server;
+use App\Models\ServerPrice;
 use App\Models\XrayInbound;
 use App\Services\Crud\ServerCrudService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,6 +92,112 @@ class ServerCrudServiceTest extends TestCase
             'id' => $inbound->id,
             'is_active' => false,
             'is_public' => false,
+        ]);
+    }
+
+    public function test_create_and_update_sync_server_prices(): void
+    {
+        $service = app(ServerCrudService::class);
+
+        $server = $service->create(new ServerData(
+            name: 'Server VLS',
+            code: 'VLS',
+            ip: '10.0.0.1',
+            type: Server::TYPE_VLESS,
+            isHttps: true,
+            linkHost: null,
+            panelLink: 'https://agent.test',
+            panelUsername: 'admin',
+            panelPassword: 'secret',
+            panelApiVersion: Server::PANEL_API_V2_9,
+            appPath: '/opt/app',
+            sshPrivateKey: null,
+            sshPublicKey: null,
+            isActive: true,
+            isReady: false,
+            hideConfigsForNonAdmins: false,
+            prices: [
+                [
+                    'effective_from' => '2026-07-30',
+                    'price' => 300,
+                ],
+                [
+                    'effective_from' => '2026-08-30',
+                    'price' => 350,
+                ],
+            ],
+        ));
+
+        $this->assertDatabaseHas('server_prices', [
+            'server_id' => $server->id,
+            'effective_from' => '2026-07-30',
+            'price' => 300.0,
+        ]);
+        $this->assertDatabaseHas('server_prices', [
+            'server_id' => $server->id,
+            'effective_from' => '2026-08-30',
+            'price' => 350.0,
+        ]);
+
+        $firstPrice = ServerPrice::query()
+            ->where('server_id', $server->id)
+            ->where('effective_from', '2026-07-30')
+            ->firstOrFail();
+
+        $service->update($server, new ServerData(
+            name: 'Server VLS',
+            code: 'VLS',
+            ip: '10.0.0.1',
+            type: Server::TYPE_VLESS,
+            isHttps: true,
+            linkHost: null,
+            panelLink: 'https://agent.test',
+            panelUsername: 'admin',
+            panelPassword: 'secret',
+            panelApiVersion: Server::PANEL_API_V2_9,
+            appPath: '/opt/app',
+            sshPrivateKey: null,
+            sshPublicKey: null,
+            isActive: true,
+            isReady: false,
+            hideConfigsForNonAdmins: false,
+            prices: [
+                [
+                    'id' => $firstPrice->id,
+                    'effective_from' => '2026-07-30',
+                    'price' => 320,
+                ],
+                [
+                    'effective_from' => '2026-09-30',
+                    'price' => 410,
+                ],
+            ],
+        ));
+
+        $this->assertDatabaseHas('server_prices', [
+            'id' => $firstPrice->id,
+            'price' => 320.0,
+        ]);
+        $this->assertDatabaseHas('server_prices', [
+            'server_id' => $server->id,
+            'effective_from' => '2026-09-30',
+            'price' => 410.0,
+        ]);
+        $this->assertDatabaseMissing('server_prices', [
+            'server_id' => $server->id,
+            'effective_from' => '2026-08-30',
+        ]);
+    }
+
+    public function test_delete_soft_deletes_server(): void
+    {
+        $service = app(ServerCrudService::class);
+        $server = $service->create($this->makeServerData(Server::TYPE_VLESS, 'SOFT'));
+
+        $service->delete($server);
+
+        $this->assertSoftDeleted('servers', [
+            'id' => $server->id,
         ]);
     }
 

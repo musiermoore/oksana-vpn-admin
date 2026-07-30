@@ -5,8 +5,10 @@ namespace App\Services\Crud;
 use App\DTOs\Server\ServerData;
 use App\Jobs\InstallWireGuardAgentForServerJob;
 use App\Models\Server;
+use App\Models\ServerPrice;
 use App\Models\XrayInbound;
 use App\Repositories\ServerRepository;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ServerCrudService
@@ -17,10 +19,16 @@ class ServerCrudService
 
     public function create(ServerData $data): Server
     {
-        $server = $this->servers->create([
-            ...$data->toServerAttributes(),
-            'sort_order' => $this->resolveNextServerSortOrder(),
-        ]);
+        $server = DB::transaction(function () use ($data): Server {
+            $server = $this->servers->create([
+                ...$data->toServerAttributes(),
+                'sort_order' => $this->resolveNextServerSortOrder(),
+            ]);
+
+            $this->syncPrices($server, $data->prices);
+
+            return $server;
+        });
 
         $this->dispatchWireGuardInstallIfNeeded($server);
 
@@ -29,20 +37,25 @@ class ServerCrudService
 
     public function update(Server $server, ServerData $data): Server
     {
-        $attributes = $data->toServerAttributes();
-
-        if (blank($attributes['ssh_private_key'])) {
-            unset($attributes['ssh_private_key']);
-        }
-
         $previousType = $server->type;
-        $updatedServer = $this->servers->update($server, $attributes);
+
+        $updatedServer = DB::transaction(function () use ($server, $data): Server {
+            $attributes = $data->toServerAttributes();
+
+            if (blank($attributes['ssh_private_key'])) {
+                unset($attributes['ssh_private_key']);
+            }
+
+            $updatedServer = $this->servers->update($server, $attributes);
+            $this->syncPrices($updatedServer, $data->prices);
+            $this->syncXrayInbounds($updatedServer, $data->inbounds);
+
+            return $updatedServer;
+        });
 
         if ($previousType !== $updatedServer->type) {
             $this->dispatchWireGuardInstallIfNeeded($updatedServer);
         }
-
-        $this->syncXrayInbounds($updatedServer, $data->inbounds);
 
         return $updatedServer;
     }
@@ -120,5 +133,46 @@ class ServerCrudService
         $maxSortOrder = Server::query()->max('sort_order');
 
         return is_numeric($maxSortOrder) ? ((int) $maxSortOrder + 1) : 0;
+    }
+
+    /**
+     * @param  array<int, array{id?:int, effective_from:string, price:int|float|string}>  $prices
+     */
+    private function syncPrices(Server $server, array $prices): void
+    {
+        $normalizedPrices = collect($prices)
+            ->filter(fn (mixed $row): bool => is_array($row))
+            ->values();
+
+        $keepIds = $normalizedPrices
+            ->pluck('id')
+            ->filter(fn (mixed $id): bool => is_numeric($id) && (int) $id > 0)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+
+        $server->prices()
+            ->when($keepIds !== [], fn ($query) => $query->whereNotIn('id', $keepIds))
+            ->when($keepIds === [], fn ($query) => $query)
+            ->delete();
+
+        $normalizedPrices->each(function (array $row) use ($server): void {
+            $attributes = [
+                'effective_from' => (string) $row['effective_from'],
+                'price' => (float) $row['price'],
+            ];
+
+            $priceId = isset($row['id']) && is_numeric($row['id']) ? (int) $row['id'] : null;
+
+            if ($priceId !== null && $priceId > 0) {
+                $server->prices()
+                    ->whereKey($priceId)
+                    ->update($attributes);
+
+                return;
+            }
+
+            $server->prices()->create($attributes);
+        });
     }
 }

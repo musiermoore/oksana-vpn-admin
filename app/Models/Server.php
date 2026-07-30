@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\File;
 
 class Server extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     public const PANEL_API_V2_9 = 'v2.9.*';
     public const PANEL_API_V3_2_8 = 'v3.2.8';
@@ -90,6 +92,13 @@ class Server extends Model
     public function proxies(): HasMany
     {
         return $this->hasMany(Proxy::class);
+    }
+
+    public function prices(): HasMany
+    {
+        return $this->hasMany(ServerPrice::class)
+            ->orderBy('effective_from')
+            ->orderBy('id');
     }
 
     public function scopeOrdered(Builder $query): Builder

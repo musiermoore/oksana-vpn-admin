@@ -30,6 +30,7 @@ const form = useForm({
     is_active: props.server?.is_active ?? true,
     is_ready: props.server?.is_ready ?? false,
     hide_configs_for_non_admins: props.server?.hide_configs_for_non_admins ?? false,
+    prices: props.server?.prices ?? [],
     inbounds: props.server?.inbounds ?? [],
 });
 
@@ -71,6 +72,17 @@ const saveConnectItemsOrder = () => {
 };
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
+
+const addPriceRow = () => {
+    form.prices.push({
+        effective_from: '',
+        price: '',
+    });
+};
+
+const removePriceRow = (index) => {
+    form.prices.splice(index, 1);
+};
 </script>
 
 <template>
@@ -107,6 +119,38 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Is Active</span><input v-model="form.is_active" type="checkbox"></label>
             <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
             <label class="field"><span>Hide configs for non-admins</span><input v-model="form.hide_configs_for_non_admins" type="checkbox"></label>
+
+            <div class="field" style="grid-column: 1 / -1;">
+                <div class="page-header">
+                    <div>
+                        <span>Цены сервера</span>
+                        <p class="hint">История цен по периодам. Дата означает начало действия цены.</p>
+                    </div>
+                    <div class="actions">
+                        <button class="button button--secondary" type="button" @click="addPriceRow">Добавить цену</button>
+                    </div>
+                </div>
+
+                <div v-if="form.prices.length === 0" class="hint">
+                    Цены пока не добавлены.
+                </div>
+
+                <div v-else class="price-list">
+                    <div v-for="(priceRow, index) in form.prices" :key="priceRow.id ?? `new-${index}`" class="price-row">
+                        <label class="field">
+                            <span>С даты</span>
+                            <input v-model="priceRow.effective_from" type="date" required>
+                        </label>
+                        <label class="field">
+                            <span>Цена</span>
+                            <input v-model="priceRow.price" type="number" min="0" step="0.01" required>
+                        </label>
+                        <div class="actions actions--end">
+                            <button class="button button--danger" type="button" @click="removePriceRow(index)">Удалить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div v-if="hasSortableItems" class="field" style="grid-column: 1 / -1;">
                 <div class="page-header">
@@ -180,6 +224,23 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
 </template>
 
 <style scoped>
+.price-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.price-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.actions--end {
+    justify-content: flex-end;
+}
+
 .server-sort-list {
     display: grid;
     gap: 12px;

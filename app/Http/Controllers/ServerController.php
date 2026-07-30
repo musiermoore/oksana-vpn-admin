@@ -98,6 +98,7 @@ class ServerController extends Controller
     public function edit(Server $server)
     {
         $server->load([
+            'prices',
             'xrayInbounds' => fn ($query) => $query->orderBy('sort_order')->orderBy('external_id')->orderBy('id'),
             'proxies' => fn ($query) => $query->orderBy('sort_order')->orderBy('id'),
         ]);

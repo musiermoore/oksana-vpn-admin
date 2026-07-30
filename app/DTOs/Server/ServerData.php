@@ -28,6 +28,8 @@ class ServerData extends Data
         public ?string $sshPublicKey = null,
         /** @var array<int, array{id:int, sort_order?:int, is_active:bool, is_public:bool}> */
         public array $inbounds = [],
+        /** @var array<int, array{id?:int, effective_from:string, price:int|float|string}> */
+        public array $prices = [],
     ) {}
 
     public function toServerAttributes(): array

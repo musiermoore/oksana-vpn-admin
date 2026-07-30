@@ -11,6 +11,14 @@ class ServerFormResource extends ServerResource
         return [
             ...parent::toArray($request),
             'panel_password' => $this->panel_password,
+            'prices' => $this->whenLoaded('prices', fn () => $this->prices
+                ->map(fn ($price) => [
+                    'id' => (int) $price->id,
+                    'effective_from' => $price->effective_from?->format('Y-m-d'),
+                    'price' => (float) $price->price,
+                ])
+                ->values()
+                ->all(), []),
             'inbounds' => $this->whenLoaded('xrayInbounds', fn () => $this->xrayInbounds
                 ->map(fn ($inbound) => [
                     'id' => (int) $inbound->id,

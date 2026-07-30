@@ -117,6 +117,18 @@ Important fields:
 
 `sort_order` stores the explicit position of the proxy in the mixed per-server `/connect` list alongside Xray inbounds.
 
+### Server Prices
+
+Server cost history is stored in `server_prices`.
+
+Each price row has:
+
+- `server_id`
+- `effective_from`
+- `price`
+
+This keeps price history editable from the admin UI without replacing a whole JSON blob.
+
 ### Subscription Output
 
 The main `/connect` subscription is built from normalized local and external nodes.
@@ -126,6 +138,7 @@ Its order is explicit rather than inferred from ids:
 - `servers.sort_order` controls local server order
 - `vless_external_subscriptions.sort_order` controls where external groups appear among local servers
 - `xray_inbounds.sort_order` and `proxies.sort_order` control order inside one server
+- soft-deleted servers are excluded from `/connect` by default because `servers` now use Eloquent soft delete
 
 Important WireGuard rule:
 
@@ -260,3 +273,4 @@ Transactions in the admin UI should expose:
 - When changing transaction fields, update both API and admin controllers plus Vue pages.
 - When changing scheduled behavior, update `routes/console.php`.
 - When changing `/connect` output, verify WireGuard URI raw output and JSON builders together.
+- Servers are soft-deleted, so include deleted rows only intentionally via `withTrashed()` / `onlyTrashed()`.

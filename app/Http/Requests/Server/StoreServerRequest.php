@@ -43,6 +43,10 @@ class StoreServerRequest extends DataFormRequest
             'inbounds.*.sort_order' => ['nullable', 'integer', 'min:0'],
             'inbounds.*.is_active' => ['required', 'boolean'],
             'inbounds.*.is_public' => ['required', 'boolean'],
+            'prices' => ['nullable', 'array'],
+            'prices.*.id' => ['nullable', 'integer', Rule::exists('server_prices', 'id')],
+            'prices.*.effective_from' => ['required', 'date_format:Y-m-d', 'distinct:strict'],
+            'prices.*.price' => ['required', 'numeric', 'min:0'],
         ];
     }
 

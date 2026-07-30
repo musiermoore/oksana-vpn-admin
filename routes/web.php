@@ -13,6 +13,7 @@ use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SupportTicketController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaxDebugController;
 use App\Http\Controllers\TaxSettingController;
 use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
@@ -50,6 +51,7 @@ Route::middleware('auth')->group(function () {
     Route::get('referrals/{user}', [ReferralController::class, 'show'])->name('referrals.show');
     Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
 
+    Route::resource('tasks', TaskController::class)->except(['show']);
     Route::resource('users', UserController::class);
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);
     Route::get('notifications/create', [NotificationController::class, 'create'])

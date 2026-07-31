@@ -41,6 +41,10 @@ const sortForm = useForm({
 });
 const dragKey = ref(null);
 const hasSortableItems = computed(() => sortItems.value.length > 0 && !!props.sort_connect_items_url);
+const inboundRows = computed(() => form.inbounds.map((inbound, index) => ({
+    ...inbound,
+    inbound_position: index + 1,
+})));
 
 const moveSortItem = (targetKey) => {
     const fromIndex = sortItems.value.findIndex((item) => item.key === dragKey.value);
@@ -196,6 +200,10 @@ const removePriceRow = (index) => {
 
             <div class="field" style="grid-column: 1 / -1;">
                 <span>Inbounds</span>
+                <p class="hint">
+                    `Connect Sort` это общий порядок элементов в подписке внутри сервера. Он делится между inbound и proxy,
+                    поэтому номера inbound могут идти не подряд, если между ними есть proxy.
+                </p>
 
                 <div v-if="form.inbounds.length === 0" class="hint">
                     Для этого сервера пока нет синхронизированных inbound'ов. Сначала выполните sync с 3x-ui.
@@ -204,7 +212,8 @@ const removePriceRow = (index) => {
                 <table v-else>
                     <thead>
                         <tr>
-                            <th>Sort</th>
+                            <th>Inbound #</th>
+                            <th>Connect Sort</th>
                             <th>ID</th>
                             <th>Remark</th>
                             <th>Protocol</th>
@@ -213,7 +222,8 @@ const removePriceRow = (index) => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="inbound in form.inbounds" :key="inbound.id">
+                        <tr v-for="inbound in inboundRows" :key="inbound.id">
+                            <td>{{ inbound.inbound_position }}</td>
                             <td>{{ inbound.sort_order }}</td>
                             <td>{{ inbound.external_id }}</td>
                             <td>{{ inbound.remark || '—' }}</td>

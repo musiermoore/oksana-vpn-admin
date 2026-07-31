@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Http\Resources\XrayConfigResource;
@@ -52,5 +54,51 @@ class XrayConfigResourceTest extends TestCase
         $this->assertSame('Hysteria', $payload['protocol_label']);
         $this->assertStringContainsString('/xray-configs/vless/'.$config->id.'/edit', $payload['links']['edit']);
         $this->assertStringContainsString('/xray-configs/vless/'.$config->id.'/enable', $payload['links']['enable']);
+    }
+
+    public function test_resource_builds_subscription_link_for_soft_deleted_server(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Bob',
+            'telegram' => '@bob',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        $server = Server::query()->create([
+            'name' => 'Latvia',
+            'code' => 'LV',
+            'ip' => '198.51.100.10',
+            'link_host' => 'lv.example.com',
+            'is_https' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'bob-vless',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'bob-vless-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'lv.example.com',
+            'sid' => 'abcd1234',
+            'spx' => '/',
+            'sub_id' => 'sub-bob',
+        ]);
+
+        $server->delete();
+        $config->load('server');
+
+        $payload = (new XrayConfigResource($config, 'vless'))->toArray(Request::create('/'));
+
+        $this->assertNull($payload['server']);
+        $this->assertSame('https://lv.example.com/sub/sub-bob', $payload['link']);
     }
 }

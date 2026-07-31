@@ -176,6 +176,12 @@ class VlessConfig extends Model
 
     private function getVlessStaticLink(): string
     {
+        $server = $this->resolveServerForLink();
+
+        if (! $server instanceof Server) {
+            return '';
+        }
+
         $paramList = [
             "type={$this->type}",
             "encryption={$this->encryption}",
@@ -238,9 +244,9 @@ class VlessConfig extends Model
 
         $params = implode('&', $paramList);
 
-        $label = str($this->server->code.'_'.$this->name)->slug();
+        $label = str($server->code.'_'.$this->name)->slug();
 
-        return "vless://{$this->uuid}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+        return "vless://{$this->uuid}@{$server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
     }
 
     private function getWireGuardStaticLink(): string
@@ -252,6 +258,12 @@ class VlessConfig extends Model
 
     private function getTrojanStaticLink(): string
     {
+        $server = $this->resolveServerForLink();
+
+        if (! $server instanceof Server) {
+            return '';
+        }
+
         $paramList = [
             "security={$this->security}",
             "type={$this->type}",
@@ -276,14 +288,20 @@ class VlessConfig extends Model
         }
 
         $params = implode('&', $paramList);
-        $label = str($this->server->code.'_'.$this->name)->slug();
+        $label = str($server->code.'_'.$this->name)->slug();
         $password = $this->password ?: $this->uuid;
 
-        return "trojan://{$password}@{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+        return "trojan://{$password}@{$server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
     }
 
     private function getHysteriaStaticLink(): string
     {
+        $server = $this->resolveServerForLink();
+
+        if (! $server instanceof Server) {
+            return '';
+        }
+
         $paramList = array_filter([
             'protocol='.($this->type ?: 'udp'),
             'auth='.urlencode((string) ($this->auth ?: $this->password ?: $this->uuid)),
@@ -292,13 +310,19 @@ class VlessConfig extends Model
         ]);
 
         $params = implode('&', $paramList);
-        $label = str($this->server->code.'_'.$this->name)->slug();
+        $label = str($server->code.'_'.$this->name)->slug();
 
-        return "hysteria://{$this->server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+        return "hysteria://{$server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
     }
 
     private function getHysteria2StaticLink(): string
     {
+        $server = $this->resolveServerForLink();
+
+        if (! $server instanceof Server) {
+            return '';
+        }
+
         $secret = rawurlencode((string) ($this->auth ?: $this->password ?: $this->uuid));
         $paramList = array_filter([
             $this->alpn ? 'alpn='.urlencode($this->alpn) : null,
@@ -311,10 +335,10 @@ class VlessConfig extends Model
             $this->security === 'none' ? 'insecure=1' : null,
         ]);
         $params = implode('&', $paramList);
-        $label = str($this->server->code.'_'.$this->name)->slug();
+        $label = str($server->code.'_'.$this->name)->slug();
         $query = $params !== '' ? "?{$params}" : '';
 
-        return "hysteria2://{$secret}@{$this->server->getLinkAddressHost()}:{$this->port}{$query}#{$label}";
+        return "hysteria2://{$secret}@{$server->getLinkAddressHost()}:{$this->port}{$query}#{$label}";
     }
 
     private function getNormalizedProtocol(): string
@@ -354,12 +378,24 @@ class VlessConfig extends Model
 
     public function getBaseUrl(): string
     {
-        return "{$this->server->getScheme()}://{$this->server->getHost()}";
+        $server = $this->resolveServerForLink();
+
+        if (! $server instanceof Server) {
+            return '';
+        }
+
+        return "{$server->getScheme()}://{$server->getHost()}";
     }
 
     public function getSubscriptionLink(): string
     {
-        return "{$this->getBaseUrl()}/sub/{$this->sub_id}";
+        $baseUrl = $this->getBaseUrl();
+
+        if ($baseUrl === '') {
+            return '';
+        }
+
+        return "{$baseUrl}/sub/{$this->sub_id}";
     }
 
     public function getQrCodeContent(): string
@@ -374,5 +410,20 @@ class VlessConfig extends Model
         }
 
         $this->setInboundIdAttribute($this->pendingInboundExternalId);
+    }
+
+    private function resolveServerForLink(): ?Server
+    {
+        if ($this->relationLoaded('server') && $this->server instanceof Server) {
+            return $this->server;
+        }
+
+        $serverId = (int) ($this->attributes['server_id'] ?? 0);
+
+        if ($serverId < 1) {
+            return null;
+        }
+
+        return Server::withTrashed()->find($serverId);
     }
 }

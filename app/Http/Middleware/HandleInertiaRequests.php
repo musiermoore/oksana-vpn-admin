@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -69,7 +68,6 @@ class HandleInertiaRequests extends Middleware
                     ['label' => 'API лог', 'href' => route('api-request-logs.index'), 'badge' => 'LG', 'icon' => 'log'],
                     ['label' => '3x-ui Debug', 'href' => route('xui-debug.index'), 'badge' => 'XD', 'icon' => 'terminal'],
                     ['label' => 'Tax Debug', 'href' => route('tax-debug.index'), 'badge' => 'TD', 'icon' => 'bug'],
-                    ['label' => 'WireGuard Peers', 'href' => route('wireguard.active-peers'), 'badge' => 'WG', 'icon' => 'activity'],
                 ],
             ],
         ] : [];
@@ -123,14 +121,6 @@ class HandleInertiaRequests extends Middleware
         return array_merge(parent::share($request), [
             'app' => [
                 'name' => config('app.name', 'VPN Admin'),
-                'environment' => [
-                    'label' => Str::of(config('app.env', 'production'))->headline()->toString(),
-                    'tone' => match (config('app.env')) {
-                        'production' => 'danger',
-                        'staging' => 'warning',
-                        default => 'muted',
-                    },
-                ],
                 'isAuthorized' => (bool) $request->attributes->get('isAuthorized'),
                 'currentPath' => $request->path(),
                 'navigation' => $navigation,

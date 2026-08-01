@@ -4,49 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ServerResource;
 use App\Http\Resources\UserResource;
-use App\Models\Config;
 use App\Models\Server;
-use App\Models\Traffic;
 use App\Models\User;
 use App\Services\WireGuardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class WireGuardController extends Controller
 {
-    public function activePeers(Request $request)
-    {
-        $servers = Server::get();
-
-        $selectedServerId = (int)$request->query('server_id', $servers->value('id'));
-
-        $service = new WireGuardService();
-        $peers = $service->sortByActive($selectedServerId);
-
-        return $this->inertia('WireGuard/ActivePeers', [
-            'filters' => [
-                'server_id' => $selectedServerId,
-            ],
-            'servers' => ServerResource::collection($servers)->toArray($request),
-            'peerGroups' => collect($peers)->map(function (Collection $peerType, string $key) {
-                return [
-                    'key' => $key,
-                    'label' => $key === 'active' ? 'Активные' : 'Оффлайн',
-                    'items' => collect($peerType)->map(function (array $peer) {
-                        return [
-                            'telegram' => $peer['telegram'] ?? null,
-                            'latest_handshake' => $peer['latest_handshake'] ?: '-',
-                            'transfer' => $peer['transfer'] ?: '-',
-                            'formatted_last_traffic' => $peer['config']->formatted_last_traffic ?? [],
-                        ];
-                    })->values(),
-                ];
-            })->values(),
-        ]);
-    }
-
     public function traffic(Request $request)
     {
         $users = User::get();

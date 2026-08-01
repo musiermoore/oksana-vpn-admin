@@ -478,15 +478,18 @@ const highlightCards = computed(() => [
 
 .reports-filter {
     display: grid;
-    gap: 16px;
-    padding: 22px;
-    border-radius: 24px;
+    grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+    padding: 16px 18px;
+    border-radius: 20px;
     background: rgba(15, 23, 42, 0.95);
     color: #f8fafc;
 }
 
 .reports-filter__actions {
     display: flex;
+    align-items: center;
     gap: 12px;
     flex-wrap: wrap;
 }
@@ -504,6 +507,12 @@ const highlightCards = computed(() => [
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.08);
     color: inherit;
+}
+
+@media (max-width: 980px) {
+    .reports-filter {
+        grid-template-columns: 1fr;
+    }
 }
 
 .reports-grid {

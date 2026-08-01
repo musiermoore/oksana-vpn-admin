@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { useLocalStorage, useWindowSize } from '@vueuse/core';
 import AppIcon from '../Shared/AppIcon.vue';
 import FlashMessages from '../Shared/FlashMessages.vue';
@@ -8,8 +8,7 @@ import FlashMessages from '../Shared/FlashMessages.vue';
 const page = usePage();
 const navigationSections = computed(() => page.props.app.navigation ?? []);
 const currentUser = computed(() => page.props.auth?.user ?? null);
-const environment = computed(() => page.props.app?.environment ?? null);
-const searchQuery = ref('');
+const searchQuery = ref(typeof page.props.query === 'string' ? page.props.query : '');
 const { width } = useWindowSize();
 const isSidebarOpen = ref(false);
 const isSidebarCollapsed = useLocalStorage('vpn-admin-sidebar-collapsed', false);
@@ -97,6 +96,18 @@ const logout = () => {
     logoutForm.post('/logout');
 };
 
+const submitSearch = () => {
+    const query = searchQuery.value.trim();
+
+    if (!query) {
+        return;
+    }
+
+    router.get('/search', { q: query }, {
+        preserveState: true,
+    });
+};
+
 onMounted(() => {
     if (!Object.keys(openSections.value).length) {
         openSections.value = Object.fromEntries(
@@ -140,7 +151,6 @@ watch(isMobile, () => {
             <div class="shell__sidebar-inner">
                 <div class="shell__sidebar-header">
                     <Link class="brand" href="/">
-                        <span class="brand__mark">WG</span>
                         <span class="brand__copy">
                             <strong class="brand__label">{{ page.props.app.name }}</strong>
                             <span class="brand__subline">Admin Panel</span>
@@ -148,14 +158,6 @@ watch(isMobile, () => {
                     </Link>
 
                     <div class="shell__sidebar-header-actions">
-                        <Tag
-                            v-if="environment"
-                            :value="environment.label"
-                            :severity="environmentSeverity(environment.tone)"
-                            rounded
-                            class="environment-badge"
-                        />
-
                         <Button
                             type="button"
                             variant="text"
@@ -235,11 +237,10 @@ watch(isMobile, () => {
                 </Button>
 
                 <Link class="brand brand--mobile" href="/">
-                    <span class="brand__mark">WG</span>
                     <span>{{ page.props.app.name }}</span>
                 </Link>
 
-                <form class="topbar-search" @submit.prevent>
+                <form class="topbar-search" @submit.prevent="submitSearch">
                     <AppIcon name="search" class="topbar-search__icon" />
                     <InputText
                         v-model="searchQuery"
@@ -253,14 +254,6 @@ watch(isMobile, () => {
                 <div class="shell__topbar-spacer" />
 
                 <div class="shell__topbar-meta">
-                    <Tag
-                        v-if="environment"
-                        :value="environment.label"
-                        :severity="environmentSeverity(environment.tone)"
-                        rounded
-                        class="environment-badge environment-badge--outline"
-                    />
-
                     <div v-if="currentUser" class="shell__userbar">
                         <div class="shell__usercopy">
                             <strong>{{ currentUser.telegram || currentUser.name }}</strong>

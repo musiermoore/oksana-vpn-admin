@@ -184,7 +184,6 @@ class AdminDashboardService
                         ['label' => 'API лог', 'href' => route('api-request-logs.index')],
                         ['label' => '3x-ui Debug', 'href' => route('xui-debug.index')],
                         ['label' => 'Tax Debug', 'href' => route('tax-debug.index')],
-                        ['label' => 'WireGuard Peers', 'href' => route('wireguard.active-peers')],
                     ],
                     'highlights' => [
                         sprintf('%d ошибок API за сутки', $integrationErrors),

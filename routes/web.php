@@ -12,6 +12,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProxyController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\TaskController;
@@ -46,9 +47,9 @@ Route::middleware([BasicAuth::class, 'guest'])->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
-    Route::get('wireguard/active-peers', [WireGuardController::class, 'activePeers'])->name('wireguard.active-peers');
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
     Route::get('api-request-logs', [ApiRequestLogController::class, 'index'])->name('api-request-logs.index');
+    Route::get('search', [SearchController::class, 'index'])->name('search.index');
     Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
     Route::get('referrals/{user}', [ReferralController::class, 'show'])->name('referrals.show');
     Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');

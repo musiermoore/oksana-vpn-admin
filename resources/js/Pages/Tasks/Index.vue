@@ -119,11 +119,13 @@ const groupedTasks = computed(() => [
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 20px;
+    align-items: start;
 }
 
 .task-column {
     display: grid;
     gap: 16px;
+    align-content: start;
     padding: 18px;
     border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 24px;
@@ -146,6 +148,7 @@ const groupedTasks = computed(() => [
 .task-list {
     display: grid;
     gap: 14px;
+    align-content: start;
 }
 
 .task-card {

@@ -95,6 +95,7 @@ const updateValue = (event) => {
                 :value="modelValue"
                 class="notification-editor"
                 :placeholder="placeholder"
+                spellcheck="false"
                 @input="updateValue"
             />
             <small v-if="help" class="muted">{{ help }}</small>

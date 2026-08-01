@@ -45,7 +45,7 @@ class AuthController extends Controller
             Auth::login($user);
             $request->session()->regenerate();
 
-            return redirect()->intended(route('wireguard.active-peers'));
+            return redirect()->intended(route('dashboard.index'));
         }
 
         $code = (string) random_int(100000, 999999);
@@ -100,7 +100,7 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('wireguard.active-peers'));
+        return redirect()->intended(route('dashboard.index'));
     }
 
     public function destroy(Request $request): RedirectResponse

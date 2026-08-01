@@ -4,6 +4,7 @@ use App\Http\Controllers\ApiRequestLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExtraPaymentController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LimitController;
@@ -44,7 +45,8 @@ Route::middleware([BasicAuth::class, 'guest'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/', [WireGuardController::class, 'activePeers'])->name('wireguard.active-peers');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
+    Route::get('wireguard/active-peers', [WireGuardController::class, 'activePeers'])->name('wireguard.active-peers');
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
     Route::get('api-request-logs', [ApiRequestLogController::class, 'index'])->name('api-request-logs.index');
     Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');

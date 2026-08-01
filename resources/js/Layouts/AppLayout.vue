@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { useLocalStorage, useWindowSize } from '@vueuse/core';
 import AppIcon from '../Shared/AppIcon.vue';
 import FlashMessages from '../Shared/FlashMessages.vue';
 
@@ -9,13 +10,12 @@ const navigationSections = computed(() => page.props.app.navigation ?? []);
 const currentUser = computed(() => page.props.auth?.user ?? null);
 const environment = computed(() => page.props.app?.environment ?? null);
 const searchQuery = ref('');
-const isMobile = ref(false);
+const { width } = useWindowSize();
 const isSidebarOpen = ref(false);
-const isSidebarCollapsed = ref(false);
-const collapseStorageKey = 'vpn-admin-sidebar-collapsed';
-const sectionStorageKey = 'vpn-admin-sidebar-sections';
+const isSidebarCollapsed = useLocalStorage('vpn-admin-sidebar-collapsed', false);
 const logoutForm = useForm({});
-const openSections = ref({});
+const openSections = useLocalStorage('vpn-admin-sidebar-sections', {});
+const isMobile = computed(() => width.value < 992);
 
 const normalizePath = (value) => {
     if (!value) {
@@ -44,8 +44,6 @@ const isActive = (href) => {
 };
 
 const syncViewport = () => {
-    isMobile.value = window.innerWidth < 992;
-
     if (!isMobile.value) {
         isSidebarOpen.value = false;
     }
@@ -58,11 +56,22 @@ const toggleSidebar = () => {
     }
 
     isSidebarCollapsed.value = !isSidebarCollapsed.value;
-    window.localStorage.setItem(collapseStorageKey, String(isSidebarCollapsed.value));
 };
 
 const closeSidebar = () => {
     isSidebarOpen.value = false;
+};
+
+const environmentSeverity = (tone) => {
+    if (tone === 'danger') {
+        return 'danger';
+    }
+
+    if (tone === 'warning') {
+        return 'warn';
+    }
+
+    return 'secondary';
 };
 
 const sidebarSectionLabel = (section) => {
@@ -80,8 +89,6 @@ const toggleSection = (sectionName) => {
         ...openSections.value,
         [sectionName]: !openSections.value[sectionName],
     };
-
-    window.localStorage.setItem(sectionStorageKey, JSON.stringify(openSections.value));
 };
 
 const isSectionOpen = (sectionName) => openSections.value[sectionName] !== false;
@@ -91,17 +98,6 @@ const logout = () => {
 };
 
 onMounted(() => {
-    isSidebarCollapsed.value = window.localStorage.getItem(collapseStorageKey) === 'true';
-    const storedSections = window.localStorage.getItem(sectionStorageKey);
-
-    if (storedSections) {
-        try {
-            openSections.value = JSON.parse(storedSections);
-        } catch {
-            openSections.value = {};
-        }
-    }
-
     if (!Object.keys(openSections.value).length) {
         openSections.value = Object.fromEntries(
             navigationSections.value.map((section) => [section.section, true]),
@@ -109,11 +105,6 @@ onMounted(() => {
     }
 
     syncViewport();
-    window.addEventListener('resize', syncViewport);
-});
-
-onBeforeUnmount(() => {
-    window.removeEventListener('resize', syncViewport);
 });
 
 watch(
@@ -124,6 +115,10 @@ watch(
         }
     },
 );
+
+watch(isMobile, () => {
+    syncViewport();
+});
 </script>
 
 <template>
@@ -153,18 +148,24 @@ watch(
                     </Link>
 
                     <div class="shell__sidebar-header-actions">
-                        <span v-if="environment" class="environment-badge" :class="`environment-badge--${environment.tone}`">
-                            {{ environment.label }}
-                        </span>
+                        <Tag
+                            v-if="environment"
+                            :value="environment.label"
+                            :severity="environmentSeverity(environment.tone)"
+                            rounded
+                            class="environment-badge"
+                        />
 
-                        <button
+                        <Button
                             type="button"
+                            variant="text"
+                            rounded
                             class="shell__icon-button shell__icon-button--sidebar"
+                            aria-label="Close navigation"
                             @click="closeSidebar"
                         >
-                            <span class="sr-only">Close navigation</span>
-                            <span aria-hidden="true">×</span>
-                        </button>
+                            <AppIcon name="close" />
+                        </Button>
                     </div>
                 </div>
 
@@ -175,34 +176,41 @@ watch(
                         class="sidebar-nav__section"
                         :class="{ 'is-open': isSectionOpen(section.section) }"
                     >
-                        <button
+                        <Button
                             type="button"
+                            variant="text"
                             class="sidebar-nav__section-toggle"
-                            @click="toggleSection(section.section)"
                             :title="isSidebarCollapsed ? sidebarSectionLabel(section) : ''"
+                            @click="toggleSection(section.section)"
                         >
                             <span class="sidebar-nav__section-heading">
                                 <AppIcon v-if="section.icon" :name="section.icon" class="sidebar-nav__section-glyph" />
                                 <span class="sidebar-nav__section-title">{{ section.section }}</span>
                             </span>
-                            <span class="sidebar-nav__section-icon" aria-hidden="true">⌄</span>
-                        </button>
+                            <AppIcon name="chevronDown" class="sidebar-nav__section-icon" />
+                        </Button>
 
                         <nav v-show="isSectionOpen(section.section)" class="sidebar-nav__group">
-                            <Link
+                            <Button
                                 v-for="item in section.items"
                                 :key="item.href"
-                                :href="item.href"
-                                class="sidebar-nav__link"
-                                :class="{ 'is-active': isActive(item.href) }"
-                                :title="isSidebarCollapsed ? item.label : ''"
+                                as-child
+                                variant="text"
+                                v-slot="slotProps"
                             >
-                                <span class="sidebar-nav__badge">
-                                    <AppIcon v-if="item.icon" :name="item.icon" class="sidebar-nav__badge-icon" />
-                                    <span v-else>{{ item.badge }}</span>
-                                </span>
-                                <span class="sidebar-nav__label">{{ item.label }}</span>
-                            </Link>
+                                <Link
+                                    :href="item.href"
+                                    :class="[slotProps.class, 'sidebar-nav__link', { 'is-active': isActive(item.href) }]"
+                                    :title="isSidebarCollapsed ? item.label : ''"
+                                    v-bind="slotProps.a11yAttrs"
+                                >
+                                    <span class="sidebar-nav__badge">
+                                        <AppIcon v-if="item.icon" :name="item.icon" class="sidebar-nav__badge-icon" />
+                                        <span v-else>{{ item.badge }}</span>
+                                    </span>
+                                    <span class="sidebar-nav__label">{{ item.label }}</span>
+                                </Link>
+                            </Button>
                         </nav>
                     </section>
                 </div>
@@ -213,23 +221,18 @@ watch(
                         <span>{{ currentUser.is_admin ? 'Администратор' : 'Оператор' }}</span>
                     </div>
 
-                    <button class="button button--ghost sidebar-profile__logout" type="button" @click="logout">
+                    <Button type="button" variant="outlined" severity="secondary" class="sidebar-profile__logout" @click="logout">
                         Выйти
-                    </button>
+                    </Button>
                 </div>
             </div>
         </aside>
 
         <div class="shell__main">
             <header class="shell__topbar">
-                <button type="button" class="shell__icon-button" @click="toggleSidebar">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="shell__burger" aria-hidden="true">
-                        <span />
-                        <span />
-                        <span />
-                    </span>
-                </button>
+                <Button type="button" variant="outlined" rounded class="shell__icon-button" aria-label="Toggle navigation" @click="toggleSidebar">
+                    <AppIcon name="bars" />
+                </Button>
 
                 <Link class="brand brand--mobile" href="/">
                     <span class="brand__mark">WG</span>
@@ -238,20 +241,25 @@ watch(
 
                 <form class="topbar-search" @submit.prevent>
                     <AppIcon name="search" class="topbar-search__icon" />
-                    <input
+                    <InputText
                         v-model="searchQuery"
                         type="search"
+                        fluid
                         placeholder="Поиск по ID, username, UUID, IP или транзакции"
                         aria-label="Глобальный поиск"
-                    >
+                    />
                 </form>
 
                 <div class="shell__topbar-spacer" />
 
                 <div class="shell__topbar-meta">
-                    <span v-if="environment" class="environment-badge environment-badge--outline" :class="`environment-badge--${environment.tone}`">
-                        {{ environment.label }}
-                    </span>
+                    <Tag
+                        v-if="environment"
+                        :value="environment.label"
+                        :severity="environmentSeverity(environment.tone)"
+                        rounded
+                        class="environment-badge environment-badge--outline"
+                    />
 
                     <div v-if="currentUser" class="shell__userbar">
                         <div class="shell__usercopy">

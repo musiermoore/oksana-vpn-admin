@@ -15,13 +15,14 @@ const messages = computed(() => [
 
 <template>
     <div v-if="messages.length" class="stack">
-        <div
+        <Message
             v-for="message in messages"
             :key="`${message.type}-${message.text}`"
             class="flash"
-            :class="message.type === 'success' ? 'flash--success' : 'flash--error'"
+            :severity="message.type === 'success' ? 'success' : 'error'"
+            variant="outlined"
         >
             {{ message.text }}
-        </div>
+        </Message>
     </div>
 </template>

@@ -29,11 +29,37 @@ defineProps({
     },
 });
 
-const buttonClass = (variant) => ({
-    button: true,
-    'button--secondary': variant === 'secondary',
-    'button--ghost': variant === 'ghost',
-});
+const buttonSeverity = (variant) => {
+    if (variant === 'secondary') {
+        return 'secondary';
+    }
+
+    return 'contrast';
+};
+
+const buttonVariant = (variant) => {
+    if (variant === 'ghost') {
+        return 'outlined';
+    }
+
+    return undefined;
+};
+
+const itemSeverity = (tone) => {
+    if (tone === 'danger') {
+        return 'danger';
+    }
+
+    if (tone === 'warning') {
+        return 'warn';
+    }
+
+    if (tone === 'success') {
+        return 'success';
+    }
+
+    return 'secondary';
+};
 </script>
 
 <template>
@@ -46,14 +72,19 @@ const buttonClass = (variant) => ({
     >
         <template #actions>
             <div class="dashboard-header-actions">
-                <Link
+                <Button
                     v-for="action in quick_actions"
                     :key="action.href"
-                    :href="action.href"
-                    :class="buttonClass(action.variant)"
+                    as-child
+                    :severity="buttonSeverity(action.variant)"
+                    :variant="buttonVariant(action.variant)"
                 >
-                    {{ action.label }}
-                </Link>
+                    <template #default="slotProps">
+                        <Link :href="action.href" :class="slotProps.class" v-bind="slotProps.a11yAttrs">
+                            {{ action.label }}
+                        </Link>
+                    </template>
+                </Button>
             </div>
         </template>
 
@@ -65,7 +96,7 @@ const buttonClass = (variant) => ({
                 :class="`is-${item.tone}`"
                 role="listitem"
             >
-                <span>{{ item.label }}</span>
+                <Tag :value="item.label" :severity="itemSeverity(item.tone)" rounded />
                 <strong>{{ item.value }}</strong>
                 <small>{{ item.meta }}</small>
             </article>
@@ -74,103 +105,140 @@ const buttonClass = (variant) => ({
 
     <section class="dashboard-workspace">
         <div class="dashboard-main-column">
-            <section class="page-card dashboard-create-card">
-                <div class="dashboard-create-card__header">
-                    <div>
-                        <p class="section-kicker">Быстрые действия</p>
-                        <h2 class="section-title">Создать</h2>
+            <Panel class="dashboard-panel dashboard-create-card">
+                <template #header>
+                    <div class="dashboard-create-card__header">
+                        <div>
+                            <p class="section-kicker">Быстрые действия</p>
+                            <h2 class="section-title">Создать</h2>
+                        </div>
+                        <p>Основные точки входа для типовых операций по панели.</p>
                     </div>
-                    <p>Основные точки входа для типовых операций по панели.</p>
-                </div>
+                </template>
 
                 <div class="dashboard-chip-list">
-                    <Link
+                    <Button
                         v-for="action in create_actions"
                         :key="action.href"
-                        :href="action.href"
-                        class="dashboard-chip"
+                        as-child
+                        size="small"
+                        severity="secondary"
+                        variant="outlined"
                     >
-                        {{ action.label }}
-                    </Link>
+                        <template #default="slotProps">
+                            <Link :href="action.href" :class="[slotProps.class, 'dashboard-chip']" v-bind="slotProps.a11yAttrs">
+                                {{ action.label }}
+                            </Link>
+                        </template>
+                    </Button>
                 </div>
-            </section>
+            </Panel>
 
             <section class="dashboard-section-list">
-                <article
+                <Panel
                     v-for="section in sections"
                     :key="section.label"
-                    class="page-card dashboard-section-block"
+                    class="dashboard-panel dashboard-section-block"
                 >
-                    <div class="dashboard-section-block__intro">
-                        <div class="dashboard-section-block__title">
-                            <span class="dashboard-section-block__icon">
-                                <AppIcon :name="section.icon" />
-                            </span>
-                            <div>
-                                <h2 class="section-title">{{ section.label }}</h2>
-                                <p>{{ section.description }}</p>
+                    <template #header>
+                        <div class="dashboard-section-block__intro">
+                            <div class="dashboard-section-block__title">
+                                <span class="dashboard-section-block__icon">
+                                    <AppIcon :name="section.icon" />
+                                </span>
+                                <div>
+                                    <h2 class="section-title">{{ section.label }}</h2>
+                                    <p>{{ section.description }}</p>
+                                </div>
+                            </div>
+
+                            <div class="dashboard-section-block__highlights">
+                                <Chip
+                                    v-for="highlight in section.highlights"
+                                    :key="highlight"
+                                    :label="highlight"
+                                    class="dashboard-inline-stat"
+                                />
                             </div>
                         </div>
-
-                        <div class="dashboard-section-block__highlights">
-                            <span
-                                v-for="highlight in section.highlights"
-                                :key="highlight"
-                                class="dashboard-inline-stat"
-                            >
-                                {{ highlight }}
-                            </span>
-                        </div>
-                    </div>
+                    </template>
 
                     <div class="dashboard-link-list">
-                        <Link
+                        <Button
                             v-for="link in section.links"
                             :key="link.href"
-                            :href="link.href"
-                            class="dashboard-link-row"
+                            as-child
+                            severity="secondary"
+                            variant="outlined"
                         >
-                            <span>{{ link.label }}</span>
-                            <span aria-hidden="true">Открыть</span>
-                        </Link>
+                            <template #default="slotProps">
+                                <Link
+                                    :href="link.href"
+                                    :class="[slotProps.class, 'dashboard-link-row']"
+                                    v-bind="slotProps.a11yAttrs"
+                                >
+                                    <span>{{ link.label }}</span>
+                                    <span class="dashboard-link-row__action" aria-hidden="true">
+                                        <span>Открыть</span>
+                                        <AppIcon name="arrowRight" />
+                                    </span>
+                                </Link>
+                            </template>
+                        </Button>
                     </div>
-                </article>
+                </Panel>
             </section>
         </div>
 
         <aside class="dashboard-side-column">
-            <section class="page-card dashboard-attention-card">
-                <div class="dashboard-attention-card__header">
-                    <div>
-                        <p class="section-kicker">Контроль</p>
-                        <h2 class="section-title">Требует внимания</h2>
+            <Panel class="dashboard-panel dashboard-attention-card">
+                <template #header>
+                    <div class="dashboard-attention-card__header">
+                        <div>
+                            <p class="section-kicker">Контроль</p>
+                            <h2 class="section-title">Требует внимания</h2>
+                        </div>
+                        <p>Очередь важных сигналов по операциям, биллингу и интеграциям.</p>
                     </div>
-                    <p>Очередь важных сигналов по операциям, биллингу и интеграциям.</p>
-                </div>
+                </template>
 
                 <div v-if="attention_items.length" class="attention-list">
-                    <Link
+                    <Button
                         v-for="item in attention_items"
                         :key="`${item.type}-${item.description}`"
-                        :href="item.href"
-                        class="attention-list__item"
+                        as-child
+                        severity="secondary"
+                        variant="outlined"
                     >
-                        <div class="attention-list__meta">
-                            <span class="attention-list__type">{{ item.type }}</span>
-                            <span class="attention-list__status">{{ item.status }}</span>
-                        </div>
-                        <strong>{{ item.description }}</strong>
-                        <div class="attention-list__footer">
-                            <span>{{ item.time }}</span>
-                            <span>Открыть</span>
-                        </div>
-                    </Link>
+                        <template #default="slotProps">
+                            <Link
+                                :href="item.href"
+                                :class="[slotProps.class, 'attention-list__item']"
+                                v-bind="slotProps.a11yAttrs"
+                            >
+                                <div class="attention-list__meta">
+                                    <Tag :value="item.type" severity="secondary" rounded />
+                                    <Tag :value="item.status" :severity="item.status === 'Ошибка' ? 'danger' : 'warn'" rounded />
+                                </div>
+                                <strong>{{ item.description }}</strong>
+                                <div class="attention-list__footer">
+                                    <span>{{ item.time }}</span>
+                                    <span class="dashboard-link-row__action">
+                                        <span>Открыть</span>
+                                        <AppIcon name="arrowRight" />
+                                    </span>
+                                </div>
+                            </Link>
+                        </template>
+                    </Button>
                 </div>
 
                 <div v-else class="empty-state">
-                    <p>Критичных сигналов сейчас нет.</p>
+                    <Message severity="success" variant="outlined">
+                        Критичных сигналов сейчас нет.
+                    </Message>
                 </div>
-            </section>
+            </Panel>
         </aside>
     </section>
 </template>

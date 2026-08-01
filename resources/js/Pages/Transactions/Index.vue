@@ -1,10 +1,11 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import AppPageHeader from '../../Shared/AppPageHeader.vue';
 
 defineOptions({ layout: AppLayout });
 
-defineProps({
+const props = defineProps({
     balance: Number,
     transactions: Array,
     pending_transactions: Array,
@@ -18,20 +19,27 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
 <template>
     <Head title="Транзакции" />
 
-    <section class="page-card stack">
-        <div class="page-header">
-            <div>
-                <h1>Транзакции</h1>
-                <p>Текущий баланс: {{ balance }}</p>
-            </div>
-            <div class="actions">
-                <Link class="button" href="/transactions/create">Создать</Link>
+    <AppPageHeader
+        title="Транзакции"
+        description="Операционная зона по движению денег: ожидающие действия, принятые списания и ручные корректировки."
+        :stats="[
+            { label: 'Текущий баланс', value: props.balance },
+            { label: 'На рассмотрении', value: props.pending_transactions.length },
+            { label: 'Принятые', value: props.transactions.length },
+        ]"
+    >
+        <template #actions>
+            <AppButton href="/transactions/create">Создать транзакцию</AppButton>
+        </template>
+    </AppPageHeader>
+
+    <section v-if="pending_transactions.length" class="section-block">
+        <div class="section-block__header">
+            <div class="section-block__title">
+                <h2>Ожидают решения</h2>
+                <p>Транзакции, которые ещё не одобрены и требуют ручного подтверждения или отклонения.</p>
             </div>
         </div>
-    </section>
-
-    <section v-if="pending_transactions.length" class="page-card stack">
-        <div class="page-header"><div><h2 class="section-title">На рассмотрении</h2></div></div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -56,8 +64,8 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                         <td>{{ transaction.formatted_created_at }}</td>
                         <td>
                             <div class="actions">
-                                <button class="button button--success" type="button" @click="approve(transaction)">Принять</button>
-                                <button class="button button--danger" type="button" @click="decline(transaction)">Отклонить</button>
+                                <AppButton variant="success" type="button" @click="approve(transaction)">Принять</AppButton>
+                                <AppButton variant="danger" type="button" @click="decline(transaction)">Отклонить</AppButton>
                             </div>
                         </td>
                     </tr>
@@ -66,8 +74,13 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
         </div>
     </section>
 
-    <section class="page-card stack">
-        <div class="page-header"><div><h2 class="section-title">Принятые</h2></div></div>
+    <section class="section-block">
+        <div class="section-block__header">
+            <div class="section-block__title">
+                <h2>Журнал проведённых операций</h2>
+                <p>История уже сохранённых движений по балансу с возможностью перейти к редактированию записи.</p>
+            </div>
+        </div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -92,8 +105,8 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                         <td>{{ transaction.formatted_created_at }}</td>
                         <td>
                             <div class="actions">
-                                <Link class="button button--secondary" :href="transaction.links.edit">Изменить</Link>
-                                <button class="button button--danger" type="button" @click="destroyTransaction(transaction)">Удалить</button>
+                                <AppButton variant="secondary" :href="transaction.links.edit">Изменить</AppButton>
+                                <AppButton variant="danger" type="button" @click="destroyTransaction(transaction)">Удалить</AppButton>
                             </div>
                         </td>
                     </tr>

@@ -23,6 +23,8 @@ const statusLabel = (status) => ({
     answered: 'Отвечен',
     closed: 'Закрыт',
 }[status] || status);
+
+const statusOptions = props.statuses;
 </script>
 
 <template>
@@ -36,16 +38,14 @@ const statusLabel = (status) => ({
             </div>
 
             <div class="actions">
-                <Link class="button button--secondary" href="/support-tickets">Назад</Link>
-                <a
+                <AppButton variant="secondary" href="/support-tickets">Назад</AppButton>
+                <AppButton
                     v-if="ticket.user?.chat_url"
-                    class="button"
                     :href="ticket.user.chat_url"
                     target="_blank"
-                    rel="noreferrer"
                 >
                     Открыть чат
-                </a>
+                </AppButton>
             </div>
         </div>
 
@@ -85,20 +85,16 @@ const statusLabel = (status) => ({
         <form class="stack" @submit.prevent="submit">
             <label class="field">
                 <span class="field-label">Статус после ответа</span>
-                <select v-model="form.status" class="input">
-                    <option v-for="status in statuses" :key="status.value" :value="status.value">
-                        {{ status.label }}
-                    </option>
-                </select>
+                <AppSelect v-model="form.status" :options="statusOptions" />
             </label>
 
             <label class="field">
                 <span class="field-label">Сообщение</span>
-                <textarea v-model="form.message" class="input input--textarea" rows="6"></textarea>
+                <AppTextarea v-model="form.message" rows="6" />
             </label>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="form.processing">Отправить ответ</button>
+                <AppButton type="submit" :disabled="form.processing">Отправить ответ</AppButton>
             </div>
         </form>
     </section>

@@ -28,6 +28,11 @@ const taxStatusLabel = (status) => ({
     sent: 'Отправлен',
     failed: 'Ошибка',
 }[status] ?? status);
+
+const taxStatusOptions = props.tax_status_options.map((status) => ({
+    label: taxStatusLabel(status),
+    value: status,
+}));
 </script>
 
 <template>
@@ -41,8 +46,8 @@ const taxStatusLabel = (status) => ({
             </div>
 
             <div class="actions">
-                <Link class="button button--secondary" :href="invoice.links.show">К деталям</Link>
-                <Link class="button button--secondary" href="/invoices">К списку</Link>
+                <AppButton variant="secondary" :href="invoice.links.show">К деталям</AppButton>
+                <AppButton variant="secondary" href="/invoices">К списку</AppButton>
             </div>
         </div>
 
@@ -63,16 +68,12 @@ const taxStatusLabel = (status) => ({
                 <form class="stack" @submit.prevent="submit">
                     <label class="field">
                         <span>Статус налоговой</span>
-                        <select v-model="form.tax_status">
-                            <option v-for="status in tax_status_options" :key="status" :value="status">
-                                {{ taxStatusLabel(status) }}
-                            </option>
-                        </select>
+                        <AppSelect v-model="form.tax_status" :options="taxStatusOptions" />
                         <small v-if="form.errors.tax_status" class="field-error">{{ form.errors.tax_status }}</small>
                     </label>
 
                     <div class="actions">
-                        <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
+                        <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
                     </div>
                 </form>
             </article>

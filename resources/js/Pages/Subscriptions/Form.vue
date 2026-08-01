@@ -31,22 +31,22 @@ const submit = () => form.put(props.submit_url);
         <form class="grid grid--two" @submit.prevent="submit">
             <label class="field">
                 <span>Дата начала</span>
-                <input v-model="form.start_date" type="date" required>
+                <AppInput v-model="form.start_date" type="date" required />
             </label>
 
             <label class="field">
                 <span>Дата окончания</span>
-                <input v-model="form.end_date" type="date" required>
+                <AppInput v-model="form.end_date" type="date" required />
             </label>
 
             <label class="field">
                 <span>Стоимость</span>
-                <input :value="subscription.price" type="number" step="0.01" disabled>
+                <AppInput :value="subscription.price" type="number" step="0.01" disabled />
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/subscriptions">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/subscriptions">Назад</AppButton>
             </div>
         </form>
     </section>

@@ -20,7 +20,7 @@ const destroyPayment = (payment) => confirm('Удалить период опл�
                 <h1>Периоды оплаты</h1>
             </div>
             <div class="actions">
-                <Link class="button" href="/current-payments/create">Создать</Link>
+                <AppButton href="/current-payments/create">Создать</AppButton>
             </div>
         </div>
     </section>
@@ -42,8 +42,8 @@ const destroyPayment = (payment) => confirm('Удалить период опл�
                     <td>{{ payment.amount }}</td>
                     <td>
                         <div class="actions">
-                            <Link class="button button--secondary" :href="payment.links.edit">Изменить</Link>
-                            <button class="button button--danger" type="button" @click="destroyPayment(payment)">Удалить</button>
+                            <AppButton variant="secondary" :href="payment.links.edit">Изменить</AppButton>
+                            <AppButton variant="danger" type="button" @click="destroyPayment(payment)">Удалить</AppButton>
                         </div>
                     </td>
                 </tr>

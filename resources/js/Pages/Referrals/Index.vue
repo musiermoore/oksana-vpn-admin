@@ -46,7 +46,7 @@ defineProps({
                     <td>{{ referrer.permanent_discount_percent }}%</td>
                     <td>{{ referrer.total_discount_percent }}%</td>
                     <td>
-                        <Link class="button button--secondary" :href="referrer.show_url">Открыть</Link>
+                        <AppButton variant="secondary" :href="referrer.show_url">Открыть</AppButton>
                     </td>
                 </tr>
             </tbody>

@@ -21,7 +21,7 @@ defineProps({
             </div>
 
             <div class="actions">
-                <Link class="button button--secondary" href="/referrals">Назад</Link>
+                <AppButton variant="secondary" href="/referrals">Назад</AppButton>
             </div>
         </div>
 

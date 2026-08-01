@@ -12,6 +12,11 @@ const props = defineProps({
 const form = useForm({
     user_id: props.users[0]?.id ?? '',
 });
+
+const userOptions = props.users.map((user) => ({
+    label: user.name,
+    value: user.id,
+}));
 </script>
 
 <template>
@@ -23,14 +28,12 @@ const form = useForm({
         <form class="grid" @submit.prevent="form.post(submit_url)">
             <label class="field">
                 <span>Пользователь</span>
-                <select v-model="form.user_id">
-                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
-                </select>
+                <AppSelect v-model="form.user_id" :options="userOptions" />
             </label>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/user-tokens">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/user-tokens">Назад</AppButton>
             </div>
         </form>
     </section>

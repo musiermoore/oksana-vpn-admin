@@ -18,7 +18,7 @@ const destroyToken = (token) => confirm('Удалить токен?') && router.
         <div class="page-header">
             <div><h1>Токены</h1></div>
             <div class="actions">
-                <Link class="button" href="/user-tokens/create">Создать токен</Link>
+                <AppButton href="/user-tokens/create">Создать токен</AppButton>
             </div>
         </div>
     </section>
@@ -38,8 +38,8 @@ const destroyToken = (token) => confirm('Удалить токен?') && router.
                     <td>{{ token.expires_at || 'Не ограничен' }}</td>
                     <td>
                         <div class="actions">
-                            <Link class="button button--secondary" :href="token.links.show">Открыть</Link>
-                            <button class="button button--danger" type="button" @click="destroyToken(token)">Удалить</button>
+                            <AppButton variant="secondary" :href="token.links.show">Открыть</AppButton>
+                            <AppButton variant="danger" type="button" @click="destroyToken(token)">Удалить</AppButton>
                         </div>
                     </td>
                 </tr>

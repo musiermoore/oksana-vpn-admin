@@ -28,22 +28,22 @@ const submit = () => props.mode === 'edit' ? form.put(props.submit_url) : form.p
         <form class="grid grid--two" @submit.prevent="submit">
             <label class="field">
                 <span>Дата начала</span>
-                <input v-model="form.start_date" type="date">
+                <AppInput v-model="form.start_date" type="date" />
             </label>
 
             <label class="field">
                 <span>Дата окончания</span>
-                <input v-model="form.end_date" type="date">
+                <AppInput v-model="form.end_date" type="date" />
             </label>
 
             <label class="field">
                 <span>Сумма</span>
-                <input v-model="form.amount" type="number" step="0.01" required>
+                <AppInput v-model="form.amount" type="number" step="0.01" required />
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/current-payments">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/current-payments">Назад</AppButton>
             </div>
         </form>
     </section>

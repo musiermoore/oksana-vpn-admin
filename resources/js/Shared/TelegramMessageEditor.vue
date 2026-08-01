@@ -80,12 +80,12 @@ const updateValue = (event) => {
 <template>
     <div class="stack">
         <div class="actions">
-            <button class="button button--secondary" type="button" @click="wrapSelection('<b>', '</b>')">Жирный</button>
-            <button class="button button--secondary" type="button" @click="wrapSelection('<i>', '</i>')">Курсив</button>
-            <button class="button button--secondary" type="button" @click="wrapSelection('<u>', '</u>')">Подчерк.</button>
-            <button class="button button--secondary" type="button" @click="wrapSelection('<s>', '</s>')">Зачерк.</button>
-            <button class="button button--secondary" type="button" @click="wrapSelection('<code>', '</code>')">Код</button>
-            <button class="button button--secondary" type="button" @click="insertLink">Ссылка</button>
+            <AppButton variant="secondary" type="button" @click="wrapSelection('<b>', '</b>')">Жирный</AppButton>
+            <AppButton variant="secondary" type="button" @click="wrapSelection('<i>', '</i>')">Курсив</AppButton>
+            <AppButton variant="secondary" type="button" @click="wrapSelection('<u>', '</u>')">Подчерк.</AppButton>
+            <AppButton variant="secondary" type="button" @click="wrapSelection('<s>', '</s>')">Зачерк.</AppButton>
+            <AppButton variant="secondary" type="button" @click="wrapSelection('<code>', '</code>')">Код</AppButton>
+            <AppButton variant="secondary" type="button" @click="insertLink">Ссылка</AppButton>
         </div>
 
         <label class="field">

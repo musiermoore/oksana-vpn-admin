@@ -12,6 +12,11 @@ const props = defineProps({
 const form = useForm({
     server_id: props.servers[0]?.id ?? '',
 });
+
+const serverOptions = props.servers.map((server) => ({
+    label: `${server.name} (${server.type}, ${server.ip})`,
+    value: server.id,
+}));
 </script>
 
 <template>
@@ -28,14 +33,12 @@ const form = useForm({
         <form class="grid" @submit.prevent="form.post(submit_url)">
             <label class="field">
                 <span>Сервер</span>
-                <select v-model="form.server_id">
-                    <option v-for="server in servers" :key="server.id" :value="server.id">{{ server.name }} ({{ server.type }}, {{ server.ip }})</option>
-                </select>
+                <AppSelect v-model="form.server_id" :options="serverOptions" />
             </label>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/configs">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/configs">Назад</AppButton>
             </div>
         </form>
     </section>

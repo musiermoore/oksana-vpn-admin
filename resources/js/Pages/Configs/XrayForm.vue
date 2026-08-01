@@ -1,5 +1,5 @@
 <script setup>
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -40,6 +40,18 @@ const selectedInboundDetails = () => props.available_inbounds.find(
         && item.server_id === Number(form.server_id)
         && item.inbound_id === Number(form.inbound_id)
 );
+const userOptions = computed(() => props.users.map((user) => ({
+    label: user.full_name,
+    value: user.id,
+})));
+const inboundOptions = computed(() => filteredInbounds().map((item) => ({
+    label: item.label,
+    value: `${item.protocol}:${item.server_id}:${item.inbound_id}`,
+})));
+const selectedInboundKey = computed({
+    get: () => `${form.protocol}:${form.server_id}:${form.inbound_id}`,
+    set: (value) => updateInboundSelection(value),
+});
 
 const updateInboundSelection = (value) => {
     const [protocol, serverId, inboundId] = value.split(':');
@@ -86,77 +98,64 @@ const submit = () => {
         <form class="grid grid--two" @submit.prevent="submit">
             <label class="field">
                 <span>Участник</span>
-                <select v-model="form.user_id">
-                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
-                </select>
+                <AppSelect v-model="form.user_id" :options="userOptions" />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Вход</span>
-                <select
-                    :value="`${form.protocol}:${form.server_id}:${form.inbound_id}`"
-                    @change="({ target }) => updateInboundSelection(target.value)"
-                >
-                    <option
-                        v-for="item in filteredInbounds()"
-                        :key="`${item.protocol}:${item.server_id}:${item.inbound_id}`"
-                        :value="`${item.protocol}:${item.server_id}:${item.inbound_id}`"
-                    >
-                        {{ item.label }}
-                    </option>
-                </select>
+                <AppSelect v-model="selectedInboundKey" :options="inboundOptions" />
             </label>
 
             <label v-if="mode === 'create' && filteredInbounds().length === 0" class="field" style="grid-column: 1 / -1;">
                 <span>Доступные входы</span>
-                <input value="Нет доступных Xray-входов" readonly>
+                <AppInput value="Нет доступных Xray-входов" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Протокол</span>
-                <input :value="selectedInboundDetails()?.protocol?.toUpperCase() ?? ''" readonly>
+                <AppInput :value="selectedInboundDetails()?.protocol?.toUpperCase() ?? ''" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Тип</span>
-                <input :value="selectedInboundDetails()?.type?.toUpperCase() ?? ''" readonly>
+                <AppInput :value="selectedInboundDetails()?.type?.toUpperCase() ?? ''" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Безопасность</span>
-                <input :value="selectedInboundDetails()?.security?.toUpperCase() ?? ''" readonly>
+                <AppInput :value="selectedInboundDetails()?.security?.toUpperCase() ?? ''" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Сервер</span>
-                <input :value="selectedInboundDetails()?.server_name ?? ''" readonly>
+                <AppInput :value="selectedInboundDetails()?.server_name ?? ''" readonly />
             </label>
 
             <label v-if="mode === 'create' && selectedInboundDetails()?.method" class="field">
                 <span>Метод</span>
-                <input :value="selectedInboundDetails()?.method ?? ''" readonly>
+                <AppInput :value="selectedInboundDetails()?.method ?? ''" readonly />
             </label>
 
             <template v-else>
                 <label class="field">
                     <span>Протокол</span>
-                    <input :value="config?.protocol_label ?? ''" readonly>
+                    <AppInput :value="config?.protocol_label ?? ''" readonly />
                 </label>
 
                 <label class="field">
                     <span>Сервер</span>
-                    <input :value="config?.server ? `${config.server.name} (${config.server.ip})` : ''" readonly>
+                    <AppInput :value="config?.server ? `${config.server.name} (${config.server.ip})` : ''" readonly />
                 </label>
 
                 <label class="field" style="grid-column: 1 / -1;">
                     <span>Ссылка</span>
-                    <textarea :value="config?.link ?? ''" readonly />
+                    <Textarea :value="config?.link ?? ''" readonly fluid auto-resize />
                 </label>
             </template>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing || (mode === 'create' && filteredInbounds().length === 0)">Сохранить</button>
-                <Link class="button button--secondary" href="/xray-configs">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing || (mode === 'create' && filteredInbounds().length === 0)">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/xray-configs">Назад</AppButton>
             </div>
         </form>
     </section>

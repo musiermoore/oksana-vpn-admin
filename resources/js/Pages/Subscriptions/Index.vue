@@ -60,7 +60,7 @@ defineProps({
                     </td>
                     <td>
                         <div class="actions">
-                            <Link class="button button--secondary" :href="subscription.links.edit">Изменить</Link>
+                            <AppButton variant="secondary" :href="subscription.links.edit">Изменить</AppButton>
                         </div>
                     </td>
                 </tr>

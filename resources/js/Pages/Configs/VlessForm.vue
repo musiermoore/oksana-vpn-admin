@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -18,6 +19,26 @@ const form = useForm({
     user_id: props.config?.user?.id ?? props.users[0]?.id ?? '',
     server_id: props.config?.server?.id ?? selectedInbound?.server_id ?? '',
     inbound_id: selectedInbound?.inbound_id ?? '',
+});
+
+const userOptions = computed(() => props.users.map((user) => ({
+    label: user.full_name,
+    value: user.id,
+})));
+const inboundOptions = computed(() => props.available_inbounds.map((item) => ({
+    label: item.label,
+    value: `${item.server_id}:${item.inbound_id}`,
+})));
+const selectedInboundDetails = computed(() => props.available_inbounds.find(
+    (item) => item.server_id === Number(form.server_id) && item.inbound_id === Number(form.inbound_id),
+) ?? null);
+const selectedInboundKey = computed({
+    get: () => `${form.server_id}:${form.inbound_id}`,
+    set: (value) => {
+        const [serverId, inboundId] = value.split(':');
+        form.server_id = Number(serverId);
+        form.inbound_id = Number(inboundId);
+    },
 });
 
 const submit = () => {
@@ -41,83 +62,54 @@ const submit = () => {
         <form class="grid grid--two" @submit.prevent="submit">
             <label class="field">
                 <span>Участник</span>
-                <select v-model="form.user_id">
-                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
-                </select>
+                <AppSelect v-model="form.user_id" :options="userOptions" />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Вход</span>
-                <select
-                    :value="`${form.server_id}:${form.inbound_id}`"
-                    @change="({ target }) => {
-                        const [serverId, inboundId] = target.value.split(':');
-                        form.server_id = Number(serverId);
-                        form.inbound_id = Number(inboundId);
-                    }"
-                >
-                    <option
-                        v-for="item in available_inbounds"
-                        :key="`${item.server_id}:${item.inbound_id}`"
-                        :value="`${item.server_id}:${item.inbound_id}`"
-                    >
-                        {{ item.label }}
-                    </option>
-                </select>
+                <AppSelect v-model="selectedInboundKey" :options="inboundOptions" />
             </label>
 
             <label v-if="mode === 'create' && available_inbounds.length === 0" class="field" style="grid-column: 1 / -1;">
                 <span>Доступные входы</span>
-                <input value="Нет доступных VLESS-входов" readonly>
+                <AppInput value="Нет доступных VLESS-входов" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Тип</span>
-                <input
-                    :value="available_inbounds.find((item) => item.server_id === Number(form.server_id) && item.inbound_id === Number(form.inbound_id))?.type?.toUpperCase() ?? ''"
-                    readonly
-                >
+                <AppInput :value="selectedInboundDetails?.type?.toUpperCase() ?? ''" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Безопасность</span>
-                <input
-                    :value="available_inbounds.find((item) => item.server_id === Number(form.server_id) && item.inbound_id === Number(form.inbound_id))?.security?.toUpperCase() ?? ''"
-                    readonly
-                >
+                <AppInput :value="selectedInboundDetails?.security?.toUpperCase() ?? ''" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Сервер</span>
-                <input
-                    :value="available_inbounds.find((item) => item.server_id === Number(form.server_id) && item.inbound_id === Number(form.inbound_id))?.server_name ?? ''"
-                    readonly
-                >
+                <AppInput :value="selectedInboundDetails?.server_name ?? ''" readonly />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Код сервера</span>
-                <input
-                    :value="available_inbounds.find((item) => item.server_id === Number(form.server_id) && item.inbound_id === Number(form.inbound_id))?.server_code ?? ''"
-                    readonly
-                >
+                <AppInput :value="selectedInboundDetails?.server_code ?? ''" readonly />
             </label>
 
             <template v-else>
                 <label class="field">
                     <span>Сервер</span>
-                    <input :value="`${config.server.name} (${config.server.ip})`" readonly>
+                    <AppInput :value="`${config.server.name} (${config.server.ip})`" readonly />
                 </label>
 
                 <label class="field" style="grid-column: 1 / -1;">
                     <span>Ссылка</span>
-                    <textarea :value="config.link" readonly />
+                    <Textarea :value="config.link" readonly fluid auto-resize />
                 </label>
             </template>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing || (mode === 'create' && available_inbounds.length === 0)">Сохранить</button>
-                <Link class="button button--secondary" href="/vless-configs">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing || (mode === 'create' && available_inbounds.length === 0)">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/vless-configs">Назад</AppButton>
             </div>
         </form>
     </section>

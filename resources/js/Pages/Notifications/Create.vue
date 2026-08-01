@@ -60,7 +60,7 @@ const clearSelection = () => {
 };
 
 const updateImage = (event) => {
-    const [file] = event.target.files ?? [];
+    const [file] = event.files ?? event.target?.files ?? [];
     form.image = file ?? null;
 
     if (imagePreviewUrl.value) {
@@ -122,7 +122,7 @@ onBeforeUnmount(() => {
                 <div class="field">
                     <span>Режим отправки</span>
                     <label class="notification-toggle">
-                        <input v-model="form.send_to_all" type="checkbox">
+                        <AppCheckbox v-model="form.send_to_all" />
                         <span>Отправить всем пользователям</span>
                     </label>
                 </div>
@@ -131,14 +131,14 @@ onBeforeUnmount(() => {
                     <div class="grid grid--two">
                         <label class="field">
                             <span>Поиск</span>
-                            <input v-model="search" type="search" placeholder="ID, Telegram или имя">
+                            <AppInput v-model="search" type="search" placeholder="ID, Telegram или имя" />
                         </label>
 
                         <div class="field">
                             <span>Быстрые действия</span>
                             <div class="actions">
-                                <button class="button button--secondary" type="button" @click="selectVisible">Выбрать видимых</button>
-                                <button class="button button--ghost" type="button" @click="clearSelection">Очистить</button>
+                                <AppButton variant="secondary" type="button" @click="selectVisible">Выбрать видимых</AppButton>
+                                <AppButton variant="ghost" type="button" @click="clearSelection">Очистить</AppButton>
                             </div>
                         </div>
                     </div>
@@ -152,11 +152,11 @@ onBeforeUnmount(() => {
                             class="notification-user"
                             :class="{ 'is-selected': form.user_ids.includes(user.id) }"
                         >
-                            <input
-                                :checked="form.user_ids.includes(user.id)"
-                                type="checkbox"
-                                @change="toggleUser(user.id)"
-                            >
+                            <Checkbox
+                                :model-value="form.user_ids.includes(user.id)"
+                                binary
+                                @update:model-value="toggleUser(user.id)"
+                            />
 
                             <div class="notification-user__copy">
                                 <strong>#{{ user.id }} · {{ user.telegram }}</strong>
@@ -197,7 +197,13 @@ onBeforeUnmount(() => {
 
                 <label class="field">
                     <span>Изображение</span>
-                    <input accept="image/*" type="file" @change="updateImage">
+                    <FileUpload
+                        mode="basic"
+                        accept="image/*"
+                        :custom-upload="true"
+                        choose-label="Выбрать изображение"
+                        @select="updateImage"
+                    />
                     <small class="muted">Необязательно. Если текста много, изображение и текст будут отправлены отдельными сообщениями.</small>
                     <small v-if="form.errors.image" class="field-error">{{ form.errors.image }}</small>
                 </label>
@@ -211,7 +217,7 @@ onBeforeUnmount(() => {
             </section>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="form.processing">Отправить</button>
+                <AppButton type="submit" :disabled="form.processing">Отправить</AppButton>
             </div>
         </form>
     </section>

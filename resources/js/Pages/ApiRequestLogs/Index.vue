@@ -111,6 +111,18 @@ const formatTimestamp = (isoString) => {
 
 const logsData = computed(() => props.logs?.data ?? []);
 const paginationLinks = computed(() => props.logs?.meta?.links ?? []);
+const methodOptions = computed(() => [
+    { label: 'Все', value: '' },
+    ...props.methods.map((method) => ({ label: method, value: method })),
+]);
+const actionOptions = computed(() => [
+    { label: 'Все', value: '' },
+    ...props.actions.map((action) => ({ label: action, value: action })),
+]);
+const endpointOptions = computed(() => [
+    { label: 'Все', value: '' },
+    ...props.endpoints.map((endpoint) => ({ label: endpoint, value: endpoint })),
+]);
 </script>
 
 <template>
@@ -169,49 +181,40 @@ const paginationLinks = computed(() => props.logs?.meta?.links ?? []);
             </div>
 
             <div class="actions">
-                <button class="button" type="button" @click="applyFilters">Применить</button>
-                <button class="button button--secondary" type="button" @click="resetFilters">Сбросить</button>
+                <AppButton type="button" @click="applyFilters">Применить</AppButton>
+                <AppButton variant="secondary" type="button" @click="resetFilters">Сбросить</AppButton>
             </div>
         </div>
 
         <div class="grid grid--filters">
             <div class="field">
                 <label for="search">Поиск</label>
-                <input id="search" v-model="form.search" type="text" placeholder="user_id, telegram, action..." @keyup.enter="applyFilters">
+                <AppInput id="search" v-model="form.search" type="text" placeholder="user_id, telegram, action..." @keyup.enter="applyFilters" />
             </div>
 
             <div class="field">
                 <label for="method">Метод</label>
-                <select id="method" v-model="form.method">
-                    <option value="">Все</option>
-                    <option v-for="method in methods" :key="method" :value="method">{{ method }}</option>
-                </select>
+                <AppSelect id="method" v-model="form.method" :options="methodOptions" />
             </div>
 
             <div class="field">
                 <label for="action">Action</label>
-                <select id="action" v-model="form.action">
-                    <option value="">Все</option>
-                    <option v-for="action in actions" :key="action" :value="action">{{ action }}</option>
-                </select>
+                <AppSelect id="action" v-model="form.action" :options="actionOptions" />
             </div>
 
             <div class="field">
                 <label for="endpoint">Endpoint</label>
-                <select id="endpoint" v-model="form.endpoint">
-                    <option value="">Все</option>
-                    <option v-for="endpoint in endpoints" :key="endpoint" :value="endpoint">{{ endpoint }}</option>
-                </select>
+                <AppSelect id="endpoint" v-model="form.endpoint" :options="endpointOptions" />
             </div>
 
             <div class="field">
                 <label for="datetime_from">С даты и времени</label>
-                <input id="datetime_from" v-model="form.datetime_from" type="datetime-local">
+                <AppInput id="datetime_from" v-model="form.datetime_from" type="datetime-local" />
             </div>
 
             <div class="field">
                 <label for="datetime_to">По дату и время</label>
-                <input id="datetime_to" v-model="form.datetime_to" type="datetime-local">
+                <AppInput id="datetime_to" v-model="form.datetime_to" type="datetime-local" />
             </div>
         </div>
     </section>
@@ -283,19 +286,21 @@ const paginationLinks = computed(() => props.logs?.meta?.links ?? []);
     <section v-if="paginationLinks.length > 3" class="page-card">
         <div class="actions">
             <template v-for="link in paginationLinks" :key="link.label">
-                <Link
+                <AppButton
                     v-if="link.url"
-                    class="button button--secondary"
+                    variant="secondary"
                     :class="{ 'is-active': link.active }"
                     :href="link.url"
-                    v-html="link.label"
-                />
+                >
+                    <span v-html="link.label" />
+                </AppButton>
                 <span
                     v-else
-                    class="button button--ghost"
+                    class="pagination-pill"
                     :class="{ 'is-active': link.active }"
-                    v-html="link.label"
-                />
+                >
+                    <span v-html="link.label" />
+                </span>
             </template>
         </div>
     </section>

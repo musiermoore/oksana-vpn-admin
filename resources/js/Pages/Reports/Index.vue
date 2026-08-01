@@ -180,19 +180,19 @@ const highlightCards = computed(() => [
         <form class="reports-filter" @submit.prevent="submitFilters">
             <label class="field">
                 <span>Дата от</span>
-                <input v-model="filterForm.date_from" type="date">
+                <AppInput v-model="filterForm.date_from" type="date" />
             </label>
 
             <label class="field">
                 <span>Дата до</span>
-                <input v-model="filterForm.date_to" type="date">
+                <AppInput v-model="filterForm.date_to" type="date" />
             </label>
 
             <div class="reports-filter__actions">
-                <button class="button" type="submit" :disabled="filterForm.processing">Обновить</button>
-                <button class="button button--secondary" type="button" :disabled="filterForm.processing" @click="resetFilters">
+                <AppButton type="submit" :disabled="filterForm.processing">Обновить</AppButton>
+                <AppButton variant="secondary" type="button" :disabled="filterForm.processing" @click="resetFilters">
                     Сбросить
-                </button>
+                </AppButton>
             </div>
         </form>
     </section>

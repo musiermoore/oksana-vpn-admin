@@ -43,6 +43,25 @@ const form = useForm({
 const presetMap = computed(() => Object.fromEntries(props.presets.map((preset) => [preset.value, preset])));
 const currentPreset = computed(() => presetMap.value[form.preset] ?? null);
 const selectedServer = computed(() => props.servers.find((server) => server.id === Number(form.server_id)) ?? null);
+const serverOptions = computed(() => props.servers.map((server) => ({
+    label: server.label,
+    value: server.id,
+})));
+const presetOptions = computed(() => props.presets.map((preset) => ({
+    label: preset.label,
+    value: preset.value,
+})));
+const methodOptions = [
+    { label: 'GET', value: 'GET' },
+    { label: 'POST', value: 'POST' },
+    { label: 'PUT', value: 'PUT' },
+    { label: 'PATCH', value: 'PATCH' },
+    { label: 'DELETE', value: 'DELETE' },
+];
+const encodingOptions = [
+    { label: 'JSON', value: 'json' },
+    { label: 'Form', value: 'form' },
+];
 
 watch(
     () => form.preset,
@@ -95,49 +114,32 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
             <div class="grid grid--two">
                 <label class="field">
                     <span>Сервер</span>
-                    <select v-model="form.server_id">
-                        <option v-for="server in servers" :key="server.id" :value="server.id">
-                            {{ server.label }}
-                        </option>
-                    </select>
+                    <AppSelect v-model="form.server_id" :options="serverOptions" />
                     <small v-if="form.errors.server_id" class="field-error">{{ form.errors.server_id }}</small>
                 </label>
 
                 <label class="field">
                     <span>Action</span>
-                    <select v-model="form.preset">
-                        <option v-for="preset in presets" :key="preset.value" :value="preset.value">
-                            {{ preset.label }}
-                        </option>
-                    </select>
+                    <AppSelect v-model="form.preset" :options="presetOptions" />
                     <small v-if="form.errors.preset" class="field-error">{{ form.errors.preset }}</small>
                 </label>
 
                 <label class="field">
                     <span>HTTP Method</span>
-                    <select v-model="form.method">
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                        <option value="PUT">PUT</option>
-                        <option value="PATCH">PATCH</option>
-                        <option value="DELETE">DELETE</option>
-                    </select>
+                    <AppSelect v-model="form.method" :options="methodOptions" />
                     <small v-if="form.errors.method" class="field-error">{{ form.errors.method }}</small>
                 </label>
 
                 <label class="field">
                     <span>Encoding</span>
-                    <select v-model="form.encoding">
-                        <option value="json">JSON</option>
-                        <option value="form">Form</option>
-                    </select>
+                    <AppSelect v-model="form.encoding" :options="encodingOptions" />
                     <small v-if="form.errors.encoding" class="field-error">{{ form.errors.encoding }}</small>
                 </label>
             </div>
 
             <label class="field">
                 <span>Endpoint</span>
-                <input v-model="form.endpoint" type="text" placeholder="/panel/api/clients/onlines">
+                <AppInput v-model="form.endpoint" type="text" placeholder="/panel/api/clients/onlines" />
                 <small class="muted">Можно указать относительный путь или полный URL этого же panel host.</small>
                 <small v-if="currentPreset?.value === 'client-ips'" class="muted">
                     Замените `your_email_here` на email клиента из 3x-ui.
@@ -150,13 +152,13 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
 
             <label class="field">
                 <span>Payload JSON</span>
-                <textarea v-model="form.payload" rows="10" spellcheck="false"></textarea>
+                <AppTextarea v-model="form.payload" rows="10" spellcheck="false" />
                 <small class="muted">Для GET обычно оставляйте `{}`. Для form-режима JSON должен быть объектом.</small>
                 <small v-if="form.errors.payload" class="field-error">{{ form.errors.payload }}</small>
             </label>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="form.processing || !servers.length">Выполнить</button>
+                <AppButton type="submit" :disabled="form.processing || !servers.length">Выполнить</AppButton>
             </div>
         </form>
     </section>

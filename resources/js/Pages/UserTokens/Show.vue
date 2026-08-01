@@ -23,22 +23,22 @@ defineProps({
         <div class="grid grid--two">
             <label class="field">
                 <span>Пользователь</span>
-                <input :value="`${user_token.user?.telegram} (${user_token.user?.name})`" readonly>
+                <AppInput :value="`${user_token.user?.telegram} (${user_token.user?.name})`" readonly />
             </label>
 
             <label class="field">
                 <span>Token</span>
-                <input :value="user_token.token" readonly>
+                <AppInput :value="user_token.token" readonly />
             </label>
 
             <label class="field">
                 <span>Password</span>
-                <input :value="user_token.password" readonly>
+                <AppInput :value="user_token.password" readonly />
             </label>
 
             <label class="field">
                 <span>Link</span>
-                <input :value="user_token.links.public_configs" readonly>
+                <AppInput :value="user_token.links.public_configs" readonly />
             </label>
         </div>
 
@@ -46,14 +46,14 @@ defineProps({
             <div v-for="item in user_token.download_items" :key="item.id" class="item-row">
                 <div>{{ item.name }}</div>
                 <div class="actions">
-                    <a class="button button--secondary" :href="item.qr_code_url" target="_blank">QR-Code</a>
-                    <a class="button" :href="item.download_url">Скачать</a>
+                    <AppButton variant="secondary" :href="item.qr_code_url" target="_blank">QR-Code</AppButton>
+                    <AppButton :href="item.download_url">Скачать</AppButton>
                 </div>
             </div>
         </div>
 
         <div class="actions">
-            <Link class="button button--secondary" href="/user-tokens">Назад</Link>
+            <AppButton variant="secondary" href="/user-tokens">Назад</AppButton>
         </div>
     </section>
 </template>

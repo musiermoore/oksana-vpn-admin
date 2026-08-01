@@ -34,7 +34,7 @@ const toggleConfig = (config) => {
                 <p>Управление VLESS и Shadowsocks-конфигами участников.</p>
             </div>
             <div class="actions">
-                <Link class="button" href="/xray-configs/create">Создать</Link>
+                <AppButton href="/xray-configs/create">Создать</AppButton>
             </div>
         </div>
 
@@ -67,16 +67,15 @@ const toggleConfig = (config) => {
                                     {{ config.server.code }}: {{ config.name }}
                                 </Link>
                                 <div class="actions">
-                                    <button
+                                    <AppButton
                                         v-if="config.supports_toggle"
-                                        class="button"
-                                        :class="config.enable ? 'button--danger' : 'button--success'"
+                                        :variant="config.enable ? 'danger' : 'success'"
                                         type="button"
                                         @click="toggleConfig(config)"
                                     >
                                         {{ config.enable ? 'Отключить' : 'Включить' }}
-                                    </button>
-                                    <button class="button button--danger" type="button" @click="unlinkConfig(config)">Отвязать</button>
+                                    </AppButton>
+                                    <AppButton variant="danger" type="button" @click="unlinkConfig(config)">Отвязать</AppButton>
                                 </div>
                             </div>
                         </div>

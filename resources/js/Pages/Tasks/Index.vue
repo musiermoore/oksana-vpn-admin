@@ -55,7 +55,7 @@ const groupedTasks = computed(() => [
                 <p>Простой список того, что стоит сделать, с отдельными страницами на создание и редактирование.</p>
             </div>
             <div class="actions">
-                <Link class="button" href="/tasks/create">Добавить задачу</Link>
+                <AppButton href="/tasks/create">Добавить задачу</AppButton>
             </div>
         </div>
 
@@ -104,7 +104,7 @@ const groupedTasks = computed(() => [
                     </Link>
                     <div class="task-card__actions">
                         <Link class="task-card__link" :href="task.links.edit">Открыть</Link>
-                        <button class="button button--danger" type="button" @click.prevent="destroyTask(task)">Удалить</button>
+                        <AppButton variant="danger" type="button" @click.prevent="destroyTask(task)">Удалить</AppButton>
                     </div>
                 </article>
 

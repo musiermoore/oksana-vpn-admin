@@ -16,6 +16,16 @@ const form = useForm({
     current_payment_id: props.active_period_id ?? props.current_payments[0]?.id ?? '',
     amount: '',
 });
+
+const userOptions = [
+    { label: 'Участник не выбран', value: '' },
+    ...props.users.map((user) => ({ label: user.full_name, value: user.id })),
+];
+
+const paymentOptions = props.current_payments.map((payment) => ({
+    label: `${payment.full_date}${payment.id === props.active_period_id ? ' (Активный)' : ''}`,
+    value: payment.id,
+}));
 </script>
 
 <template>
@@ -27,29 +37,22 @@ const form = useForm({
         <form class="grid grid--two" @submit.prevent="form.post(submit_url)">
             <label class="field">
                 <span>Участник</span>
-                <select v-model="form.user_id">
-                    <option value="">Участник не выбран</option>
-                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
-                </select>
+                <AppSelect v-model="form.user_id" :options="userOptions" />
             </label>
 
             <label class="field">
                 <span>Период</span>
-                <select v-model="form.current_payment_id">
-                    <option v-for="payment in current_payments" :key="payment.id" :value="payment.id">
-                        {{ payment.full_date }}{{ payment.id === active_period_id ? ' (Активный)' : '' }}
-                    </option>
-                </select>
+                <AppSelect v-model="form.current_payment_id" :options="paymentOptions" />
             </label>
 
             <label class="field">
                 <span>Сумма</span>
-                <input v-model="form.amount" type="number" step="0.01" required>
+                <AppInput v-model="form.amount" type="number" step="0.01" required />
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/extra-payments">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/extra-payments">Назад</AppButton>
             </div>
         </form>
     </section>

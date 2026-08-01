@@ -24,7 +24,7 @@ const destroyProxy = (proxy) => {
         <div class="page-header">
             <div><h1>Прокси</h1></div>
             <div class="actions">
-                <Link class="button" href="/proxies/create">Создать</Link>
+                <AppButton href="/proxies/create">Создать</AppButton>
             </div>
         </div>
     </section>
@@ -56,15 +56,15 @@ const destroyProxy = (proxy) => {
                     <td>{{ proxy.is_ready ? 'Да' : 'Нет' }}</td>
                     <td>
                         <div class="actions">
-                            <Link v-if="proxy.links?.edit" class="button button--secondary" :href="proxy.links.edit">Изменить</Link>
-                            <button
+                            <AppButton v-if="proxy.links?.edit" variant="secondary" :href="proxy.links.edit">Изменить</AppButton>
+                            <AppButton
                                 v-if="proxy.links?.destroy"
-                                class="button button--danger"
+                                variant="danger"
                                 type="button"
                                 @click="destroyProxy(proxy)"
                             >
                                 Удалить
-                            </button>
+                            </AppButton>
                             <span v-if="!proxy.links?.edit && !proxy.links?.destroy">—</span>
                         </div>
                     </td>

@@ -30,7 +30,7 @@ const syncSubscription = (subscription) => {
             </div>
 
             <div class="actions">
-                <Link class="button" href="/vless-external-subscriptions/create">Создать</Link>
+                <AppButton href="/vless-external-subscriptions/create">Создать</AppButton>
             </div>
         </div>
     </section>
@@ -72,9 +72,9 @@ const syncSubscription = (subscription) => {
                     <td>{{ subscription.last_synced_at || '—' }}</td>
                     <td>
                         <div class="actions">
-                            <button class="button" type="button" @click="syncSubscription(subscription)">Синхронизировать</button>
-                            <Link class="button button--secondary" :href="subscription.links.edit">Изменить</Link>
-                            <button class="button button--danger" type="button" @click="destroySubscription(subscription)">Удалить</button>
+                            <AppButton type="button" @click="syncSubscription(subscription)">Синхронизировать</AppButton>
+                            <AppButton variant="secondary" :href="subscription.links.edit">Изменить</AppButton>
+                            <AppButton variant="danger" type="button" @click="destroySubscription(subscription)">Удалить</AppButton>
                         </div>
                     </td>
                 </tr>

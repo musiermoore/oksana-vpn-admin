@@ -1,4 +1,5 @@
 <script setup>
+import { reactive } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -12,12 +13,37 @@ const props = defineProps({
     peers: Array,
 });
 
-const applyFilters = (event) => {
-    const form = new FormData(event.target);
-    router.get('/traffic', Object.fromEntries(form.entries()), { preserveState: true, preserveScroll: true });
+const form = reactive({
+    server_id: props.filters.server_id ?? props.servers[0]?.id ?? '',
+    user_id: props.filters.user_id ?? '',
+    start_date: props.filters.start_date ?? '',
+    end_date: props.filters.end_date ?? '',
+});
+
+const serverOptions = props.servers.map((server) => ({
+    label: server.name,
+    value: server.id,
+}));
+
+const userOptions = [
+    { label: 'Не выбран', value: '' },
+    ...props.users.map((user) => ({
+        label: user.full_name,
+        value: user.id,
+    })),
+];
+
+const applyFilters = () => {
+    router.get('/traffic', form, { preserveState: true, preserveScroll: true });
 };
 
-const reset = () => router.get('/traffic');
+const reset = () => {
+    form.server_id = props.servers[0]?.id ?? '';
+    form.user_id = '';
+    form.start_date = '';
+    form.end_date = '';
+    router.get('/traffic');
+};
 </script>
 
 <template>
@@ -34,37 +60,32 @@ const reset = () => router.get('/traffic');
         <form class="grid grid--two" @submit.prevent="applyFilters">
             <div class="field">
                 <label for="server_id">Сервер</label>
-                <select id="server_id" name="server_id" :value="filters.server_id">
-                    <option v-for="server in servers" :key="server.id" :value="server.id">{{ server.name }}</option>
-                </select>
+                <AppSelect id="server_id" v-model="form.server_id" :options="serverOptions" />
             </div>
 
             <div class="field">
                 <label>Время сервера (UTC)</label>
-                <input :value="server_time" type="datetime-local" readonly>
+                <AppInput :value="server_time" type="datetime-local" readonly />
             </div>
 
             <div class="field">
                 <label for="user_id">Участник</label>
-                <select id="user_id" name="user_id" :value="filters.user_id || ''">
-                    <option value="">Не выбран</option>
-                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
-                </select>
+                <AppSelect id="user_id" v-model="form.user_id" :options="userOptions" />
             </div>
 
             <div class="field">
                 <label for="start_date">Начало</label>
-                <input id="start_date" name="start_date" type="datetime-local" :value="filters.start_date">
+                <AppInput id="start_date" v-model="form.start_date" type="datetime-local" />
             </div>
 
             <div class="field">
                 <label for="end_date">Конец</label>
-                <input id="end_date" name="end_date" type="datetime-local" :value="filters.end_date">
+                <AppInput id="end_date" v-model="form.end_date" type="datetime-local" />
             </div>
 
             <div class="actions">
-                <button class="button" type="submit">Отфильтровать</button>
-                <button class="button button--secondary" type="button" @click="reset">Сбросить</button>
+                <AppButton type="submit">Отфильтровать</AppButton>
+                <AppButton variant="secondary" type="button" @click="reset">Сбросить</AppButton>
             </div>
         </form>
     </section>

@@ -61,7 +61,7 @@ const backToRequest = () => {
 
             <label class="field">
                 <span>Telegram Username</span>
-                <input v-model="requestCodeForm.telegram" type="text" autocomplete="username" required>
+                <AppInput v-model="requestCodeForm.telegram" type="text" autocomplete="username" required />
                 <small style="color: gray">
                     c @ или без него
                 </small>
@@ -71,7 +71,7 @@ const backToRequest = () => {
             </label>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="requestCodeForm.processing">Отправить код</button>
+                <AppButton type="submit" :disabled="requestCodeForm.processing">Отправить код</AppButton>
             </div>
         </form>
 
@@ -90,7 +90,7 @@ const backToRequest = () => {
 
             <label class="field">
                 <span>Telegram username</span>
-                <input v-model="verifyForm.telegram" type="text" autocomplete="username" required>
+                <AppInput v-model="verifyForm.telegram" type="text" autocomplete="username" required />
                 <small v-if="verifyForm.errors.telegram" class="field-error">
                     {{ verifyForm.errors.telegram }}
                 </small>
@@ -98,22 +98,22 @@ const backToRequest = () => {
 
             <label class="field">
                 <span>Код</span>
-                <input
+                <AppInput
                     v-model="verifyForm.code"
                     type="text"
                     inputmode="numeric"
                     autocomplete="one-time-code"
                     maxlength="6"
                     required
-                >
+                 />
                 <small v-if="verifyForm.errors.code" class="field-error">
                     {{ verifyForm.errors.code }}
                 </small>
             </label>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="verifyForm.processing">Войти</button>
-                <button class="button button--ghost" type="button" @click="backToRequest">Изменить username</button>
+                <AppButton type="submit" :disabled="verifyForm.processing">Войти</AppButton>
+                <AppButton variant="ghost" type="button" @click="backToRequest">Изменить username</AppButton>
             </div>
         </form>
     </section>

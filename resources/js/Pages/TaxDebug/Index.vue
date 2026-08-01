@@ -34,6 +34,14 @@ const form = useForm({
 
 const presetMap = computed(() => Object.fromEntries(props.presets.map((preset) => [preset.value, preset])));
 const currentPreset = computed(() => presetMap.value[form.preset] ?? null);
+const presetOptions = computed(() => props.presets.map((preset) => ({
+    label: preset.label,
+    value: preset.value,
+})));
+const invoiceOptions = computed(() => [
+    { label: 'Не нужен', value: 0 },
+    ...props.invoices.map((invoice) => ({ label: invoice.label, value: invoice.id })),
+]);
 
 watch(
     () => form.preset,
@@ -74,8 +82,8 @@ const formatDate = (value) => {
             </div>
 
             <div class="actions">
-                <Link class="button button--secondary" href="/tax-settings">Настройки</Link>
-                <Link class="button" href="/invoices">Invoices</Link>
+                <AppButton variant="secondary" href="/tax-settings">Настройки</AppButton>
+                <AppButton href="/invoices">Invoices</AppButton>
             </div>
         </div>
     </section>
@@ -92,25 +100,18 @@ const formatDate = (value) => {
             <div class="grid grid--two">
                 <label class="field">
                     <span>Preset</span>
-                    <select v-model="form.preset">
-                        <option v-for="preset in presets" :key="preset.value" :value="preset.value">
-                            {{ preset.label }}
-                        </option>
-                    </select>
+                    <AppSelect v-model="form.preset" :options="presetOptions" />
                 </label>
 
                 <label class="field">
                     <span>Invoice</span>
-                    <select v-model="form.invoice_id" :disabled="form.preset !== 'income'">
-                        <option :value="0">Не нужен</option>
-                        <option v-for="invoice in invoices" :key="invoice.id" :value="invoice.id">{{ invoice.label }}</option>
-                    </select>
+                    <AppSelect v-model="form.invoice_id" :options="invoiceOptions" :disabled="form.preset !== 'income'" />
                     <small class="muted">Нужен только для `Income / Receipts`.</small>
                 </label>
             </div>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="form.processing">Поставить в очередь</button>
+                <AppButton type="submit" :disabled="form.processing">Поставить в очередь</AppButton>
             </div>
         </form>
     </section>

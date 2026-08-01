@@ -1978,3 +1978,96 @@ body,
 .attention-list__meta .p-tag {
     width: fit-content;
 }
+
+.shell--app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.shell--app select,
+.shell--app textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shell--app textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.shell--app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.shell--app select:focus,
+.shell--app textarea:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--primary) 65%, white);
+    box-shadow: 0 0 0 0.2rem rgba(31, 79, 209, 0.14);
+}
+
+.shell--app input[readonly]:not([type="checkbox"]):not([type="radio"]),
+.shell--app input:disabled:not([type="checkbox"]):not([type="radio"]),
+.shell--app select:disabled,
+.shell--app textarea:disabled {
+    background: #f7f9fc;
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.shell--app input[type="checkbox"],
+.shell--app input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.shell--app input[type="file"] {
+    width: 100%;
+    font: inherit;
+}
+
+.field {
+    display: grid;
+    gap: 8px;
+}
+
+.field > span,
+.field-label {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.field small {
+    color: var(--muted);
+}
+
+.grid-form {
+    display: grid;
+    gap: 16px;
+}
+
+.grid-form--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pagination-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    min-width: 40px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #f8fafc;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.pagination-pill.is-active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #eef4ff;
+}

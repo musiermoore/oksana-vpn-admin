@@ -58,10 +58,10 @@ const taxStatusLabel = (status) => ({
             </div>
 
             <div class="actions">
-                <Link class="button button--secondary" href="/tax-settings">Настройки налоговой</Link>
-                <button class="button" type="button" :disabled="sendPaidForm.processing" @click="sendPaidInvoices">
+                <AppButton variant="secondary" href="/tax-settings">Настройки налоговой</AppButton>
+                <AppButton type="button" :disabled="sendPaidForm.processing" @click="sendPaidInvoices">
                     Отправить оплаченные в налоговую
-                </button>
+                </AppButton>
             </div>
         </div>
 
@@ -129,9 +129,9 @@ const taxStatusLabel = (status) => ({
                     <td>{{ formatDate(invoice.paid_at || invoice.created_at) }}</td>
                     <td>
                         <div class="actions">
-                            <Link class="button button--secondary" :href="invoice.links.show">Открыть</Link>
-                            <Link class="button button--secondary" :href="invoice.links.edit">Редактировать</Link>
-                            <Link class="button" :href="invoice.links.send_preview">В налоговую</Link>
+                            <AppButton variant="secondary" :href="invoice.links.show">Открыть</AppButton>
+                            <AppButton variant="secondary" :href="invoice.links.edit">Редактировать</AppButton>
+                            <AppButton :href="invoice.links.send_preview">В налоговую</AppButton>
                         </div>
                     </td>
                 </tr>

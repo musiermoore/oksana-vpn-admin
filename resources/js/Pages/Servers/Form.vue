@@ -45,6 +45,15 @@ const inboundRows = computed(() => form.inbounds.map((inbound, index) => ({
     ...inbound,
     inbound_position: index + 1,
 })));
+const serverTypeOptions = [
+    { label: 'WireGuard (legacy)', value: 'wireguard-old' },
+    { label: 'WireGuard Agent API', value: 'wireguard' },
+    { label: 'VLESS', value: 'vless' },
+];
+const panelApiVersionOptions = [
+    { label: 'v2.9.*', value: 'v2.9.*' },
+    { label: 'v3.2.8', value: 'v3.2.8' },
+];
 
 const moveSortItem = (targetKey) => {
     const fromIndex = sortItems.value.findIndex((item) => item.key === dragKey.value);
@@ -106,33 +115,26 @@ const removePriceRow = (index) => {
         <div class="page-header"><div><h1>{{ mode === 'edit' ? 'Редактирование сервера' : 'Создание сервера' }}</h1></div></div>
 
         <form class="grid grid--two" @submit.prevent="submit">
-            <label class="field"><span>Имя</span><input v-model="form.name" required></label>
-            <label class="field"><span>Сокращение</span><input v-model="form.code" required></label>
-            <label class="field"><span>IP</span><input v-model="form.ip" required></label>
+            <label class="field"><span>Имя</span><AppInput v-model="form.name" required /></label>
+            <label class="field"><span>Сокращение</span><AppInput v-model="form.code" required /></label>
+            <label class="field"><span>IP</span><AppInput v-model="form.ip" required /></label>
             <label class="field"><span>Тип</span>
-                <select v-model="form.type">
-                    <option value="wireguard-old">WireGuard (legacy)</option>
-                    <option value="wireguard">WireGuard Agent API</option>
-                    <option value="vless">VLESS</option>
-                </select>
+                <AppSelect v-model="form.type" :options="serverTypeOptions" />
             </label>
-            <label class="field"><span>Is HTTPS</span><input v-model="form.is_https" type="checkbox"></label>
-            <label class="field"><span>Link Host</span><input v-model="form.link_host"></label>
-            <label class="field"><span>Panel Link</span><input v-model="form.panel_link"></label>
-            <label class="field"><span>Panel Username</span><input v-model="form.panel_username"></label>
+            <label class="field"><span>Is HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
+            <label class="field"><span>Link Host</span><AppInput v-model="form.link_host" /></label>
+            <label class="field"><span>Panel Link</span><AppInput v-model="form.panel_link" /></label>
+            <label class="field"><span>Panel Username</span><AppInput v-model="form.panel_username" /></label>
             <label class="field"><span>Panel API Version</span>
-                <select v-model="form.panel_api_version">
-                    <option value="v2.9.*">v2.9.*</option>
-                    <option value="v3.2.8">v3.2.8</option>
-                </select>
+                <AppSelect v-model="form.panel_api_version" :options="panelApiVersionOptions" />
             </label>
-            <label class="field" style="grid-column: 1 / -1;"><span>Panel Password</span><input v-model="form.panel_password" type="password"></label>
-            <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><input v-model="form.app_path" required></label>
-            <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><textarea v-model="form.ssh_private_key" /></label>
-            <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><textarea v-model="form.ssh_public_key" /></label>
-            <label class="field"><span>Is Active</span><input v-model="form.is_active" type="checkbox"></label>
-            <label class="field"><span>Is Ready</span><input v-model="form.is_ready" type="checkbox"></label>
-            <label class="field"><span>Hide configs for non-admins</span><input v-model="form.hide_configs_for_non_admins" type="checkbox"></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>Panel Password</span><AppInput v-model="form.panel_password" type="password" /></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><AppInput v-model="form.app_path" required /></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><AppTextarea v-model="form.ssh_private_key"  /></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><AppTextarea v-model="form.ssh_public_key"  /></label>
+            <label class="field"><span>Is Active</span><AppCheckbox v-model="form.is_active" /></label>
+            <label class="field"><span>Is Ready</span><AppCheckbox v-model="form.is_ready" /></label>
+            <label class="field"><span>Hide configs for non-admins</span><AppCheckbox v-model="form.hide_configs_for_non_admins" /></label>
 
             <div class="field" style="grid-column: 1 / -1;">
                 <div class="page-header">
@@ -141,7 +143,7 @@ const removePriceRow = (index) => {
                         <p class="hint">История цен по периодам. Дата означает начало действия цены.</p>
                     </div>
                     <div class="actions">
-                        <button class="button button--secondary" type="button" @click="addPriceRow">Добавить цену</button>
+                        <AppButton variant="secondary" type="button" @click="addPriceRow">Добавить цену</AppButton>
                     </div>
                 </div>
 
@@ -153,14 +155,14 @@ const removePriceRow = (index) => {
                     <div v-for="(priceRow, index) in form.prices" :key="priceRow.id ?? `new-${index}`" class="price-row">
                         <label class="field">
                             <span>С даты</span>
-                            <input v-model="priceRow.effective_from" type="date" required>
+                            <AppInput v-model="priceRow.effective_from" type="date" required />
                         </label>
                         <label class="field">
                             <span>Цена</span>
-                            <input v-model="priceRow.price" type="number" min="0" step="0.01" required>
+                            <AppInput v-model="priceRow.price" type="number" min="0" step="0.01" required />
                         </label>
                         <div class="actions actions--end">
-                            <button class="button button--danger" type="button" @click="removePriceRow(index)">Удалить</button>
+                            <AppButton variant="danger" type="button" @click="removePriceRow(index)">Удалить</AppButton>
                         </div>
                     </div>
                 </div>
@@ -173,9 +175,9 @@ const removePriceRow = (index) => {
                         <p class="hint">Перетаскивайте inbound'ы и proxy, чтобы поменять порядок внутри этого сервера.</p>
                     </div>
                     <div class="actions">
-                        <button class="button button--secondary" type="button" :disabled="sortForm.processing" @click="saveConnectItemsOrder">
+                        <AppButton variant="secondary" type="button" :disabled="sortForm.processing" @click="saveConnectItemsOrder">
                             Сохранить порядок connect
-                        </button>
+                        </AppButton>
                     </div>
                 </div>
 
@@ -228,16 +230,16 @@ const removePriceRow = (index) => {
                             <td>{{ inbound.external_id }}</td>
                             <td>{{ inbound.remark || '—' }}</td>
                             <td>{{ inbound.protocol || '—' }}</td>
-                            <td><input v-model="inbound.is_active" type="checkbox"></td>
-                            <td><input v-model="inbound.is_public" type="checkbox"></td>
+                            <td><AppCheckbox v-model="inbound.is_active" /></td>
+                            <td><AppCheckbox v-model="inbound.is_public" /></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/servers">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/servers">Назад</AppButton>
             </div>
         </form>
     </section>

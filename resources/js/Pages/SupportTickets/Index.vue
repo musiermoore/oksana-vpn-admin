@@ -56,16 +56,14 @@ const statusLabel = (status) => ({
                     <td>{{ ticket.latest_message?.message || '—' }}</td>
                     <td>
                         <div class="actions">
-                            <Link class="button button--secondary" :href="ticket.links.show">Открыть</Link>
-                            <a
+                            <AppButton variant="secondary" :href="ticket.links.show">Открыть</AppButton>
+                            <AppButton
                                 v-if="ticket.user?.chat_url"
-                                class="button"
                                 :href="ticket.user.chat_url"
                                 target="_blank"
-                                rel="noreferrer"
                             >
                                 Открыть чат
-                            </a>
+                            </AppButton>
                         </div>
                     </td>
                 </tr>

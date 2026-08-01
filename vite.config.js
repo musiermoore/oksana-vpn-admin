@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
         plugins: [
             vue(),
             Components({
+                dirs: ['resources/js/Shared', 'resources/js/Shared/Admin'],
                 resolvers: [PrimeVueResolver()],
             }),
             laravel({

@@ -54,9 +54,9 @@ const taxStatusLabel = (status) => ({
             </div>
 
             <div class="actions">
-                <Link class="button button--secondary" href="/invoices">Назад к списку</Link>
-                <Link class="button button--secondary" :href="invoice.links.edit">Редактировать</Link>
-                <Link class="button" :href="invoice.links.send_preview">Отправить в налоговую</Link>
+                <AppButton variant="secondary" href="/invoices">Назад к списку</AppButton>
+                <AppButton variant="secondary" :href="invoice.links.edit">Редактировать</AppButton>
+                <AppButton :href="invoice.links.send_preview">Отправить в налоговую</AppButton>
             </div>
         </div>
 

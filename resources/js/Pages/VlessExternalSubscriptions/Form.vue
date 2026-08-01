@@ -31,6 +31,7 @@ const form = useForm({
 const preview = ref(null);
 const previewError = ref('');
 const previewLoading = ref(false);
+const typeOptions = props.types;
 
 const submit = () => props.method === 'patch'
     ? form.patch(props.submit_url)
@@ -64,69 +65,65 @@ const loadPreview = async () => {
         <form class="grid grid--two" @submit.prevent="submit">
             <label class="field">
                 <span>Название</span>
-                <input v-model="form.name" required>
+                <AppInput v-model="form.name" required />
             </label>
 
             <label class="field">
                 <span>Тип</span>
-                <select v-model="form.type" required>
-                    <option v-for="type in types" :key="type.value" :value="type.value">
-                        {{ type.label }}
-                    </option>
-                </select>
+                <AppSelect v-model="form.type" :options="typeOptions" required />
             </label>
 
             <label class="field" style="grid-column: 1 / -1;">
                 <span>{{ form.type === 'subscription' ? 'URL подписки' : 'Прямая ссылка на конфиг' }}</span>
-                <textarea v-model="form.source_url" required />
+                <AppTextarea v-model="form.source_url" required  />
             </label>
 
             <label class="field">
                 <span>Паттерн</span>
-                <input v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия">
+                <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия" />
             </label>
 
             <label class="field">
                 <span>Название в connect-wl</span>
-                <input v-model="form.connect_name_prefix" placeholder="Например: Сервер">
+                <AppInput v-model="form.connect_name_prefix" placeholder="Например: Сервер" />
             </label>
 
             <label class="field">
                 <span>Включить в основную подписку</span>
-                <input v-model="form.include_in_main_subscription" type="checkbox">
+                <AppCheckbox v-model="form.include_in_main_subscription" />
             </label>
 
             <label class="field">
                 <span>Включить в подписку белых списков</span>
-                <input v-model="form.include_in_whitelist" type="checkbox">
+                <AppCheckbox v-model="form.include_in_whitelist" />
             </label>
 
             <label class="field">
                 <span>Бесплатная</span>
-                <input v-model="form.is_free" type="checkbox">
+                <AppCheckbox v-model="form.is_free" />
             </label>
 
             <label class="field">
                 <span>Активна</span>
-                <input v-model="form.is_active" type="checkbox">
+                <AppCheckbox v-model="form.is_active" />
             </label>
 
             <label class="field">
                 <span>Ready</span>
-                <input v-model="form.is_ready" type="checkbox">
+                <AppCheckbox v-model="form.is_ready" />
             </label>
 
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
-                <textarea v-model="form.description" />
+                <AppTextarea v-model="form.description"  />
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <button class="button button--secondary" type="button" :disabled="previewLoading" @click="loadPreview">
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" type="button" :disabled="previewLoading" @click="loadPreview">
                     {{ previewLoading ? 'Загружаем...' : 'Получить конфиги' }}
-                </button>
-                <Link class="button button--secondary" href="/vless-external-subscriptions">Назад</Link>
+                </AppButton>
+                <AppButton variant="secondary" href="/vless-external-subscriptions">Назад</AppButton>
             </div>
         </form>
     </section>

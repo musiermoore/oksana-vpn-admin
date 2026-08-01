@@ -15,6 +15,11 @@ const form = useForm({
     user_id: props.config.user?.id ?? '',
     description: props.config.description ?? '',
 });
+
+const userOptions = props.users.map((user) => ({
+    label: user.name,
+    value: user.id,
+}));
 </script>
 
 <template>
@@ -26,34 +31,32 @@ const form = useForm({
         <form class="grid grid--two" @submit.prevent="form.put(submit_url)">
             <label class="field">
                 <span>Сервер</span>
-                <input :value="config.server.name" readonly>
+                <AppInput :value="config.server.name" readonly />
             </label>
 
             <label class="field">
                 <span>Участник</span>
-                <select v-model="form.user_id">
-                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
-                </select>
+                <AppSelect v-model="form.user_id" :options="userOptions" />
             </label>
 
             <label class="field">
                 <span>Название</span>
-                <input :value="config.name" readonly>
+                <AppInput :value="config.name" readonly />
             </label>
 
             <label class="field">
                 <span>Адрес</span>
-                <input :value="config.address" readonly>
+                <AppInput :value="config.address" readonly />
             </label>
 
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
-                <textarea v-model="form.description" />
+                <AppTextarea v-model="form.description"  />
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/configs">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/configs">Назад</AppButton>
             </div>
         </form>
     </section>

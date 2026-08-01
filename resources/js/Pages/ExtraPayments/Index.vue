@@ -18,7 +18,7 @@ const destroyPayment = (payment) => confirm('Удалить дополнител
         <div class="page-header">
             <div><h1>Дополнительные оплаты</h1></div>
             <div class="actions">
-                <Link class="button" href="/extra-payments/create">Создать</Link>
+                <AppButton href="/extra-payments/create">Создать</AppButton>
             </div>
         </div>
     </section>
@@ -42,7 +42,7 @@ const destroyPayment = (payment) => confirm('Удалить дополнител
                     <td>{{ payment.current_payment?.full_date }}</td>
                     <td>{{ payment.amount }}</td>
                     <td>
-                        <button class="button button--danger" type="button" @click="destroyPayment(payment)">Удалить</button>
+                        <AppButton variant="danger" type="button" @click="destroyPayment(payment)">Удалить</AppButton>
                     </td>
                 </tr>
             </tbody>

@@ -44,6 +44,10 @@ const toggleXrayConfig = (config) => {
 const approveTransaction = (transaction) => router.post(transaction.links.approve);
 const declineTransaction = (transaction) => confirm('Отклонить транзакцию?') && router.delete(transaction.links.decline);
 const destroyTransaction = (transaction) => confirm('Удалить транзакцию?') && router.delete(transaction.links.destroy);
+const joinAtOptions = props.payments.map((payment) => ({
+    label: `${payment.formatted_start_date} (${payment.amount}₽)`,
+    value: payment.start_date,
+}));
 </script>
 
 <template>
@@ -59,51 +63,47 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
         <form class="grid grid--two" @submit.prevent="submit">
             <label v-if="mode === 'edit'" class="field">
                 <span>Активен</span>
-                <input v-model="form.is_active" type="checkbox">
+                <AppCheckbox v-model="form.is_active" />
             </label>
 
             <label class="field">
                 <span>Имя</span>
-                <input v-model="form.name" type="text" required>
+                <AppInput v-model="form.name" type="text" required />
             </label>
 
             <label class="field">
                 <span>Telegram</span>
-                <input v-model="form.telegram" type="text">
+                <AppInput v-model="form.telegram" type="text" />
             </label>
 
             <label class="field">
                 <span>Дата присоединения</span>
-                <select v-model="form.join_at">
-                    <option v-for="payment in payments" :key="payment.id" :value="payment.start_date">
-                        {{ payment.formatted_start_date }} ({{ payment.amount }}₽)
-                    </option>
-                </select>
+                <AppSelect v-model="form.join_at" :options="joinAtOptions" />
             </label>
 
             <label class="field">
                 <span>Лимит устройств</span>
-                <input v-model="form.max_devices" type="number" min="0" step="1">
+                <AppInput v-model="form.max_devices" type="number" min="0" step="1" />
             </label>
 
             <label class="field">
                 <span>Лимит трафика (байт)</span>
-                <input v-model="form.traffic_limit_bytes" type="number" min="0" step="1">
+                <AppInput v-model="form.traffic_limit_bytes" type="number" min="0" step="1" />
             </label>
 
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
-                <textarea v-model="form.description" />
+                <AppTextarea v-model="form.description"  />
             </label>
 
             <label v-if="mode === 'create'" class="field">
                 <span>Дефолтные конфиги</span>
-                <input v-model="form.create_configs" type="checkbox">
+                <AppCheckbox v-model="form.create_configs" />
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/users">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/users">Назад</AppButton>
             </div>
         </form>
     </section>
@@ -118,7 +118,7 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                     </p>
                 </div>
                 <div class="actions">
-                    <Link class="button" href="/configs/create">Создать</Link>
+                    <AppButton href="/configs/create">Создать</AppButton>
                 </div>
             </div>
 
@@ -126,16 +126,15 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                 <div v-for="config in user.configs" :key="config.id" class="item-row">
                     <Link :href="config.links.edit">{{ config.server.code }}: {{ config.name }}</Link>
                     <div class="actions">
-                        <Link class="button button--secondary" :href="config.links.edit">Открыть</Link>
-                        <button
-                            class="button"
-                            :class="config.is_active ? 'button--danger' : 'button--success'"
+                        <AppButton variant="secondary" :href="config.links.edit">Открыть</AppButton>
+                        <AppButton
+                            :variant="config.is_active ? 'danger' : 'success'"
                             type="button"
                             @click="toggleConfig(config)"
                         >
                             {{ config.is_active ? 'Отключить' : 'Включить' }}
-                        </button>
-                        <button class="button button--danger" type="button" @click="destroyConfig(config)">Удалить</button>
+                        </AppButton>
+                        <AppButton variant="danger" type="button" @click="destroyConfig(config)">Удалить</AppButton>
                     </div>
                 </div>
             </div>
@@ -148,7 +147,7 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                     <h2 class="section-title">Xray конфиги</h2>
                 </div>
                 <div class="actions">
-                    <Link class="button" :href="`/xray-configs/create?user_id=${user.id}`">Создать</Link>
+                    <AppButton :href="`/xray-configs/create?user_id=${user.id}`">Создать</AppButton>
                 </div>
             </div>
 
@@ -159,17 +158,16 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                         {{ config.server?.code }}: {{ config.name }}
                     </Link>
                     <div class="actions">
-                        <Link class="button button--secondary" :href="config.links.edit">Открыть</Link>
-                        <button
+                        <AppButton variant="secondary" :href="config.links.edit">Открыть</AppButton>
+                        <AppButton
                             v-if="config.supports_toggle"
-                            class="button"
-                            :class="config.enable ? 'button--danger' : 'button--success'"
+                            :variant="config.enable ? 'danger' : 'success'"
                             type="button"
                             @click="toggleXrayConfig(config)"
                         >
                             {{ config.enable ? 'Отключить' : 'Включить' }}
-                        </button>
-                        <button class="button button--danger" type="button" @click="unlinkXrayConfig(config)">Отвязать</button>
+                        </AppButton>
+                        <AppButton variant="danger" type="button" @click="unlinkXrayConfig(config)">Отвязать</AppButton>
                     </div>
                 </div>
             </div>
@@ -182,7 +180,7 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                     <h2 class="section-title">Транзакции</h2>
                 </div>
                 <div class="actions">
-                    <Link class="button" href="/transactions/create">Создать</Link>
+                    <AppButton href="/transactions/create">Создать</AppButton>
                 </div>
             </div>
 
@@ -202,13 +200,13 @@ const destroyTransaction = (transaction) => confirm('Удалить транза
                             <td>
                                 <div v-if="transaction.is_approved" class="actions">
                                     <span class="badge badge--success">Принята</span>
-                                    <Link class="button button--secondary" :href="transaction.links.edit">Изменить</Link>
-                                    <button class="button button--danger" type="button" @click="destroyTransaction(transaction)">Удалить</button>
+                                    <AppButton variant="secondary" :href="transaction.links.edit">Изменить</AppButton>
+                                    <AppButton variant="danger" type="button" @click="destroyTransaction(transaction)">Удалить</AppButton>
                                 </div>
                                 <div v-else class="actions">
                                     <span class="badge">На рассмотрении</span>
-                                    <button class="button button--success" type="button" @click="approveTransaction(transaction)">Принять</button>
-                                    <button class="button button--danger" type="button" @click="declineTransaction(transaction)">Отклонить</button>
+                                    <AppButton variant="success" type="button" @click="approveTransaction(transaction)">Принять</AppButton>
+                                    <AppButton variant="danger" type="button" @click="declineTransaction(transaction)">Отклонить</AppButton>
                                 </div>
                             </td>
                         </tr>

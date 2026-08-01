@@ -30,8 +30,8 @@ const toggleConfig = (config) => {
                 <p>WireGuard-конфиги по участникам и серверам.</p>
             </div>
             <div class="actions">
-                <Link class="button button--secondary" href="/configs/create-bulk">Массовое создание</Link>
-                <Link class="button" href="/configs/create">Создать</Link>
+                <AppButton variant="secondary" href="/configs/create-bulk">Массовое создание</AppButton>
+                <AppButton href="/configs/create">Создать</AppButton>
             </div>
         </div>
 
@@ -61,15 +61,14 @@ const toggleConfig = (config) => {
                             <div v-for="config in user.configs" :key="config.id" class="item-row">
                                 <Link :href="config.links.edit">{{ config.server.code }}: {{ config.name }}</Link>
                                 <div class="actions">
-                                    <button
-                                        class="button"
-                                        :class="config.is_active ? 'button--danger' : 'button--success'"
+                                    <AppButton
+                                        :variant="config.is_active ? 'danger' : 'success'"
                                         type="button"
                                         @click="toggleConfig(config)"
                                     >
                                         {{ config.is_active ? 'Отключить' : 'Включить' }}
-                                    </button>
-                                    <button class="button button--danger" type="button" @click="removeConfig(config)">Удалить</button>
+                                    </AppButton>
+                                    <AppButton variant="danger" type="button" @click="removeConfig(config)">Удалить</AppButton>
                                 </div>
                             </div>
                         </div>

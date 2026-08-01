@@ -18,7 +18,7 @@ const destroyLimit = (limit) => confirm('Удалить ограничение?'
         <div class="page-header">
             <div><h1>Ограничения</h1></div>
             <div class="actions">
-                <a class="button" href="/limits/create">Создать</a>
+                <AppButton href="/limits/create">Создать</AppButton>
             </div>
         </div>
     </section>
@@ -44,7 +44,7 @@ const destroyLimit = (limit) => confirm('Удалить ограничение?'
                         <div class="list">
                             <div v-for="limit in config.limits" :key="limit.id" class="item-row">
                                 <div>{{ limit.amount }} Мбит/с</div>
-                                <button class="button button--danger" type="button" @click="destroyLimit(limit)">Удалить</button>
+                                <AppButton variant="danger" type="button" @click="destroyLimit(limit)">Удалить</AppButton>
                             </div>
                         </div>
                     </td>

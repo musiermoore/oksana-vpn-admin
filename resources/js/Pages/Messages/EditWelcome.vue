@@ -66,9 +66,9 @@ const submit = () => {
             </section>
 
             <div class="actions">
-                <button class="button" type="submit" :disabled="form.processing">
+                <AppButton type="submit" :disabled="form.processing">
                     {{ form.processing ? 'Сохраняем...' : 'Сохранить' }}
-                </button>
+                </AppButton>
             </div>
         </form>
     </section>

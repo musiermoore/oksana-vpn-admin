@@ -14,6 +14,16 @@ const form = useForm({
     config_id: props.configs[0]?.id ?? '',
     amount: props.speed_limits[0]?.amount ?? '',
 });
+
+const configOptions = props.configs.map((config) => ({
+    label: `${config.name} - ${config.user?.full_name}`,
+    value: config.id,
+}));
+
+const speedLimitOptions = props.speed_limits.map((limit) => ({
+    label: limit.name,
+    value: limit.amount,
+}));
 </script>
 
 <template>
@@ -25,23 +35,17 @@ const form = useForm({
         <form class="grid grid--two" @submit.prevent="form.post(submit_url)">
             <label class="field">
                 <span>Конфиг</span>
-                <select v-model="form.config_id">
-                    <option v-for="config in configs" :key="config.id" :value="config.id">
-                        {{ config.name }} - {{ config.user?.full_name }}
-                    </option>
-                </select>
+                <AppSelect v-model="form.config_id" :options="configOptions" />
             </label>
 
             <label class="field">
                 <span>Ограничение</span>
-                <select v-model="form.amount">
-                    <option v-for="limit in speed_limits" :key="limit.amount" :value="limit.amount">{{ limit.name }}</option>
-                </select>
+                <AppSelect v-model="form.amount" :options="speedLimitOptions" />
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <button class="button" type="submit" :disabled="form.processing">Сохранить</button>
-                <Link class="button button--secondary" href="/limits">Назад</Link>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
+                <AppButton variant="secondary" href="/limits">Назад</AppButton>
             </div>
         </form>
     </section>

@@ -480,6 +480,8 @@
 .tg-button--secondary:focus-visible,
 .tg-link-button:hover,
 .tg-link-button:focus-visible {
+    background: var(--tg-primary-pressed);
+    border-color: var(--tg-primary-pressed);
     color: #f5f7ff;
 }
 
@@ -487,6 +489,8 @@
 .tg-app[data-theme="dark"] .tg-button--secondary:focus-visible,
 .tg-app[data-theme="dark"] .tg-link-button:hover,
 .tg-app[data-theme="dark"] .tg-link-button:focus-visible {
+    background: var(--tg-primary-pressed);
+    border-color: var(--tg-primary-pressed);
     color: #d8e0ef;
 }
 

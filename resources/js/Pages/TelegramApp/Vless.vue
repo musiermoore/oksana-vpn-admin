@@ -217,6 +217,10 @@ onBeforeUnmount(() => {
         <template v-else>
             <section v-if="step === 'menu'" class="tg-section">
                 <div class="tg-page-header__copy">
+                    <Link class="tg-link-button" :href="configHubHref">
+                        <AppIcon name="chevronLeft" />
+                        <span>Все конфиги</span>
+                    </Link>
                     <div class="tg-tag tg-tag--primary">
                         <AppIcon name="link" />
                         <span>VLESS</span>

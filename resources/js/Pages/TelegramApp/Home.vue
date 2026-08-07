@@ -52,7 +52,7 @@ const accessTitle = computed(() => {
     }
 
     if (user.value?.has_active_access) {
-        return 'Подписка активна';
+        return `Подписка активна до ${formatShortDate(user.value.subscription_expires_at)}`;
     }
 
     return 'Нужна активация';
@@ -97,7 +97,7 @@ const primaryActionHref = computed(() => {
         return props.routes?.payments;
     }
 
-    return props.routes?.vless;
+    return props.routes?.wireguard;
 });
 
 const primaryActionLabel = computed(() => {
@@ -107,6 +107,8 @@ const primaryActionLabel = computed(() => {
 
     return 'Открыть конфиги';
 });
+
+const hasPositiveBalance = computed(() => Number(user.value?.balance ?? 0) > 0);
 
 const quickLinks = computed(() => {
     const items = [
@@ -304,7 +306,7 @@ onMounted(async () => {
                 </div>
                 <div class="tg-status-card__meta">
                     <span>{{ accessMeta }}</span>
-                    <span v-if="Number(user?.balance ?? 0) >= 0">Баланс: {{ user?.balance ?? 0 }} ₽</span>
+                    <span v-if="hasPositiveBalance">Баланс: {{ user?.balance ?? 0 }} ₽</span>
                     <span v-if="Number(user?.debt ?? 0) > 0">Долг: {{ user?.debt ?? 0 }} ₽</span>
                 </div>
                 <div class="tg-actions">

@@ -42,8 +42,8 @@ const retry = () => {
     window.location.reload();
 };
 
-const resetToList = () => {
-    step.value = 'list';
+const goToConfigHub = () => {
+    step.value = 'hub';
     selectedConfig.value = null;
     actionError.value = '';
     actionStatus.value = '';
@@ -69,6 +69,13 @@ const selectConfig = (config) => {
     actionError.value = '';
     actionStatus.value = '';
     step.value = 'actions';
+};
+
+const openWireGuardList = () => {
+    actionError.value = '';
+    actionStatus.value = '';
+    selectedConfig.value = null;
+    step.value = 'list';
 };
 
 const showQrCode = async () => {
@@ -199,14 +206,14 @@ onBeforeUnmount(() => {
         </section>
 
         <template v-else>
-            <section v-if="step === 'list'" class="tg-section">
+            <section v-if="step === 'hub'" class="tg-section">
                 <div class="tg-page-header__copy">
                     <div class="tg-tag tg-tag--primary">
                         <AppIcon name="shield" />
                         <span>Конфиги</span>
                     </div>
-                    <h2>Выберите тип подключения</h2>
-                    <p>Можно использовать VLESS для приложений по ссылке или WireGuard для импорта по QR и файлу.</p>
+                    <h2>Выберите тип конфигов</h2>
+                    <p>Откройте нужный вариант: обычный VLESS, белые списки VLESS или WireGuard.</p>
                 </div>
 
                 <Link :href="routes?.vless" class="tg-list-card">
@@ -222,14 +229,41 @@ onBeforeUnmount(() => {
                     </div>
                 </Link>
 
-                <div class="tg-list-card tg-list-card--soft">
+                <Link v-if="routes?.vless_wl" :href="`${routes.vless_wl}?step=links`" class="tg-list-card">
+                    <div class="tg-list-card__icon tg-list-card__icon--blue">
+                        <AppIcon name="lock" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">VLESS (Белые списки)</div>
+                        <div class="tg-list-card__description">Отдельные WL-ссылки для поддерживаемых клиентов.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </Link>
+
+                <button class="tg-list-card tg-list-card--button" type="button" @click="openWireGuardList">
                     <div class="tg-list-card__icon tg-list-card__icon--success">
                         <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
                         <div class="tg-list-card__title">WireGuard</div>
-                        <div class="tg-list-card__description">Конфиги для импорта по QR-коду или через файл.</div>
+                        <div class="tg-list-card__description">Открыть список конфигов для импорта по QR-коду или через файл.</div>
                     </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </button>
+            </section>
+
+            <section v-else-if="step === 'list'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="goToConfigHub">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад ко всем конфигам</span>
+                    </button>
+                    <h2>WireGuard</h2>
+                    <p>Выберите конфиг, который хотите открыть, показать по QR-коду или отправить в Telegram.</p>
                 </div>
 
                 <button
@@ -254,7 +288,7 @@ onBeforeUnmount(() => {
 
             <section v-else-if="step === 'actions'" class="tg-section">
                 <div class="tg-page-header__copy">
-                    <button class="tg-link-button" type="button" @click="resetToList">
+                    <button class="tg-link-button" type="button" @click="openWireGuardList">
                         <AppIcon name="chevronLeft" />
                         <span>Назад к конфигам</span>
                     </button>
@@ -299,7 +333,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="send" />
                         <span>{{ sendingToBot ? 'Отправляем...' : 'Отправить QR в Telegram' }}</span>
                     </button>
-                    <button class="tg-button tg-button--soft" type="button" @click="resetToList">
+                    <button class="tg-button tg-button--soft" type="button" @click="openWireGuardList">
                         <AppIcon name="shield" />
                         <span>Выбрать другой конфиг</span>
                     </button>
@@ -330,7 +364,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="send" />
                         <span>{{ sendingToBot ? 'Отправляем...' : 'Отправить ещё раз' }}</span>
                     </button>
-                    <button class="tg-button tg-button--secondary" type="button" @click="resetToList">
+                    <button class="tg-button tg-button--secondary" type="button" @click="openWireGuardList">
                         <AppIcon name="shield" />
                         <span>К списку конфигов</span>
                     </button>

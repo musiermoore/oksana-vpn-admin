@@ -51,6 +51,7 @@ const purchasedCodes = computed(() => user.value?.subscription_codes ?? []);
 const balanceAmount = computed(() => Number(user.value?.balance ?? 0));
 const debtAmount = computed(() => Number(user.value?.debt ?? 0));
 const hasDebt = computed(() => debtAmount.value > 0);
+const hasPositiveBalance = computed(() => balanceAmount.value > 0);
 const hasMoneyForNextMonth = computed(() => Boolean(user.value?.has_money_for_next_subscription_month));
 const totalDiscountPercent = computed(() => Number(user.value?.referral?.total_discount_percent ?? 0));
 
@@ -292,12 +293,12 @@ onMounted(async () => {
                     <div class="tg-status-card__top">
                         <div>
                             <div class="tg-status-card__title">
-                                {{ user?.subscription_expires_at ? 'Подписка активна' : 'Подписка не активна' }}
+                                {{ user?.subscription_expires_at ? `Подписка активна до ${formatSubscriptionDate(user?.subscription_expires_at)}` : 'Подписка не активна' }}
                             </div>
                             <div class="tg-status-card__meta">
-                                <span>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</span>
+                                <span v-if="!user?.subscription_expires_at">Оформите подписку, чтобы получить доступ.</span>
                                 <span v-if="hasDebt">Есть долг {{ debtAmount }} ₽</span>
-                                <span v-else>Баланс {{ balanceAmount }} ₽</span>
+                                <span v-else-if="hasPositiveBalance">Баланс {{ balanceAmount }} ₽</span>
                             </div>
                         </div>
 

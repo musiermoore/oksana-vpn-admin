@@ -443,7 +443,7 @@
 .tg-button--secondary:focus-visible,
 .tg-link-button:hover,
 .tg-link-button:focus-visible {
-    color: var(--tg-text);
+    color: var(--tg-text-secondary);
 }
 
 .tg-button--soft {

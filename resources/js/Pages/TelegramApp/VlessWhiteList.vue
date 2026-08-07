@@ -18,10 +18,7 @@ const props = defineProps({
     vless_wl_link_url: String,
 });
 
-const initialStep = (() => {
-    const requestedStep = new URLSearchParams(window.location.search).get('step');
-    return requestedStep === 'links' ? 'links' : 'menu';
-})();
+const initialStep = 'links';
 
 const state = ref('loading');
 const step = ref(initialStep);
@@ -156,36 +153,12 @@ onMounted(async () => {
         </section>
 
         <template v-else>
-            <section v-if="step === 'menu'" class="tg-section">
+            <section class="tg-section">
                 <div class="tg-page-header__copy">
-                    <div class="tg-tag tg-tag--primary">
-                        <AppIcon name="lock" />
-                        <span>White List</span>
-                    </div>
-                    <h2>Открыть WL-подписку</h2>
-                    <p>Этот экран нужен, когда для вашего доступа выдан отдельный белый список.</p>
-                </div>
-
-                <button class="tg-list-card tg-list-card--button" type="button" @click="step = 'links'">
-                    <div class="tg-list-card__icon tg-list-card__icon--blue">
-                        <AppIcon name="link" />
-                    </div>
-                    <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Добавить в приложение</div>
-                        <div class="tg-list-card__description">Открыть подходящий клиент и импортировать WL-подписку.</div>
-                    </div>
-                    <div class="tg-list-card__aside">
-                        <AppIcon name="chevronRight" />
-                    </div>
-                </button>
-            </section>
-
-            <section v-else class="tg-section">
-                <div class="tg-page-header__copy">
-                    <button class="tg-link-button" type="button" @click="step = 'menu'">
+                    <Link class="tg-link-button" :href="routes?.wireguard">
                         <AppIcon name="chevronLeft" />
-                        <span>Назад</span>
-                    </button>
+                        <span>Все конфиги</span>
+                    </Link>
                     <h2>Выберите приложение</h2>
                     <p>Откройте клиент по ссылке. Если хотите сохранить ссылку вручную, скопируйте её.</p>
                 </div>

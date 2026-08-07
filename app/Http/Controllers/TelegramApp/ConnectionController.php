@@ -449,7 +449,7 @@ class ConnectionController extends Controller
             Telegram::sendPhoto([
                 'chat_id' => (string) $user->telegram_id,
                 'photo' => InputFile::create($temporaryPath, 'vless-wl-qrcode.png'),
-                'caption' => 'VLESS WL QR-код',
+                'caption' => 'VLESS БС QR-код',
             ]);
 
             return response()->json([

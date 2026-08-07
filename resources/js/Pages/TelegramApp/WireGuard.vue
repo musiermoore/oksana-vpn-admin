@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
 <template>
     <TelegramMiniAppFrame
         title="Конфиги"
-        description="Выберите VLESS или WireGuard и получите данные для подключения."
+        description="Выберите тип конфигов и получите данные для подключения."
         :routes="routes"
         :user="user"
     >
@@ -213,16 +213,16 @@ onBeforeUnmount(() => {
                         <span>Конфиги</span>
                     </div>
                     <h2>Выберите тип конфигов</h2>
-                    <p>Откройте нужный вариант: обычный VLESS, белые списки VLESS или WireGuard.</p>
+                    <p>Откройте стандартные, белые списки или WireGuard.</p>
                 </div>
 
                 <Link :href="routes?.vless" class="tg-list-card">
                     <div class="tg-list-card__icon">
-                        <AppIcon name="link" />
+                        <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">VLESS</div>
-                        <div class="tg-list-card__description">Ссылка для приложений, deep links и QR-код.</div>
+                        <div class="tg-list-card__title">Стандартные</div>
+                        <div class="tg-list-card__description">Прямая ссылка, быстрое подключение и QR-код.</div>
                     </div>
                     <div class="tg-list-card__aside">
                         <AppIcon name="chevronRight" />
@@ -231,11 +231,11 @@ onBeforeUnmount(() => {
 
                 <Link v-if="routes?.vless_wl" :href="`${routes.vless_wl}?step=links`" class="tg-list-card">
                     <div class="tg-list-card__icon tg-list-card__icon--blue">
-                        <AppIcon name="lock" />
+                        <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">VLESS (Белые списки)</div>
-                        <div class="tg-list-card__description">Отдельные WL-ссылки для поддерживаемых клиентов.</div>
+                        <div class="tg-list-card__title">Белые списки</div>
+                        <div class="tg-list-card__description">Отдельные БС-ссылки для поддерживаемых клиентов.</div>
                     </div>
                     <div class="tg-list-card__aside">
                         <AppIcon name="chevronRight" />
@@ -307,7 +307,7 @@ onBeforeUnmount(() => {
                     </button>
                     <Link :href="routes?.vless" class="tg-button tg-button--soft">
                         <AppIcon name="link" />
-                        <span>Открыть VLESS вместо этого</span>
+                        <span>Открыть стандартные вместо этого</span>
                     </Link>
                 </div>
 

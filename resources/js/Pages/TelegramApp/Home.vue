@@ -102,10 +102,10 @@ const hasPositiveBalance = computed(() => Number(user.value?.balance ?? 0) > 0);
 const quickLinks = computed(() => {
     const items = [
         {
-            title: 'VLESS',
-            description: 'Ссылка для приложений, deep links и QR-код.',
+            title: 'Стандартные',
+            description: 'Прямая ссылка, быстрое подключение и QR-код.',
             href: props.routes?.vless,
-            icon: 'link',
+            icon: 'shield',
             iconClass: 'tg-list-card__icon',
         },
         {
@@ -133,10 +133,10 @@ const quickLinks = computed(() => {
 
     if (user.value?.has_vless_wl_configs && whiteListRoute.value) {
         items.splice(2, 0, {
-            title: 'Белый список VLESS',
-            description: 'Отдельные WL-ссылки для поддерживаемых клиентов.',
+            title: 'Белые списки',
+            description: 'Отдельные БС-ссылки для поддерживаемых клиентов.',
             href: whiteListRoute.value,
-            icon: 'lock',
+            icon: 'shield',
             iconClass: 'tg-list-card__icon--blue',
         });
     }

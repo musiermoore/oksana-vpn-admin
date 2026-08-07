@@ -118,11 +118,11 @@ onMounted(async () => {
 
                 <button class="tg-list-card tg-list-card--button" type="button" @click="openSection('vless')">
                     <div class="tg-list-card__icon">
-                        <AppIcon name="link" />
+                        <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
                         <div class="tg-list-card__title">Как подключить VLESS</div>
-                        <div class="tg-list-card__description">Ссылки для приложений, QR-код и импорт подписки.</div>
+                        <div class="tg-list-card__description">Быстрое подключение, прямая ссылка и QR-код.</div>
                     </div>
                     <div class="tg-list-card__aside">
                         <AppIcon name="chevronRight" />
@@ -185,7 +185,7 @@ onMounted(async () => {
                         <span>Назад</span>
                     </button>
                     <h2>Подключение VLESS</h2>
-                    <p>Откройте VLESS, нажмите на подходящее приложение и импортируйте подписку. Если приложение не открывает ссылку, используйте raw link или QR-код.</p>
+                    <p>Откройте стандартные конфиги, нажмите на подходящее приложение и импортируйте подписку. Если приложение не открывает ссылку, используйте прямую ссылку или QR-код.</p>
                 </div>
 
                 <div class="tg-actions">
@@ -194,8 +194,8 @@ onMounted(async () => {
                         <span>Скачать приложение для VLESS</span>
                     </button>
                     <Link :href="routes?.vless" class="tg-button">
-                        <AppIcon name="link" />
-                        <span>Открыть VLESS</span>
+                        <AppIcon name="shield" />
+                        <span>Открыть стандартные</span>
                     </Link>
                 </div>
             </section>

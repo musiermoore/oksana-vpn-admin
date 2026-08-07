@@ -33,19 +33,19 @@ const preferredLinks = computed(() => ([
     {
         key: 'happ_deep_link',
         title: 'Happ',
-        description: 'Открыть WL-подписку сразу в Happ.',
+        description: 'Открыть БС-подписку сразу в Happ.',
         url: links.value?.happ_deep_link ?? '',
     },
     {
         key: 'v2raytun_deeplink',
         title: 'V2RayTun',
-        description: 'Импортировать WL-подписку в V2RayTun.',
+        description: 'Импортировать БС-подписку в V2RayTun.',
         url: links.value?.v2raytun_deeplink ?? '',
     },
     {
         key: 'incy_deeplink',
         title: 'Incy',
-        description: 'Открыть WL-подписку в Incy.',
+        description: 'Открыть БС-подписку в Incy.',
         url: links.value?.incy_deeplink ?? '',
     },
 ]).filter((item) => item.url));
@@ -109,7 +109,7 @@ onMounted(async () => {
     } catch (requestError) {
         if (isTelegramDebtError(requestError)) {
             state.value = 'debt';
-            debtMessage.value = normalizeTelegramAppError(requestError, 'Для WL-доступа нужна активная подписка.');
+            debtMessage.value = normalizeTelegramAppError(requestError, 'Для БС-доступа нужна активная подписка.');
             return;
         }
 
@@ -121,7 +121,7 @@ onMounted(async () => {
 
 <template>
     <TelegramMiniAppFrame
-        title="VLESS White List"
+        title="Белые списки"
         description="Отдельные ссылки для клиентов, которым нужен белый список."
         :routes="routes"
         :user="user"
@@ -195,7 +195,7 @@ onMounted(async () => {
                     >
                         <div class="tg-list-card__body">
                             <div class="tg-list-card__title">{{ item.title }}</div>
-                            <div class="tg-list-card__description">Открыть WL-ссылку в приложении.</div>
+                            <div class="tg-list-card__description">Открыть БС-ссылку в приложении.</div>
                         </div>
                         <div class="tg-inline-actions">
                             <button class="tg-icon-button tg-icon-button--soft" type="button" @click.stop="copyText(item.url)">

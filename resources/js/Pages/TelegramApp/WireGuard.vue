@@ -1,6 +1,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
@@ -22,13 +23,13 @@ const step = ref('list');
 const error = ref('');
 const debtMessage = ref('');
 const actionError = ref('');
+const actionStatus = ref('');
 const user = ref(null);
 const configs = ref([]);
 const selectedConfig = ref(null);
 const loadingAction = ref(false);
 const sendingToBot = ref(false);
 const qrImageUrl = ref('');
-const actionStatus = ref('');
 
 const revokeQrUrl = () => {
     if (qrImageUrl.value) {
@@ -42,10 +43,10 @@ const retry = () => {
 };
 
 const resetToList = () => {
+    step.value = 'list';
+    selectedConfig.value = null;
     actionError.value = '';
     actionStatus.value = '';
-    selectedConfig.value = null;
-    step.value = 'list';
     revokeQrUrl();
 };
 
@@ -104,10 +105,10 @@ const sendConfigToBot = async () => {
         const response = await window.axios.post(selectedConfig.value.send_file_to_bot_url, {}, {
             headers: telegramAppHeaders(),
         });
-        actionStatus.value = response.data?.message ?? 'Файл отправлен в бот.';
+        actionStatus.value = response.data?.message ?? 'Файл отправлен в Telegram.';
         step.value = 'file';
     } catch (requestError) {
-        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить файл в бота.');
+        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить файл.');
     } finally {
         sendingToBot.value = false;
     }
@@ -126,9 +127,9 @@ const sendQrToBot = async () => {
         const response = await window.axios.post(selectedConfig.value.send_qr_to_bot_url, {}, {
             headers: telegramAppHeaders(),
         });
-        actionStatus.value = response.data?.message ?? 'QR-код отправлен в бот.';
+        actionStatus.value = response.data?.message ?? 'QR-код отправлен в Telegram.';
     } catch (requestError) {
-        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код в бота.');
+        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код.');
     } finally {
         sendingToBot.value = false;
     }
@@ -140,12 +141,12 @@ onMounted(async () => {
     } catch (requestError) {
         if (isTelegramDebtError(requestError)) {
             state.value = 'debt';
-            debtMessage.value = normalizeTelegramAppError(requestError, 'Доступ к конфигам требует активной подписки.');
+            debtMessage.value = normalizeTelegramAppError(requestError, 'Для доступа нужна активная подписка.');
             return;
         }
 
         state.value = 'error';
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить WireGuard-конфиги.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить конфиги WireGuard.');
     }
 });
 
@@ -156,142 +157,169 @@ onBeforeUnmount(() => {
 
 <template>
     <TelegramMiniAppFrame
-        title="WireGuard"
-        description="Выберите конфиг, сразу покажите QR-код или отправьте файл в Telegram-бота."
+        title="Подключение"
+        description="WireGuard: выберите конфиг, откройте QR или отправьте файл в Telegram."
         :routes="routes"
         :user="user"
     >
-        <section v-if="state === 'loading'" class="tg-state-panel">
-            <div class="tg-state-orbit">
-                <span class="tg-state-orbit__core"></span>
-            </div>
-            <h2>Загружаем конфиги...</h2>
-            <p>Сейчас подтянем доступные WireGuard-подключения.</p>
+        <section v-if="state === 'loading'" class="tg-section">
+            <div class="tg-skeleton tg-skeleton--hero"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
         </section>
 
-        <section v-else-if="state === 'error'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">!</span>
+        <section v-else-if="state === 'error'" class="tg-state-card tg-state-card--danger">
+            <div class="tg-state-card__icon">
+                <AppIcon name="circleExclamation" />
             </div>
-            <h2>Не удалось загрузить конфиги</h2>
+            <h2>Не удалось открыть WireGuard</h2>
             <p>{{ error }}</p>
-            <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
+            <button class="tg-button" type="button" @click="retry">Повторить</button>
         </section>
 
-        <section v-else-if="state === 'debt'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">₽</span>
+        <section v-else-if="state === 'debt'" class="tg-state-card tg-state-card--warning">
+            <div class="tg-state-card__icon">
+                <AppIcon name="receipt" />
             </div>
-            <h2>Доступ к конфигам закрыт</h2>
+            <h2>Сначала продлите подписку</h2>
             <p>{{ debtMessage }}</p>
-            <div class="tg-stack-actions">
-                <Link :href="routes?.payments" class="button tg-button-full">Подписка</Link>
-                <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
+            <div class="tg-actions">
+                <Link :href="routes?.payments" class="tg-button">Перейти к подписке</Link>
+                <Link :href="routes?.home" class="tg-button tg-button--secondary">На главную</Link>
             </div>
         </section>
 
-        <section v-else-if="state === 'empty'" class="tg-empty-panel">
-            <h2>Конфиги не найдены</h2>
-            <p>Пока нет доступных WireGuard-конфигов для вашего аккаунта.</p>
-            <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
+        <section v-else-if="state === 'empty'" class="tg-state-card">
+            <div class="tg-state-card__icon">
+                <AppIcon name="shield" />
+            </div>
+            <h2>Конфиги пока не готовы</h2>
+            <p>Для вашего аккаунта ещё нет доступных WireGuard-конфигов.</p>
+            <Link :href="routes?.home" class="tg-button">На главную</Link>
         </section>
 
         <template v-else>
-            <section v-if="step === 'list'" class="tg-panel tg-panel-stack">
-                <div class="tg-section-head tg-section-head--compact">
-                    <div>
-                        <span class="tg-section-label">WireGuard Configs</span>
-                        <h2>Выберите конфиг</h2>
+            <section v-if="step === 'list'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <div class="tg-tag tg-tag--success">
+                        <AppIcon name="shield" />
+                        <span>WireGuard</span>
                     </div>
-                    <span class="badge">{{ configs.length }}</span>
+                    <h2>Выберите конфиг</h2>
+                    <p>Обычно достаточно открыть основной конфиг и сразу импортировать его в приложение.</p>
                 </div>
 
-                <div class="tg-plan-list">
-                    <button
-                        v-for="config in configs"
-                        :key="config.id"
-                        class="tg-plan-option"
-                        type="button"
-                        @click="selectConfig(config)"
-                    >
-                        <div class="tg-plan-option__copy">
-                            <strong>{{ config.name }}</strong>
-                            <span>Нажмите, чтобы открыть действия по конфигу</span>
-                        </div>
+                <button
+                    v-for="config in configs"
+                    :key="config.id"
+                    class="tg-list-card tg-list-card--button"
+                    type="button"
+                    @click="selectConfig(config)"
+                >
+                    <div class="tg-list-card__icon tg-list-card__icon--success">
+                        <AppIcon name="shield" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">{{ config.name }}</div>
+                        <div class="tg-list-card__description">Открыть действия для подключения и импорта.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </button>
 
-                        <div class="tg-plan-option__meta">
-                            <strong>Открыть</strong>
-                        </div>
-                    </button>
+                <div class="tg-note">
+                    <strong>Не знаете, что выбрать?</strong>
+                    <p>Начните с основного конфига. Если он не подходит, используйте резервный.</p>
                 </div>
-
-                <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
             </section>
 
-            <section v-else-if="step === 'actions'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">Конфиг</span>
-                <h2>{{ selectedConfig?.name }}</h2>
-                <p>QR-код можно сразу показать на экране, а файл отправить прямо в бота.</p>
-
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" :disabled="loadingAction" @click="showQrCode">
-                        {{ loadingAction ? 'Загружаем...' : 'QR Code' }}
+            <section v-else-if="step === 'actions'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="resetToList">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад к конфигам</span>
                     </button>
-                    <button class="button tg-button-full" type="button" :disabled="sendingToBot" @click="sendConfigToBot">
-                        {{ sendingToBot ? 'Отправляем...' : 'Отправить файл в бота' }}
-                    </button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="resetToList">
-                        WireGuard Конфиги
-                    </button>
-                    <Link :href="routes?.vless" class="button button--secondary tg-button-full">VLESS</Link>
+                    <h2>{{ selectedConfig?.name }}</h2>
+                    <p>Самый быстрый путь: открыть QR-код и импортировать конфиг в приложение WireGuard.</p>
                 </div>
 
-                <p v-if="actionError" class="field-error">{{ actionError }}</p>
+                <div class="tg-actions">
+                    <button class="tg-button" type="button" :disabled="loadingAction" @click="showQrCode">
+                        <AppIcon name="qrcode" />
+                        <span>{{ loadingAction ? 'Готовим QR...' : 'Показать QR-код' }}</span>
+                    </button>
+                    <button class="tg-button tg-button--secondary" type="button" :disabled="sendingToBot" @click="sendConfigToBot">
+                        <AppIcon name="download" />
+                        <span>{{ sendingToBot ? 'Отправляем...' : 'Отправить файл в Telegram' }}</span>
+                    </button>
+                    <Link :href="routes?.vless" class="tg-button tg-button--soft">
+                        <AppIcon name="link" />
+                        <span>Открыть VLESS вместо этого</span>
+                    </Link>
+                </div>
+
+                <p v-if="actionError" class="tg-error">{{ actionError }}</p>
             </section>
 
-            <section v-else-if="step === 'qr'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">QR Code</span>
-                <h2>{{ selectedConfig?.name }}</h2>
-                <p>Отсканируйте QR-код в приложении WireGuard.</p>
+            <section v-else-if="step === 'qr'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="step = 'actions'">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад к действиям</span>
+                    </button>
+                    <h2>Сканируйте QR-код</h2>
+                    <p>Откройте приложение WireGuard и импортируйте конфиг с экрана.</p>
+                </div>
 
                 <div class="tg-qr-card">
-                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="WireGuard QR code" class="tg-qr-card__image">
+                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="WireGuard QR" class="tg-qr-card__image">
                 </div>
 
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" :disabled="sendingToBot" @click="sendQrToBot">
-                        {{ sendingToBot ? 'Отправляем...' : 'Отправить в бота' }}
+                <div class="tg-actions">
+                    <button class="tg-button tg-button--secondary" type="button" :disabled="sendingToBot" @click="sendQrToBot">
+                        <AppIcon name="send" />
+                        <span>{{ sendingToBot ? 'Отправляем...' : 'Отправить QR в Telegram' }}</span>
                     </button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="resetToList">
-                        Конфиги
+                    <button class="tg-button tg-button--soft" type="button" @click="resetToList">
+                        <AppIcon name="shield" />
+                        <span>Выбрать другой конфиг</span>
                     </button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
 
-                <p v-if="actionStatus" class="tg-muted">{{ actionStatus }}</p>
-                <p v-if="actionError" class="field-error">{{ actionError }}</p>
+                <p v-if="actionStatus" class="tg-success-text">{{ actionStatus }}</p>
+                <p v-if="actionError" class="tg-error">{{ actionError }}</p>
             </section>
 
-            <section v-else class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">Файл</span>
-                <h2>Файл отправлен в бота</h2>
-                <p>Откройте диалог с ботом в Telegram и заберите конфиг оттуда.</p>
-                <div class="tg-inline-callout">
-                    <span>Статус</span>
-                    <strong>{{ actionStatus || 'Файл отправлен в бот.' }}</strong>
+            <section v-else class="tg-section">
+                <div class="tg-status-card tg-status-card--success">
+                    <div class="tg-status-card__top">
+                        <div>
+                            <div class="tg-status-card__title">Файл отправлен</div>
+                            <div class="tg-status-card__meta">
+                                <span>Откройте чат с ботом и скачайте конфиг оттуда.</span>
+                            </div>
+                        </div>
+
+                        <div class="tg-status-card__icon">
+                            <AppIcon name="circleCheck" />
+                        </div>
+                    </div>
                 </div>
 
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" :disabled="sendingToBot" @click="sendConfigToBot">
-                        {{ sendingToBot ? 'Отправляем...' : 'Отправить ещё раз в бота' }}
+                <div class="tg-actions">
+                    <button class="tg-button" type="button" :disabled="sendingToBot" @click="sendConfigToBot">
+                        <AppIcon name="send" />
+                        <span>{{ sendingToBot ? 'Отправляем...' : 'Отправить ещё раз' }}</span>
                     </button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="resetToList">
-                        Конфиги
+                    <button class="tg-button tg-button--secondary" type="button" @click="resetToList">
+                        <AppIcon name="shield" />
+                        <span>К списку конфигов</span>
                     </button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
 
-                <p v-if="actionError" class="field-error">{{ actionError }}</p>
+                <p v-if="actionStatus" class="tg-success-text">{{ actionStatus }}</p>
+                <p v-if="actionError" class="tg-error">{{ actionError }}</p>
             </section>
         </template>
     </TelegramMiniAppFrame>

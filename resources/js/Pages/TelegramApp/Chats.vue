@@ -1,6 +1,7 @@
 <script setup>
-import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import { onMounted, ref } from 'vue';
+import AppIcon from '../../Shared/AppIcon.vue';
+import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
@@ -19,13 +20,13 @@ const user = ref(null);
 
 const chatLinks = [
     {
-        title: 'Новости',
-        description: 'Официальный канал с обновлениями и важными объявлениями.',
+        title: 'Telegram-канал',
+        description: 'Новости, обновления и важные объявления сервиса.',
         url: 'https://t.me/+DfexxpJzKiFkNzQ6',
     },
     {
-        title: 'Флуд',
-        description: 'Неформальное общение, вопросы и обсуждения с участниками.',
+        title: 'Общий чат',
+        description: 'Обсуждения, вопросы и общение с другими пользователями.',
         url: 'https://t.me/+jG8T4yBk0tg4MWNi',
     },
 ];
@@ -43,55 +44,60 @@ onMounted(async () => {
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть страницу бесед.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть чаты.');
     }
 });
 </script>
 
 <template>
     <TelegramMiniAppFrame
-        title="Беседы"
-        description="Новости проекта и отдельная беседа для свободного общения."
+        title="Сообщество"
+        description="Канал с обновлениями и чат, где можно задать быстрый вопрос."
         :routes="routes"
         :user="user"
     >
-        <section v-if="state === 'loading'" class="tg-state-panel">
-            <div class="tg-state-orbit">
-                <span class="tg-state-orbit__core"></span>
-            </div>
-            <h2>Открываем беседы...</h2>
-            <p>Подгружаем ссылки на Telegram-сообщества.</p>
+        <section v-if="state === 'loading'" class="tg-section">
+            <div class="tg-skeleton tg-skeleton--hero"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
         </section>
 
-        <section v-else-if="state === 'error'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">!</span>
+        <section v-else-if="state === 'error'" class="tg-state-card tg-state-card--danger">
+            <div class="tg-state-card__icon">
+                <AppIcon name="circleExclamation" />
             </div>
-            <h2>Не удалось открыть беседы</h2>
+            <h2>Не удалось открыть чаты</h2>
             <p>{{ error }}</p>
-            <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
+            <button class="tg-button" type="button" @click="retry">Повторить</button>
         </section>
 
-        <section v-else class="tg-panel tg-panel-stack">
-            <span class="tg-section-label">Сообщество</span>
-            <h2>Беседы и каналы</h2>
-            <p>Здесь собраны Telegram-ссылки на основные каналы и чаты проекта.</p>
-
-            <div class="tg-link-list">
-                <button
-                    v-for="item in chatLinks"
-                    :key="item.title"
-                    class="tg-row-link tg-row-link--button"
-                    type="button"
-                    @click="openTelegramExternalLink(item.url)"
-                >
-                    <div class="tg-row-link__copy">
-                        <strong>{{ item.title }}</strong>
-                        <span>{{ item.description }}</span>
-                    </div>
-                    <span class="tg-link-pill">Открыть</span>
-                </button>
+        <section v-else class="tg-section">
+            <div class="tg-page-header__copy">
+                <div class="tg-tag">
+                    <AppIcon name="chat" />
+                    <span>Чаты</span>
+                </div>
+                <h2>Где общаться?</h2>
+                <p>Откройте официальный канал для новостей или общий чат для общения с пользователями.</p>
             </div>
+
+            <button
+                v-for="item in chatLinks"
+                :key="item.title"
+                class="tg-list-card tg-list-card--button"
+                type="button"
+                @click="openTelegramExternalLink(item.url)"
+            >
+                <div class="tg-list-card__icon tg-list-card__icon--blue">
+                    <AppIcon name="arrowUpRight" />
+                </div>
+                <div class="tg-list-card__body">
+                    <div class="tg-list-card__title">{{ item.title }}</div>
+                    <div class="tg-list-card__description">{{ item.description }}</div>
+                </div>
+                <div class="tg-list-card__aside">
+                    <AppIcon name="arrowUpRight" />
+                </div>
+            </button>
         </section>
     </TelegramMiniAppFrame>
 </template>

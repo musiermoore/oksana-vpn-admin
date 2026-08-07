@@ -1,6 +1,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
@@ -42,6 +43,7 @@ const loadTickets = async () => {
 
 const openComposer = () => {
     isComposerOpen.value = true;
+    error.value = '';
 };
 
 const closeComposer = () => {
@@ -51,7 +53,7 @@ const closeComposer = () => {
 
 const submitTicket = async () => {
     if (form.value.message.trim() === '') {
-        error.value = 'Опишите ваш вопрос или предложение.';
+        error.value = 'Опишите вопрос или проблему.';
         return;
     }
 
@@ -75,6 +77,7 @@ const submitTicket = async () => {
         }
 
         await loadTickets();
+        isComposerOpen.value = false;
     } catch (requestError) {
         error.value = normalizeTelegramAppError(requestError, 'Не удалось отправить обращение.');
     } finally {
@@ -103,7 +106,7 @@ onMounted(async () => {
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить поддержку.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть поддержку.');
     }
 });
 
@@ -116,108 +119,136 @@ onBeforeUnmount(() => {
 
 <template>
     <TelegramMiniAppFrame
-        title="Поддержка / Предложения"
-        description="Если у вас возник вопрос или есть предложение, мы с радостью поможем и ответим как можно скорее."
+        title="Поддержка"
+        description="Напишите вопрос, посмотрите историю обращений или откройте нужный чат."
         :routes="routes"
         :user="user"
     >
-        <section v-if="state === 'loading'" class="tg-state-panel">
-            <div class="tg-state-orbit">
-                <span class="tg-state-orbit__core"></span>
-            </div>
-            <h2>Загружаем данные...</h2>
-            <p>Пожалуйста, подождите</p>
-
-            <div class="tg-skeleton-list">
-                <div class="tg-skeleton-card"></div>
-                <div class="tg-skeleton-card"></div>
-                <div class="tg-skeleton-card"></div>
-            </div>
+        <section v-if="state === 'loading'" class="tg-section">
+            <div class="tg-skeleton tg-skeleton--hero"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
         </section>
 
-        <section v-else-if="state === 'error'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">!</span>
+        <section v-else-if="state === 'error'" class="tg-state-card tg-state-card--danger">
+            <div class="tg-state-card__icon">
+                <AppIcon name="circleExclamation" />
             </div>
-            <h2>Не удалось загрузить данные</h2>
-            <p>{{ error || 'Пожалуйста, попробуйте ещё раз через пару секунд' }}</p>
-            <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
+            <h2>Не удалось открыть поддержку</h2>
+            <p>{{ error }}</p>
+            <button class="tg-button" type="button" @click="retry">Повторить</button>
         </section>
 
         <template v-else>
-            <section v-if="!hasTickets && !isComposerOpen" class="tg-empty-panel">
-                <div class="tg-empty-panel__icon">
-                    <span>💬</span>
+            <section class="tg-section">
+                <div class="tg-page-header__copy">
+                    <div class="tg-tag tg-tag--primary">
+                        <AppIcon name="headset" />
+                        <span>Поддержка</span>
+                    </div>
+                    <h2>Нужна помощь?</h2>
+                    <p>Если VPN не работает или есть вопрос по подписке, напишите нам. Обычно удобнее сразу описать проблему одним сообщением.</p>
                 </div>
-                <h2>У вас пока нет обращений</h2>
-                <p>Если у вас возник вопрос или есть предложение, мы с радостью поможем и ответим как можно скорее.</p>
-                <button class="button tg-button-full" type="button" @click="openComposer">Создать обращение</button>
+
+                <Link :href="routes?.chats" class="tg-list-card">
+                    <div class="tg-list-card__icon tg-list-card__icon--blue">
+                        <AppIcon name="chat" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Канал и общий чат</div>
+                        <div class="tg-list-card__description">Быстрые ссылки на Telegram-сообщество и новости.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </Link>
             </section>
 
-            <section v-if="isComposerOpen || hasTickets" class="tg-panel">
-                <div class="tg-section-head">
+            <section class="tg-surface-card tg-stack">
+                <div class="tg-section__head">
                     <div>
-                        <span class="tg-section-label">Новое обращение</span>
-                        <h2>Написать в поддержку</h2>
+                        <div class="tg-section__title">Новое обращение</div>
+                        <div class="tg-section__subtitle">Откроем отдельный диалог и продолжим переписку там.</div>
                     </div>
 
-                    <button v-if="isComposerOpen && hasTickets" class="tg-link-button" type="button" @click="closeComposer">
-                        Скрыть
+                    <button
+                        v-if="hasTickets && isComposerOpen"
+                        class="tg-link-button"
+                        type="button"
+                        @click="closeComposer"
+                    >
+                        <AppIcon name="chevronDown" />
+                        <span>Скрыть</span>
                     </button>
                 </div>
 
-                <div v-if="!isComposerOpen && hasTickets" class="tg-inline-callout">
-                    <p>Если нужно новое обращение, нажмите на кнопку ниже.</p>
-                    <button class="button tg-button-full" type="button" @click="openComposer">Создать обращение</button>
-                </div>
+                <button v-if="!isComposerOpen" class="tg-button" type="button" @click="openComposer">
+                    <AppIcon name="message" />
+                    <span>Написать в поддержку</span>
+                </button>
 
-                <template v-else>
-                    <label class="field">
-                        <span>Тема</span>
-                        <input v-model="form.subject" type="text" placeholder="Например: продление подписки" />
-                    </label>
-
-                    <label class="field">
-                        <span>Сообщение</span>
-                        <textarea v-model="form.message" placeholder="Опишите вопрос как можно подробнее"></textarea>
-                    </label>
-
-                    <div class="actions">
-                        <button class="button tg-button-full" type="button" :disabled="sending" @click="submitTicket">
-                            {{ sending ? 'Отправляем...' : 'Отправить обращение' }}
-                        </button>
+                <div v-else class="tg-form">
+                    <div class="tg-field">
+                        <label for="support-subject">Тема</label>
+                        <input
+                            id="support-subject"
+                            v-model="form.subject"
+                            class="tg-input"
+                            type="text"
+                            placeholder="Например: не подключается VPN"
+                        >
                     </div>
 
-                    <p v-if="error" class="field-error">{{ error }}</p>
-                </template>
+                    <div class="tg-field">
+                        <label for="support-message">Сообщение</label>
+                        <textarea
+                            id="support-message"
+                            v-model="form.message"
+                            class="tg-textarea"
+                            placeholder="Опишите, что происходит и на каком шаге возникла проблема"
+                        ></textarea>
+                    </div>
+
+                    <button class="tg-button" type="button" :disabled="sending" @click="submitTicket">
+                        <AppIcon name="send" />
+                        <span>{{ sending ? 'Отправляем...' : 'Отправить обращение' }}</span>
+                    </button>
+
+                    <p v-if="error" class="tg-error">{{ error }}</p>
+                </div>
             </section>
 
-            <section v-if="hasTickets" class="tg-panel">
-                <div class="tg-section-head">
+            <section v-if="hasTickets" class="tg-section">
+                <div class="tg-section__head">
                     <div>
-                        <span class="tg-section-label">История переписки</span>
-                        <h2>Мои обращения</h2>
+                        <div class="tg-section__title">Мои обращения</div>
+                        <div class="tg-section__subtitle">Откройте нужный диалог и продолжите переписку.</div>
                     </div>
                 </div>
 
-                <div class="tg-ticket-list">
-                    <Link
-                        v-for="ticket in tickets"
-                        :key="ticket.id"
-                        :href="`${routes.support}/${ticket.id}`"
-                        class="tg-ticket-card"
-                    >
-                        <div class="tg-ticket-card__top">
-                            <div class="tg-ticket-card__copy">
-                                <strong>Обращение #{{ ticket.id }}</strong>
-                                <span>{{ ticket.subject || 'Без темы' }}</span>
-                            </div>
-                            <span class="badge">{{ telegramAppLabels[ticket.status] || ticket.status_label }}</span>
-                        </div>
+                <Link
+                    v-for="ticket in tickets"
+                    :key="ticket.id"
+                    :href="`${routes.support}/${ticket.id}`"
+                    class="tg-list-card"
+                >
+                    <div class="tg-list-card__icon">
+                        <AppIcon name="message" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Обращение #{{ ticket.id }}</div>
+                        <div class="tg-list-card__description">{{ ticket.subject || 'Без темы' }}</div>
+                        <div class="tg-caption">{{ ticket.latest_message?.message || 'Пока нет сообщений' }}</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <span class="tg-tag">{{ telegramAppLabels[ticket.status] || ticket.status_label }}</span>
+                    </div>
+                </Link>
+            </section>
 
-                        <p class="tg-muted">{{ ticket.latest_message?.message || 'Нет сообщений' }}</p>
-                    </Link>
-                </div>
+            <section v-else-if="!isComposerOpen" class="tg-note">
+                <strong>Обращений пока нет</strong>
+                <p>Если хотите задать вопрос, создайте первое обращение. Оно откроется в отдельном чате внутри mini app.</p>
             </section>
         </template>
     </TelegramMiniAppFrame>

@@ -1,6 +1,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import { onMounted, ref } from 'vue';
+import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
@@ -21,21 +22,17 @@ const section = ref('menu');
 const previousClientsScreen = ref('menu');
 
 const wgClients = [
-    { title: 'Amnezia iOS', url: 'https://apps.apple.com/app/amnezia-vpn/id1600529900' },
-    { title: 'Amnezia Android', url: 'https://play.google.com/store/apps/details?id=org.amnezia.vpn' },
-    { title: 'Сайт Amnezia', url: 'https://amnezia.org/' },
-    { title: 'WireGuard iOS', url: 'https://apps.apple.com/us/app/wireguard/id1441195209' },
-    { title: 'WireGuard Android', url: 'https://play.google.com/store/apps/details?id=com.wireguard.android' },
-    { title: 'Сайт WireGuard', url: 'https://www.wireguard.com/install/' },
+    { title: 'Amnezia для iPhone', url: 'https://apps.apple.com/app/amnezia-vpn/id1600529900' },
+    { title: 'Amnezia для Android', url: 'https://play.google.com/store/apps/details?id=org.amnezia.vpn' },
+    { title: 'WireGuard для iPhone', url: 'https://apps.apple.com/us/app/wireguard/id1441195209' },
+    { title: 'WireGuard для Android', url: 'https://play.google.com/store/apps/details?id=com.wireguard.android' },
 ];
 
 const vlessClients = [
-    { title: 'v2raytun iOS', url: 'https://apps.apple.com/us/app/v2raytun/id6476628951' },
-    { title: 'v2raytun Android', url: 'https://play.google.com/store/apps/details?id=com.v2raytun.android' },
-    { title: 'Сайт v2raytun', url: 'https://v2raytun.com/' },
-    { title: 'Happ Android', url: 'https://play.google.com/store/apps/details?id=su.happ.crypto' },
-    { title: 'Happ iOS', url: 'https://apps.apple.com/us/app/happ-proxy-utility/id6504287215' },
-    { title: 'Сайт Happ', url: 'https://happ.su/' },
+    { title: 'V2RayTun для iPhone', url: 'https://apps.apple.com/us/app/v2raytun/id6476628951' },
+    { title: 'V2RayTun для Android', url: 'https://play.google.com/store/apps/details?id=com.v2raytun.android' },
+    { title: 'Happ для Android', url: 'https://play.google.com/store/apps/details?id=su.happ.crypto' },
+    { title: 'Happ для iPhone', url: 'https://apps.apple.com/us/app/happ-proxy-utility/id6504287215' },
 ];
 
 const retry = () => {
@@ -51,24 +48,12 @@ const openSection = (nextSection) => {
 };
 
 const goBack = () => {
-    if (section.value === 'wg') {
-        section.value = 'menu';
-        return;
-    }
-
-    if (section.value === 'vless') {
-        section.value = 'menu';
-        return;
-    }
-
-    if (section.value === 'clients') {
-        section.value = 'menu';
-        return;
-    }
-
     if (section.value === 'wg-clients' || section.value === 'vless-clients') {
         section.value = previousClientsScreen.value;
+        return;
     }
+
+    section.value = 'menu';
 };
 
 onMounted(async () => {
@@ -80,7 +65,7 @@ onMounted(async () => {
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить раздел помощи.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть помощь.');
     }
 });
 </script>
@@ -88,129 +73,213 @@ onMounted(async () => {
 <template>
     <TelegramMiniAppFrame
         title="Помощь"
-        description="Инструкции по настройке, список клиентов и полезные ссылки."
+        description="Инструкции и приложения, которые помогут подключиться без лишних шагов."
         :routes="routes"
         :user="user"
     >
-        <section v-if="state === 'loading'" class="tg-state-panel">
-            <div class="tg-state-orbit">
-                <span class="tg-state-orbit__core"></span>
-            </div>
-            <h2>Открываем помощь...</h2>
-            <p>Подгружаем инструкции и список клиентов.</p>
+        <section v-if="state === 'loading'" class="tg-section">
+            <div class="tg-skeleton tg-skeleton--hero"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
         </section>
 
-        <section v-else-if="state === 'error'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">!</span>
+        <section v-else-if="state === 'error'" class="tg-state-card tg-state-card--danger">
+            <div class="tg-state-card__icon">
+                <AppIcon name="circleExclamation" />
             </div>
             <h2>Не удалось открыть помощь</h2>
             <p>{{ error }}</p>
-            <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
+            <button class="tg-button" type="button" @click="retry">Повторить</button>
         </section>
 
         <template v-else>
-            <section v-if="section === 'menu'" class="tg-panel tg-panel-stack">
-                <h2 class="tg-help-menu-title">Чем помочь?</h2>
+            <section v-if="section === 'menu'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <div class="tg-tag tg-tag--primary">
+                        <AppIcon name="circleQuestion" />
+                        <span>Помощь</span>
+                    </div>
+                    <h2>Что вам нужно?</h2>
+                    <p>Выберите короткий путь: инструкция, подходящее приложение или обращение в поддержку.</p>
+                </div>
 
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" @click="openSection('wg')">WG</button>
-                    <button class="button tg-button-full" type="button" @click="openSection('vless')">VLESS</button>
-                    <button class="button tg-button-full" type="button" @click="openSection('clients')">Клиенты</button>
-                    <Link :href="routes?.support" class="button button--secondary tg-button-full">Поддержка</Link>
-                    <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
+                <button class="tg-list-card tg-list-card--button" type="button" @click="openSection('wg')">
+                    <div class="tg-list-card__icon tg-list-card__icon--success">
+                        <AppIcon name="shield" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Как подключить WireGuard</div>
+                        <div class="tg-list-card__description">Пошагово: QR-код или файл конфигурации.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </button>
+
+                <button class="tg-list-card tg-list-card--button" type="button" @click="openSection('vless')">
+                    <div class="tg-list-card__icon">
+                        <AppIcon name="link" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Как подключить VLESS</div>
+                        <div class="tg-list-card__description">Ссылки для приложений, QR-код и импорт подписки.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </button>
+
+                <button class="tg-list-card tg-list-card--button" type="button" @click="openSection('clients')">
+                    <div class="tg-list-card__icon tg-list-card__icon--blue">
+                        <AppIcon name="download" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Скачать приложение</div>
+                        <div class="tg-list-card__description">Подберём клиент для iPhone или Android.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </button>
+
+                <Link :href="routes?.support" class="tg-list-card">
+                    <div class="tg-list-card__icon tg-list-card__icon--warning">
+                        <AppIcon name="headset" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Написать в поддержку</div>
+                        <div class="tg-list-card__description">Если VPN не работает или нужен ответ оператора.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </Link>
+            </section>
+
+            <section v-else-if="section === 'wg'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="goBack">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад</span>
+                    </button>
+                    <h2>Подключение WireGuard</h2>
+                    <p>Откройте экран подключения, выберите конфиг и импортируйте его по QR-коду. Если так удобнее, отправьте файл в Telegram и заберите его из чата с ботом.</p>
+                </div>
+
+                <div class="tg-actions">
+                    <button class="tg-button tg-button--secondary" type="button" @click="openSection('wg-clients')">
+                        <AppIcon name="download" />
+                        <span>Скачать приложение WireGuard</span>
+                    </button>
+                    <Link :href="routes?.wireguard" class="tg-button">
+                        <AppIcon name="shield" />
+                        <span>Открыть подключение</span>
+                    </Link>
                 </div>
             </section>
 
-            <section v-else-if="section === 'wg'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">WG</span>
-                <h2>Как подключить WireGuard</h2>
-                <p>Установите клиент, откройте экран WireGuard в mini-app и выберите один из способов импорта: QR Code или файл конфигурации.</p>
-                <p>После импорта убедитесь, что туннель активирован и подключение запущено.</p>
+            <section v-else-if="section === 'vless'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="goBack">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад</span>
+                    </button>
+                    <h2>Подключение VLESS</h2>
+                    <p>Откройте VLESS, нажмите на подходящее приложение и импортируйте подписку. Если приложение не открывает ссылку, используйте raw link или QR-код.</p>
+                </div>
 
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" @click="openSection('wg-clients')">WG клиенты</button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="goBack">Назад</button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
+                <div class="tg-actions">
+                    <button class="tg-button tg-button--secondary" type="button" @click="openSection('vless-clients')">
+                        <AppIcon name="download" />
+                        <span>Скачать приложение для VLESS</span>
+                    </button>
+                    <Link :href="routes?.vless" class="tg-button">
+                        <AppIcon name="link" />
+                        <span>Открыть VLESS</span>
+                    </Link>
                 </div>
             </section>
 
-            <section v-else-if="section === 'vless'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">VLESS</span>
-                <h2>Как подключить VLESS</h2>
-                <p>Откройте экран VLESS, нажмите `Link` и импортируйте подписку в поддерживаемый клиент через deep link.</p>
-                <p>Если приложение не поддерживает deep link, используйте raw-ссылку или QR-код.</p>
-
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" @click="openSection('vless-clients')">VLESS клиенты</button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="goBack">Назад</button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
+            <section v-else-if="section === 'clients'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="goBack">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад</span>
+                    </button>
+                    <h2>Выберите тип подключения</h2>
+                    <p>Если нужен максимально простой импорт, чаще всего выбирают WireGuard. Если вы пользуетесь приложениями под VLESS, откройте второй список.</p>
                 </div>
-            </section>
 
-            <section v-else-if="section === 'clients'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">Клиенты</span>
-                <h2>Выберите тип клиента</h2>
-                <p>Здесь собраны приложения для обеих схем подключения.</p>
-
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" @click="openSection('wg-clients')">WG клиенты</button>
-                    <button class="button tg-button-full" type="button" @click="openSection('vless-clients')">VLESS клиенты</button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="goBack">Назад</button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
-                </div>
-            </section>
-
-            <section v-else-if="section === 'wg-clients'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">WG клиенты</span>
-                <h2>Приложения для WireGuard</h2>
-
-                <div class="tg-link-list">
-                    <button
-                        v-for="item in wgClients"
-                        :key="item.title"
-                        class="tg-row-link tg-row-link--button"
-                        type="button"
-                        @click="openTelegramExternalLink(item.url)"
-                    >
-                        <div class="tg-row-link__copy">
-                            <strong>{{ item.title }}</strong>
-                            <span>{{ item.url }}</span>
-                        </div>
-                        <span class="tg-link-pill">Открыть</span>
+                <div class="tg-actions">
+                    <button class="tg-button tg-button--secondary" type="button" @click="openSection('wg-clients')">
+                        <AppIcon name="shield" />
+                        <span>Приложения для WireGuard</span>
+                    </button>
+                    <button class="tg-button tg-button--soft" type="button" @click="openSection('vless-clients')">
+                        <AppIcon name="link" />
+                        <span>Приложения для VLESS</span>
                     </button>
                 </div>
-
-                <div class="tg-stack-actions">
-                    <button class="button button--secondary tg-button-full" type="button" @click="goBack">Назад</button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
-                </div>
             </section>
 
-            <section v-else class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">VLESS клиенты</span>
-                <h2>Приложения для VLESS</h2>
-
-                <div class="tg-link-list">
-                    <button
-                        v-for="item in vlessClients"
-                        :key="item.title"
-                        class="tg-row-link tg-row-link--button"
-                        type="button"
-                        @click="openTelegramExternalLink(item.url)"
-                    >
-                        <div class="tg-row-link__copy">
-                            <strong>{{ item.title }}</strong>
-                            <span>{{ item.url }}</span>
-                        </div>
-                        <span class="tg-link-pill">Открыть</span>
+            <section v-else-if="section === 'wg-clients'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="goBack">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад</span>
                     </button>
+                    <h2>Приложения для WireGuard</h2>
+                    <p>Выберите магазин приложений для вашего устройства.</p>
                 </div>
 
-                <div class="tg-stack-actions">
-                    <button class="button button--secondary tg-button-full" type="button" @click="goBack">Назад</button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
+                <button
+                    v-for="item in wgClients"
+                    :key="item.title"
+                    class="tg-list-card tg-list-card--button"
+                    type="button"
+                    @click="openTelegramExternalLink(item.url)"
+                >
+                    <div class="tg-list-card__icon tg-list-card__icon--success">
+                        <AppIcon name="arrowUpRight" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">{{ item.title }}</div>
+                        <div class="tg-list-card__description">Открыть внешний магазин или сайт.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="arrowUpRight" />
+                    </div>
+                </button>
+            </section>
+
+            <section v-else class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="goBack">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад</span>
+                    </button>
+                    <h2>Приложения для VLESS</h2>
+                    <p>Откройте нужный магазин, затем вернитесь в mini app и импортируйте подписку по ссылке.</p>
                 </div>
+
+                <button
+                    v-for="item in vlessClients"
+                    :key="item.title"
+                    class="tg-list-card tg-list-card--button"
+                    type="button"
+                    @click="openTelegramExternalLink(item.url)"
+                >
+                    <div class="tg-list-card__icon">
+                        <AppIcon name="arrowUpRight" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">{{ item.title }}</div>
+                        <div class="tg-list-card__description">Открыть внешний магазин или сайт.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="arrowUpRight" />
+                    </div>
+                </button>
             </section>
         </template>
     </TelegramMiniAppFrame>

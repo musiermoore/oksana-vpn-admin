@@ -1,6 +1,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
@@ -29,28 +30,19 @@ const user = ref(null);
 const links = ref(null);
 const qrImageUrl = ref('');
 const copyToast = ref('');
-const copyToastIsError = ref(false);
 const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
 let copyToastTimeoutId = null;
 
 const hasWhiteListRoute = computed(() => Boolean(user.value?.has_vless_wl_configs && props.routes?.vless_wl));
-const whiteListLinkHref = computed(() => {
-    const route = props.routes?.vless_wl;
-
-    if (!route) {
-        return '';
-    }
-
-    return `${route}?step=links`;
-});
+const whiteListLinkHref = computed(() => (props.routes?.vless_wl ? `${props.routes.vless_wl}?step=links` : ''));
 
 const preferredLinks = computed(() => ([
     {
         key: 'happ_deep_link',
         title: 'Happ',
-        description: 'Открыть подписку напрямую в Happ.',
+        description: 'Открыть подписку сразу в Happ.',
         url: links.value?.happ_deep_link ?? '',
     },
     {
@@ -62,10 +54,10 @@ const preferredLinks = computed(() => ([
     {
         key: 'incy_deeplink',
         title: 'Incy',
-        description: 'Импортировать подписку в Incy.',
+        description: 'Открыть подписку в Incy.',
         url: links.value?.incy_deeplink ?? '',
     },
-]));
+]).filter((item) => item.url));
 
 const extraLinks = computed(() => ([
     { key: 'v2rayn_deeplink', title: 'V2RayN', url: links.value?.v2rayn_deeplink ?? '' },
@@ -75,6 +67,8 @@ const extraLinks = computed(() => ([
     { key: 'hiddify_deeplink', title: 'Hiddify', url: links.value?.hiddify_deeplink ?? '' },
 ]).filter((item) => item.url));
 
+const rawLink = computed(() => links.value?.raw_link || links.value?.link || '');
+
 const revokeQrUrl = () => {
     if (qrImageUrl.value) {
         URL.revokeObjectURL(qrImageUrl.value);
@@ -82,13 +76,8 @@ const revokeQrUrl = () => {
     }
 };
 
-const retry = () => {
-    window.location.reload();
-};
-
-const showCopyToast = (message, isError = false) => {
+const showCopyToast = (message) => {
     copyToast.value = message;
-    copyToastIsError.value = isError;
 
     if (copyToastTimeoutId) {
         window.clearTimeout(copyToastTimeoutId);
@@ -96,25 +85,26 @@ const showCopyToast = (message, isError = false) => {
 
     copyToastTimeoutId = window.setTimeout(() => {
         copyToast.value = '';
-        copyToastIsError.value = false;
         copyToastTimeoutId = null;
     }, 2200);
 };
 
-const copyRawLink = async () => {
-    const value = links.value?.raw_link ?? links.value?.link ?? '';
-
+const copyText = async (value, successMessage = 'Ссылка скопирована.') => {
     if (!value) {
-        showCopyToast('Ссылка пока недоступна.', true);
+        showCopyToast('Ссылка пока недоступна.');
         return;
     }
 
     try {
         await navigator.clipboard.writeText(value);
-        showCopyToast('Ссылка скопирована.');
+        showCopyToast(successMessage);
     } catch {
-        showCopyToast('Не удалось скопировать ссылку.', true);
+        showCopyToast('Не удалось скопировать ссылку.');
     }
+};
+
+const retry = () => {
+    window.location.reload();
 };
 
 const loadData = async () => {
@@ -129,11 +119,6 @@ const loadData = async () => {
 
     links.value = response.data ?? null;
     state.value = 'ready';
-};
-
-const openLinkResult = () => {
-    actionError.value = '';
-    step.value = 'links';
 };
 
 const openQrResult = async () => {
@@ -162,9 +147,9 @@ const sendQrToBot = async () => {
         const response = await window.axios.post(props.vless_send_qr_url, {}, {
             headers: telegramAppHeaders(),
         });
-        qrStatus.value = response.data?.message ?? 'QR-код отправлен в бот.';
+        qrStatus.value = response.data?.message ?? 'QR-код отправлен в Telegram.';
     } catch (requestError) {
-        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код в бота.');
+        actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код.');
     } finally {
         sendingQrToBot.value = false;
     }
@@ -176,7 +161,7 @@ onMounted(async () => {
     } catch (requestError) {
         if (isTelegramDebtError(requestError)) {
             state.value = 'debt';
-            debtMessage.value = normalizeTelegramAppError(requestError, 'Доступ к VLESS требует активной подписки.');
+            debtMessage.value = normalizeTelegramAppError(requestError, 'Для доступа к VLESS нужна активная подписка.');
             return;
         }
 
@@ -197,147 +182,184 @@ onBeforeUnmount(() => {
 <template>
     <TelegramMiniAppFrame
         title="VLESS"
-        description="Откройте deep links для клиентов, покажите QR-код или скопируйте raw-ссылку."
+        description="Получите ссылку для приложения, скопируйте raw link или покажите QR-код."
         :routes="routes"
         :user="user"
     >
-        <section v-if="state === 'loading'" class="tg-state-panel">
-            <div class="tg-state-orbit">
-                <span class="tg-state-orbit__core"></span>
-            </div>
-            <h2>Проверяем доступ...</h2>
-            <p>Загружаем VLESS-данные для подключения.</p>
+        <section v-if="state === 'loading'" class="tg-section">
+            <div class="tg-skeleton tg-skeleton--hero"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
         </section>
 
-        <section v-else-if="state === 'error'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">!</span>
+        <section v-else-if="state === 'error'" class="tg-state-card tg-state-card--danger">
+            <div class="tg-state-card__icon">
+                <AppIcon name="circleExclamation" />
             </div>
             <h2>Не удалось открыть VLESS</h2>
             <p>{{ error }}</p>
-            <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
+            <button class="tg-button" type="button" @click="retry">Повторить</button>
         </section>
 
-        <section v-else-if="state === 'debt'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">₽</span>
+        <section v-else-if="state === 'debt'" class="tg-state-card tg-state-card--warning">
+            <div class="tg-state-card__icon">
+                <AppIcon name="receipt" />
             </div>
-            <h2>VLESS недоступен</h2>
+            <h2>Сначала продлите подписку</h2>
             <p>{{ debtMessage }}</p>
-            <div class="tg-stack-actions">
-                <Link :href="routes?.payments" class="button tg-button-full">Подписка</Link>
-                <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
+            <div class="tg-actions">
+                <Link :href="routes?.payments" class="tg-button">Перейти к подписке</Link>
+                <Link :href="routes?.home" class="tg-button tg-button--secondary">На главную</Link>
             </div>
         </section>
 
         <template v-else>
-            <section v-if="step === 'menu'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">VLESS</span>
-                <h2>Выберите действие</h2>
-                <p>Можно сразу открыть ссылку в клиенте или показать QR-код.</p>
-
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" @click="openLinkResult">Link</button>
-                    <button class="button tg-button-full" type="button" :disabled="loadingQr" @click="openQrResult">
-                        {{ loadingQr ? 'Загружаем...' : 'QR-Code' }}
-                    </button>
-                    <Link v-if="hasWhiteListRoute" :href="whiteListLinkHref" class="button button--secondary tg-button-full">
-                        Белые списки
-                    </Link>
-                    <Link :href="routes?.home" class="button button--secondary tg-button-full">К началу</Link>
+            <section v-if="step === 'menu'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <div class="tg-tag tg-tag--primary">
+                        <AppIcon name="link" />
+                        <span>VLESS</span>
+                    </div>
+                    <h2>Как хотите подключиться?</h2>
+                    <p>Обычно удобнее открыть ссылку сразу в VPN-приложении. Если это не подходит, используйте QR-код.</p>
                 </div>
 
-                <p v-if="actionError" class="field-error">{{ actionError }}</p>
+                <button class="tg-list-card tg-list-card--button" type="button" @click="step = 'links'">
+                    <div class="tg-list-card__icon">
+                        <AppIcon name="bolt" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Добавить в VPN-приложение</div>
+                        <div class="tg-list-card__description">Deep links для Happ, V2RayTun и других клиентов.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </button>
+
+                <button class="tg-list-card tg-list-card--button" type="button" :disabled="loadingQr" @click="openQrResult">
+                    <div class="tg-list-card__icon tg-list-card__icon--blue">
+                        <AppIcon name="qrcode" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">{{ loadingQr ? 'Готовим QR-код...' : 'Показать QR-код' }}</div>
+                        <div class="tg-list-card__description">Подходит, если приложение умеет импортировать по скану.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </button>
+
+                <Link v-if="hasWhiteListRoute" :href="whiteListLinkHref" class="tg-list-card">
+                    <div class="tg-list-card__icon tg-list-card__icon--blue">
+                        <AppIcon name="lock" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">Открыть белый список</div>
+                        <div class="tg-list-card__description">Если вам выдана WL-подписка, откройте отдельные ссылки.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </Link>
             </section>
 
-            <section v-else-if="step === 'links'" class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">Link</span>
-                <h2>Подключение к VLESS</h2>
-                <p>Выберите клиент или скопируйте raw-ссылку.</p>
+            <section v-else-if="step === 'links'" class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="step = 'menu'">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад</span>
+                    </button>
+                    <h2>Откройте подписку в приложении</h2>
+                    <p>Нажмите на нужный клиент. Если приложение не поддерживает импорт по ссылке, скопируйте raw link.</p>
+                </div>
 
-                <div class="tg-link-list">
+                <button
+                    v-for="item in preferredLinks"
+                    :key="item.key"
+                    class="tg-list-card tg-list-card--button"
+                    type="button"
+                    @click="openTelegramExternalLink(item.url)"
+                >
+                    <div class="tg-list-card__icon">
+                        <AppIcon name="arrowUpRight" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">{{ item.title }}</div>
+                        <div class="tg-list-card__description">{{ item.description }}</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="arrowUpRight" />
+                    </div>
+                </button>
+
+                <div class="tg-surface-card tg-stack">
+                    <div class="tg-section__title">Ваша ссылка</div>
+                    <div class="tg-code-block">{{ rawLink || 'Ссылка недоступна' }}</div>
+                    <div class="tg-inline-actions">
+                        <button class="tg-button tg-button--secondary" type="button" @click="copyText(rawLink)">
+                            <AppIcon name="copy" />
+                            <span>Скопировать</span>
+                        </button>
+                        <button class="tg-button tg-button--soft" type="button" @click="openQrResult">
+                            <AppIcon name="qrcode" />
+                            <span>Показать QR</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="extraLinks.length > 0" class="tg-surface-card tg-stack">
+                    <div class="tg-section__title">Другие приложения</div>
                     <button
-                        v-for="item in preferredLinks"
+                        v-for="item in extraLinks"
                         :key="item.key"
-                        class="tg-row-link tg-row-link--button"
+                        class="tg-list-card tg-list-card--button tg-list-card--soft"
                         type="button"
                         @click="openTelegramExternalLink(item.url)"
                     >
-                        <div class="tg-row-link__copy">
-                            <strong>{{ item.title }}</strong>
-                            <span>{{ item.description }}</span>
+                        <div class="tg-list-card__body">
+                            <div class="tg-list-card__title">{{ item.title }}</div>
+                            <div class="tg-list-card__description">Открыть подписку в этом приложении.</div>
                         </div>
-                        <span class="tg-link-pill">Открыть</span>
+                        <div class="tg-list-card__aside">
+                            <AppIcon name="arrowUpRight" />
+                        </div>
                     </button>
                 </div>
 
-                <div class="tg-raw-link-box">
-                    <template v-if="links?.show_raw_link !== false">
-                        <strong>Raw-ссылка</strong>
-                        <code>{{ links?.raw_link || links?.link }}</code>
-                        <button class="button button--secondary tg-button-full" type="button" @click="copyRawLink">
-                            Скопировать raw-ссылку
-                        </button>
-                    </template>
-                </div>
-
-                <section v-if="extraLinks.length > 0" class="tg-extra-links">
-                    <strong>Дополнительные клиенты</strong>
-
-                    <div class="tg-chip-row">
-                        <button
-                            v-for="item in extraLinks"
-                            :key="item.key"
-                            class="tg-chip-button"
-                            type="button"
-                            @click="openTelegramExternalLink(item.url)"
-                        >
-                            {{ item.title }}
-                        </button>
-                    </div>
-                </section>
-
-                <div class="tg-stack-actions">
-                    <button class="button button--secondary tg-button-full" type="button" @click="step = 'menu'">
-                        Назад
-                    </button>
-                    <Link v-if="hasWhiteListRoute" :href="whiteListLinkHref" class="button button--secondary tg-button-full">
-                        Белые списки
-                    </Link>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
-                </div>
+                <p v-if="copyToast" class="tg-success-text">{{ copyToast }}</p>
+                <p v-if="actionError" class="tg-error">{{ actionError }}</p>
             </section>
 
-            <section v-else class="tg-panel tg-panel-stack">
-                <span class="tg-section-label">QR-Code</span>
-                <h2>QR для VLESS</h2>
-                <p>Отсканируйте код в совместимом VLESS-клиенте.</p>
+            <section v-else class="tg-section">
+                <div class="tg-page-header__copy">
+                    <button class="tg-link-button" type="button" @click="step = 'links'">
+                        <AppIcon name="chevronLeft" />
+                        <span>Назад к ссылкам</span>
+                    </button>
+                    <h2>Импорт по QR-коду</h2>
+                    <p>Откройте совместимый клиент и отсканируйте код.</p>
+                </div>
 
                 <div class="tg-qr-card">
-                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="VLESS QR code" class="tg-qr-card__image">
+                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="VLESS QR" class="tg-qr-card__image">
                 </div>
 
-                <div class="tg-stack-actions">
-                    <button class="button tg-button-full" type="button" :disabled="sendingQrToBot" @click="sendQrToBot">
-                        {{ sendingQrToBot ? 'Отправляем...' : 'Отправить в бота' }}
+                <div class="tg-actions">
+                    <button class="tg-button tg-button--secondary" type="button" :disabled="sendingQrToBot" @click="sendQrToBot">
+                        <AppIcon name="send" />
+                        <span>{{ sendingQrToBot ? 'Отправляем...' : 'Отправить QR в Telegram' }}</span>
                     </button>
-                    <button class="button button--secondary tg-button-full" type="button" @click="step = 'menu'">
-                        Назад
+                    <button class="tg-button tg-button--soft" type="button" @click="copyText(rawLink, 'Ссылка скопирована.')">
+                        <AppIcon name="copy" />
+                        <span>Скопировать ссылку</span>
                     </button>
-                    <Link :href="routes?.home" class="button tg-button-full">К началу</Link>
                 </div>
 
-                <p v-if="qrStatus" class="tg-muted">{{ qrStatus }}</p>
-                <p v-if="actionError" class="field-error">{{ actionError }}</p>
+                <p v-if="qrStatus" class="tg-success-text">{{ qrStatus }}</p>
+                <p v-if="copyToast" class="tg-success-text">{{ copyToast }}</p>
+                <p v-if="actionError" class="tg-error">{{ actionError }}</p>
             </section>
         </template>
-
-        <p
-            v-if="copyToast"
-            class="tg-copy-toast"
-            :class="{ 'is-error': copyToastIsError }"
-        >
-            {{ copyToast }}
-        </p>
     </TelegramMiniAppFrame>
 </template>

@@ -1,6 +1,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
@@ -28,7 +29,7 @@ let pollTimer = null;
 const ticketUrl = computed(() => `${props.support_tickets_url}/${props.ticket_id}`);
 const messageUrl = computed(() => `${props.support_tickets_url}/${props.ticket_id}/messages`);
 
-const formatDate = (value, options = {}) => {
+const formatDateTime = (value) => {
     if (!value) {
         return '';
     }
@@ -39,27 +40,15 @@ const formatDate = (value, options = {}) => {
         return '';
     }
 
-    return date.toLocaleDateString('ru-RU', options);
-};
-
-const formatTime = (value) => {
-    if (!value) {
-        return '';
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return '';
-    }
-
-    return date.toLocaleTimeString('ru-RU', {
+    return date.toLocaleString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
         hour: '2-digit',
         minute: '2-digit',
     });
 };
 
-const authorLabel = (item) => (item.sender_type === 'admin' ? 'Оператор' : 'Вы');
+const authorLabel = (item) => (item.sender_type === 'admin' ? 'Поддержка' : 'Вы');
 
 const loadTicket = async () => {
     const response = await window.axios.get(ticketUrl.value, {
@@ -126,77 +115,76 @@ onBeforeUnmount(() => {
 
 <template>
     <TelegramMiniAppFrame
-        title="Чат обращения"
+        title="Диалог с поддержкой"
         description="Следите за ответами и продолжайте переписку в одном месте."
         :routes="routes"
         :user="user"
     >
-        <section v-if="state === 'loading'" class="tg-state-panel">
-            <div class="tg-state-orbit">
-                <span class="tg-state-orbit__core"></span>
-            </div>
-            <h2>Загружаем данные...</h2>
-            <p>Пожалуйста, подождите</p>
-
-            <div class="tg-skeleton-list">
-                <div class="tg-skeleton-card"></div>
-                <div class="tg-skeleton-card"></div>
-                <div class="tg-skeleton-card"></div>
-            </div>
+        <section v-if="state === 'loading'" class="tg-section">
+            <div class="tg-skeleton tg-skeleton--hero"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
+            <div class="tg-skeleton tg-skeleton--row"></div>
         </section>
 
-        <section v-else-if="state === 'error'" class="tg-state-panel">
-            <div class="tg-state-orbit tg-state-orbit--danger">
-                <span class="tg-state-orbit__core">!</span>
+        <section v-else-if="state === 'error'" class="tg-state-card tg-state-card--danger">
+            <div class="tg-state-card__icon">
+                <AppIcon name="circleExclamation" />
             </div>
-            <h2>Не удалось загрузить данные</h2>
-            <p>{{ error || 'Пожалуйста, попробуйте ещё раз через пару секунд' }}</p>
-            <button class="button tg-button-full" type="button" @click="retry">Повторить</button>
+            <h2>Не удалось открыть диалог</h2>
+            <p>{{ error }}</p>
+            <button class="tg-button" type="button" @click="retry">Повторить</button>
         </section>
 
         <template v-else-if="ticket">
-            <section class="tg-panel tg-ticket-head">
-                <div class="tg-ticket-head__main">
-                    <div>
-                        <h2>Обращение #{{ ticket.id }}</h2>
-                        <p>Тема: {{ ticket.subject || 'Без темы' }}</p>
+            <section class="tg-section">
+                <div class="tg-page-header__copy">
+                    <Link :href="routes.support" class="tg-link-button">
+                        <AppIcon name="chevronLeft" />
+                        <span>К списку обращений</span>
+                    </Link>
+                    <div class="tg-tag">
+                        <AppIcon name="message" />
+                        <span>{{ telegramAppLabels[ticket.status] || ticket.status_label }}</span>
                     </div>
-
-                    <span class="badge badge--success">{{ telegramAppLabels[ticket.status] || ticket.status_label }}</span>
-                </div>
-
-                <div class="tg-ticket-head__meta">
-                    <span>{{ formatDate(ticket.created_at, { day: 'numeric', month: 'long' }) }}</span>
-                    <Link class="tg-link-button" :href="routes.support">К списку</Link>
+                    <h2>Обращение #{{ ticket.id }}</h2>
+                    <p>{{ ticket.subject || 'Без темы' }}</p>
+                    <p class="tg-caption">Создано {{ formatDateTime(ticket.created_at) }}</p>
                 </div>
             </section>
 
             <section class="tg-chat-panel">
-                <div class="tg-chat">
+                <div class="tg-chat-thread">
                     <article
                         v-for="item in ticket.messages"
                         :key="item.id"
-                        class="tg-chat__message"
-                        :class="{ 'is-admin': item.sender_type === 'admin', 'is-user': item.sender_type !== 'admin' }"
+                        class="tg-support-message"
+                        :class="{ 'tg-support-message--user': item.sender_type !== 'admin' }"
                     >
-                        <span class="tg-chat__author">{{ authorLabel(item) }}</span>
-                        <p>{{ item.message }}</p>
-                        <span class="tg-chat__time">{{ formatTime(item.created_at) }}</span>
+                        <strong>{{ authorLabel(item) }}</strong>
+                        <p class="tg-support-message__text">{{ item.message }}</p>
+                        <span class="tg-support-message__meta">{{ formatDateTime(item.created_at) }}</span>
                     </article>
                 </div>
             </section>
 
             <section class="tg-chat-composer">
-                <label class="field">
-                    <textarea v-model="message" placeholder="Напишите сообщение..."></textarea>
-                </label>
+                <div class="tg-field">
+                    <label for="support-thread-message">Новое сообщение</label>
+                    <textarea
+                        id="support-thread-message"
+                        v-model="message"
+                        class="tg-textarea"
+                        placeholder="Опишите, что изменилось или какой шаг не получается"
+                    ></textarea>
+                </div>
 
-                <button class="button tg-chat-composer__button" type="button" :disabled="sending" @click="sendMessage">
-                    {{ sending ? '...' : '➜' }}
+                <button class="tg-button" type="button" :disabled="sending" @click="sendMessage">
+                    <AppIcon name="send" />
+                    <span>{{ sending ? 'Отправляем...' : 'Отправить сообщение' }}</span>
                 </button>
-            </section>
 
-            <p v-if="error" class="field-error tg-chat-error">{{ error }}</p>
+                <p v-if="error" class="tg-error">{{ error }}</p>
+            </section>
         </template>
     </TelegramMiniAppFrame>
 </template>

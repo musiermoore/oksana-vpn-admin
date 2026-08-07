@@ -164,6 +164,7 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
     Route::get('help', [TelegramAppPageController::class, 'help'])->name('pages.help');
     Route::get('chats', [TelegramAppPageController::class, 'chats'])->name('pages.chats');
     Route::get('support', [TelegramAppPageController::class, 'support'])->name('pages.support');
+    Route::get('referrals', [TelegramAppPageController::class, 'referrals'])->name('pages.referrals');
     Route::get('support/{ticketId}', [TelegramAppPageController::class, 'supportShow'])
         ->whereNumber('ticketId')
         ->name('pages.support.show');

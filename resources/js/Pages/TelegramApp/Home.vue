@@ -8,14 +8,12 @@ import {
     getTelegramProfile,
     normalizeTelegramAppError,
     redirectFromTelegramStartParam,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
 
 const props = defineProps({
     routes: Object,
     auth_url: String,
     profile_url: String,
-    claim_referral_url: String,
 });
 
 const state = ref('loading');
@@ -23,8 +21,6 @@ const error = ref('');
 const user = ref(null);
 const telegramProfile = ref(null);
 const referralStatus = ref('');
-const referralInput = ref('');
-const claimingReferral = ref(false);
 
 const whiteListRoute = computed(() => {
     if (!props.routes?.vless_wl) {
@@ -156,19 +152,6 @@ const quickLinks = computed(() => {
 });
 
 const referral = computed(() => user.value?.referral ?? null);
-const nextLevelTarget = computed(() => {
-    const value = Number(referral.value?.next_level_active_referrals ?? 5);
-    return value > 0 ? value : 5;
-});
-const activeReferrals = computed(() => Number(referral.value?.active_referrals_count ?? 0));
-const referralsRemaining = computed(() => Math.max(0, Number(referral.value?.remaining_to_next_level ?? 0)));
-const progressPercent = computed(() => {
-    if (nextLevelTarget.value <= 0) {
-        return 100;
-    }
-
-    return Math.max(0, Math.min(100, (activeReferrals.value / nextLevelTarget.value) * 100));
-});
 
 const formatShortDate = (value) => {
     const date = new Date(value);
@@ -212,7 +195,7 @@ const shareReferralLink = () => {
         return;
     }
 
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Присоединяйся к OksanaVPN по моей ссылке')}`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Подключайся к OksanaVPN по моей ссылке. По ней можно получить бонус при первом подключении.')}`;
 
     if (window.Telegram?.WebApp?.openTelegramLink) {
         window.Telegram.WebApp.openTelegramLink(shareUrl);
@@ -220,35 +203,6 @@ const shareReferralLink = () => {
     }
 
     window.open(shareUrl, '_blank', 'noopener');
-};
-
-const claimReferral = async () => {
-    if (!referralInput.value.trim()) {
-        referralStatus.value = 'Введите код или ссылку.';
-        return;
-    }
-
-    claimingReferral.value = true;
-    referralStatus.value = '';
-
-    try {
-        const response = await window.axios.post(props.claim_referral_url, {
-            referral: referralInput.value.trim(),
-        }, {
-            headers: telegramAppHeaders(),
-        });
-
-        user.value = response.data?.user ?? user.value;
-        referralInput.value = '';
-        referralStatus.value = 'Реферер привязан.';
-    } catch (requestError) {
-        const message = normalizeTelegramAppError(requestError, 'Не удалось привязать реферера.');
-        referralStatus.value = message === 'Не удалось привязать реферера.'
-            ? 'Не удалось привязать реферера. Проверьте код или ссылку.'
-            : message;
-    } finally {
-        claimingReferral.value = false;
-    }
 };
 
 onMounted(async () => {
@@ -352,29 +306,14 @@ onMounted(async () => {
                 <div class="tg-section__head">
                     <div>
                         <div class="tg-section__title">Реферальная программа</div>
-                        <div class="tg-section__subtitle">Скидка растёт вместе с активными приглашениями.</div>
+                        <div class="tg-section__subtitle">Скопируйте ссылку или откройте правила программы.</div>
                     </div>
                 </div>
 
                 <div class="tg-surface-card tg-stack">
-                    <div class="tg-kv-grid">
-                        <div class="tg-kv">
-                            <span class="tg-kv__label">Активных друзей</span>
-                            <strong class="tg-kv__value">{{ activeReferrals }}</strong>
-                        </div>
-                        <div class="tg-kv">
-                            <span class="tg-kv__label">До следующего уровня</span>
-                            <strong class="tg-kv__value">{{ referralsRemaining }}</strong>
-                        </div>
-                        <div class="tg-kv">
-                            <span class="tg-kv__label">Скидка сейчас</span>
-                            <strong class="tg-kv__value">{{ referral?.total_discount_percent ?? 0 }}%</strong>
-                        </div>
-                    </div>
-
                     <div class="tg-note">
-                        <strong>Прогресс {{ Math.round(progressPercent) }}%</strong>
-                        <p class="tg-page-note">Следующая цель: {{ nextLevelTarget }} активных приглашений.</p>
+                        <strong>Поделитесь ссылкой</strong>
+                        <p class="tg-page-note">По вашей ссылке человек сможет подключиться с бонусом при первом старте.</p>
                     </div>
 
                     <div class="tg-inline-actions">
@@ -388,23 +327,10 @@ onMounted(async () => {
                         </button>
                     </div>
 
-                    <div class="tg-form-group">
-                        <div class="tg-field">
-                            <label for="referral-input">Привязать реферера</label>
-                            <input
-                                id="referral-input"
-                                v-model="referralInput"
-                                class="tg-input"
-                                type="text"
-                                placeholder="Вставьте ссылку или код"
-                            >
-                        </div>
-
-                        <button class="tg-button" type="button" :disabled="claimingReferral" @click="claimReferral">
-                            <AppIcon name="link" />
-                            <span>{{ claimingReferral ? 'Привязываем...' : 'Привязать' }}</span>
-                        </button>
-                    </div>
+                    <Link :href="routes?.referrals" class="tg-button tg-button--secondary">
+                        <AppIcon name="gift" />
+                        <span>Правила и условия</span>
+                    </Link>
 
                     <p v-if="referralStatus" class="tg-success-text">{{ referralStatus }}</p>
                 </div>

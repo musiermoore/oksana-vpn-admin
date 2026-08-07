@@ -46,6 +46,11 @@ class PageController extends Controller
         return $this->page('TelegramApp/Support');
     }
 
+    public function referrals()
+    {
+        return $this->page('TelegramApp/Referrals');
+    }
+
     public function supportShow(int $ticketId)
     {
         return $this->page('TelegramApp/SupportShow', [
@@ -65,6 +70,7 @@ class PageController extends Controller
                 'help' => route('telegram-app.pages.help'),
                 'chats' => route('telegram-app.pages.chats'),
                 'support' => route('telegram-app.pages.support'),
+                'referrals' => route('telegram-app.pages.referrals'),
             ],
             'auth_url' => route('telegram-app.auth.telegram'),
             'profile_url' => route('telegram-app.me'),

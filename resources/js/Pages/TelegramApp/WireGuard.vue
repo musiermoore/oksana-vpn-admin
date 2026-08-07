@@ -157,8 +157,8 @@ onBeforeUnmount(() => {
 
 <template>
     <TelegramMiniAppFrame
-        title="Подключение"
-        description="WireGuard: выберите конфиг, откройте QR или отправьте файл в Telegram."
+        title="Конфиги"
+        description="Выберите VLESS или WireGuard и получите данные для подключения."
         :routes="routes"
         :user="user"
     >
@@ -201,12 +201,35 @@ onBeforeUnmount(() => {
         <template v-else>
             <section v-if="step === 'list'" class="tg-section">
                 <div class="tg-page-header__copy">
-                    <div class="tg-tag tg-tag--success">
+                    <div class="tg-tag tg-tag--primary">
                         <AppIcon name="shield" />
-                        <span>WireGuard</span>
+                        <span>Конфиги</span>
                     </div>
-                    <h2>Выберите конфиг</h2>
-                    <p>Обычно достаточно открыть основной конфиг и сразу импортировать его в приложение.</p>
+                    <h2>Выберите тип подключения</h2>
+                    <p>Можно использовать VLESS для приложений по ссылке или WireGuard для импорта по QR и файлу.</p>
+                </div>
+
+                <Link :href="routes?.vless" class="tg-list-card">
+                    <div class="tg-list-card__icon">
+                        <AppIcon name="link" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">VLESS</div>
+                        <div class="tg-list-card__description">Ссылка для приложений, deep links и QR-код.</div>
+                    </div>
+                    <div class="tg-list-card__aside">
+                        <AppIcon name="chevronRight" />
+                    </div>
+                </Link>
+
+                <div class="tg-list-card tg-list-card--soft">
+                    <div class="tg-list-card__icon tg-list-card__icon--success">
+                        <AppIcon name="shield" />
+                    </div>
+                    <div class="tg-list-card__body">
+                        <div class="tg-list-card__title">WireGuard</div>
+                        <div class="tg-list-card__description">Конфиги для импорта по QR-коду или через файл.</div>
+                    </div>
                 </div>
 
                 <button
@@ -227,11 +250,6 @@ onBeforeUnmount(() => {
                         <AppIcon name="chevronRight" />
                     </div>
                 </button>
-
-                <div class="tg-note">
-                    <strong>Не знаете, что выбрать?</strong>
-                    <p>Начните с основного конфига. Если он не подходит, используйте резервный.</p>
-                </div>
             </section>
 
             <section v-else-if="step === 'actions'" class="tg-section">

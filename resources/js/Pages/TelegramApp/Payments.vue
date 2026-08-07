@@ -320,13 +320,11 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <div class="tg-note" :class="hasDebt ? 'tg-note--danger' : (!hasMoneyForNextMonth ? 'tg-note--warning' : 'tg-note--success')">
+                <div v-if="hasDebt || !hasMoneyForNextMonth" class="tg-note" :class="hasDebt ? 'tg-note--danger' : 'tg-note--warning'">
                     <strong v-if="hasDebt">Сначала закройте долг</strong>
                     <strong v-else-if="!hasMoneyForNextMonth">Лучше продлить заранее</strong>
-                    <strong v-else>Доступ в порядке</strong>
                     <p v-if="hasDebt">Пока долг не погашен, доступ к конфигам и ссылкам может быть ограничен.</p>
                     <p v-else-if="!hasMoneyForNextMonth">На следующий месяц может не хватить средств. Лучше продлить заранее, чтобы не потерять доступ.</p>
-                    <p v-else>Можно спокойно пользоваться VPN или сразу продлить подписку на больший срок.</p>
                 </div>
 
                 <div class="tg-actions">

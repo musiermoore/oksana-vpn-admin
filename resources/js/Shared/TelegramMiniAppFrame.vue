@@ -11,8 +11,8 @@ const props = defineProps({
 });
 
 const navItems = computed(() => ([
-    { href: props.routes?.home, label: 'Главная', icon: 'home', keys: ['/telegram-app'] },
-    { href: props.routes?.wireguard, label: 'Подключение', icon: 'shield', keys: ['/telegram-app/wireguard', '/telegram-app/vless', '/telegram-app/vless-wl'] },
+    { href: props.routes?.home, label: 'Главная', icon: 'home', keys: ['/telegram-app'], exact: true },
+    { href: props.routes?.wireguard, label: 'Конфиги', icon: 'shield', keys: ['/telegram-app/wireguard', '/telegram-app/vless', '/telegram-app/vless-wl'] },
     { href: props.routes?.payments, label: 'Подписка', icon: 'receipt', keys: ['/telegram-app/payments'] },
     { href: props.routes?.help, label: 'Помощь', icon: 'circleQuestion', keys: ['/telegram-app/help', '/telegram-app/chats'] },
     { href: props.routes?.support, label: 'Поддержка', icon: 'headset', keys: ['/telegram-app/support'] },
@@ -20,21 +20,11 @@ const navItems = computed(() => ([
 
 const currentPath = computed(() => window.location.pathname.replace(/\/+$/, '') || '/telegram-app');
 
-const profileName = computed(() => props.user?.name || props.user?.telegram || 'Гость');
-
-const profileSummary = computed(() => {
-    if (!props.user) {
-        return 'Открываем';
-    }
-
-    if (props.user?.subscription_expires_at) {
-        return 'Подписка активна';
-    }
-
-    return 'Нужна подписка';
-});
-
-const isActive = (item) => item.keys.some((prefix) => currentPath.value === prefix || currentPath.value.startsWith(`${prefix}/`));
+const isActive = (item) => item.keys.some((prefix) => (
+    item.exact
+        ? currentPath.value === prefix
+        : currentPath.value === prefix || currentPath.value.startsWith(`${prefix}/`)
+));
 </script>
 
 <template>
@@ -49,15 +39,9 @@ const isActive = (item) => item.keys.some((prefix) => currentPath.value === pref
                     </div>
 
                     <div class="tg-brand__copy">
-                        <span class="tg-brand__eyebrow">Telegram Mini App</span>
                         <h1>{{ title }}</h1>
                         <p>{{ description }}</p>
                     </div>
-                </div>
-
-                <div v-if="user" class="tg-profile-chip">
-                    <span>{{ profileSummary }}</span>
-                    <strong>{{ profileName }}</strong>
                 </div>
             </header>
 

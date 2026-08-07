@@ -89,7 +89,7 @@ const nextStepDescription = computed(() => {
         return 'Откройте подписку, выберите тариф и сразу вернитесь к подключению.';
     }
 
-    return 'Откройте подключение, выберите протокол и импортируйте конфиг в приложение.';
+    return 'Откройте конфиги, выберите VLESS или WireGuard и импортируйте данные в приложение.';
 });
 
 const primaryActionHref = computed(() => {
@@ -97,7 +97,7 @@ const primaryActionHref = computed(() => {
         return props.routes?.payments;
     }
 
-    return props.routes?.wireguard;
+    return props.routes?.vless;
 });
 
 const primaryActionLabel = computed(() => {
@@ -105,24 +105,24 @@ const primaryActionLabel = computed(() => {
         return 'Продлить подписку';
     }
 
-    return 'Подключиться сейчас';
+    return 'Открыть конфиги';
 });
 
 const quickLinks = computed(() => {
     const items = [
-        {
-            title: 'WireGuard',
-            description: 'Быстрый и стабильный вариант для большинства устройств.',
-            href: props.routes?.wireguard,
-            icon: 'shield',
-            iconClass: 'tg-list-card__icon--success',
-        },
         {
             title: 'VLESS',
             description: 'Ссылка для приложений, deep links и QR-код.',
             href: props.routes?.vless,
             icon: 'link',
             iconClass: 'tg-list-card__icon',
+        },
+        {
+            title: 'WireGuard',
+            description: 'Конфиги, QR-код и отправка файла в Telegram.',
+            href: props.routes?.wireguard,
+            icon: 'shield',
+            iconClass: 'tg-list-card__icon--success',
         },
         {
             title: 'Подписка и оплата',
@@ -272,7 +272,7 @@ onMounted(async () => {
 <template>
     <TelegramMiniAppFrame
         title="OksanaVPN"
-        description="Меньше шума, больше пользы. Каждый экран ведёт к следующему шагу."
+        description="Быстрый доступ к конфигам, подписке и поддержке."
         :routes="routes"
         :user="user"
     >
@@ -302,33 +302,20 @@ onMounted(async () => {
                     <h2>Привет, {{ greetingName }}.</h2>
                     <p>{{ nextStepDescription }}</p>
                 </div>
-
-                <div class="tg-status-card" :class="`tg-status-card--${accessTone}`">
-                    <div class="tg-status-card__top">
-                        <div>
-                            <div class="tg-status-card__title">{{ accessTitle }}</div>
-                            <div class="tg-status-card__meta">
-                                <span>{{ accessMeta }}</span>
-                                <span v-if="Number(user?.balance ?? 0) >= 0">Баланс: {{ user?.balance ?? 0 }} ₽</span>
-                                <span v-if="Number(user?.debt ?? 0) > 0">Долг: {{ user?.debt ?? 0 }} ₽</span>
-                            </div>
-                        </div>
-
-                        <div class="tg-status-card__icon">
-                            <AppIcon :name="accessTone === 'success' ? 'circleCheck' : 'receipt'" />
-                        </div>
-                    </div>
-
-                    <div class="tg-actions">
-                        <Link :href="primaryActionHref" class="tg-button">
-                            <AppIcon :name="user?.has_active_access && Number(user?.debt ?? 0) <= 0 ? 'bolt' : 'receipt'" />
-                            <span>{{ primaryActionLabel }}</span>
-                        </Link>
-                        <Link :href="routes?.help" class="tg-button tg-button--secondary">
-                            <AppIcon name="circleQuestion" />
-                            <span>Нужна помощь?</span>
-                        </Link>
-                    </div>
+                <div class="tg-status-card__meta">
+                    <span>{{ accessMeta }}</span>
+                    <span v-if="Number(user?.balance ?? 0) >= 0">Баланс: {{ user?.balance ?? 0 }} ₽</span>
+                    <span v-if="Number(user?.debt ?? 0) > 0">Долг: {{ user?.debt ?? 0 }} ₽</span>
+                </div>
+                <div class="tg-actions">
+                    <Link :href="primaryActionHref" class="tg-button">
+                        <AppIcon :name="user?.has_active_access && Number(user?.debt ?? 0) <= 0 ? 'bolt' : 'receipt'" />
+                        <span>{{ primaryActionLabel }}</span>
+                    </Link>
+                    <Link :href="routes?.help" class="tg-button tg-button--secondary">
+                        <AppIcon name="circleQuestion" />
+                        <span>Нужна помощь?</span>
+                    </Link>
                 </div>
             </section>
 

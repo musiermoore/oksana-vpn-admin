@@ -71,15 +71,6 @@
     min-width: 0;
 }
 
-.tg-brand__eyebrow {
-    display: block;
-    margin-bottom: 4px;
-    color: var(--tg-text-secondary);
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 500;
-}
-
 .tg-brand__copy h1,
 .tg-page-header__copy h2,
 .tg-card-title,
@@ -114,37 +105,6 @@
 .tg-support-message__meta {
     margin: 0;
     color: var(--tg-text-secondary);
-}
-
-.tg-profile-chip {
-    flex: 0 0 auto;
-    max-width: 140px;
-    padding: 10px 12px;
-    border: 1px solid var(--tg-border);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.88);
-    box-shadow: var(--tg-shadow);
-    text-align: left;
-}
-
-.tg-profile-chip span,
-.tg-profile-chip strong {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.tg-profile-chip span {
-    color: var(--tg-text-muted);
-    font-size: 12px;
-    line-height: 16px;
-}
-
-.tg-profile-chip strong {
-    font-size: 13px;
-    line-height: 18px;
-    font-weight: 600;
 }
 
 .tg-page-header {
@@ -464,6 +424,7 @@
 .tg-button:hover,
 .tg-button:focus-visible {
     background: var(--tg-primary-pressed);
+    color: #f8f8ff;
 }
 
 .tg-button:disabled {
@@ -476,6 +437,13 @@
     background: var(--tg-surface);
     color: var(--tg-text);
     border-color: var(--tg-border);
+}
+
+.tg-button--secondary:hover,
+.tg-button--secondary:focus-visible,
+.tg-link-button:hover,
+.tg-link-button:focus-visible {
+    color: var(--tg-text);
 }
 
 .tg-button--soft {

@@ -111,6 +111,7 @@ const paymentBreakdown = (item) => {
 };
 
 const formatPrice = (value) => `${Number(value ?? 0).toLocaleString('ru-RU')} ₽`;
+const roundMarketingPrice = (value) => Math.ceil(Number(value ?? 0) / 50) * 50;
 
 const marketingPrice = (item) => {
     if (Boolean(item?.is_trial)) {
@@ -126,13 +127,19 @@ const originalPrice = (item) => {
     }
 
     const price = Number(item?.price ?? 0);
-    const payableNow = Number(item?.payable_now ?? 0);
+    const discount = Number(item?.discount_percent ?? 0);
 
-    if (price <= 0 || price <= payableNow) {
+    if (price <= 0 || discount <= 0) {
         return '';
     }
 
-    return formatPrice(price);
+    const calculatedBasePrice = roundMarketingPrice(price / ((100 - discount) / 100));
+
+    if (calculatedBasePrice <= price) {
+        return '';
+    }
+
+    return formatPrice(calculatedBasePrice);
 };
 
 const savingsText = (item) => {
@@ -364,11 +371,16 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <div v-if="hasDebt || !hasMoneyForNextMonth" class="tg-note" :class="hasDebt ? 'tg-note--danger' : 'tg-note--warning'">
+                <div v-if="hasDebt || (!hasMoneyForNextMonth && !shouldPromoteTrial)" class="tg-note" :class="hasDebt ? 'tg-note--danger' : 'tg-note--warning'">
                     <strong v-if="hasDebt">Сначала закройте долг</strong>
                     <strong v-else-if="!hasMoneyForNextMonth">Лучше продлить заранее</strong>
                     <p v-if="hasDebt">Пока долг не погашен, доступ к конфигам и ссылкам может быть ограничен.</p>
                     <p v-else-if="!hasMoneyForNextMonth">На следующий месяц может не хватить средств. Лучше продлить заранее, чтобы не потерять доступ.</p>
+                </div>
+
+                <div v-if="shouldPromoteTrial" class="tg-note tg-note--success">
+                    <strong>Сначала попробуйте бесплатно</strong>
+                    <p>Для новых пользователей доступен пробный период. При выборе этого варианта будет активирован пробный период на 2 дня.</p>
                 </div>
 
                 <div class="tg-actions">
@@ -380,11 +392,6 @@ onMounted(async () => {
                         <AppIcon name="gift" />
                         <span>Купить подарочный код</span>
                     </button>
-                </div>
-
-                <div v-if="shouldPromoteTrial" class="tg-note tg-note--success">
-                    <strong>Сначала попробуйте бесплатно</strong>
-                    <p>Для новых пользователей доступен пробный период. Его можно активировать прямо на следующем шаге.</p>
                 </div>
 
                 <p v-if="packageLoadError" class="tg-error">{{ packageLoadError }}</p>
@@ -458,7 +465,7 @@ onMounted(async () => {
                         <span>Назад</span>
                     </button>
                     <h2>{{ purchaseMode === 'GIFT' ? 'Выберите срок подарочного кода' : 'Выберите срок подписки' }}</h2>
-                    <p>{{ purchaseMode === 'GIFT' ? 'После оплаты получите код, который можно передать другому человеку.' : 'Сумма к оплате уже учитывает доступный баланс и скидки.' }}</p>
+                    <p>{{ purchaseMode === 'GIFT' ? 'После оплаты получите код, который можно передать другому человеку.' : (shouldPromoteTrial ? 'Можно сразу активировать пробный период на 2 дня или выбрать платный тариф.' : 'Сумма к оплате уже учитывает доступный баланс и скидки.') }}</p>
                 </div>
 
                 <div v-if="availablePackages.length === 0" class="tg-state-card">
@@ -485,7 +492,7 @@ onMounted(async () => {
                         <div class="tg-list-card__title">
                             {{ item.is_trial ? 'Пробный период' : `${durationText(item)} — ${marketingPrice(item)}` }}
                         </div>
-                        <div class="tg-list-card__description">{{ paymentBreakdown(item) }}</div>
+                        <div class="tg-list-card__description">{{ item.is_trial ? 'Будет активирован пробный период на 2 дня.' : paymentBreakdown(item) }}</div>
                         <div v-if="originalPrice(item) || savingsText(item)" class="tg-price-meta">
                             <span v-if="originalPrice(item)" class="tg-price-meta__old">{{ originalPrice(item) }}</span>
                             <span v-if="savingsText(item)" class="tg-tag tg-tag--success">{{ savingsText(item) }}</span>

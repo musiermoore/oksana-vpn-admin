@@ -30,6 +30,7 @@ import {
     faLock,
     faListCheck,
     faMagnifyingGlass,
+    faMoon,
     faPaperPlane,
     faPlus,
     faQrcode,
@@ -48,6 +49,7 @@ import {
     faWrench,
     faXmark,
     faArrowRight,
+    faSun,
 } from '@fortawesome/free-solid-svg-icons';
 
 const props = defineProps({
@@ -89,6 +91,7 @@ const iconDefinition = computed(() => {
         lock: faLock,
         log: faFileLines,
         message: faEnvelope,
+        moon: faMoon,
         nodes: faDiagramProject,
         plus: faPlus,
         qrcode: faQrcode,
@@ -106,6 +109,7 @@ const iconDefinition = computed(() => {
         users: faUsers,
         wallet: faWallet,
         wrench: faWrench,
+        sun: faSun,
     };
 
     return icons[props.name] ?? icons.circle;

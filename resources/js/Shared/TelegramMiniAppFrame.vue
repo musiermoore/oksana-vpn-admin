@@ -1,7 +1,9 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AppIcon from './AppIcon.vue';
+
+const THEME_STORAGE_KEY = 'telegram-mini-app-theme';
 
 const props = defineProps({
     title: String,
@@ -9,6 +11,8 @@ const props = defineProps({
     routes: Object,
     user: Object,
 });
+
+const theme = ref('light');
 
 const navItems = computed(() => ([
     { href: props.routes?.home, label: 'Главная', icon: 'home', keys: ['/telegram-app'], exact: true },
@@ -19,18 +23,42 @@ const navItems = computed(() => ([
 ]));
 
 const currentPath = computed(() => window.location.pathname.replace(/\/+$/, '') || '/telegram-app');
+const themeLabel = computed(() => theme.value === 'dark' ? 'Светлая тема' : 'Тёмная тема');
+
+const resolveInitialTheme = () => {
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+        return savedTheme;
+    }
+
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const toggleTheme = () => {
+    theme.value = theme.value === 'dark' ? 'light' : 'dark';
+};
 
 const isActive = (item) => item.keys.some((prefix) => (
     item.exact
         ? currentPath.value === prefix
         : currentPath.value === prefix || currentPath.value.startsWith(`${prefix}/`)
 ));
+
+onMounted(() => {
+    theme.value = resolveInitialTheme();
+});
+
+watch(theme, (value) => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, value);
+    document.documentElement.style.colorScheme = value;
+});
 </script>
 
 <template>
     <Head :title="title" />
 
-    <div class="tg-app">
+    <div class="tg-app" :data-theme="theme">
         <div class="tg-shell">
             <header class="tg-topbar">
                 <div class="tg-brand">
@@ -43,6 +71,10 @@ const isActive = (item) => item.keys.some((prefix) => (
                         <p>{{ description }}</p>
                     </div>
                 </div>
+
+                <button class="tg-icon-button tg-theme-toggle" type="button" :aria-label="themeLabel" @click="toggleTheme">
+                    <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" />
+                </button>
             </header>
 
             <main class="tg-main">

@@ -5,7 +5,6 @@ import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
-    getTelegramProfile,
     normalizeTelegramAppError,
     redirectFromTelegramStartParam,
 } from '../../lib/telegramMiniApp';
@@ -19,7 +18,6 @@ const props = defineProps({
 const state = ref('loading');
 const error = ref('');
 const user = ref(null);
-const telegramProfile = ref(null);
 const referralStatus = ref('');
 
 const whiteListRoute = computed(() => {
@@ -62,30 +60,16 @@ const accessMeta = computed(() => {
     return `До ${formatShortDate(user.value.subscription_expires_at)}`;
 });
 
-const greetingName = computed(() => telegramProfile.value?.first_name || user.value?.name || 'друг');
-
-const nextStepTitle = computed(() => {
+const nextSectionSubtitle = computed(() => {
     if (Number(user.value?.debt ?? 0) > 0) {
-        return 'Сначала закройте долг';
+        return 'Сначала закройте долг, затем можно снова открыть конфиги.';
     }
 
     if (!user.value?.has_active_access) {
-        return 'Сначала оформите подписку';
+        return 'Сначала оформите подписку, затем откройте конфиги.';
     }
 
-    return 'Подключитесь за пару шагов';
-});
-
-const nextStepDescription = computed(() => {
-    if (Number(user.value?.debt ?? 0) > 0) {
-        return 'После оплаты доступ к WireGuard и VLESS снова заработает.';
-    }
-
-    if (!user.value?.has_active_access) {
-        return 'Откройте подписку, выберите тариф и сразу вернитесь к подключению.';
-    }
-
-    return 'Откройте конфиги, выберите VLESS или WireGuard и импортируйте данные в приложение.';
+    return 'Выберите нужный раздел.';
 });
 
 const primaryActionHref = computed(() => {
@@ -206,8 +190,6 @@ const shareReferralLink = () => {
 };
 
 onMounted(async () => {
-    telegramProfile.value = getTelegramProfile();
-
     if (redirectFromTelegramStartParam(props.routes)) {
         return;
     }
@@ -255,11 +237,8 @@ onMounted(async () => {
                         <AppIcon :name="accessTone === 'success' ? 'circleCheck' : 'circleExclamation'" />
                         <span>{{ accessTitle }}</span>
                     </div>
-                    <h2>Привет, {{ greetingName }}.</h2>
-                    <p>{{ nextStepDescription }}</p>
                 </div>
                 <div class="tg-status-card__meta">
-                    <span>{{ accessMeta }}</span>
                     <span v-if="hasPositiveBalance">Баланс: {{ user?.balance ?? 0 }} ₽</span>
                     <span v-if="Number(user?.debt ?? 0) > 0">Долг: {{ user?.debt ?? 0 }} ₽</span>
                 </div>
@@ -279,7 +258,7 @@ onMounted(async () => {
                 <div class="tg-section__head">
                     <div>
                         <div class="tg-section__title">Что сделать дальше?</div>
-                        <div class="tg-section__subtitle">{{ nextStepTitle }}</div>
+                        <div class="tg-section__subtitle">{{ nextSectionSubtitle }}</div>
                     </div>
                 </div>
 

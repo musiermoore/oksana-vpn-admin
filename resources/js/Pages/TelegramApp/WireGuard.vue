@@ -19,7 +19,7 @@ const props = defineProps({
 });
 
 const state = ref('loading');
-const step = ref('list');
+const step = ref('hub');
 const error = ref('');
 const debtMessage = ref('');
 const actionError = ref('');

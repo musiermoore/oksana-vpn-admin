@@ -37,6 +37,7 @@ let copyToastTimeoutId = null;
 
 const hasWhiteListRoute = computed(() => Boolean(user.value?.has_vless_wl_configs && props.routes?.vless_wl));
 const whiteListLinkHref = computed(() => (props.routes?.vless_wl ? `${props.routes.vless_wl}?step=links` : ''));
+const configHubHref = computed(() => props.routes?.wireguard || '/telegram-app/wireguard');
 
 const preferredLinks = computed(() => ([
     {
@@ -255,8 +256,8 @@ onBeforeUnmount(() => {
                         <AppIcon name="lock" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Открыть белый список</div>
-                        <div class="tg-list-card__description">Если вам выдана WL-подписка, откройте отдельные ссылки.</div>
+                        <div class="tg-list-card__title">VLESS (Белые списки)</div>
+                        <div class="tg-list-card__description">Отдельные ссылки с белыми списками для поддерживаемых клиентов.</div>
                     </div>
                     <div class="tg-list-card__aside">
                         <AppIcon name="chevronRight" />
@@ -266,10 +267,10 @@ onBeforeUnmount(() => {
 
             <section v-else-if="step === 'links'" class="tg-section">
                 <div class="tg-page-header__copy">
-                    <button class="tg-link-button" type="button" @click="step = 'menu'">
+                    <Link class="tg-link-button" :href="configHubHref">
                         <AppIcon name="chevronLeft" />
-                        <span>Назад</span>
-                    </button>
+                        <span>Все конфиги</span>
+                    </Link>
                     <h2>Откройте подписку в приложении</h2>
                     <p>Нажмите на нужный клиент. Если приложение не поддерживает импорт по ссылке, скопируйте raw link.</p>
                 </div>
@@ -333,10 +334,10 @@ onBeforeUnmount(() => {
 
             <section v-else class="tg-section">
                 <div class="tg-page-header__copy">
-                    <button class="tg-link-button" type="button" @click="step = 'links'">
+                    <Link class="tg-link-button" :href="configHubHref">
                         <AppIcon name="chevronLeft" />
-                        <span>Назад к ссылкам</span>
-                    </button>
+                        <span>Все конфиги</span>
+                    </Link>
                     <h2>Импорт по QR-коду</h2>
                     <p>Откройте совместимый клиент и отсканируйте код.</p>
                 </div>

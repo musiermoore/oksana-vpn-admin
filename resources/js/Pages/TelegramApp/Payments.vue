@@ -41,6 +41,9 @@ const availablePackages = computed(() => (
         : packages.value
 ));
 
+const hasTrialPackage = computed(() => packages.value.some((item) => Boolean(item?.is_trial)));
+const shouldPromoteTrial = computed(() => !user.value?.subscription_expires_at && !hasDebt.value && hasTrialPackage.value);
+
 const selectedPackage = computed(() => (
     availablePackages.value.find((item) => item.month === selectedMonth.value)
     ?? availablePackages.value[0]
@@ -107,6 +110,41 @@ const paymentBreakdown = (item) => {
     return `${payableNow} ₽ сейчас, ${balanceApplied} ₽ спишется с баланса`;
 };
 
+const formatPrice = (value) => `${Number(value ?? 0).toLocaleString('ru-RU')} ₽`;
+
+const marketingPrice = (item) => {
+    if (Boolean(item?.is_trial)) {
+        return 'Бесплатно';
+    }
+
+    return formatPrice(item?.payable_now ?? item?.price ?? 0);
+};
+
+const originalPrice = (item) => {
+    if (Boolean(item?.is_trial)) {
+        return '';
+    }
+
+    const price = Number(item?.price ?? 0);
+    const payableNow = Number(item?.payable_now ?? 0);
+
+    if (price <= 0 || price <= payableNow) {
+        return '';
+    }
+
+    return formatPrice(price);
+};
+
+const savingsText = (item) => {
+    const discount = Number(item?.discount_percent ?? 0);
+
+    if (discount <= 0 || Boolean(item?.is_trial)) {
+        return '';
+    }
+
+    return `Экономия ${discount}%`;
+};
+
 const formatCode = (value) => {
     if (!value) {
         return '--------';
@@ -150,6 +188,10 @@ const openPackageSelectFor = async (mode) => {
     try {
         await loadPackages();
         chooseDefaultPackage();
+        if (mode === 'PERSONAL' && shouldPromoteTrial.value) {
+            selectedMonth.value = availablePackages.value.find((item) => Boolean(item.is_trial))?.month
+                ?? selectedMonth.value;
+        }
         screen.value = 'packages';
     } catch (requestError) {
         packageLoadError.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить тарифы.');
@@ -257,6 +299,7 @@ onMounted(async () => {
 
     try {
         await loadProfile();
+        await loadPackages();
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';
@@ -331,12 +374,17 @@ onMounted(async () => {
                 <div class="tg-actions">
                     <button class="tg-button" type="button" @click="openPackageSelectFor('PERSONAL')">
                         <AppIcon name="receipt" />
-                        <span>Продлить подписку</span>
+                        <span>{{ shouldPromoteTrial ? 'Пробный период' : 'Продлить подписку' }}</span>
                     </button>
                     <button class="tg-button tg-button--secondary" type="button" @click="openPackageSelectFor('GIFT')">
                         <AppIcon name="gift" />
                         <span>Купить подарочный код</span>
                     </button>
+                </div>
+
+                <div v-if="shouldPromoteTrial" class="tg-note tg-note--success">
+                    <strong>Сначала попробуйте бесплатно</strong>
+                    <p>Для новых пользователей доступен пробный период. Его можно активировать прямо на следующем шаге.</p>
                 </div>
 
                 <p v-if="packageLoadError" class="tg-error">{{ packageLoadError }}</p>
@@ -434,11 +482,17 @@ onMounted(async () => {
                         <AppIcon :name="item.is_trial ? 'circleCheck' : 'receipt'" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">{{ item.is_trial ? 'Пробный доступ' : durationText(item) }}</div>
+                        <div class="tg-list-card__title">
+                            {{ item.is_trial ? 'Пробный период' : `${durationText(item)} — ${marketingPrice(item)}` }}
+                        </div>
                         <div class="tg-list-card__description">{{ paymentBreakdown(item) }}</div>
+                        <div v-if="originalPrice(item) || savingsText(item)" class="tg-price-meta">
+                            <span v-if="originalPrice(item)" class="tg-price-meta__old">{{ originalPrice(item) }}</span>
+                            <span v-if="savingsText(item)" class="tg-tag tg-tag--success">{{ savingsText(item) }}</span>
+                        </div>
                     </div>
                     <div class="tg-list-card__aside">
-                        <span class="tg-tag tg-tag--primary">{{ item.is_trial ? '0 ₽' : `${item.payable_now} ₽` }}</span>
+                        <span class="tg-tag tg-tag--primary">{{ item.is_trial ? '0 ₽' : formatPrice(item.payable_now) }}</span>
                     </div>
                 </button>
 

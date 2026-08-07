@@ -7,18 +7,21 @@ import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
     redirectFromTelegramStartParam,
+    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
 
 const props = defineProps({
     routes: Object,
     auth_url: String,
     profile_url: String,
+    subscription_packages_url: String,
 });
 
 const state = ref('loading');
 const error = ref('');
 const user = ref(null);
 const referralStatus = ref('');
+const packages = ref([]);
 
 const whiteListRoute = computed(() => {
     if (!props.routes?.vless_wl) {
@@ -80,7 +83,13 @@ const primaryActionHref = computed(() => {
     return props.routes?.wireguard;
 });
 
+const hasTrialPackage = computed(() => packages.value.some((item) => Boolean(item?.is_trial)));
+
 const primaryActionLabel = computed(() => {
+    if (!user.value?.subscription_expires_at && Number(user.value?.debt ?? 0) <= 0 && hasTrialPackage.value) {
+        return 'Пробный период';
+    }
+
     if (!user.value?.has_active_access || Number(user.value?.debt ?? 0) > 0) {
         return 'Продлить подписку';
     }
@@ -155,6 +164,14 @@ const retry = () => {
     window.location.reload();
 };
 
+const loadPackages = async () => {
+    const response = await window.axios.get(props.subscription_packages_url, {
+        headers: telegramAppHeaders(),
+    });
+
+    packages.value = response.data?.data ?? [];
+};
+
 const copyReferralLink = async () => {
     const link = referral.value?.referral_link;
 
@@ -199,6 +216,7 @@ onMounted(async () => {
             authUrl: props.auth_url,
             profileUrl: props.profile_url,
         });
+        await loadPackages();
         state.value = 'ready';
     } catch (requestError) {
         state.value = 'error';

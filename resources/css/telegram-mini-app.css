@@ -386,6 +386,20 @@
     line-height: 18px;
 }
 
+.tg-price-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tg-price-meta__old {
+    color: var(--tg-text-muted);
+    font-size: 12px;
+    line-height: 16px;
+    text-decoration: line-through;
+}
+
 .tg-list-card__aside {
     display: inline-flex;
     align-items: center;

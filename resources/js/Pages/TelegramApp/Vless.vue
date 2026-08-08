@@ -223,7 +223,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="shield" />
                         <span>Стандартные</span>
                     </div>
-                    <h2>2 способа подключения</h2>
+                    <h2>Способы подключения</h2>
                 </div>
 
                 <button class="tg-list-card tg-list-card--button" type="button" @click="step = 'links'">
@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="bolt" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">1. Добавить в VPN-приложение</div>
+                        <div class="tg-list-card__title">Добавить в VPN-приложение</div>
                         <div class="tg-list-card__description">Быстрое подключение для Happ, V2RayTun и других клиентов.</div>
                     </div>
                     <div class="tg-list-card__aside">
@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="qrcode" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">{{ loadingQr ? 'Готовим QR-код...' : '2. Показать QR-код' }}</div>
+                        <div class="tg-list-card__title">{{ loadingQr ? 'Готовим QR-код...' : 'Показать QR-код' }}</div>
                         <div class="tg-list-card__description">Подходит, если приложение умеет импортировать по скану.</div>
                     </div>
                     <div class="tg-list-card__aside">

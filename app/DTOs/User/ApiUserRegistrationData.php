@@ -10,7 +10,7 @@ class ApiUserRegistrationData extends Data
 {
     public function __construct(
         public string $telegramId,
-        public string $telegram = '',
+        public ?string $telegram = null,
         public ?string $name = null,
         public ?string $startParam = null,
     ) {}

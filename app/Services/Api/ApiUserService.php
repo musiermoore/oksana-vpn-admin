@@ -345,9 +345,9 @@ class ApiUserService
         return $this->isVlessType($type) || $this->isWireGuardType($type);
     }
 
-    private function normalizeTelegram(string $telegram): string
+    private function normalizeTelegram(?string $telegram): string
     {
-        $telegram = trim($telegram);
+        $telegram = trim((string) $telegram);
 
         if ($telegram === '') {
             return '';

@@ -49,6 +49,27 @@ class ApiUserRegistrationTest extends TestCase
         ]);
     }
 
+    public function test_register_endpoint_allows_null_telegram_username(): void
+    {
+        $response = $this->postJson('/api/users/register', [
+            'telegram' => null,
+            'telegram_id' => '24681012',
+            'name' => 'Optional Username',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('user.telegram', null)
+            ->assertJsonPath('user.telegram_id', '24681012')
+            ->assertJsonPath('user.name', 'Optional Username');
+
+        $this->assertDatabaseHas('users', [
+            'telegram' => null,
+            'telegram_id' => '24681012',
+            'name' => 'Optional Username',
+        ]);
+    }
+
     public function test_register_endpoint_allows_existing_user_to_attach_referrer_once_from_start_param(): void
     {
         $referrer = User::query()->create([

@@ -2,6 +2,9 @@ const TOKEN_KEY = 'telegram-mini-app-token';
 const TELEGRAM_USER_ID_KEY = 'telegram-mini-app-telegram-user-id';
 const START_PARAM_KEY = 'telegram-mini-app-last-start-param';
 const START_PARAM_AUTH_KEY = 'telegram-mini-app-last-auth-start-param';
+const INIT_DATA_KEY = 'telegram-mini-app-last-init-data';
+const INIT_DATA_RETRY_ATTEMPTS = 3;
+const INIT_DATA_RETRY_DELAY_MS = 250;
 
 export const telegramAppLabels = {
     open: 'Открыт',
@@ -73,6 +76,24 @@ export const getTelegramStartParam = () => {
     return queryStartParam?.trim() || '';
 };
 
+export const getTelegramInitData = () => {
+    const webAppInitData = window.Telegram?.WebApp?.initData?.trim() ?? '';
+
+    if (webAppInitData !== '') {
+        window.sessionStorage.setItem(INIT_DATA_KEY, webAppInitData);
+        return webAppInitData;
+    }
+
+    const queryInitData = new URLSearchParams(window.location.search).get('tgWebAppData')?.trim() ?? '';
+
+    if (queryInitData !== '') {
+        window.sessionStorage.setItem(INIT_DATA_KEY, queryInitData);
+        return queryInitData;
+    }
+
+    return window.sessionStorage.getItem(INIT_DATA_KEY)?.trim() ?? '';
+};
+
 export const isReferralStartParam = (value) => /^ref_\d+$/.test((value ?? '').trim());
 
 export const redirectFromTelegramStartParam = (routes) => {
@@ -110,7 +131,7 @@ export const redirectFromTelegramStartParam = (routes) => {
 };
 
 export const requireTelegramInitData = () => {
-    const initData = window.Telegram?.WebApp?.initData ?? '';
+    const initData = getTelegramInitData();
 
     if (initData === '') {
         throw new Error('Откройте приложение через Telegram.');
@@ -119,8 +140,28 @@ export const requireTelegramInitData = () => {
     return initData;
 };
 
+const wait = (delayMs) => new Promise((resolve) => {
+    window.setTimeout(resolve, delayMs);
+});
+
+export const resolveTelegramInitData = async (attempts = INIT_DATA_RETRY_ATTEMPTS, delayMs = INIT_DATA_RETRY_DELAY_MS) => {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+        const initData = getTelegramInitData();
+
+        if (initData !== '') {
+            return initData;
+        }
+
+        if (attempt < attempts - 1) {
+            await wait(delayMs);
+        }
+    }
+
+    throw new Error('Откройте приложение через Telegram.');
+};
+
 export const loginTelegramApp = async (authUrl) => {
-    const initData = requireTelegramInitData();
+    const initData = await resolveTelegramInitData();
     const response = await window.axios.post(authUrl, {
         init_data: initData,
     });

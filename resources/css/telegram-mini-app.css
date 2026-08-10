@@ -540,17 +540,17 @@
 
 .tg-theme-toggle {
     flex: 0 0 auto;
-    background: #fff8db;
-    border-color: rgba(245, 158, 11, 0.22);
-    color: #d97706;
-    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.14);
+    background: var(--tg-surface-secondary);
+    border-color: var(--tg-border);
+    color: #6c4cf5;
+    box-shadow: 0 8px 20px rgba(108, 76, 245, 0.08);
 }
 
 .tg-theme-toggle:hover,
 .tg-theme-toggle:focus-visible {
-    background: #fff1b8;
-    border-color: rgba(245, 158, 11, 0.32);
-    color: #b45309;
+    background: #ece8ff;
+    border-color: rgba(108, 76, 245, 0.24);
+    color: #5b3de2;
 }
 
 .tg-app[data-theme="dark"] .tg-theme-toggle {

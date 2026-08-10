@@ -73,7 +73,7 @@ watch(theme, (value) => {
                 </div>
 
                 <button class="tg-icon-button tg-theme-toggle" type="button" :aria-label="themeLabel" @click="toggleTheme">
-                    <AppIcon :name="theme === 'dark' ? 'moon' : 'sun'" />
+                    <AppIcon name="lightbulb" />
                 </button>
             </header>
 

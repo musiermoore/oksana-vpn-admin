@@ -540,7 +540,31 @@
 
 .tg-theme-toggle {
     flex: 0 0 auto;
-    background: var(--tg-surface);
+    background: #fff8db;
+    border-color: rgba(245, 158, 11, 0.22);
+    color: #d97706;
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.14);
+}
+
+.tg-theme-toggle:hover,
+.tg-theme-toggle:focus-visible {
+    background: #fff1b8;
+    border-color: rgba(245, 158, 11, 0.32);
+    color: #b45309;
+}
+
+.tg-app[data-theme="dark"] .tg-theme-toggle {
+    background: rgba(124, 98, 255, 0.16);
+    border-color: rgba(124, 98, 255, 0.3);
+    color: #c9bcff;
+    box-shadow: 0 8px 24px rgba(76, 54, 170, 0.28);
+}
+
+.tg-app[data-theme="dark"] .tg-theme-toggle:hover,
+.tg-app[data-theme="dark"] .tg-theme-toggle:focus-visible {
+    background: rgba(124, 98, 255, 0.24);
+    border-color: rgba(124, 98, 255, 0.42);
+    color: #efeaff;
 }
 
 .tg-icon-button--soft {

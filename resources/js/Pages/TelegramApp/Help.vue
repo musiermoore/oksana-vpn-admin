@@ -26,13 +26,20 @@ const wgClients = [
     { title: 'Amnezia для Android', url: 'https://play.google.com/store/apps/details?id=org.amnezia.vpn' },
     { title: 'WireGuard для iPhone', url: 'https://apps.apple.com/us/app/wireguard/id1441195209' },
     { title: 'WireGuard для Android', url: 'https://play.google.com/store/apps/details?id=com.wireguard.android' },
+    { title: 'WireGuard для Windows', url: 'https://download.wireguard.com/windows-client/' },
+    { title: 'WireGuard для macOS', url: 'https://www.wireguard.com/install/' },
 ];
 
 const vlessClients = [
+    { title: 'Incy для iPhone', url: 'https://apps.apple.com/us/app/incy/id6756943388' },
+    { title: 'Incy для Android', url: 'https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru' },
+    { title: 'Incy официальный сайт', url: 'https://incy.cc/' },
+    { title: 'Happ для iPhone', url: 'https://apps.apple.com/us/app/happ-proxy-utility/id6504287215' },
+    { title: 'Happ для Android', url: 'https://play.google.com/store/apps/details?id=su.happ.crypto' },
+    { title: 'Happ официальный сайт', url: 'https://www.happ.su/main/ru' },
     { title: 'V2RayTun для iPhone', url: 'https://apps.apple.com/us/app/v2raytun/id6476628951' },
     { title: 'V2RayTun для Android', url: 'https://play.google.com/store/apps/details?id=com.v2raytun.android' },
-    { title: 'Happ для Android', url: 'https://play.google.com/store/apps/details?id=su.happ.crypto' },
-    { title: 'Happ для iPhone', url: 'https://apps.apple.com/us/app/happ-proxy-utility/id6504287215' },
+    { title: 'V2RayTun официальный сайт', url: 'https://v2raytun.com/' },
 ];
 
 const retry = () => {
@@ -121,8 +128,8 @@ onMounted(async () => {
                         <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Как подключить VLESS</div>
-                        <div class="tg-list-card__description">Быстрое подключение, прямая ссылка и QR-код.</div>
+                        <div class="tg-list-card__title">Как подключить стандартные</div>
+                        <div class="tg-list-card__description">Быстрое подключение, прямая ссылка и QR-код для стандартных конфигов.</div>
                     </div>
                     <div class="tg-list-card__aside">
                         <AppIcon name="chevronRight" />
@@ -184,14 +191,14 @@ onMounted(async () => {
                         <AppIcon name="chevronLeft" />
                         <span>Назад</span>
                     </button>
-                    <h2>Подключение VLESS</h2>
-                    <p>Откройте стандартные конфиги, нажмите на подходящее приложение и импортируйте подписку. Если приложение не открывает ссылку, используйте прямую ссылку или QR-код.</p>
+                    <h2>Подключение стандартных конфигов</h2>
+                    <p>Откройте стандартные конфиги, выберите подходящее приложение и импортируйте конфигурацию. Если приложение не открывает ссылку, используйте прямую ссылку или QR-код.</p>
                 </div>
 
                 <div class="tg-actions">
                     <button class="tg-button tg-button--secondary" type="button" @click="openSection('vless-clients')">
                         <AppIcon name="download" />
-                        <span>Скачать приложение для VLESS</span>
+                        <span>Скачать приложение для стандартных</span>
                     </button>
                     <Link :href="routes?.vless" class="tg-button">
                         <AppIcon name="shield" />
@@ -207,7 +214,7 @@ onMounted(async () => {
                         <span>Назад</span>
                     </button>
                     <h2>Выберите тип подключения</h2>
-                    <p>Если нужен максимально простой импорт, чаще всего выбирают WireGuard. Если вы пользуетесь приложениями под VLESS, откройте второй список.</p>
+                    <p>Если нужен максимально простой импорт, чаще всего выбирают WireGuard. Если используете стандартные конфиги, откройте второй список.</p>
                 </div>
 
                 <div class="tg-actions">
@@ -217,7 +224,7 @@ onMounted(async () => {
                     </button>
                     <button class="tg-button tg-button--soft" type="button" @click="openSection('vless-clients')">
                         <AppIcon name="link" />
-                        <span>Приложения для VLESS</span>
+                        <span>Приложения для стандартных</span>
                     </button>
                 </div>
             </section>
@@ -258,8 +265,8 @@ onMounted(async () => {
                         <AppIcon name="chevronLeft" />
                         <span>Назад</span>
                     </button>
-                    <h2>Приложения для VLESS</h2>
-                    <p>Откройте нужный магазин, затем вернитесь в mini app и импортируйте подписку по ссылке.</p>
+                    <h2>Приложения для стандартных конфигов</h2>
+                    <p>Откройте нужный магазин или официальный сайт, затем вернитесь в mini app и импортируйте конфигурацию по ссылке.</p>
                 </div>
 
                 <button

@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
@@ -27,6 +27,7 @@ const debtMessage = ref('');
 const user = ref(null);
 const links = ref(null);
 const copyToast = ref('');
+const copiedUrl = ref('');
 let copyToastTimeoutId = null;
 
 const preferredLinks = computed(() => ([
@@ -73,14 +74,17 @@ const showCopyToast = (message) => {
 
 const copyText = async (value) => {
     if (!value) {
+        copiedUrl.value = '';
         showCopyToast('Ссылка недоступна.');
         return;
     }
 
     try {
         await navigator.clipboard.writeText(value);
-        showCopyToast('Ссылка скопирована.');
+        copiedUrl.value = value;
+        showCopyToast('Успешно скопировано.');
     } catch {
+        copiedUrl.value = '';
         showCopyToast('Не удалось скопировать ссылку.');
     }
 };
@@ -115,6 +119,12 @@ onMounted(async () => {
 
         state.value = 'error';
         error.value = normalizeTelegramAppError(requestError, 'Не удалось открыть белый список VLESS.');
+    }
+});
+
+onBeforeUnmount(() => {
+    if (copyToastTimeoutId) {
+        window.clearTimeout(copyToastTimeoutId);
     }
 });
 </script>
@@ -157,7 +167,7 @@ onMounted(async () => {
                 <div class="tg-page-header__copy">
                     <Link class="tg-link-button" :href="routes?.wireguard">
                         <AppIcon name="chevronLeft" />
-                        <span>Все конфиги</span>
+                        <span>Назад ко всем конфигам</span>
                     </Link>
                     <h2>Выберите приложение</h2>
                     <p>Откройте клиент по ссылке. Если хотите сохранить ссылку вручную, скопируйте её.</p>
@@ -178,8 +188,15 @@ onMounted(async () => {
                         <div class="tg-list-card__description">{{ item.description }}</div>
                     </div>
                     <div class="tg-inline-actions">
-                        <button class="tg-icon-button tg-icon-button--soft" type="button" @click.stop="copyText(item.url)">
-                            <AppIcon name="copy" />
+                        <button
+                            class="tg-icon-button tg-icon-button--soft tg-copy-button"
+                            :class="{ 'is-copied': copiedUrl === item.url }"
+                            type="button"
+                            :aria-label="copiedUrl === item.url ? 'Успешно скопировано' : 'Скопировать ссылку'"
+                            :title="copiedUrl === item.url ? 'Успешно скопировано' : 'Скопировать ссылку'"
+                            @click.stop="copyText(item.url)"
+                        >
+                            <AppIcon :name="copiedUrl === item.url ? 'circleCheck' : 'copy'" />
                         </button>
                     </div>
                 </button>
@@ -198,8 +215,15 @@ onMounted(async () => {
                             <div class="tg-list-card__description">Открыть БС-ссылку в приложении.</div>
                         </div>
                         <div class="tg-inline-actions">
-                            <button class="tg-icon-button tg-icon-button--soft" type="button" @click.stop="copyText(item.url)">
-                                <AppIcon name="copy" />
+                            <button
+                                class="tg-icon-button tg-icon-button--soft tg-copy-button"
+                                :class="{ 'is-copied': copiedUrl === item.url }"
+                                type="button"
+                                :aria-label="copiedUrl === item.url ? 'Успешно скопировано' : 'Скопировать ссылку'"
+                                :title="copiedUrl === item.url ? 'Успешно скопировано' : 'Скопировать ссылку'"
+                                @click.stop="copyText(item.url)"
+                            >
+                                <AppIcon :name="copiedUrl === item.url ? 'circleCheck' : 'copy'" />
                             </button>
                         </div>
                     </button>

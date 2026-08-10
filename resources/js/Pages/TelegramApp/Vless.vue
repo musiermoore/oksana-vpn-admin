@@ -217,13 +217,9 @@ onBeforeUnmount(() => {
                 <div class="tg-page-header__copy">
                     <Link class="tg-link-button" :href="configHubHref">
                         <AppIcon name="chevronLeft" />
-                        <span>Все конфиги</span>
+                        <span>Назад ко всем конфигам</span>
                     </Link>
-                    <div class="tg-tag tg-tag--primary">
-                        <AppIcon name="shield" />
-                        <span>Стандартные</span>
-                    </div>
-                    <h2>Способы подключения</h2>
+                    <h2>Стандартные</h2>
                 </div>
 
                 <button class="tg-list-card tg-list-card--button" type="button" @click="step = 'links'">
@@ -231,7 +227,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="bolt" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Добавить в VPN-приложение</div>
+                        <div class="tg-list-card__title">Добавить конфигурацию в VPN-приложение</div>
                         <div class="tg-list-card__description">Быстрое подключение для Happ, V2RayTun и других клиентов.</div>
                     </div>
                     <div class="tg-list-card__aside">
@@ -257,7 +253,7 @@ onBeforeUnmount(() => {
                 <div class="tg-page-header__copy">
                     <Link class="tg-link-button" :href="configHubHref">
                         <AppIcon name="chevronLeft" />
-                        <span>Все конфиги</span>
+                        <span>Назад ко всем конфигам</span>
                     </Link>
                     <h2>Откройте подписку в приложении</h2>
                     <p>Нажмите на нужный клиент. Если приложение не поддерживает импорт по ссылке, скопируйте прямую ссылку.</p>
@@ -324,7 +320,7 @@ onBeforeUnmount(() => {
                 <div class="tg-page-header__copy">
                     <Link class="tg-link-button" :href="configHubHref">
                         <AppIcon name="chevronLeft" />
-                        <span>Все конфиги</span>
+                        <span>Назад ко всем конфигам</span>
                     </Link>
                     <h2>Импорт по QR-коду</h2>
                     <p>Откройте совместимый клиент и отсканируйте код.</p>

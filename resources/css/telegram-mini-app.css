@@ -528,6 +528,14 @@
     border: 1px solid var(--tg-border);
     background: var(--tg-surface);
     color: var(--tg-text);
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.tg-icon-button:hover,
+.tg-icon-button:focus-visible {
+    background: var(--tg-surface-secondary);
+    border-color: var(--tg-border-strong);
 }
 
 .tg-theme-toggle {
@@ -537,6 +545,22 @@
 
 .tg-icon-button--soft {
     background: var(--tg-surface-secondary);
+}
+
+.tg-copy-button:hover,
+.tg-copy-button:focus-visible {
+    color: var(--tg-primary);
+    transform: translateY(-1px);
+}
+
+.tg-copy-button.is-copied {
+    color: var(--tg-success);
+    border-color: rgba(22, 163, 106, 0.24);
+    background: var(--tg-success-soft);
+}
+
+.tg-app[data-theme="dark"] .tg-copy-button.is-copied {
+    border-color: rgba(53, 201, 131, 0.32);
 }
 
 .tg-inline-actions {

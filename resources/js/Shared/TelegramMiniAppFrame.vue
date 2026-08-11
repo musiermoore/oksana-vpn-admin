@@ -16,11 +16,9 @@ const theme = ref('light');
 
 const navItems = computed(() => ([
     { href: props.routes?.home, label: 'Главная', icon: 'home', keys: ['/telegram-app'], exact: true },
-    { href: props.routes?.wireguard, label: 'WG', icon: 'shield', keys: ['/telegram-app/wireguard'] },
-    { href: props.routes?.vless, label: 'VLESS', icon: 'link', keys: ['/telegram-app/vless', '/telegram-app/vless-wl'] },
+    { href: props.routes?.wireguard, label: 'Конфиги', icon: 'shield', keys: ['/telegram-app/wireguard', '/telegram-app/vless', '/telegram-app/vless-wl'] },
     { href: props.routes?.payments, label: 'Подписка', icon: 'receipt', keys: ['/telegram-app/payments'] },
-    { href: props.routes?.help, label: 'Помощь', icon: 'circleQuestion', keys: ['/telegram-app/help', '/telegram-app/support'] },
-    { href: props.routes?.chats, label: 'Чаты', icon: 'chat', keys: ['/telegram-app/chats'] },
+    { href: props.routes?.help, label: 'Помощь', icon: 'circleQuestion', keys: ['/telegram-app/help', '/telegram-app/support', '/telegram-app/chats'] },
     { href: props.routes?.giveaway, label: 'Розыгрыш', icon: 'gift', keys: ['/telegram-app/giveaway'] },
 ]));
 

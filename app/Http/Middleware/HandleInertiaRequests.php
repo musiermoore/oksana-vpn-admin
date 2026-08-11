@@ -38,6 +38,7 @@ class HandleInertiaRequests extends Middleware
                 'items' => [
                     ['label' => 'Участники', 'href' => route('users.index'), 'badge' => 'US', 'icon' => 'users'],
                     ['label' => 'Рефералка', 'href' => route('referrals.index'), 'badge' => 'RF', 'icon' => 'gift'],
+                    ['label' => 'Розыгрыши', 'href' => route('giveaways.index'), 'badge' => 'GW', 'icon' => 'gift'],
                     ['label' => 'Поддержка', 'href' => route('support-tickets.index'), 'badge' => 'SP', 'icon' => 'chat'],
                 ],
             ],

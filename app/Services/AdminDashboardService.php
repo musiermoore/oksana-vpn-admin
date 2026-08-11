@@ -139,6 +139,7 @@ class AdminDashboardService
                     'links' => [
                         ['label' => 'Участники', 'href' => route('users.index')],
                         ['label' => 'Рефералка', 'href' => route('referrals.index')],
+                        ['label' => 'Розыгрыши', 'href' => route('giveaways.index')],
                         ['label' => 'Поддержка', 'href' => route('support-tickets.index')],
                     ],
                     'highlights' => [

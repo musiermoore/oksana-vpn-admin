@@ -3,8 +3,11 @@ const TELEGRAM_USER_ID_KEY = 'telegram-mini-app-telegram-user-id';
 const START_PARAM_KEY = 'telegram-mini-app-last-start-param';
 const START_PARAM_AUTH_KEY = 'telegram-mini-app-last-auth-start-param';
 const INIT_DATA_KEY = 'telegram-mini-app-last-init-data';
+const BOOTSTRAP_DIAGNOSTIC_KEY = 'telegram-mini-app-last-bootstrap-diagnostic';
 const INIT_DATA_RETRY_ATTEMPTS = 3;
 const INIT_DATA_RETRY_DELAY_MS = 250;
+const BOOTSTRAP_DIAGNOSTIC_TTL_MS = 120000;
+const BOOTSTRAP_DIAGNOSTIC_URL = '/telegram-app/diagnostics/bootstrap';
 
 export const telegramAppLabels = {
     open: 'Открыт',
@@ -92,6 +95,130 @@ export const getTelegramInitData = () => {
     }
 
     return window.sessionStorage.getItem(INIT_DATA_KEY)?.trim() ?? '';
+};
+
+const truncate = (value, maxLength = 120) => {
+    const normalized = String(value ?? '').trim();
+
+    if (normalized.length <= maxLength) {
+        return normalized;
+    }
+
+    return `${normalized.slice(0, maxLength)}...`;
+};
+
+const collectInitDataDiagnostic = () => {
+    const sources = [
+        ['web_app', window.Telegram?.WebApp?.initData?.trim() ?? ''],
+        ['query', new URLSearchParams(window.location.search).get('tgWebAppData')?.trim() ?? ''],
+        ['session', window.sessionStorage.getItem(INIT_DATA_KEY)?.trim() ?? ''],
+    ];
+    const [source, rawInitData] = sources.find(([, value]) => value !== '') ?? ['missing', ''];
+    const parsed = new URLSearchParams(rawInitData);
+    const userPayload = parsed.get('user');
+    let initDataUserId = '';
+
+    if (userPayload) {
+        try {
+            initDataUserId = String(JSON.parse(userPayload)?.id ?? '').trim();
+        } catch {
+            initDataUserId = '';
+        }
+    }
+
+    return {
+        source,
+        length: rawInitData.length,
+        keys: Array.from(new Set(Array.from(parsed.keys()))).slice(0, 20),
+        userId: initDataUserId,
+        authDate: truncate(parsed.get('auth_date'), 120) || null,
+        queryIdPrefix: truncate(parsed.get('query_id'), 24) || null,
+        hashPrefix: truncate(parsed.get('hash'), 12) || null,
+    };
+};
+
+const buildBootstrapDiagnosticPayload = ({ page, error, attempts, delayMs }) => {
+    const initData = collectInitDataDiagnostic();
+
+    return {
+        page,
+        error_message: truncate(error?.message ?? 'Unknown bootstrap error', 1000),
+        error_name: truncate(error?.name ?? '', 255) || null,
+        attempts,
+        delay_ms: delayMs,
+        href: truncate(window.location.href, 2000) || null,
+        path: truncate(window.location.pathname, 500) || null,
+        search: truncate(window.location.search, 2000) || null,
+        referrer: truncate(window.document?.referrer, 2000) || null,
+        user_agent: truncate(window.navigator?.userAgent, 2000) || null,
+        timezone: truncate(Intl.DateTimeFormat().resolvedOptions().timeZone, 120) || null,
+        language: truncate(window.navigator?.language, 40) || null,
+        telegram_user_id: truncate(getTelegramProfileId(), 255) || null,
+        telegram_start_param: truncate(getTelegramStartParam(), 255) || null,
+        telegram_web_app_available: Boolean(window.Telegram?.WebApp),
+        telegram_platform: truncate(window.Telegram?.WebApp?.platform, 255) || null,
+        telegram_version: truncate(window.Telegram?.WebApp?.version, 255) || null,
+        telegram_color_scheme: truncate(window.Telegram?.WebApp?.colorScheme, 255) || null,
+        telegram_init_data_source: initData.source,
+        telegram_init_data_length: initData.length,
+        telegram_init_data_keys: initData.keys,
+        telegram_init_data_user_id: truncate(initData.userId, 255) || null,
+        telegram_init_data_auth_date: initData.authDate,
+        telegram_init_data_query_id_prefix: initData.queryIdPrefix,
+        telegram_init_data_hash_prefix: initData.hashPrefix,
+        has_stored_token: getTelegramAppToken() !== '',
+        stored_telegram_user_id: truncate(getTelegramAppTelegramUserId(), 255) || null,
+    };
+};
+
+const shouldReportBootstrapDiagnostic = (payload) => {
+    const signature = JSON.stringify([
+        payload.page,
+        payload.error_message,
+        payload.path,
+        payload.telegram_init_data_source,
+        payload.telegram_user_id,
+        payload.telegram_init_data_user_id,
+    ]);
+    const lastPayload = window.sessionStorage.getItem(BOOTSTRAP_DIAGNOSTIC_KEY);
+
+    if (lastPayload) {
+        try {
+            const parsed = JSON.parse(lastPayload);
+
+            if (parsed?.signature === signature && Number(parsed?.timestamp ?? 0) + BOOTSTRAP_DIAGNOSTIC_TTL_MS > Date.now()) {
+                return false;
+            }
+        } catch {
+            // Ignore malformed cache and allow the report.
+        }
+    }
+
+    window.sessionStorage.setItem(BOOTSTRAP_DIAGNOSTIC_KEY, JSON.stringify({
+        signature,
+        timestamp: Date.now(),
+    }));
+
+    return true;
+};
+
+export const reportTelegramBootstrapDiagnostic = async ({ page, error, attempts = INIT_DATA_RETRY_ATTEMPTS, delayMs = INIT_DATA_RETRY_DELAY_MS }) => {
+    const payload = buildBootstrapDiagnosticPayload({
+        page,
+        error,
+        attempts,
+        delayMs,
+    });
+
+    if (!shouldReportBootstrapDiagnostic(payload)) {
+        return;
+    }
+
+    try {
+        await window.axios.post(BOOTSTRAP_DIAGNOSTIC_URL, payload);
+    } catch {
+        // Intentionally swallow diagnostic errors so bootstrap UX stays unchanged.
+    }
 };
 
 export const isReferralStartParam = (value) => /^ref_\d+$/.test((value ?? '').trim());
@@ -187,36 +314,45 @@ export const fetchTelegramAppProfile = async (profileUrl) => {
 };
 
 export const ensureTelegramAppSession = async ({ authUrl, profileUrl }) => {
-    prepareTelegramWebApp();
-    const startParam = getTelegramStartParam();
-    const lastAuthStartParam = window.sessionStorage.getItem(START_PARAM_AUTH_KEY) ?? '';
-    const currentTelegramUserId = getTelegramProfileId();
-    const storedTelegramUserId = getTelegramAppTelegramUserId();
-    const shouldRefreshForReferral = isReferralStartParam(startParam) && lastAuthStartParam !== startParam;
-    const shouldRefreshForMissingTelegramUser =
-        getTelegramAppToken() !== '' && currentTelegramUserId !== '' && storedTelegramUserId === '';
-    const shouldRefreshForTelegramUser = currentTelegramUserId !== '' && storedTelegramUserId !== '' && storedTelegramUserId !== currentTelegramUserId;
-
-    if (getTelegramAppToken() === '' || shouldRefreshForReferral || shouldRefreshForMissingTelegramUser || shouldRefreshForTelegramUser) {
-        await loginTelegramApp(authUrl);
-
-        if (shouldRefreshForReferral) {
-            window.sessionStorage.setItem(START_PARAM_AUTH_KEY, startParam);
-        }
-    }
-
     try {
-        return await fetchTelegramAppProfile(profileUrl);
-    } catch (error) {
-        if (error?.response?.status === 401) {
+        prepareTelegramWebApp();
+        const startParam = getTelegramStartParam();
+        const lastAuthStartParam = window.sessionStorage.getItem(START_PARAM_AUTH_KEY) ?? '';
+        const currentTelegramUserId = getTelegramProfileId();
+        const storedTelegramUserId = getTelegramAppTelegramUserId();
+        const shouldRefreshForReferral = isReferralStartParam(startParam) && lastAuthStartParam !== startParam;
+        const shouldRefreshForMissingTelegramUser =
+            getTelegramAppToken() !== '' && currentTelegramUserId !== '' && storedTelegramUserId === '';
+        const shouldRefreshForTelegramUser = currentTelegramUserId !== '' && storedTelegramUserId !== '' && storedTelegramUserId !== currentTelegramUserId;
+
+        if (getTelegramAppToken() === '' || shouldRefreshForReferral || shouldRefreshForMissingTelegramUser || shouldRefreshForTelegramUser) {
             await loginTelegramApp(authUrl);
 
-            if (isReferralStartParam(startParam)) {
+            if (shouldRefreshForReferral) {
                 window.sessionStorage.setItem(START_PARAM_AUTH_KEY, startParam);
             }
-
-            return await fetchTelegramAppProfile(profileUrl);
         }
+
+        try {
+            return await fetchTelegramAppProfile(profileUrl);
+        } catch (error) {
+            if (error?.response?.status === 401) {
+                await loginTelegramApp(authUrl);
+
+                if (isReferralStartParam(startParam)) {
+                    window.sessionStorage.setItem(START_PARAM_AUTH_KEY, startParam);
+                }
+
+                return await fetchTelegramAppProfile(profileUrl);
+            }
+
+            throw error;
+        }
+    } catch (error) {
+        await reportTelegramBootstrapDiagnostic({
+            page: window.location.pathname || 'telegram-mini-app',
+            error,
+        });
 
         throw error;
     }

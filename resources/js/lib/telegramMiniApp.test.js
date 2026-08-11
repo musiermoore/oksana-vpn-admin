@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getTelegramInitData, requireTelegramInitData, resolveTelegramInitData } from './telegramMiniApp.js';
+import {
+    getTelegramInitData,
+    getTelegramStartParam,
+    reportTelegramBootstrapDiagnostic,
+    requireTelegramInitData,
+    resolveTelegramInitData,
+} from './telegramMiniApp.js';
 
 class MemoryStorage {
     constructor() {
@@ -32,11 +38,25 @@ const createWindow = ({ initData = '', search = '', storedInitData = '' } = {}) 
         Telegram: {
             WebApp: {
                 initData,
+                initDataUnsafe: {},
             },
         },
+        axios: {
+            post: async () => ({ data: { message: 'ok' } }),
+        },
+        navigator: {
+            userAgent: 'Telegram-WebApp-Test',
+            language: 'ru-RU',
+        },
         location: {
+            href: `https://example.com/telegram-app/${search}`,
+            pathname: '/telegram-app/',
             search,
         },
+        document: {
+            referrer: 'https://t.me/oksanavpn_bot',
+        },
+        localStorage: new MemoryStorage(),
         sessionStorage,
         setTimeout,
     };
@@ -95,4 +115,44 @@ test('resolveTelegramInitData throws after exhausting retries', async () => {
     await assert.rejects(resolveTelegramInitData(3, 1), {
         message: 'Откройте приложение через Telegram.',
     });
+});
+
+test('getTelegramStartParam falls back to tgWebAppStartParam query parameter', () => {
+    global.window = createWindow({
+        search: '?tgWebAppStartParam=ticket_42',
+    });
+
+    assert.equal(getTelegramStartParam(), 'ticket_42');
+});
+
+test('reportTelegramBootstrapDiagnostic sends a deduplicated diagnostic payload', async () => {
+    const requests = [];
+
+    global.window = createWindow({
+        search: '?tgWebAppData=query_id%3Dabc%26auth_date%3D123%26hash%3Dabcdef123456%26user%3D%257B%2522id%2522%253A777%257D&tgWebAppStartParam=ticket_42',
+    });
+    global.window.axios.post = async (url, payload) => {
+        requests.push({ url, payload });
+        return { data: { message: 'ok' } };
+    };
+
+    await reportTelegramBootstrapDiagnostic({
+        page: '/telegram-app/',
+        error: new Error('Откройте приложение через Telegram.'),
+        attempts: 3,
+        delayMs: 250,
+    });
+    await reportTelegramBootstrapDiagnostic({
+        page: '/telegram-app/',
+        error: new Error('Откройте приложение через Telegram.'),
+        attempts: 3,
+        delayMs: 250,
+    });
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/telegram-app/diagnostics/bootstrap');
+    assert.equal(requests[0].payload.telegram_init_data_source, 'query');
+    assert.equal(requests[0].payload.telegram_init_data_user_id, '777');
+    assert.equal(requests[0].payload.telegram_start_param, 'ticket_42');
+    assert.deepEqual(requests[0].payload.telegram_init_data_keys, ['query_id', 'auth_date', 'hash', 'user']);
 });

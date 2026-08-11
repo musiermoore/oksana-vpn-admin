@@ -21,6 +21,7 @@ use App\Http\Controllers\TaxDebugController;
 use App\Http\Controllers\TaxSettingController;
 use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
 use App\Http\Controllers\TelegramApp\ConnectionController as TelegramAppConnectionController;
+use App\Http\Controllers\TelegramApp\DiagnosticController as TelegramAppDiagnosticController;
 use App\Http\Controllers\TelegramApp\GiveawayController as TelegramAppGiveawayController;
 use App\Http\Controllers\TelegramApp\PageController as TelegramAppPageController;
 use App\Http\Controllers\TelegramApp\PaymentController as TelegramAppPaymentController;
@@ -181,6 +182,8 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
         ->name('pages.support.show');
     Route::post('auth/telegram', [TelegramAppAuthController::class, 'authenticate'])
         ->name('auth.telegram');
+    Route::post('diagnostics/bootstrap', [TelegramAppDiagnosticController::class, 'bootstrap'])
+        ->name('diagnostics.bootstrap');
 
     Route::middleware('telegram.app')->group(function () {
         Route::get('me', [TelegramAppUserController::class, 'show'])->name('me');

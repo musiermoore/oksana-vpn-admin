@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\DTOs\Giveaway;
+
+use App\DTOs\Data;
+
+class GiveawayPrizeData extends Data
+{
+    public function __construct(
+        public int $durationMonths,
+        public int $quantity,
+        public ?string $title = null,
+        public int $sortOrder = 0,
+    ) {}
+}

@@ -6,6 +6,7 @@ use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExtraPaymentController;
+use App\Http\Controllers\GiveawayController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\TaxDebugController;
 use App\Http\Controllers\TaxSettingController;
 use App\Http\Controllers\TelegramApp\AuthController as TelegramAppAuthController;
 use App\Http\Controllers\TelegramApp\ConnectionController as TelegramAppConnectionController;
+use App\Http\Controllers\TelegramApp\GiveawayController as TelegramAppGiveawayController;
 use App\Http\Controllers\TelegramApp\PageController as TelegramAppPageController;
 use App\Http\Controllers\TelegramApp\PaymentController as TelegramAppPaymentController;
 use App\Http\Controllers\TelegramApp\ReferralController as TelegramAppReferralController;
@@ -52,6 +54,14 @@ Route::middleware('auth')->group(function () {
     Route::get('search', [SearchController::class, 'index'])->name('search.index');
     Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
     Route::get('referrals/{user}', [ReferralController::class, 'show'])->name('referrals.show');
+    Route::get('giveaways', [GiveawayController::class, 'index'])->name('giveaways.index');
+    Route::get('giveaways/create', [GiveawayController::class, 'create'])->name('giveaways.create');
+    Route::post('giveaways', [GiveawayController::class, 'store'])->name('giveaways.store');
+    Route::get('giveaways/{giveaway}/edit', [GiveawayController::class, 'edit'])->name('giveaways.edit');
+    Route::put('giveaways/{giveaway}', [GiveawayController::class, 'update'])->name('giveaways.update');
+    Route::post('giveaways/{giveaway}/activate', [GiveawayController::class, 'activate'])->name('giveaways.activate');
+    Route::post('giveaways/{giveaway}/draw', [GiveawayController::class, 'draw'])->name('giveaways.draw');
+    Route::post('giveaways/{giveaway}/cancel', [GiveawayController::class, 'cancel'])->name('giveaways.cancel');
     Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
 
     Route::resource('tasks', TaskController::class)->except(['show']);
@@ -164,6 +174,7 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
     Route::get('help', [TelegramAppPageController::class, 'help'])->name('pages.help');
     Route::get('chats', [TelegramAppPageController::class, 'chats'])->name('pages.chats');
     Route::get('support', [TelegramAppPageController::class, 'support'])->name('pages.support');
+    Route::get('giveaway', [TelegramAppPageController::class, 'giveaway'])->name('pages.giveaway');
     Route::get('referrals', [TelegramAppPageController::class, 'referrals'])->name('pages.referrals');
     Route::get('support/{ticketId}', [TelegramAppPageController::class, 'supportShow'])
         ->whereNumber('ticketId')
@@ -178,6 +189,10 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
             ->name('subscription-packages');
         Route::post('referrals/claim', [TelegramAppReferralController::class, 'claim'])
             ->name('referrals.claim');
+        Route::get('giveaway/current', [TelegramAppGiveawayController::class, 'show'])
+            ->name('giveaway.show');
+        Route::post('giveaway/participate', [TelegramAppGiveawayController::class, 'participate'])
+            ->name('giveaway.participate');
         Route::post('payments/subscriptions', [TelegramAppPaymentController::class, 'purchaseSubscription'])
             ->name('payments.subscriptions');
         Route::post('payments/subscription-codes/activate', [TelegramAppPaymentController::class, 'activateSubscriptionCode'])

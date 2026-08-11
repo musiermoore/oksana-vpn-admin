@@ -320,6 +320,33 @@ class SubscriptionService
         });
     }
 
+    public function grantGiveawayMonths(
+        User $user,
+        int $months,
+        array $meta = [],
+    ): UserSubscription {
+        return DB::transaction(function () use ($user, $months, $meta) {
+            $startDate = $this->resolveNextSubscriptionStartDate($user);
+            $endDate = Carbon::parse($startDate)->addMonths($months)->toDateString();
+
+            $subscription = UserSubscription::query()->create([
+                'user_id' => $user->id,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'price' => 0,
+                'source' => 'giveaway',
+                'meta' => [
+                    'subscription_months' => $months,
+                    ...$meta,
+                ],
+            ]);
+
+            $this->syncUserSubscriptionExpiry($user);
+
+            return $subscription;
+        });
+    }
+
     private function renewOrCreateSubscription(User $user): void
     {
         $activePeriod = PaymentPeriod::getActive();

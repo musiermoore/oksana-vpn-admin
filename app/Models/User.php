@@ -176,6 +176,16 @@ class User extends Authenticatable
         return $this->hasMany(SupportTicket::class);
     }
 
+    public function giveawayParticipants(): HasMany
+    {
+        return $this->hasMany(GiveawayParticipant::class);
+    }
+
+    public function giveawayWins(): HasMany
+    {
+        return $this->hasMany(GiveawayWinner::class);
+    }
+
     public function activeSubscription(?Carbon $date = null): HasOne
     {
         if (empty($date)) {

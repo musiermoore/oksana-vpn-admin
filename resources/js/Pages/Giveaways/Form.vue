@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import { formatDateTimeInTimeZone, useClientTimezoneFields } from '../../lib/timezone';
 
 defineOptions({ layout: AppLayout });
 
@@ -14,8 +15,9 @@ const props = defineProps({
 const form = useForm({
     title: props.giveaway?.title ?? 'Розыгрыш Oksana VPN',
     description: props.giveaway?.description ?? '',
-    starts_at: props.giveaway?.starts_at ?? '',
-    ends_at: props.giveaway?.ends_at ?? '',
+    starts_at: '',
+    ends_at: '',
+    client_timezone: 'UTC',
     auto_repeat_enabled: props.giveaway?.series?.auto_repeat_enabled ?? false,
     repeat_delay_minutes: props.giveaway?.series?.repeat_delay_minutes ?? 60,
     repeat_limit: props.giveaway?.series?.repeat_limit ?? 5,
@@ -25,6 +27,9 @@ const form = useForm({
         title: prize.title,
     })),
 });
+
+const { clientTimeZone, setDateTimeFieldsFromUtc } = useClientTimezoneFields(form, ['starts_at', 'ends_at']);
+setDateTimeFieldsFromUtc(props.giveaway ?? {});
 
 if (!form.prizes.length) {
     form.prizes = [
@@ -118,13 +123,16 @@ const cancelGiveaway = () => router.post(props.giveaway.links.cancel);
             </label>
 
             <label class="field">
+                <span>Часовой пояс браузера</span>
+                <AppInput :model-value="clientTimeZone" readonly />
+            </label>
+
+            <label class="field">
                 <span>
                     <input v-model="form.auto_repeat_enabled" type="checkbox">
                     Автоповтор
                 </span>
             </label>
-
-            <div></div>
 
             <label class="field">
                 <span>Задержка перед следующим розыгрышем (мин)</span>
@@ -220,6 +228,7 @@ const cancelGiveaway = () => router.post(props.giveaway.links.cancel);
                     <strong>{{ winner.telegram || winner.name || `User #${winner.user_id}` }}</strong>
                     <p>{{ winner.duration_months }} мес. · вес {{ winner.weight_at_draw }}</p>
                     <p>Подходящих рефералов: {{ winner.eligible_referrals_count_at_draw }}</p>
+                    <p v-if="winner.selected_at">Выбран: {{ formatDateTimeInTimeZone(winner.selected_at, { timeZone: clientTimeZone, withTimeZone: true }) }}</p>
                     <p>Выдача приза: {{ winner.prize_status }}</p>
                     <p v-if="winner.prize_error" class="muted">{{ winner.prize_error }}</p>
                 </article>
@@ -249,7 +258,7 @@ const cancelGiveaway = () => router.post(props.giveaway.links.cancel);
                 <tbody>
                     <tr v-for="participant in giveaway.participants" :key="participant.id">
                         <td>{{ participant.telegram || participant.name || `User #${participant.user_id}` }}</td>
-                        <td>{{ participant.joined_at }}</td>
+                        <td>{{ formatDateTimeInTimeZone(participant.joined_at, { timeZone: clientTimeZone, withTimeZone: true }) }}</td>
                         <td>{{ participant.weight_at_draw ?? '-' }}</td>
                         <td>{{ participant.eligible_referrals_count_at_draw ?? '-' }}</td>
                     </tr>

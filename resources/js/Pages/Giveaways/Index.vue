@@ -1,12 +1,15 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import { formatDateRangeInTimeZone, getClientTimeZone } from '../../lib/timezone';
 
 defineOptions({ layout: AppLayout });
 
 defineProps({
     giveaways: Array,
 });
+
+const clientTimeZone = getClientTimeZone();
 </script>
 
 <template>
@@ -40,7 +43,7 @@ defineProps({
             <div class="stat-grid">
                 <article class="stat-card stack">
                     <p class="muted">Период</p>
-                    <strong>{{ giveaway.starts_at }} - {{ giveaway.ends_at }}</strong>
+                    <strong>{{ formatDateRangeInTimeZone(giveaway.starts_at, giveaway.ends_at, { timeZone: clientTimeZone }) }}</strong>
                 </article>
                 <article class="stat-card stack">
                     <p class="muted">Участники</p>

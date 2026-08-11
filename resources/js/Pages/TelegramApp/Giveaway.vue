@@ -7,6 +7,7 @@ import {
     normalizeTelegramAppError,
     telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
+import { formatDateTimeInTimeZone, getClientTimeZone } from '../../lib/timezone';
 
 const props = defineProps({
     routes: Object,
@@ -22,6 +23,7 @@ const user = ref(null);
 const giveaway = ref(null);
 const participant = ref(null);
 const actionStatus = ref('');
+const clientTimeZone = getClientTimeZone();
 
 const hasGiveaway = computed(() => Boolean(giveaway.value));
 const isParticipant = computed(() => Boolean(participant.value?.is_participant));
@@ -140,8 +142,8 @@ onMounted(async () => {
                 </div>
 
                 <div v-if="giveaway" class="tg-status-card__meta">
-                    <span>Старт: {{ new Date(giveaway.starts_at).toLocaleString('ru-RU') }}</span>
-                    <span>Финиш: {{ new Date(giveaway.ends_at).toLocaleString('ru-RU') }}</span>
+                    <span>Старт: {{ formatDateTimeInTimeZone(giveaway.starts_at, { timeZone: clientTimeZone, withTimeZone: true }) }}</span>
+                    <span>Финиш: {{ formatDateTimeInTimeZone(giveaway.ends_at, { timeZone: clientTimeZone, withTimeZone: true }) }}</span>
                 </div>
             </section>
 

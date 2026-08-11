@@ -40,8 +40,8 @@ class GiveawayController extends Controller
             'giveaway' => [
                 'title' => 'Розыгрыш Oksana VPN',
                 'description' => '',
-                'starts_at' => now()->addHour()->format('Y-m-d\TH:i'),
-                'ends_at' => now()->addDays(7)->format('Y-m-d\TH:i'),
+                'starts_at' => now()->addHour()->toAtomString(),
+                'ends_at' => now()->addDays(7)->toAtomString(),
                 'series' => [
                     'auto_repeat_enabled' => false,
                     'repeat_delay_minutes' => 60,

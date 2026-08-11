@@ -76,6 +76,7 @@ class PageController extends Controller
                 'chats' => route('telegram-app.pages.chats'),
                 'support' => route('telegram-app.pages.support'),
                 'giveaway' => route('telegram-app.pages.giveaway'),
+                'giveaway_summary' => route('telegram-app.giveaway.summary'),
                 'referrals' => route('telegram-app.pages.referrals'),
             ],
             'auth_url' => route('telegram-app.auth.telegram'),

@@ -191,6 +191,8 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
             ->name('referrals.claim');
         Route::get('giveaway/current', [TelegramAppGiveawayController::class, 'show'])
             ->name('giveaway.show');
+        Route::get('giveaway/summary', [TelegramAppGiveawayController::class, 'summary'])
+            ->name('giveaway.summary');
         Route::post('giveaway/participate', [TelegramAppGiveawayController::class, 'participate'])
             ->name('giveaway.participate');
         Route::post('payments/subscriptions', [TelegramAppPaymentController::class, 'purchaseSubscription'])

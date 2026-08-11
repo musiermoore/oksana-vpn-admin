@@ -113,6 +113,89 @@ class GiveawayFeatureTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_can_load_giveaway_summary_for_pending_participation_counter(): void
+    {
+        [$user, $token] = $this->createAuthorizedUser([
+            'name' => 'Referrer',
+            'telegram' => '@referrer',
+        ]);
+
+        $activeGiveaway = $this->createGiveaway(
+            startsAt: '2026-08-10 00:00:00',
+            endsAt: '2026-08-12 00:00:00',
+            status: Giveaway::STATUS_ACTIVE,
+        );
+
+        $this->createGiveaway(
+            startsAt: '2026-08-01 00:00:00',
+            endsAt: '2026-08-02 00:00:00',
+            status: Giveaway::STATUS_FINISHED,
+        );
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/giveaway/summary')
+            ->assertOk()
+            ->assertJsonPath('summary.active_giveaways_count', 1)
+            ->assertJsonPath('summary.pending_participation_count', 1);
+
+        GiveawayParticipant::query()->create([
+            'giveaway_id' => $activeGiveaway->id,
+            'user_id' => $user->id,
+            'joined_at' => '2026-08-11 12:10:00',
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/giveaway/summary')
+            ->assertOk()
+            ->assertJsonPath('summary.active_giveaways_count', 1)
+            ->assertJsonPath('summary.pending_participation_count', 0);
+    }
+
+    public function test_admins_only_giveaway_is_hidden_from_regular_users_and_visible_to_admins(): void
+    {
+        [$user, $token] = $this->createAuthorizedUser([
+            'name' => 'Regular',
+            'telegram' => '@regular',
+            'is_admin' => false,
+        ]);
+
+        [$admin, $adminToken] = $this->createAuthorizedUser([
+            'name' => 'Admin',
+            'telegram' => '@admin',
+            'is_admin' => true,
+        ]);
+
+        $this->createGiveaway(
+            startsAt: '2026-08-10 00:00:00',
+            endsAt: '2026-08-12 00:00:00',
+            status: Giveaway::STATUS_ACTIVE,
+            adminsOnly: true,
+        );
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/giveaway/current')
+            ->assertOk()
+            ->assertJsonPath('giveaway', null)
+            ->assertJsonPath('participant', null);
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/giveaway/summary')
+            ->assertOk()
+            ->assertJsonPath('summary.active_giveaways_count', 0)
+            ->assertJsonPath('summary.pending_participation_count', 0);
+
+        $this->withToken($adminToken)
+            ->getJson('/telegram-app/giveaway/current')
+            ->assertOk()
+            ->assertJsonPath('giveaway.admins_only', true);
+
+        $this->withToken($adminToken)
+            ->getJson('/telegram-app/giveaway/summary')
+            ->assertOk()
+            ->assertJsonPath('summary.active_giveaways_count', 1)
+            ->assertJsonPath('summary.pending_participation_count', 1);
+    }
+
     public function test_draw_persists_winner_snapshot_and_grants_subscription_without_duplicate_wins(): void
     {
         $firstUser = User::factory()->create([
@@ -222,7 +305,7 @@ class GiveawayFeatureTest extends TestCase
             'join_at' => now()->toDateString(),
         ], $attributes));
 
-        $plainTextToken = str_repeat('g', 80);
+        $plainTextToken = str_pad("giveaway-test-token-{$user->id}", 80, 'g');
 
         TelegramAppToken::query()->create([
             'user_id' => $user->id,
@@ -241,6 +324,7 @@ class GiveawayFeatureTest extends TestCase
         string $endsAt,
         string $status,
         array $prizeRows = [['duration_months' => 1, 'quantity' => 1, 'title' => 'Подписка на 1 месяц']],
+        bool $adminsOnly = false,
     ): Giveaway {
         $series = GiveawaySeries::query()->create([
             'name' => 'Розыгрыш Oksana VPN',
@@ -254,6 +338,7 @@ class GiveawayFeatureTest extends TestCase
             'sequence_number' => 1,
             'title' => 'Розыгрыш Oksana VPN',
             'description' => 'Тестовый розыгрыш',
+            'admins_only' => $adminsOnly,
             'status' => $status,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,

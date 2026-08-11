@@ -40,6 +40,7 @@ class GiveawayController extends Controller
             'giveaway' => [
                 'title' => 'Розыгрыш Oksana VPN',
                 'description' => '',
+                'admins_only' => false,
                 'starts_at' => now()->addHour()->toAtomString(),
                 'ends_at' => now()->addDays(7)->toAtomString(),
                 'series' => [

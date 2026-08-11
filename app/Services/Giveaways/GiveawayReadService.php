@@ -6,6 +6,7 @@ namespace App\Services\Giveaways;
 
 use App\Models\Giveaway;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use App\Repositories\GiveawayParticipantRepository;
 use App\Repositories\GiveawayRepository;
 
@@ -24,11 +25,56 @@ class GiveawayReadService
         }
     }
 
-    public function visible(): ?Giveaway
+    public function visible(?User $user = null): ?Giveaway
     {
         $this->syncLifecycleStates();
 
-        return $this->giveaways->visible();
+        return $this->visibleQueryForUser($user)
+            ->with(['prizes', 'winners.user', 'winners.prize'])
+            ->orderByRaw("
+                case
+                    when status = 'active' then 0
+                    when status = 'drawing' then 1
+                    when status = 'scheduled' then 2
+                    when status = 'finished' then 3
+                    else 4
+                end
+            ")
+            ->orderBy('starts_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * @return array{active_giveaways_count:int,pending_participation_count:int}
+     */
+    public function summaryForUser(User $user): array
+    {
+        $this->syncLifecycleStates();
+
+        $activeGiveaways = $this->visibleQueryForUser($user)
+            ->where('status', Giveaway::STATUS_ACTIVE)
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>', now())
+            ->get(['id']);
+
+        if ($activeGiveaways->isEmpty()) {
+            return [
+                'active_giveaways_count' => 0,
+                'pending_participation_count' => 0,
+            ];
+        }
+
+        $activeIds = $activeGiveaways->pluck('id');
+
+        $participatingIds = $user->giveawayParticipants()
+            ->whereIn('giveaway_id', $activeIds)
+            ->pluck('giveaway_id');
+
+        return [
+            'active_giveaways_count' => $activeIds->count(),
+            'pending_participation_count' => $activeIds->diff($participatingIds)->count(),
+        ];
     }
 
     /**
@@ -65,7 +111,9 @@ class GiveawayReadService
 
     public function participate(Giveaway $giveaway, User $user): array
     {
-        if (! $giveaway->canParticipate()) {
+        $visibleGiveaway = $this->visible($user);
+
+        if (! $visibleGiveaway || $visibleGiveaway->id !== $giveaway->id || ! $giveaway->canParticipate()) {
             throw new \DomainException('Сейчас участие в этом розыгрыше недоступно.');
         }
 
@@ -77,5 +125,14 @@ class GiveawayReadService
             'eligible_referrals' => 0,
             'total_weight' => 0,
         ];
+    }
+
+    private function visibleQueryForUser(?User $user): Builder
+    {
+        return Giveaway::query()
+            ->when(
+                ! $user?->is_admin,
+                fn (Builder $query) => $query->where('admins_only', false)
+            );
     }
 }

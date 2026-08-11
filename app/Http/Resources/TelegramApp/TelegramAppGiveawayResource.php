@@ -23,6 +23,7 @@ class TelegramAppGiveawayResource extends JsonResource
             'id' => $giveaway->id,
             'title' => $giveaway->title,
             'description' => $giveaway->description,
+            'admins_only' => (bool) $giveaway->admins_only,
             'status' => $giveaway->status,
             'status_label' => $giveaway->formattedStatus(),
             'starts_at' => optional($giveaway->starts_at)?->toAtomString(),

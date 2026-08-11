@@ -19,8 +19,8 @@ class GiveawayController extends Controller
 
     public function show(Request $request): JsonResponse
     {
-        $giveaway = $this->giveaways->visible();
         $user = $request->attributes->get('telegramAppUser');
+        $giveaway = $this->giveaways->visible($user);
 
         if (! $giveaway || ! $user) {
             return response()->json([
@@ -38,10 +38,28 @@ class GiveawayController extends Controller
         ]);
     }
 
+    public function summary(Request $request): JsonResponse
+    {
+        $user = $request->attributes->get('telegramAppUser');
+
+        if (! $user) {
+            return response()->json([
+                'summary' => [
+                    'active_giveaways_count' => 0,
+                    'pending_participation_count' => 0,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'summary' => $this->giveaways->summaryForUser($user),
+        ]);
+    }
+
     public function participate(Request $request): JsonResponse
     {
-        $giveaway = $this->giveaways->visible();
         $user = $request->attributes->get('telegramAppUser');
+        $giveaway = $this->giveaways->visible($user);
 
         if (! $giveaway || ! $user) {
             return response()->json([

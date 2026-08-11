@@ -17,6 +17,7 @@ const props = defineProps({
     giveaway_participate_url: String,
 });
 
+const GIVEAWAY_SUMMARY_REFRESH_EVENT = 'telegram-app:refresh-giveaway-summary';
 const state = ref('loading');
 const error = ref('');
 const user = ref(null);
@@ -49,6 +50,7 @@ const participate = async () => {
 
     participant.value = response.data?.participant ?? null;
     actionStatus.value = 'Вы участвуете в розыгрыше.';
+    window.dispatchEvent(new CustomEvent(GIVEAWAY_SUMMARY_REFRESH_EVENT));
 };
 
 const retry = () => window.location.reload();

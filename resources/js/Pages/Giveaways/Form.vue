@@ -15,6 +15,7 @@ const props = defineProps({
 const form = useForm({
     title: props.giveaway?.title ?? 'Розыгрыш Oksana VPN',
     description: props.giveaway?.description ?? '',
+    admins_only: props.giveaway?.admins_only ?? false,
     starts_at: '',
     ends_at: '',
     client_timezone: 'UTC',
@@ -110,6 +111,13 @@ const cancelGiveaway = () => router.post(props.giveaway.links.cancel);
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
                 <textarea v-model="form.description" class="textarea"></textarea>
+            </label>
+
+            <label class="field">
+                <span>
+                    <input v-model="form.admins_only" type="checkbox">
+                    Видно только администраторам
+                </span>
             </label>
 
             <label class="field">

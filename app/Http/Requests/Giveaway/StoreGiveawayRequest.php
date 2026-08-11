@@ -33,6 +33,7 @@ class StoreGiveawayRequest extends DataFormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'admins_only' => ['required', 'boolean'],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
             'client_timezone' => ['nullable', 'string', 'max:255'],
@@ -49,6 +50,7 @@ class StoreGiveawayRequest extends DataFormRequest
     protected function additionalDtoData(): array
     {
         return [
+            'adminsOnly' => (bool) $this->validated('admins_only'),
             'startsAt' => $this->validated('starts_at'),
             'endsAt' => $this->validated('ends_at'),
             'autoRepeatEnabled' => (bool) $this->validated('auto_repeat_enabled'),

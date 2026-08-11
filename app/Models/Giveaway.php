@@ -28,6 +28,7 @@ class Giveaway extends Model
         'sequence_number',
         'title',
         'description',
+        'admins_only',
         'status',
         'starts_at',
         'ends_at',
@@ -38,6 +39,7 @@ class Giveaway extends Model
     {
         return [
             'sequence_number' => 'integer',
+            'admins_only' => 'boolean',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'duration_minutes' => 'integer',

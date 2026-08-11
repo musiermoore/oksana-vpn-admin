@@ -37,6 +37,7 @@ class GiveawayCrudService
                 'sequence_number' => 1,
                 'title' => $data->title,
                 'description' => $data->description,
+                'admins_only' => $data->adminsOnly,
                 'status' => Giveaway::STATUS_DRAFT,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
@@ -58,6 +59,7 @@ class GiveawayCrudService
             $this->giveaways->update($giveaway, [
                 'title' => $data->title,
                 'description' => $data->description,
+                'admins_only' => $data->adminsOnly,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'duration_minutes' => $startsAt->diffInMinutes($endsAt),

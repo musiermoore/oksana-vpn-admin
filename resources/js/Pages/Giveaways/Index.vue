@@ -33,6 +33,7 @@ const clientTimeZone = getClientTimeZone();
                 <div>
                     <h2>{{ giveaway.title }}</h2>
                     <p>{{ giveaway.description || 'Описание пока не добавлено.' }}</p>
+                    <p v-if="giveaway.admins_only" class="muted">Видимость: только для администраторов</p>
                 </div>
                 <div class="actions">
                     <span class="badge">{{ giveaway.status_label }}</span>

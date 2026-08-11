@@ -15,6 +15,7 @@
 - `/telegram-app/payments` -> `Payments`
 - `/telegram-app/help` -> `Help`
 - `/telegram-app/chats` -> `Chats`
+- `/telegram-app/giveaway` -> `Giveaway`
 - `/telegram-app/support` -> `Support`
 - `/telegram-app/support/{ticketId}` -> `SupportShow`
 
@@ -22,7 +23,7 @@
 
 - Почти каждая страница начинает с авто-авторизации через `POST /telegram-app/auth/telegram`.
 - Затем страница загружает профиль через `GET /telegram-app/me`.
-- На всех страницах есть нижняя навигация: `Главная`, `WG`, `VLESS`, `Подписка`, `Помощь`, `Чаты`.
+- На всех страницах есть нижняя навигация: `Главная`, `WG`, `VLESS`, `Подписка`, `Помощь`, `Чаты`, `Розыгрыш`.
 - Экран `Support` не вынесен в нижнюю навигацию, но доступен из `Help` и по прямой ссылке.
 
 ## 2. Специальные входы в mini-app
@@ -72,6 +73,7 @@ HOME
   -> PAYMENTS
   -> HELP
   -> CHATS (через нижнюю навигацию)
+  -> GIVEAWAY
 
 WIREGUARD
   list -> actions -> qr
@@ -141,6 +143,9 @@ SUPPORT_SHOW
   - показывается только если `user.has_vless_wl_configs === true`
 - `Подписка` -> переход на `/telegram-app/payments`
 - `Помощь` -> переход на `/telegram-app/help`
+- `Новости` -> внешняя ссылка на Telegram-канал
+- `Общий чат` -> внешняя ссылка на общий Telegram-чат
+- `Розыгрыш` -> переход на `/telegram-app/giveaway`
 
 Реферальные действия на `Home`:
 
@@ -157,6 +162,38 @@ Support-боту полезно понимать:
   - баланс
   - реферальную скидку
 - Ошибки на этом экране почти всегда означают проблему авторизации mini-app или загрузки профиля.
+
+## 4.8 Giveaway
+
+Файл: [Giveaway.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Giveaway.vue)
+
+Состояния страницы:
+
+- `loading`
+- `error`
+- `no-active-giveaway`
+- `scheduled`
+- `active-not-participant`
+- `active-participant`
+- `drawing`
+- `finished`
+
+Основной flow:
+
+1. Страница вызывает `GET /telegram-app/giveaway/current`.
+2. Если есть активный giveaway и пользователь ещё не участвует, показывается кнопка `Участвовать`.
+3. После `POST /telegram-app/giveaway/participate` создаётся или переиспользуется уникальный participant.
+4. Пользователь видит:
+   - базовый голос
+   - количество подходящих рефералов
+   - итоговый вес
+5. После завершения показываются сохранённые победители.
+
+Важное правило:
+
+- frontend не рассчитывает eligibility и weight самостоятельно
+- правило реферала прямо объясняется на странице giveaway
+- реферальная ссылка и шэринг переиспользуют текущий referral flow, а не создают отдельную механику
 
 ## 4.2 WireGuard
 

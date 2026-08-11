@@ -6,9 +6,11 @@ import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
+    openTelegramExternalLink,
     redirectFromTelegramStartParam,
     telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
+import { telegramChatLinks } from '../../lib/telegramChatLinks';
 
 const props = defineProps({
     routes: Object,
@@ -128,6 +130,13 @@ const quickLinks = computed(() => {
             href: props.routes?.help,
             icon: 'circleQuestion',
             iconClass: 'tg-list-card__icon--blue',
+        },
+        {
+            title: 'Розыгрыш',
+            description: 'Участвуйте явно и увеличивайте шанс за новых рефералов текущей кампании.',
+            href: props.routes?.giveaway,
+            icon: 'gift',
+            iconClass: 'tg-list-card__icon--warning',
         },
     ];
 
@@ -269,6 +278,28 @@ onMounted(async () => {
                         <AppIcon name="circleQuestion" />
                         <span>Нужна помощь?</span>
                     </Link>
+                </div>
+            </section>
+
+            <section class="tg-section">
+                <div class="tg-section__head">
+                    <div>
+                        <div class="tg-section__title">Сообщество</div>
+                        <div class="tg-section__subtitle">Новости и общий чат теперь всегда под рукой прямо на главной.</div>
+                    </div>
+                </div>
+
+                <div class="tg-inline-actions">
+                    <button
+                        v-for="item in telegramChatLinks"
+                        :key="item.title"
+                        class="tg-button tg-button--secondary"
+                        type="button"
+                        @click="openTelegramExternalLink(item.url)"
+                    >
+                        <AppIcon name="chat" />
+                        <span>{{ item.title }}</span>
+                    </button>
                 </div>
             </section>
 

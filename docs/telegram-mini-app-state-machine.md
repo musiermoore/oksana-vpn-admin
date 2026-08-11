@@ -21,6 +21,7 @@
 
 ### Основные пользовательские экраны
 - `HOME`
+- `GIVEAWAY`
 - `WIREGUARD_CONFIGS`
 - `WIREGUARD_CONFIG_ACTIONS`
 - `WIREGUARD_QR_RESULT`
@@ -61,6 +62,7 @@
 | `HOME` | `VLESS` | Открыть VLESS-экран | `GET /api/users/{telegramId}/vless/link` или mini-app proxy `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
 | `HOME` | `Подписка` | Открыть обзор подписки | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
 | `HOME` | `Помощь` | Открыть меню помощи | none | `HELP_MENU` | none |
+| `HOME` | `Розыгрыш` | Открыть экран giveaway | `GET /telegram-app/giveaway/current` | `GIVEAWAY` | `APP_INIT_ERROR`, generic error |
 | `HOME` | auto after guest bootstrap | В текущем mini-app отдельный guest menu не нужен, потому что вход сразу делает регистрацию | `POST /telegram-app/auth/telegram` | `HOME` | `APP_INIT_ERROR` |
 | `WIREGUARD_CONFIGS` | auto | Загрузить список конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT` при `403 { type: "debt" }`, generic error |
 | `WIREGUARD_CONFIGS` | config item | Выбрать конфиг | none, локальная установка `selectedConfig` | `WIREGUARD_CONFIG_ACTIONS` | если конфиг исчез между загрузкой и действием, ошибка проявится на следующем шаге |
@@ -119,6 +121,10 @@
 | `HELP_VLESS_CLIENTS` | external links | Открыть магазин приложений или сайт | none | external link | ошибка только если Telegram/WebApp не может открыть ссылку |
 | `HELP_VLESS_CLIENTS` | `Назад` | Вернуться в `HELP_VLESS` или `HELP_CLIENTS` | none | предыдущий help screen | none |
 | `HELP_VLESS_CLIENTS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
+| `GIVEAWAY` | auto | Загрузить текущий giveaway и состояние участия | `GET /telegram-app/giveaway/current` | `GIVEAWAY` | generic error |
+| `GIVEAWAY` | `Участвовать` | Явно вступить в активный giveaway | `POST /telegram-app/giveaway/participate` | `GIVEAWAY_PARTICIPATED` | `422` when no active giveaway |
+| `GIVEAWAY_PARTICIPATED` | auto | Показать итоговый вес | response from participate/show | `GIVEAWAY_PARTICIPATED` | none |
+| `GIVEAWAY_FINISHED` | auto | Показать зафиксированных победителей | `GET /telegram-app/giveaway/current` | `GIVEAWAY_FINISHED` | generic error |
 | `ADMIN_APPROVE_DEPOSIT` | `approve_deposit|{transactionId}` | Одобрить платеж | `POST /api/transactions/{transaction}/approve` | admin success state | admin error state |
 | `ADMIN_DENY_DEPOSIT` | `deny_deposit|{transactionId}` | Отклонить платеж | `DELETE /api/transactions/{transaction}/decline` | admin success state | admin error state |
 
@@ -163,6 +169,8 @@
 - API action: `GET /telegram-app/support/tickets/{ticketId}`
 - API action: `POST /telegram-app/support/tickets/{ticketId}/messages`
 - API action: `POST /telegram-app/referrals/claim`
+- API action: `GET /telegram-app/giveaway/current`
+- API action: `POST /telegram-app/giveaway/participate`
 
 ### Рекомендуемые mini-app action ids
 - `nav.home`

@@ -7,6 +7,7 @@ import {
     normalizeTelegramAppError,
     openTelegramExternalLink,
 } from '../../lib/telegramMiniApp';
+import { telegramChatLinks } from '../../lib/telegramChatLinks';
 
 const props = defineProps({
     routes: Object,
@@ -18,18 +19,7 @@ const state = ref('loading');
 const error = ref('');
 const user = ref(null);
 
-const chatLinks = [
-    {
-        title: 'Telegram-канал',
-        description: 'Новости, обновления и важные объявления сервиса.',
-        url: 'https://t.me/+DfexxpJzKiFkNzQ6',
-    },
-    {
-        title: 'Общий чат',
-        description: 'Обсуждения, вопросы и общение с другими пользователями.',
-        url: 'https://t.me/+jG8T4yBk0tg4MWNi',
-    },
-];
+const chatLinks = telegramChatLinks;
 
 const retry = () => {
     window.location.reload();

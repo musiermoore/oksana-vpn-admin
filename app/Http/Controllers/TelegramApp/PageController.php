@@ -46,6 +46,11 @@ class PageController extends Controller
         return $this->page('TelegramApp/Support');
     }
 
+    public function giveaway()
+    {
+        return $this->page('TelegramApp/Giveaway');
+    }
+
     public function referrals()
     {
         return $this->page('TelegramApp/Referrals');
@@ -70,6 +75,7 @@ class PageController extends Controller
                 'help' => route('telegram-app.pages.help'),
                 'chats' => route('telegram-app.pages.chats'),
                 'support' => route('telegram-app.pages.support'),
+                'giveaway' => route('telegram-app.pages.giveaway'),
                 'referrals' => route('telegram-app.pages.referrals'),
             ],
             'auth_url' => route('telegram-app.auth.telegram'),
@@ -85,6 +91,8 @@ class PageController extends Controller
             'support_ticket_store_url' => route('telegram-app.support.tickets.store'),
             'subscription_packages_url' => route('telegram-app.subscription-packages'),
             'claim_referral_url' => route('telegram-app.referrals.claim'),
+            'giveaway_url' => route('telegram-app.giveaway.show'),
+            'giveaway_participate_url' => route('telegram-app.giveaway.participate'),
             'payment_url' => route('telegram-app.payments.subscriptions'),
             'activate_subscription_code_url' => route('telegram-app.payments.subscription-codes.activate'),
             ...$extra,

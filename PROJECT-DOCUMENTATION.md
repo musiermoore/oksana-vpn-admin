@@ -10,6 +10,7 @@ It manages:
 - balances
 - transactions
 - subscription periods
+- giveaway campaigns
 - WireGuard configs
 - VLESS configs
 - Telegram-driven payment flows
@@ -161,6 +162,30 @@ Each subscription has:
 The active subscription is the subscription covering today.
 The latest subscription is the one with the greatest `end_date`.
 
+### Giveaways
+
+Giveaway campaigns are stored in:
+
+- `giveaway_series`
+- `giveaways`
+- `giveaway_prizes`
+- `giveaway_participants`
+- `giveaway_winners`
+
+Current rules:
+
+- participation is explicit and starts only after pressing `Участвовать`
+- base participant weight is `1`
+- each eligible referral adds `+1`
+- a referral is eligible only when:
+  - the referral relationship belongs to the participant
+  - the referral was attached during the current giveaway window
+  - the referred user has an active subscription at `giveaway.ends_at`
+- historical draw data is frozen through participant and winner snapshots
+- one user can win at most one prize per giveaway
+- prize grants create free `user_subscriptions` with source `giveaway`
+- auto-repeat creates a brand new giveaway instance in the same series instead of mutating the old row
+
 ## Billing Model
 
 The stored user balance is synchronized from:
@@ -258,6 +283,7 @@ Important admin screens include:
 - configs
 - extra payments
 - current payments
+- giveaways
 
 Transactions in the admin UI should expose:
 

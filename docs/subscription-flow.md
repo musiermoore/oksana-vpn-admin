@@ -30,6 +30,7 @@
 3. Покупка пакета через external payment + подтверждение
 4. Активация подарочного кода
 5. Автопродление по балансу
+6. Бесплатная активация приза по розыгрышу
 
 ## 3. Пробная подписка
 
@@ -141,6 +142,22 @@ Flow:
 - Продление не занимается enable/disable конфигов напрямую.
 - Для доступа и конфигов есть отдельная команда reconciliation.
 
+## 7.1 Приз по розыгрышу
+
+Flow:
+
+1. `GiveawayDrawService` сохраняет победителя и конкретный prize slot.
+2. `GiveawayGrantService` вызывает `SubscriptionService::grantGiveawayMonths()`.
+3. Создаётся бесплатная запись в `user_subscriptions` с `source=giveaway`.
+4. Отрицательная billing transaction не создаётся.
+5. `users.subscription_expires_at` синхронизируется обычным `syncUserSubscriptionExpiry()`.
+
+Важно:
+
+- prize grant не идёт через стандартный payment flow
+- prize grant не должен менять renewal/billing semantics
+- если у пользователя уже есть активная или будущая подписка, приз добавляется после последнего периода через существующую date arithmetic логику
+
 ## 8. Включение и отключение конфигов
 
 Команда:
@@ -243,6 +260,7 @@ White list выдача:
 - `VLESS`
 - `VLESS White List`
 - `Home`
+- `Giveaway`
 
 ## 12. Что обязательно проверять при изменениях
 

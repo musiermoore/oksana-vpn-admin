@@ -27,7 +27,7 @@ class MemoryStorage {
     }
 }
 
-const createWindow = ({ initData = '', search = '', storedInitData = '' } = {}) => {
+const createWindow = ({ initData = '', search = '', hash = '', storedInitData = '' } = {}) => {
     const sessionStorage = new MemoryStorage();
 
     if (storedInitData !== '') {
@@ -52,6 +52,7 @@ const createWindow = ({ initData = '', search = '', storedInitData = '' } = {}) 
             href: `https://example.com/telegram-app/${search}`,
             pathname: '/telegram-app/',
             search,
+            hash,
         },
         document: {
             referrer: 'https://t.me/oksanavpn_bot',
@@ -78,6 +79,15 @@ test('getTelegramInitData falls back to tgWebAppData query parameter', () => {
 
     assert.equal(getTelegramInitData(), 'query_id=abc&user=%7B%7D');
     assert.equal(window.sessionStorage.getItem('telegram-mini-app-last-init-data'), 'query_id=abc&user=%7B%7D');
+});
+
+test('getTelegramInitData falls back to tgWebAppData hash parameter', () => {
+    global.window = createWindow({
+        hash: '#tgWebAppData=query_id%3Dhash%26user%3D%257B%257D',
+    });
+
+    assert.equal(getTelegramInitData(), 'query_id=hash&user=%7B%7D');
+    assert.equal(window.sessionStorage.getItem('telegram-mini-app-last-init-data'), 'query_id=hash&user=%7B%7D');
 });
 
 test('requireTelegramInitData falls back to initData stored in session', () => {
@@ -125,6 +135,14 @@ test('getTelegramStartParam falls back to tgWebAppStartParam query parameter', (
     assert.equal(getTelegramStartParam(), 'ticket_42');
 });
 
+test('getTelegramStartParam falls back to tgWebAppStartParam hash parameter', () => {
+    global.window = createWindow({
+        hash: '#tgWebAppStartParam=ticket_43',
+    });
+
+    assert.equal(getTelegramStartParam(), 'ticket_43');
+});
+
 test('reportTelegramBootstrapDiagnostic sends a deduplicated diagnostic payload', async () => {
     const requests = [];
 
@@ -155,4 +173,28 @@ test('reportTelegramBootstrapDiagnostic sends a deduplicated diagnostic payload'
     assert.equal(requests[0].payload.telegram_init_data_user_id, '777');
     assert.equal(requests[0].payload.telegram_start_param, 'ticket_42');
     assert.deepEqual(requests[0].payload.telegram_init_data_keys, ['query_id', 'auth_date', 'hash', 'user']);
+});
+
+test('reportTelegramBootstrapDiagnostic marks hash as initData source', async () => {
+    const requests = [];
+
+    global.window = createWindow({
+        hash: '#tgWebAppData=query_id%3Dhash%26auth_date%3D123%26hash%3Dabcdef123456%26user%3D%257B%2522id%2522%253A778%257D&tgWebAppStartParam=ticket_43',
+    });
+    global.window.axios.post = async (url, payload) => {
+        requests.push({ url, payload });
+        return { data: { message: 'ok' } };
+    };
+
+    await reportTelegramBootstrapDiagnostic({
+        page: '/telegram-app/',
+        error: new Error('Откройте приложение через Telegram.'),
+        attempts: 8,
+        delayMs: 250,
+    });
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].payload.telegram_init_data_source, 'hash');
+    assert.equal(requests[0].payload.telegram_init_data_user_id, '778');
+    assert.equal(requests[0].payload.telegram_start_param, 'ticket_43');
 });

@@ -11,6 +11,7 @@ return [
     'waits' => [
         'redis:default' => 60,
         'redis:configs' => 120,
+        'redis:telegram' => 60,
         'redis:vless-configs' => 120,
         'redis:xui-sync' => 120,
         'redis:tax' => 120,
@@ -32,7 +33,7 @@ return [
     'defaults' => [
         'supervisor-default' => [
             'connection' => 'redis',
-            'queue' => ['default', 'configs'],
+            'queue' => ['default', 'configs', 'telegram'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -86,7 +87,7 @@ return [
     'environments' => [
         'production' => [
             'supervisor-default' => [
-                'queue' => ['default', 'configs'],
+                'queue' => ['default', 'configs', 'telegram'],
                 'maxProcesses' => 10,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
@@ -115,7 +116,7 @@ return [
         ],
         'local' => [
             'supervisor-default' => [
-                'queue' => ['default', 'configs', 'vless-configs'],
+                'queue' => ['default', 'configs', 'vless-configs', 'telegram'],
                 'maxProcesses' => 3,
             ],
             'supervisor-xui-sync' => [

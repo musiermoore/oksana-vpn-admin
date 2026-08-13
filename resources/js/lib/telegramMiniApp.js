@@ -4,7 +4,7 @@ const START_PARAM_KEY = 'telegram-mini-app-last-start-param';
 const START_PARAM_AUTH_KEY = 'telegram-mini-app-last-auth-start-param';
 const INIT_DATA_KEY = 'telegram-mini-app-last-init-data';
 const BOOTSTRAP_DIAGNOSTIC_KEY = 'telegram-mini-app-last-bootstrap-diagnostic';
-const INIT_DATA_RETRY_ATTEMPTS = 3;
+const INIT_DATA_RETRY_ATTEMPTS = 8;
 const INIT_DATA_RETRY_DELAY_MS = 250;
 const BOOTSTRAP_DIAGNOSTIC_TTL_MS = 120000;
 const BOOTSTRAP_DIAGNOSTIC_URL = '/telegram-app/diagnostics/bootstrap';
@@ -67,6 +67,22 @@ export const getTelegramProfileId = () => {
         : String(telegramUserId).trim();
 };
 
+const getTelegramLaunchParam = (key) => {
+    const queryValue = new URLSearchParams(window.location.search).get(key);
+
+    if (typeof queryValue === 'string' && queryValue.trim() !== '') {
+        return queryValue;
+    }
+
+    const hash = window.location.hash?.replace(/^#/, '') ?? '';
+
+    if (hash === '') {
+        return null;
+    }
+
+    return new URLSearchParams(hash).get(key);
+};
+
 export const getTelegramStartParam = () => {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
 
@@ -74,7 +90,7 @@ export const getTelegramStartParam = () => {
         return startParam.trim();
     }
 
-    const queryStartParam = new URLSearchParams(window.location.search).get('tgWebAppStartParam');
+    const queryStartParam = getTelegramLaunchParam('tgWebAppStartParam');
 
     return queryStartParam?.trim() || '';
 };
@@ -87,7 +103,7 @@ export const getTelegramInitData = () => {
         return webAppInitData;
     }
 
-    const queryInitData = new URLSearchParams(window.location.search).get('tgWebAppData')?.trim() ?? '';
+    const queryInitData = getTelegramLaunchParam('tgWebAppData')?.trim() ?? '';
 
     if (queryInitData !== '') {
         window.sessionStorage.setItem(INIT_DATA_KEY, queryInitData);
@@ -111,6 +127,7 @@ const collectInitDataDiagnostic = () => {
     const sources = [
         ['web_app', window.Telegram?.WebApp?.initData?.trim() ?? ''],
         ['query', new URLSearchParams(window.location.search).get('tgWebAppData')?.trim() ?? ''],
+        ['hash', new URLSearchParams(window.location.hash?.replace(/^#/, '') ?? '').get('tgWebAppData')?.trim() ?? ''],
         ['session', window.sessionStorage.getItem(INIT_DATA_KEY)?.trim() ?? ''],
     ];
     const [source, rawInitData] = sources.find(([, value]) => value !== '') ?? ['missing', ''];
@@ -137,6 +154,14 @@ const collectInitDataDiagnostic = () => {
     };
 };
 
+const getResolvedTimeZone = () => {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+        return '';
+    }
+};
+
 const buildBootstrapDiagnosticPayload = ({ page, error, attempts, delayMs }) => {
     const initData = collectInitDataDiagnostic();
 
@@ -151,7 +176,7 @@ const buildBootstrapDiagnosticPayload = ({ page, error, attempts, delayMs }) => 
         search: truncate(window.location.search, 2000) || null,
         referrer: truncate(window.document?.referrer, 2000) || null,
         user_agent: truncate(window.navigator?.userAgent, 2000) || null,
-        timezone: truncate(Intl.DateTimeFormat().resolvedOptions().timeZone, 120) || null,
+        timezone: truncate(getResolvedTimeZone(), 120) || null,
         language: truncate(window.navigator?.language, 40) || null,
         telegram_user_id: truncate(getTelegramProfileId(), 255) || null,
         telegram_start_param: truncate(getTelegramStartParam(), 255) || null,
@@ -202,20 +227,57 @@ const shouldReportBootstrapDiagnostic = (payload) => {
     return true;
 };
 
-export const reportTelegramBootstrapDiagnostic = async ({ page, error, attempts = INIT_DATA_RETRY_ATTEMPTS, delayMs = INIT_DATA_RETRY_DELAY_MS }) => {
-    const payload = buildBootstrapDiagnosticPayload({
-        page,
-        error,
-        attempts,
-        delayMs,
-    });
+const postBootstrapDiagnosticPayload = async (payload) => {
+    try {
+        if (window.navigator?.sendBeacon && typeof Blob !== 'undefined') {
+            const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
 
-    if (!shouldReportBootstrapDiagnostic(payload)) {
-        return;
+            if (window.navigator.sendBeacon(BOOTSTRAP_DIAGNOSTIC_URL, blob)) {
+                return;
+            }
+        }
+    } catch {
+        // Continue with fetch/axios fallback.
     }
 
     try {
-        await window.axios.post(BOOTSTRAP_DIAGNOSTIC_URL, payload);
+        if (window.fetch) {
+            const response = await window.fetch(BOOTSTRAP_DIAGNOSTIC_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                credentials: 'same-origin',
+                keepalive: true,
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                return;
+            }
+        }
+    } catch {
+        // Continue with axios fallback.
+    }
+
+    await window.axios?.post(BOOTSTRAP_DIAGNOSTIC_URL, payload);
+};
+
+export const reportTelegramBootstrapDiagnostic = async ({ page, error, attempts = INIT_DATA_RETRY_ATTEMPTS, delayMs = INIT_DATA_RETRY_DELAY_MS }) => {
+    try {
+        const payload = buildBootstrapDiagnosticPayload({
+            page,
+            error,
+            attempts,
+            delayMs,
+        });
+
+        if (!shouldReportBootstrapDiagnostic(payload)) {
+            return;
+        }
+
+        await postBootstrapDiagnosticPayload(payload);
     } catch {
         // Intentionally swallow diagnostic errors so bootstrap UX stays unchanged.
     }

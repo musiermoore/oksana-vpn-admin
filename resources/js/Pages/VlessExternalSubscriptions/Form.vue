@@ -12,12 +12,14 @@ const props = defineProps({
     preview_url: String,
     subscription: Object,
     types: Array,
+    source_formats: Array,
 });
 
 const form = useForm({
     name: props.subscription?.name ?? '',
     description: props.subscription?.description ?? '',
     type: props.subscription?.type ?? 'subscription',
+    source_format: props.subscription?.source_format ?? 'direct',
     source_url: props.subscription?.source_url ?? '',
     filter_pattern: props.subscription?.filter_pattern ?? '',
     connect_name_prefix: props.subscription?.connect_name_prefix ?? '',
@@ -32,6 +34,7 @@ const preview = ref(null);
 const previewError = ref('');
 const previewLoading = ref(false);
 const typeOptions = props.types;
+const sourceFormatOptions = props.source_formats;
 
 const submit = () => props.method === 'patch'
     ? form.patch(props.submit_url)
@@ -73,8 +76,19 @@ const loadPreview = async () => {
                 <AppSelect v-model="form.type" :options="typeOptions" required />
             </label>
 
+            <label class="field">
+                <span>Формат источника</span>
+                <AppSelect v-model="form.source_format" :options="sourceFormatOptions" required />
+            </label>
+
             <label class="field" style="grid-column: 1 / -1;">
-                <span>{{ form.type === 'subscription' ? 'URL подписки' : 'Прямая ссылка на конфиг' }}</span>
+                <span>
+                    {{
+                        form.source_format === 'incy'
+                            ? 'INCY ссылка или https redirect'
+                            : (form.type === 'subscription' ? 'URL подписки' : 'Прямая ссылка на конфиг')
+                    }}
+                </span>
                 <AppTextarea v-model="form.source_url" required  />
             </label>
 

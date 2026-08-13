@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class VlessExternalSubscriptionResource extends JsonResource
             'sort_order' => (int) $this->sort_order,
             'description' => $this->description,
             'type' => $this->type,
+            'source_format' => $this->source_format?->value ?? $this->source_format,
             'source_url' => $this->source_url,
             'filter_pattern' => $this->filter_pattern,
             'connect_name_prefix' => $this->connect_name_prefix,

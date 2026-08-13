@@ -213,6 +213,11 @@ White list выдача:
 
 - `/connect-wl-version-2` использует `VlessExternalSubscriptionAccessService`
 - туда входят внешние подписки с флагом `include_in_whitelist`
+- внешний источник может быть как обычным `direct`, так и `incy`
+- для `incy` backend сначала:
+  - если source URL начинается с `https://` или `http://`, забирает `incy://...` redirect из ответа
+  - если source URL уже начинается с `incy://`, сразу декодирует его
+  - затем получает из расшифрованного payload обычный subscription/direct URL и продолжает стандартный sync flow
 
 Если подписка истекла:
 

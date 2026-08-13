@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\VlessExternalSubscription;
 
+use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Models\VlessExternalSubscription;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,6 +25,7 @@ class StoreVlessExternalSubscriptionRequest extends FormRequest
                 VlessExternalSubscription::TYPE_SUBSCRIPTION,
                 VlessExternalSubscription::TYPE_DIRECT,
             ])],
+            'source_format' => ['required', Rule::enum(ExternalSubscriptionSourceFormat::class)],
             'source_url' => ['required', 'string'],
             'filter_pattern' => ['nullable', 'string', 'max:255'],
             'connect_name_prefix' => ['nullable', 'string', 'max:255'],
@@ -31,5 +35,12 @@ class StoreVlessExternalSubscriptionRequest extends FormRequest
             'is_active' => ['required', 'boolean'],
             'is_ready' => ['required', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'source_format' => $this->input('source_format', ExternalSubscriptionSourceFormat::Direct->value),
+        ]);
     }
 }

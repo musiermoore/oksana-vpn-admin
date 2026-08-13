@@ -43,6 +43,7 @@ const syncSubscription = (subscription) => {
                     <th>ID</th>
                     <th>Имя</th>
                     <th>Тип</th>
+                    <th>Формат</th>
                     <th>В осн.</th>
                     <th>В WL</th>
                     <th>Free</th>
@@ -63,6 +64,7 @@ const syncSubscription = (subscription) => {
                         <div v-if="subscription.last_sync_error" class="field-error">{{ subscription.last_sync_error }}</div>
                     </td>
                     <td>{{ subscription.type === 'subscription' ? 'Подписка' : 'Прямая ссылка' }}</td>
+                    <td>{{ subscription.source_format === 'incy' ? 'INCY' : 'Direct' }}</td>
                     <td>{{ subscription.include_in_main_subscription ? 'Да' : 'Нет' }}</td>
                     <td>{{ subscription.include_in_whitelist ? 'Да' : 'Нет' }}</td>
                     <td>{{ subscription.is_free ? 'Да' : 'Нет' }}</td>

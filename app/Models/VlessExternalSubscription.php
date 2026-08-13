@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Enums\ExternalSubscriptionSourceFormat;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -16,6 +19,7 @@ class VlessExternalSubscription extends Model
         'sort_order',
         'description',
         'type',
+        'source_format',
         'source_url',
         'filter_pattern',
         'connect_name_prefix',
@@ -38,6 +42,7 @@ class VlessExternalSubscription extends Model
             'is_ready' => 'boolean',
             'last_synced_at' => 'datetime',
             'sort_order' => 'integer',
+            'source_format' => ExternalSubscriptionSourceFormat::class,
         ];
     }
 
@@ -70,5 +75,12 @@ class VlessExternalSubscription extends Model
     public function isDirectType(): bool
     {
         return $this->type === self::TYPE_DIRECT;
+    }
+
+    public function isIncySourceFormat(): bool
+    {
+        return $this->source_format instanceof ExternalSubscriptionSourceFormat
+            ? $this->source_format->isIncy()
+            : (string) $this->source_format === ExternalSubscriptionSourceFormat::Incy->value;
     }
 }

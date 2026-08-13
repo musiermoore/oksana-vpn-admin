@@ -134,6 +134,11 @@ This keeps price history editable from the admin UI without replacing a whole JS
 
 The main `/connect` subscription is built from normalized local and external nodes.
 
+External VLESS subscriptions support multiple source formats:
+
+- `direct` for regular links and subscription URLs
+- `incy` for sources that start as `incy://...` or as an `https://...` page that redirects to `incy://...`
+
 Its order is explicit rather than inferred from ids:
 
 - `servers.sort_order` controls local server order

@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\ExternalSubscriptions;
 
+use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Models\User;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
+use App\Services\ExternalSubscriptions\Incy\IncySourceUrlResolver;
 use App\Services\Subscriptions\SubscriptionUriParser;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +24,7 @@ class VlessExternalSubscriptionSyncService
 
     public function __construct(
         private readonly SubscriptionUriParser $parser,
+        private readonly IncySourceUrlResolver $sourceUrlResolver,
     ) {}
 
     /**
@@ -29,6 +34,11 @@ class VlessExternalSubscriptionSyncService
     {
         return $this->collectConfigs(
             type: (string) ($attributes['type'] ?? ''),
+            sourceFormat: $attributes['source_format'] instanceof ExternalSubscriptionSourceFormat
+                ? $attributes['source_format']
+                : ExternalSubscriptionSourceFormat::from(
+                    (string) ($attributes['source_format'] ?? ExternalSubscriptionSourceFormat::Direct->value)
+                ),
             sourceUrl: (string) ($attributes['source_url'] ?? ''),
             filterPattern: $attributes['filter_pattern'] ?? null,
         );
@@ -38,6 +48,11 @@ class VlessExternalSubscriptionSyncService
     {
         $result = $this->collectConfigs(
             type: (string) $subscription->type,
+            sourceFormat: $subscription->source_format instanceof ExternalSubscriptionSourceFormat
+                ? $subscription->source_format
+                : ExternalSubscriptionSourceFormat::from(
+                    (string) ($subscription->source_format ?: ExternalSubscriptionSourceFormat::Direct->value)
+                ),
             sourceUrl: (string) $subscription->source_url,
             filterPattern: $subscription->filter_pattern,
         );
@@ -127,11 +142,18 @@ class VlessExternalSubscriptionSyncService
     /**
      * @return array{full: array<int, array<string, mixed>>, filtered: array<int, array<string, mixed>>}
      */
-    private function collectConfigs(string $type, string $sourceUrl, ?string $filterPattern): array
+    private function collectConfigs(
+        string $type,
+        ExternalSubscriptionSourceFormat $sourceFormat,
+        string $sourceUrl,
+        ?string $filterPattern
+    ): array
     {
+        $resolvedSourceUrl = $this->sourceUrlResolver->resolve($sourceUrl, $sourceFormat);
+
         $lines = match ($type) {
-            VlessExternalSubscription::TYPE_SUBSCRIPTION => $this->parseSubscriptionLines($sourceUrl),
-            VlessExternalSubscription::TYPE_DIRECT => [trim($sourceUrl)],
+            VlessExternalSubscription::TYPE_SUBSCRIPTION => $this->parseSubscriptionLines($resolvedSourceUrl),
+            VlessExternalSubscription::TYPE_DIRECT => [trim($resolvedSourceUrl)],
             default => throw new RuntimeException('Неизвестный тип внешней подписки.'),
         };
 

@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\VlessExternalSubscription\StoreVlessExternalSubscriptionRequest;
 use App\Http\Requests\VlessExternalSubscription\UpdateVlessExternalSubscriptionRequest;
 use App\Http\Resources\VlessExternalSubscriptionResource;
 use App\Jobs\SyncVlessExternalSubscriptionJob;
+use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Models\VlessExternalSubscription;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use Illuminate\Http\RedirectResponse;
@@ -41,6 +44,7 @@ class VlessExternalSubscriptionController extends Controller
             'preview_url' => route('vless-external-subscriptions.preview'),
             'subscription' => null,
             'types' => $this->types(),
+            'source_formats' => $this->sourceFormats(),
         ]);
     }
 
@@ -74,6 +78,7 @@ class VlessExternalSubscriptionController extends Controller
             'preview_url' => route('vless-external-subscriptions.preview'),
             'subscription' => (new VlessExternalSubscriptionResource($vlessExternalSubscription))->toArray($request),
             'types' => $this->types(),
+            'source_formats' => $this->sourceFormats(),
         ]);
     }
 
@@ -120,6 +125,17 @@ class VlessExternalSubscriptionController extends Controller
         return [
             ['value' => VlessExternalSubscription::TYPE_SUBSCRIPTION, 'label' => 'Подписка'],
             ['value' => VlessExternalSubscription::TYPE_DIRECT, 'label' => 'Прямая ссылка'],
+        ];
+    }
+
+    /**
+     * @return array<int, array{value:string, label:string}>
+     */
+    private function sourceFormats(): array
+    {
+        return [
+            ['value' => ExternalSubscriptionSourceFormat::Direct->value, 'label' => ExternalSubscriptionSourceFormat::Direct->label()],
+            ['value' => ExternalSubscriptionSourceFormat::Incy->value, 'label' => ExternalSubscriptionSourceFormat::Incy->label()],
         ];
     }
 }

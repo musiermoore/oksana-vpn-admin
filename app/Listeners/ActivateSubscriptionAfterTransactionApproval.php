@@ -5,10 +5,10 @@ namespace App\Listeners;
 use App\Enums\SubscriptionPurchaseType;
 use App\Events\TransactionApproved;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
+use App\Jobs\ReconcileUserAccessStateJob;
 use App\Models\User;
 use App\Services\SubscriptionCodeService;
 use App\Services\SubscriptionService;
-use Illuminate\Support\Facades\Artisan;
 
 class ActivateSubscriptionAfterTransactionApproval
 {
@@ -62,9 +62,7 @@ class ActivateSubscriptionAfterTransactionApproval
             return;
         }
 
-        DispatchDefaultConfigsForUserJob::dispatch($user->id);
-        Artisan::call('configs:disable-overdue-debtors', [
-            'user_id' => $user->id,
-        ]);
+        DispatchDefaultConfigsForUserJob::dispatch($user->id)->afterCommit();
+        ReconcileUserAccessStateJob::dispatch($user->id)->afterCommit();
     }
 }

@@ -11,7 +11,7 @@ use App\Models\VlessConfig;
 use App\Services\Crud\VlessConfigCrudService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
+use Throwable;
 
 class DisableConfigsOfOverdueDebtorsCommand extends Command
 {
@@ -143,9 +143,9 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
                 try {
                     $service->disable($config);
                     $ids[] = $config->id;
-                } catch (RuntimeException $exception) {
+                } catch (Throwable $exception) {
                     report($exception);
-                    $this->warn("Failed to disable VLESS config [{$config->id}] for user [{$user->id}]");
+                    $this->warn("Failed to disable VLESS config [{$config->id}] for user [{$user->id}]: {$exception->getMessage()}");
                 }
             }
         }
@@ -178,9 +178,9 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
                 try {
                     $service->enable($config);
                     $ids[] = $config->id;
-                } catch (RuntimeException $exception) {
+                } catch (Throwable $exception) {
                     report($exception);
-                    $this->warn("Failed to enable VLESS config [{$config->id}] for user [{$user->id}]");
+                    $this->warn("Failed to enable VLESS config [{$config->id}] for user [{$user->id}]: {$exception->getMessage()}");
                 }
             }
         }

@@ -8,7 +8,9 @@ use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
 use App\Models\XrayInbound;
+use App\Services\Crud\VlessConfigCrudService;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -90,5 +92,71 @@ class DisableConfigsOfOverdueDebtorsCommandTest extends TestCase
             ->assertSuccessful();
 
         $this->assertFalse((bool) $config->fresh()->enable);
+    }
+
+    public function test_command_keeps_running_when_remote_disable_throws_non_runtime_exception(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'VLESS Server',
+            'code' => 'VLS',
+            'ip' => '10.0.0.10',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'is_active' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Debtor User',
+            'telegram' => '@debtor',
+            'telegram_id' => '123456789',
+            'balance' => -50,
+            'password' => bcrypt('password'),
+        ]);
+
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 10,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 10],
+        ]);
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $inbound->id,
+            'user_id' => $user->id,
+            'name' => 'debtor_config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => '33333333-3333-3333-3333-333333333333',
+            'sub_id' => 'sub-333',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'flow' => 'xtls-rprx-vision',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $this->mock(VlessConfigCrudService::class, function ($mock): void {
+            $mock->shouldReceive('disable')
+                ->once()
+                ->andThrow(new Exception('Timed out contacting upstream server.'));
+        });
+
+        $this->artisan('configs:disable-overdue-debtors')
+            ->expectsOutputToContain('Failed to disable VLESS config')
+            ->assertSuccessful();
+
+        $this->assertTrue((bool) $config->fresh()->enable);
     }
 }

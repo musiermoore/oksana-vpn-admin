@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\Transaction\TransactionData;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
+use App\Jobs\ReconcileUserAccessStateJob;
 use App\Jobs\SendTelegramMessageJob;
 use App\Models\CurrentPayment;
 use App\Models\Server;
@@ -154,6 +155,9 @@ class TransactionCrudServiceTest extends TestCase
         $this->assertSame(0.0, $user->fresh()->balance);
 
         Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, function (DispatchDefaultConfigsForUserJob $job) use ($user) {
+            return $job->userId === $user->id;
+        });
+        Queue::assertPushed(ReconcileUserAccessStateJob::class, function (ReconcileUserAccessStateJob $job) use ($user) {
             return $job->userId === $user->id;
         });
 

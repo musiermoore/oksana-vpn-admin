@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\SubscriptionPurchaseType;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
+use App\Jobs\ReconcileUserAccessStateJob;
 use App\Models\PaymentPeriod;
 use App\Models\SubscriptionCode;
 use App\Models\Transaction;
@@ -174,7 +175,8 @@ class SubscriptionCodeService
             $user->load('activeSubscription');
 
             if ($user->hasActiveSubscription()) {
-                DispatchDefaultConfigsForUserJob::dispatch($user->id);
+                DispatchDefaultConfigsForUserJob::dispatch($user->id)->afterCommit();
+                ReconcileUserAccessStateJob::dispatch($user->id)->afterCommit();
             }
 
             return $code->refresh();

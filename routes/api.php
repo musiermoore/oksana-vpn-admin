@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\PaymentWebhookController;
+use App\Http\Controllers\Api\PaymentWebhookLogController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Middleware\BasicAuth;
@@ -49,4 +50,6 @@ Route::name('api.')->middleware([BasicAuth::class, TrackApiRequests::class])->gr
         ->name('transactions.approve');
     Route::delete('transactions/{transaction}/decline', [TransactionController::class, 'decline'])
         ->name('transactions.decline');
+    Route::post('payment/webhook-logs/{paymentWebhookLog}/replay', [PaymentWebhookLogController::class, 'replay'])
+        ->name('payment.webhook-logs.replay');
 });

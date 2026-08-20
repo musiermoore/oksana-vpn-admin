@@ -94,7 +94,9 @@ Flow:
    - активирует пакет
    - либо делает renewal для подходящего случая
    - запускает `DispatchDefaultConfigsForUserJob`
-   - вызывает `configs:disable-overdue-debtors {user_id}`
+   - ставит в очередь `ReconcileUserAccessStateJob`, который уже запускает `configs:disable-overdue-debtors {user_id}`
+6. Каждый входящий payment webhook сохраняется в `payment_webhook_logs` вместе с payload, привязкой к invoice/transaction и итоговым статусом обработки.
+7. При необходимости сохранённый webhook можно replay-нуть через внутренний API, чтобы backend повторно обработал тот же payload уже с нашей стороны.
 
 Ключевые файлы:
 
@@ -172,8 +174,7 @@ Flow:
 Сейчас команда запускается:
 
 - по расписанию каждые 5 минут
-- вручную после успешной активации paid subscription
-- вручную после trial activation
+- через queued `ReconcileUserAccessStateJob` после успешной paid/trial/gift activation
 
 Создание отсутствующих дефолтных конфигов делает отдельная job:
 

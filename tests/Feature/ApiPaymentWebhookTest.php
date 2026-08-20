@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Models\Invoice;
+use App\Models\PaymentWebhookLog;
 use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Jobs\EditTelegramMessageTextJob;
+use App\Jobs\ReconcileUserAccessStateJob;
 use App\Jobs\SendTelegramMessageJob;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -135,11 +138,31 @@ class ApiPaymentWebhookTest extends TestCase
             'price' => 720,
         ]);
 
+        Queue::assertPushed(DispatchDefaultConfigsForUserJob::class, fn (DispatchDefaultConfigsForUserJob $job): bool => $job->userId === $user->id);
+        Queue::assertPushed(ReconcileUserAccessStateJob::class, fn (ReconcileUserAccessStateJob $job): bool => $job->userId === $user->id);
         Queue::assertPushed(SendTelegramMessageJob::class, fn (SendTelegramMessageJob $job): bool => $job->payload['chat_id'] === '123456789'
             && $job->payload['text'] === 'Подписка успешно активирована до 12.12.2026.');
         Queue::assertPushed(EditTelegramMessageTextJob::class, fn (EditTelegramMessageTextJob $job): bool => $job->payload['chat_id'] === 777
             && $job->payload['message_id'] === 999
             && $job->payload['text'] === "Оплата получена.\n\nПодписка успешно активирована до 12.12.2026.");
+
+        $approvedDeposit = Transaction::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('amount', 520)
+            ->first();
+
+        $this->assertNotNull($approvedDeposit);
+
+        $this->assertDatabaseHas('payment_webhook_logs', [
+            'provider' => 'yookassa',
+            'source' => PaymentWebhookLog::SOURCE_EXTERNAL,
+            'event' => 'payment.succeeded',
+            'provider_payment_id' => '23d93cac-000f-5000-8000-126628f15141',
+            'invoice_id' => $invoice->id,
+            'transaction_id' => $approvedDeposit?->id,
+            'status' => PaymentWebhookLog::STATUS_PROCESSED,
+            'response_status' => 200,
+        ]);
     }
 
     public function test_webhook_notifies_dev_chat_when_paid_payment_is_canceled(): void
@@ -403,5 +426,108 @@ class ApiPaymentWebhookTest extends TestCase
 
         Queue::assertPushed(SendTelegramMessageJob::class);
         Queue::assertPushed(EditTelegramMessageTextJob::class);
+    }
+
+    public function test_authorized_user_can_replay_webhook_from_saved_log(): void
+    {
+        Queue::fake();
+
+        config()->set('auth.basic_auth.login', 'admin');
+        config()->set('auth.basic_auth.password', 'secret');
+
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+            'balance' => 0,
+        ]);
+
+        $invoice = Invoice::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => '23d93cac-000f-5000-8000-126628f15141',
+            'status' => 'pending',
+            'paid' => false,
+            'amount' => 520,
+            'currency' => 'RUB',
+            'description' => 'Подписка 6 мес. для @alice',
+            'history' => [],
+        ]);
+
+        $transaction = Transaction::query()->create([
+            'user_id' => $user->id,
+            'invoice_id' => $invoice->id,
+            'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
+            'amount' => 520,
+            'is_approved' => false,
+            'description' => 'YooKassa',
+            'telegram_chat_id' => 777,
+            'telegram_message_id' => 999,
+            'extra_data' => [
+                'subscription_months' => 6,
+                'package_price' => 720,
+            ],
+        ]);
+
+        $sourceLog = PaymentWebhookLog::query()->create([
+            'provider' => 'yookassa',
+            'source' => PaymentWebhookLog::SOURCE_EXTERNAL,
+            'user_id' => $user->id,
+            'invoice_id' => $invoice->id,
+            'transaction_id' => $transaction->id,
+            'event' => 'payment.succeeded',
+            'provider_payment_id' => $invoice->provider_payment_id,
+            'request_method' => 'POST',
+            'request_url' => '/api/payment/webhook',
+            'request_payload' => [
+                'type' => 'notification',
+                'event' => 'payment.succeeded',
+                'object' => [
+                    'id' => '23d93cac-000f-5000-8000-126628f15141',
+                    'status' => 'succeeded',
+                    'paid' => true,
+                    'amount' => [
+                        'value' => '520.00',
+                        'currency' => 'RUB',
+                    ],
+                    'description' => 'Подписка 6 мес. для @alice',
+                    'confirmation' => [
+                        'type' => 'redirect',
+                        'confirmation_url' => 'https://yookassa.example/confirm',
+                    ],
+                    'created_at' => '2026-06-12T10:00:00.000Z',
+                ],
+            ],
+            'status' => PaymentWebhookLog::STATUS_PROCESSED,
+            'response_status' => 200,
+            'response_payload' => ['ok' => true],
+            'processed_at' => now(),
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Basic '.base64_encode('admin:secret'),
+        ])->postJson("/api/payment/webhook-logs/{$sourceLog->id}/replay")
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('source_log_id', $sourceLog->id);
+
+        $replayLogId = (int) $response->json('replay_log_id');
+
+        $replayLog = PaymentWebhookLog::query()->find($replayLogId);
+
+        $this->assertNotNull($replayLog);
+        $this->assertSame(PaymentWebhookLog::SOURCE_REPLAY, $replayLog?->source);
+        $this->assertSame($sourceLog->id, $replayLog?->replayed_from_log_id);
+        $this->assertSame(PaymentWebhookLog::STATUS_PROCESSED, $replayLog?->status);
+        $this->assertSame($invoice->id, $replayLog?->invoice_id);
+        $this->assertSame($transaction->id, $replayLog?->transaction_id);
+
+        $this->assertTrue((bool) $transaction->fresh()?->is_approved);
+        $this->assertDatabaseHas('user_subscriptions', [
+            'user_id' => $user->id,
+            'start_date' => '2026-06-12',
+            'end_date' => '2026-12-12',
+            'price' => 720,
+        ]);
     }
 }

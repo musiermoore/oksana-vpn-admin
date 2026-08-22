@@ -114,9 +114,12 @@ Important fields:
 
 - `server_id`
 - `xray_inbound_id`
+- `hide_main_node_name`
 - `sort_order`
 
 `sort_order` stores the explicit position of the proxy in the mixed per-server `/connect` list alongside Xray inbounds.
+
+`hide_main_node_name` lets a proxy replace the original server label in `/connect`, so a proxy variant can be shown as just its own name instead of `Server (Proxy Name)`.
 
 ### Server Prices
 

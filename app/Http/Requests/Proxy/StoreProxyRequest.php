@@ -25,6 +25,7 @@ class StoreProxyRequest extends DataFormRequest
             'inbound_id' => ['nullable', 'integer', 'min:1'],
             'is_https' => ['required', 'boolean'],
             'is_ready' => ['required', 'boolean'],
+            'hide_main_node_name' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
         ];
     }

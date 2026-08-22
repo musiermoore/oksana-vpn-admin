@@ -21,6 +21,7 @@ class ProxyResource extends JsonResource
             'xray_inbound_id' => $this->xray_inbound_id !== null ? (int) $this->xray_inbound_id : null,
             'is_https' => (bool) $this->is_https,
             'is_ready' => (bool) $this->is_ready,
+            'hide_main_node_name' => (bool) $this->hide_main_node_name,
             'description' => $this->description,
             'links' => [
                 'edit' => route('proxies.edit', $this->resource),

@@ -16,6 +16,7 @@ class ProxyData extends Data
         public int $port,
         public bool $isHttps,
         public bool $isReady,
+        public bool $hideMainNodeName,
         public int $serverId,
         public ?int $inboundId = null,
         public ?string $description = null,
@@ -30,6 +31,7 @@ class ProxyData extends Data
             'server_id' => $this->serverId,
             'is_https' => $this->isHttps,
             'is_ready' => $this->isReady,
+            'hide_main_node_name' => $this->hideMainNodeName,
             'description' => $this->description,
         ];
     }

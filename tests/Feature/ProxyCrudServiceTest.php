@@ -32,10 +32,11 @@ class ProxyCrudServiceTest extends TestCase
             name: 'Ru Proxy',
             host: 'proxy.example.com',
             port: 443,
-            serverId: $serverOne->id,
-            inboundId: 10,
             isHttps: true,
             isReady: true,
+            hideMainNodeName: true,
+            serverId: $serverOne->id,
+            inboundId: 10,
             description: 'Primary proxy',
         ));
 
@@ -47,6 +48,7 @@ class ProxyCrudServiceTest extends TestCase
             'server_id' => $serverOne->id,
             'xray_inbound_id' => $inbound->id,
             'is_ready' => true,
+            'hide_main_node_name' => true,
         ]);
         $this->assertSame($serverOne->id, $proxy->server?->id);
 
@@ -54,10 +56,11 @@ class ProxyCrudServiceTest extends TestCase
             name: 'Ru Proxy',
             host: 'proxy-updated.example.com',
             port: 8443,
-            serverId: $serverTwo->id,
-            inboundId: null,
             isHttps: false,
             isReady: false,
+            hideMainNodeName: false,
+            serverId: $serverTwo->id,
+            inboundId: null,
             description: null,
         ));
 
@@ -70,6 +73,7 @@ class ProxyCrudServiceTest extends TestCase
             'xray_inbound_id' => null,
             'is_https' => false,
             'is_ready' => false,
+            'hide_main_node_name' => false,
         ]);
     }
 
@@ -91,6 +95,7 @@ class ProxyCrudServiceTest extends TestCase
             'xray_inbound_id' => $inbound->id,
             'is_https' => true,
             'is_ready' => true,
+            'hide_main_node_name' => false,
         ]);
 
         app(ProxyCrudService::class)->delete($proxy);

@@ -201,6 +201,7 @@ Flow:
   - `xray_inbounds.sort_order` управляет порядком direct-узлов по inbound
   - `proxies.sort_order` управляет местом proxy-вариантов в общем списке элементов сервера
   - proxy теперь считается частью одного сервера через `proxies.server_id`, а не общего many-to-many списка серверов
+  - если у proxy включён `hide_main_node_name`, его display name в `/connect` берётся только из имени proxy, без префикса основного сервера
 - WireGuard-узлы перед выдачей в URI-подписку нормализуются повторно:
   - сервер умеет читать и legacy-encoded, и raw `wireguard://...`
   - в итоговой URI-подписке WireGuard-ссылка отдаётся в raw-виде, чтобы клиентские импортеры корректно обрабатывали `secretKey` с символом `/`

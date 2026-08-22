@@ -108,6 +108,10 @@ class NormalizedNodeService
                 ->filter()
                 ->values();
 
+            if ($this->shouldHideMainNodes($proxies)) {
+                return $proxyNodes->all();
+            }
+
             return $directNodes
                 ->concat($proxyNodes)
                 ->values()
@@ -163,7 +167,7 @@ class NormalizedNodeService
             return null;
         }
 
-        $serverName = sprintf('%s (%s)', $node->serverName, $proxy->name);
+        $serverName = $proxy->resolveConnectNodeServerName($node->serverName);
 
         return new NormalizedNode(
             id: $node->id.':proxy:'.$proxy->id.':'.$index,
@@ -181,7 +185,18 @@ class NormalizedNodeService
                 ...$node->meta,
                 'proxy_id' => (int) $proxy->id,
                 'proxy_name' => (string) $proxy->name,
+                'hide_main_node_name' => (bool) $proxy->hide_main_node_name,
             ],
+        );
+    }
+
+    /**
+     * @param  Collection<int, array{proxy:Proxy,sort_order:int}>  $proxies
+     */
+    private function shouldHideMainNodes(Collection $proxies): bool
+    {
+        return $proxies->contains(
+            fn (array $proxyItem): bool => (bool) $proxyItem['proxy']->hide_main_node_name
         );
     }
 

@@ -29,12 +29,7 @@ class NodeNameService
             $needsNumbering = $sorted->count() > 1;
 
             foreach ($sorted as $index => $node) {
-                $baseName = sprintf(
-                    '%s • %s • %s',
-                    $node->serverName,
-                    mb_strtoupper($node->protocol),
-                    mb_strtoupper($node->transport)
-                );
+                $baseName = $this->buildBaseName($node);
 
                 $names[$node->id] = $needsNumbering
                     ? $baseName.' #'.($index + 1)
@@ -47,10 +42,31 @@ class NodeNameService
 
     private function groupingKey(NormalizedNode $node): string
     {
+        if ((bool) ($node->meta['hide_main_node_name'] ?? false)) {
+            return implode('|', [
+                'custom-name',
+                mb_strtolower((string) ($node->meta['proxy_name'] ?? $node->serverName)),
+            ]);
+        }
+
         return implode('|', [
             mb_strtolower($node->serverName),
             mb_strtolower($node->protocol),
             mb_strtolower($node->transport),
         ]);
+    }
+
+    private function buildBaseName(NormalizedNode $node): string
+    {
+        if ((bool) ($node->meta['hide_main_node_name'] ?? false)) {
+            return (string) ($node->meta['proxy_name'] ?? $node->serverName);
+        }
+
+        return sprintf(
+            '%s • %s • %s',
+            $node->serverName,
+            mb_strtoupper($node->protocol),
+            mb_strtoupper($node->transport)
+        );
     }
 }

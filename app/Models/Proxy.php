@@ -19,6 +19,7 @@ class Proxy extends Model
         'server_id',
         'sort_order',
         'xray_inbound_id',
+        'hide_main_node_name',
         'is_https',
         'is_ready',
         'description',
@@ -33,7 +34,17 @@ class Proxy extends Model
             'server_id' => 'integer',
             'sort_order' => 'integer',
             'xray_inbound_id' => 'integer',
+            'hide_main_node_name' => 'boolean',
         ];
+    }
+
+    public function resolveConnectNodeServerName(string $mainNodeServerName): string
+    {
+        if ((bool) $this->hide_main_node_name) {
+            return (string) $this->name;
+        }
+
+        return sprintf('%s (%s)', $mainNodeServerName, $this->name);
     }
 
     public function xrayInbound(): BelongsTo

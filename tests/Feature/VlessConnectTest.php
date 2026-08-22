@@ -1221,6 +1221,51 @@ class VlessConnectTest extends TestCase
         ], $names);
     }
 
+    public function test_connect_hides_main_vless_node_for_proxy_when_flag_is_enabled(): void
+    {
+        $user = $this->createActiveUser('Proxy User', '@tester', '123457');
+
+        $server = $this->createServer('Финляндия', 'FI', 'fi.example.com');
+        $this->createProxy($server, 'Оптимальное', 'proxy.example.com', 8443, 10, true, true);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+            'name' => 'proxy-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'proxy-uuid',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('123457'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+
+        $names = $this->extractNames($decoded);
+
+        $this->assertSame([
+            'Оптимальное',
+        ], $names);
+    }
+
     public function test_connect_prefers_proxy_with_matching_inbound_id_over_generic_proxy(): void
     {
         $user = $this->createActiveUser('Proxy User', '@tester', '123456');
@@ -1954,7 +1999,15 @@ class VlessConnectTest extends TestCase
         return $user;
     }
 
-    private function createProxy(Server $server, string $name, string $host, int $port, ?int $inboundId = null, bool $isReady = true): Proxy
+    private function createProxy(
+        Server $server,
+        string $name,
+        string $host,
+        int $port,
+        ?int $inboundId = null,
+        bool $isReady = true,
+        bool $hideMainNodeName = false,
+    ): Proxy
     {
         $xrayInboundId = null;
 
@@ -1979,6 +2032,7 @@ class VlessConnectTest extends TestCase
             'xray_inbound_id' => $xrayInboundId,
             'is_https' => true,
             'is_ready' => $isReady,
+            'hide_main_node_name' => $hideMainNodeName,
         ]);
 
         return $proxy;

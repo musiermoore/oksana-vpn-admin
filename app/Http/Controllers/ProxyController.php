@@ -104,8 +104,18 @@ class ProxyController extends Controller
     private function getInboundOptionsByServer(): array
     {
         return XrayInbound::query()
-            ->with('server:id')
-            ->ordered()
+            ->selectRaw("
+                xray_inbounds.id,
+                xray_inbounds.server_id,
+                xray_inbounds.external_id,
+                xray_inbounds.sort_order,
+                JSON_UNQUOTE(JSON_EXTRACT(xi.params, '$.remark')) as label
+            ")
+            ->leftJoin('xray_inbounds as xi', 'xi.id', '=', 'xray_inbounds.id')
+            ->orderBy('xray_inbounds.server_id')
+            ->orderBy('xray_inbounds.sort_order')
+            ->orderBy('xray_inbounds.external_id')
+            ->orderBy('xray_inbounds.id')
             ->get()
             ->groupBy(fn (XrayInbound $inbound) => (int) $inbound->server_id)
             ->map(fn ($inbounds) => $inbounds
@@ -120,10 +130,10 @@ class ProxyController extends Controller
 
     private function buildInboundLabel(XrayInbound $inbound): string
     {
-        $remark = trim((string) data_get($inbound->params, 'remark', ''));
+        $label = trim((string) ($inbound->label ?? ''));
 
-        if ($remark !== '') {
-            return sprintf('Inbound #%d - %s', (int) $inbound->external_id, $remark);
+        if ($label !== '') {
+            return $label;
         }
 
         return sprintf('Inbound #%d', (int) $inbound->external_id);

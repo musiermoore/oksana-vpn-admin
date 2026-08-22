@@ -49,7 +49,7 @@ class ProxyFormPageTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Proxies/Form')
                 ->where('inbound_options_by_server.'.$server->id.'.0.value', 101)
-                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Inbound #101 - Reality TCP')
+                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Reality TCP')
             );
     }
 
@@ -99,7 +99,7 @@ class ProxyFormPageTest extends TestCase
                 ->component('Proxies/Form')
                 ->where('proxy.inbound_id', 202)
                 ->where('inbound_options_by_server.'.$server->id.'.0.value', 202)
-                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Inbound #202 - Main inbound')
+                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Main inbound')
             );
     }
 }

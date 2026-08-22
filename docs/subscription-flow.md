@@ -71,6 +71,9 @@ Flow:
 4. Внутри создаётся запись в `user_subscriptions`.
 5. Создаётся approved negative transaction типа `subscription`.
 6. Обновляется `subscription_expires_at`.
+7. Если у пользователя есть `referrer_id`, первая qualifying purchase также планирует реферальную награду:
+   - приглашённому добавляются bonus days после confirmation delay
+   - пригласившему накапливается referral discount percent
 
 Важно:
 
@@ -93,6 +96,7 @@ Flow:
 5. `ActivateSubscriptionAfterTransactionApproval`:
    - активирует пакет
    - либо делает renewal для подходящего случая
+   - для qualifying first purchase также планирует referral reward по той же логике, что и при мгновенной paid activation
    - запускает `DispatchDefaultConfigsForUserJob`
    - ставит в очередь `ReconcileUserAccessStateJob`, который уже запускает `configs:disable-overdue-debtors {user_id}`
 6. Каждый входящий payment webhook сохраняется в `payment_webhook_logs` вместе с payload, привязкой к invoice/transaction и итоговым статусом обработки.

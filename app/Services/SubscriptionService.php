@@ -224,16 +224,41 @@ class SubscriptionService
                 ],
                 [
                     'price' => $packagePrice,
+                    'source' => 'purchase',
+                    'transaction_id' => $lockedTransaction->id,
+                    'meta' => [
+                        'subscription_months' => $months,
+                    ],
                 ]
             );
 
             if ($subscription->wasRecentlyCreated) {
-                $user->transactions()->create([
+                $subscriptionTransaction = $user->transactions()->create([
                     'type_id' => TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
                     'amount' => -$packagePrice,
                     'is_approved' => true,
                     'description' => $this->buildPackageTransactionDescription($months),
+                    'extra_data' => [
+                        'subscription_months' => $months,
+                        'package_price' => $packagePrice,
+                        'referral_accumulated_discount_percent_used' => (int) data_get($extraData, 'referral_accumulated_discount_percent', 0),
+                        'referral_permanent_discount_percent_used' => (int) data_get($extraData, 'referral_permanent_discount_percent', 0),
+                        'referral_total_discount_percent_used' => (int) data_get($extraData, 'referral_total_discount_percent', 0),
+                        'referral_discount_amount' => (float) data_get($extraData, 'referral_discount_amount', 0),
+                    ],
                 ]);
+
+                $subscription->forceFill([
+                    'transaction_id' => $subscriptionTransaction->id,
+                ])->save();
+
+                if ((int) data_get($extraData, 'referral_accumulated_discount_percent', 0) > 0) {
+                    $user->forceFill([
+                        'referral_accumulated_discount_percent' => 0,
+                    ])->save();
+                }
+
+                app(ReferralRewardService::class)->scheduleForSubscriptionPurchase($user, $subscriptionTransaction);
             }
 
             $this->syncUserSubscriptionExpiry($user);
@@ -241,6 +266,7 @@ class SubscriptionService
             $extraData['package_activation_processed'] = true;
             $extraData['subscription_start_date'] = $startDate;
             $extraData['subscription_end_date'] = $endDate;
+            $extraData['subscription_transaction_id'] = $subscription->transaction_id;
 
             $lockedTransaction->update([
                 'extra_data' => $extraData,

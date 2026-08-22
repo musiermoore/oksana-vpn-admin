@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ReferralRewardStatus;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Models\Invoice;
 use App\Models\PaymentWebhookLog;
+use App\Models\Referral;
 use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\TransactionType;
@@ -13,6 +15,7 @@ use App\Jobs\EditTelegramMessageTextJob;
 use App\Jobs\ReconcileUserAccessStateJob;
 use App\Jobs\SendTelegramMessageJob;
 use Carbon\Carbon;
+use App\Services\ReferralRewardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -162,6 +165,108 @@ class ApiPaymentWebhookTest extends TestCase
             'transaction_id' => $approvedDeposit?->id,
             'status' => PaymentWebhookLog::STATUS_PROCESSED,
             'response_status' => 200,
+        ]);
+    }
+
+    public function test_webhook_payment_schedules_and_applies_referral_reward(): void
+    {
+        Queue::fake();
+
+        $referrer = User::query()->create([
+            'name' => 'Referrer',
+            'telegram' => '@referrer',
+            'telegram_id' => '111111111',
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Invitee',
+            'telegram' => '@invitee',
+            'telegram_id' => '123456789',
+            'balance' => 0,
+            'referrer_id' => $referrer->id,
+        ]);
+
+        $referral = Referral::query()->create([
+            'referrer_id' => $referrer->id,
+            'referral_user_id' => $user->id,
+        ]);
+
+        $invoice = Invoice::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'yookassa',
+            'provider_payment_id' => '23d93cac-000f-5000-8000-126628f15142',
+            'status' => 'pending',
+            'paid' => false,
+            'amount' => 150,
+            'currency' => 'RUB',
+            'description' => 'Подписка 1 мес. для @invitee',
+            'history' => [[
+                'type' => 'payment.created',
+                'status' => 'pending',
+                'paid' => false,
+                'amount' => [
+                    'value' => '150.00',
+                    'currency' => 'RUB',
+                ],
+                'occurred_at' => '2026-06-12T09:50:00.000Z',
+                'payload' => ['status' => 'pending'],
+            ]],
+        ]);
+
+        Transaction::query()->create([
+            'user_id' => $user->id,
+            'invoice_id' => $invoice->id,
+            'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
+            'amount' => 150,
+            'is_approved' => false,
+            'description' => 'YooKassa',
+            'extra_data' => [
+                'subscription_months' => 1,
+                'package_price' => 150,
+            ],
+        ]);
+
+        $this->postJson('/api/payment/webhook', [
+            'type' => 'notification',
+            'event' => 'payment.succeeded',
+            'object' => [
+                'id' => '23d93cac-000f-5000-8000-126628f15142',
+                'status' => 'succeeded',
+                'paid' => true,
+                'amount' => [
+                    'value' => '150.00',
+                    'currency' => 'RUB',
+                ],
+                'description' => 'Подписка 1 мес. для @invitee',
+                'confirmation' => [
+                    'type' => 'redirect',
+                    'confirmation_url' => 'https://yookassa.example/confirm',
+                ],
+                'created_at' => '2026-06-12T10:00:00.000Z',
+            ],
+        ])->assertOk();
+
+        $referral->refresh();
+
+        $this->assertSame(ReferralRewardStatus::WaitingConfirmation, $referral->reward_status);
+        $this->assertNotNull($referral->qualifying_transaction_id);
+        $this->assertSame(3, $referral->invitee_bonus_days);
+        $this->assertSame(5, $referral->referrer_reward_percent);
+
+        Carbon::setTestNow('2026-06-13 12:01:00');
+
+        app(ReferralRewardService::class)->processReward($referral);
+
+        $referral->refresh();
+
+        $this->assertSame(ReferralRewardStatus::Rewarded, $referral->reward_status);
+        $this->assertNotNull($referral->rewarded_at);
+        $this->assertSame(5, $referrer->fresh()->referral_accumulated_discount_percent);
+
+        $this->assertDatabaseHas('user_subscriptions', [
+            'user_id' => $user->id,
+            'source' => 'referral_bonus',
+            'price' => 0,
         ]);
     }
 

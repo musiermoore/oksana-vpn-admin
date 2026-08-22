@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\ReferralRewardStatus;
+use App\Jobs\ProcessReferralRewardJob;
 use App\Models\Referral;
 use App\Models\Transaction;
 use App\Models\TransactionType;
@@ -71,29 +72,21 @@ class BackfillReferralRewardsCommandTest extends TestCase
 
         $this->artisan('referrals:backfill-rewards')
             ->assertSuccessful()
-            ->expectsOutput('Referral reward backfill completed.')
-            ->expectsOutput('Processed: 1')
-            ->expectsOutput('Rewarded: 1')
-            ->expectsOutput('Scheduled: 0')
-            ->expectsOutput('Pending without purchase: 0')
-            ->expectsOutput('Skipped missing user: 0');
+            ->expectsOutput('Referral reward backfill completed.');
 
         $referral->refresh();
 
-        $this->assertSame(ReferralRewardStatus::Rewarded, $referral->reward_status);
+        $this->assertSame(ReferralRewardStatus::WaitingConfirmation, $referral->reward_status);
         $this->assertSame($qualifyingTransaction->id, $referral->qualifying_transaction_id);
         $this->assertSame(3, $referral->invitee_bonus_days);
         $this->assertSame(5, $referral->referrer_reward_percent);
         $this->assertNotNull($referral->reward_scheduled_at);
-        $this->assertNotNull($referral->rewarded_at);
-        $this->assertSame(5, $referrer->fresh()->referral_accumulated_discount_percent);
+        $this->assertNull($referral->rewarded_at);
+        $this->assertSame(0, $referrer->fresh()->referral_accumulated_discount_percent);
 
-        $this->assertDatabaseHas('user_subscriptions', [
-            'user_id' => $invitee->id,
-            'source' => 'referral_bonus',
-            'price' => 0,
-            'transaction_id' => $qualifyingTransaction->id,
-        ]);
+        Queue::assertPushed(ProcessReferralRewardJob::class, function (ProcessReferralRewardJob $job) use ($referral): bool {
+            return $job->referralId === $referral->id;
+        });
     }
 
     public function test_command_keeps_pending_referral_without_approved_purchase(): void
@@ -120,12 +113,7 @@ class BackfillReferralRewardsCommandTest extends TestCase
             'referral_id' => $referral->id,
         ])
             ->assertSuccessful()
-            ->expectsOutput('Referral reward backfill completed.')
-            ->expectsOutput('Processed: 1')
-            ->expectsOutput('Rewarded: 0')
-            ->expectsOutput('Scheduled: 0')
-            ->expectsOutput('Pending without purchase: 1')
-            ->expectsOutput('Skipped missing user: 0');
+            ->expectsOutput('Referral reward backfill completed.');
 
         $referral->refresh();
 

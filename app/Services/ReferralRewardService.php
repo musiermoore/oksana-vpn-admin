@@ -142,6 +142,13 @@ class ReferralRewardService
                         continue;
                     }
 
+                    if ($freshReferral->reward_status === ReferralRewardStatus::WaitingConfirmation
+                        && $this->isRewardDueForBackfill($freshReferral)
+                    ) {
+                        $this->processReward($freshReferral, true);
+                        $freshReferral = $freshReferral->fresh();
+                    }
+
                     if ($freshReferral->reward_status === ReferralRewardStatus::Rewarded) {
                         $stats['rewarded']++;
 
@@ -161,16 +168,33 @@ class ReferralRewardService
         return $stats;
     }
 
-    public function processReward(Referral $referral): void
+    private function isRewardDueForBackfill(Referral $referral): bool
     {
-        DB::transaction(function () use ($referral) {
+        if ($referral->reward_status !== ReferralRewardStatus::WaitingConfirmation) {
+            return false;
+        }
+
+        $referral = $this->referrals->findWithRewardDetails($referral->id) ?? $referral;
+
+        $qualifyingCreatedAt = $referral->qualifyingTransaction?->created_at;
+
+        if (! $qualifyingCreatedAt instanceof Carbon || $qualifyingCreatedAt->addDay()->isFuture()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function processReward(Referral $referral, bool $ignoreSchedule = false): void
+    {
+        DB::transaction(function () use ($referral, $ignoreSchedule) {
             $referral = $this->referrals->findForRewardProcessing($referral->id);
 
             if (! $referral
                 || $referral->reward_status !== ReferralRewardStatus::WaitingConfirmation
                 || $referral->rewarded_at !== null
                 || $referral->reward_scheduled_at === null
-                || $referral->reward_scheduled_at->isFuture()
+                || (! $ignoreSchedule && $referral->reward_scheduled_at->isFuture())
             ) {
                 return;
             }

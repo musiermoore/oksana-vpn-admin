@@ -11,6 +11,8 @@ This file captures project-specific working rules so future development stays co
 - Use the default `docker compose` files for development, and `docker compose -f docker-compose.prod.yml ...` only for production workflows.
 - The `app` service runs Laravel behind FrankenPHP.
 - Prefer `rg` for searching in the codebase.
+- When a targeted test run should be isolated from the local PHP environment, prefer `docker-compose run app php artisan test --filter="..."`.
+  - Example: `docker-compose run app php artisan test --filter="BackfillReferralRewardsCommandTest|AdminSearchTest|GiveawayAdminTimezoneTest"`
 
 ## Backend Rules
 

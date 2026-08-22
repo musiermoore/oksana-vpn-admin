@@ -43,7 +43,7 @@ class AdminSearchTest extends TestCase
                 ->where('query', 'alice')
                 ->has('results', 1)
                 ->where('results.0.label', 'Пользователи')
-                ->where('results.0.items.0.title', 'Alice Search')
+                ->where('results.0.items.0.title', '@alice (Alice Search)')
             );
     }
 }

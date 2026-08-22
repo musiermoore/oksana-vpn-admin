@@ -27,7 +27,8 @@ class GiveawayAdminTimezoneTest extends TestCase
                 'starts_at' => '2026-08-11T19:00',
                 'ends_at' => '2026-08-11T20:00',
                 'client_timezone' => 'Asia/Omsk',
-                'auto_repeat_enabled' => false,
+                'admins_only' => 0,
+                'auto_repeat_enabled' => 0,
                 'repeat_delay_minutes' => 60,
                 'repeat_limit' => 5,
                 'prizes' => [

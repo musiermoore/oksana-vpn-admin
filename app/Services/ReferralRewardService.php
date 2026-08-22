@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Enums\ReferralRewardStatus;
@@ -99,6 +101,64 @@ class ReferralRewardService
         }
 
         return $referral;
+    }
+
+    /**
+     * @return array{processed:int,rewarded:int,scheduled:int,pending_without_purchase:int,skipped_missing_user:int}
+     */
+    public function backfillPendingRewards(?int $referralId = null): array
+    {
+        $stats = [
+            'processed' => 0,
+            'rewarded' => 0,
+            'scheduled' => 0,
+            'pending_without_purchase' => 0,
+            'skipped_missing_user' => 0,
+        ];
+
+        Referral::query()
+            ->with('referralUser')
+            ->where('reward_status', ReferralRewardStatus::Pending->value)
+            ->whereNull('qualifying_transaction_id')
+            ->whereNull('rewarded_at')
+            ->when($referralId !== null, fn ($query) => $query->whereKey($referralId))
+            ->orderBy('id')
+            ->chunkById(100, function ($referrals) use (&$stats): void {
+                foreach ($referrals as $referral) {
+                    $stats['processed']++;
+
+                    if (! $referral->referralUser) {
+                        $stats['skipped_missing_user']++;
+
+                        continue;
+                    }
+
+                    $updatedReferral = $this->backfillFirstPurchaseReward($referral->referralUser);
+                    $freshReferral = $updatedReferral?->fresh() ?? $referral->fresh();
+
+                    if (! $freshReferral instanceof Referral) {
+                        $stats['skipped_missing_user']++;
+
+                        continue;
+                    }
+
+                    if ($freshReferral->reward_status === ReferralRewardStatus::Rewarded) {
+                        $stats['rewarded']++;
+
+                        continue;
+                    }
+
+                    if ($freshReferral->reward_status === ReferralRewardStatus::WaitingConfirmation) {
+                        $stats['scheduled']++;
+
+                        continue;
+                    }
+
+                    $stats['pending_without_purchase']++;
+                }
+            });
+
+        return $stats;
     }
 
     public function processReward(Referral $referral): void

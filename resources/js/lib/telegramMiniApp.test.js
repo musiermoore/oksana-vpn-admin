@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
     getTelegramInitData,
     getTelegramStartParam,
+    redirectFromTelegramStartParam,
     reportTelegramBootstrapDiagnostic,
     requireTelegramInitData,
     resolveTelegramInitData,
@@ -29,6 +30,16 @@ class MemoryStorage {
 
 const createWindow = ({ initData = '', search = '', hash = '', storedInitData = '' } = {}) => {
     const sessionStorage = new MemoryStorage();
+    const location = {
+        href: `https://example.com/telegram-app/${search}`,
+        pathname: '/telegram-app/',
+        search,
+        hash,
+        replacedWith: null,
+        replace(url) {
+            this.replacedWith = url;
+        },
+    };
 
     if (storedInitData !== '') {
         sessionStorage.setItem('telegram-mini-app-last-init-data', storedInitData);
@@ -48,12 +59,7 @@ const createWindow = ({ initData = '', search = '', hash = '', storedInitData = 
             userAgent: 'Telegram-WebApp-Test',
             language: 'ru-RU',
         },
-        location: {
-            href: `https://example.com/telegram-app/${search}`,
-            pathname: '/telegram-app/',
-            search,
-            hash,
-        },
+        location,
         document: {
             referrer: 'https://t.me/oksanavpn_bot',
         },
@@ -141,6 +147,21 @@ test('getTelegramStartParam falls back to tgWebAppStartParam hash parameter', ()
     });
 
     assert.equal(getTelegramStartParam(), 'ticket_43');
+});
+
+test('redirectFromTelegramStartParam routes payments start param to payments page', () => {
+    global.window = createWindow({
+        search: '?tgWebAppStartParam=payments',
+    });
+
+    const redirected = redirectFromTelegramStartParam({
+        payments: 'https://example.com/telegram-app/payments',
+        support: 'https://example.com/telegram-app/support',
+    });
+
+    assert.equal(redirected, true);
+    assert.equal(window.location.replacedWith, 'https://example.com/telegram-app/payments');
+    assert.equal(window.sessionStorage.getItem('telegram-mini-app-last-start-param'), 'payments');
 });
 
 test('reportTelegramBootstrapDiagnostic sends a deduplicated diagnostic payload', async () => {

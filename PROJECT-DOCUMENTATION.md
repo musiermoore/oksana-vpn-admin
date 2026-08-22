@@ -170,6 +170,23 @@ Each subscription has:
 The active subscription is the subscription covering today.
 The latest subscription is the one with the greatest `end_date`.
 
+### Subscription Expiry Notifications
+
+Subscription reminder logs are stored in `subscription_expiry_notifications`.
+
+Each notification row has:
+
+- `user_id`
+- `user_subscription_id`
+- `threshold_key`
+- `threshold_hours`
+- `subscription_end_at`
+- `sent_at`
+
+Important rule:
+
+- reminder anti-spam is tied to a specific `user_subscriptions` record, so after renewal the old period does not continue sending follow-up reminders
+
 ### Giveaways
 
 Giveaway campaigns are stored in:

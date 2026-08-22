@@ -7,6 +7,7 @@ use App\Console\Commands\DisableConfigsOfOverdueDebtorsCommand;
 use App\Console\Commands\PullVlessConfigs;
 use App\Console\Commands\RemoveOldTrafficLogs;
 use App\Console\Commands\RenewSubscriptionsCommand;
+use App\Console\Commands\SendSubscriptionExpiryRemindersCommand;
 use App\Console\Commands\SendPaidInvoicesToTaxCommand;
 use App\Console\Commands\SyncGiveawaysCommand;
 use App\Console\Commands\SyncVlessExternalSubscriptionsCommand;
@@ -25,6 +26,7 @@ Schedule::command(SyncGiveawaysCommand::class)->everyMinute();
 Schedule::command(AddExtraPayments::class)->hourly();
 Schedule::command(CreateDefaultConfigsForActiveSubscribersCommand::class)->everyFiveMinutes();
 Schedule::command(RenewSubscriptionsCommand::class)->everyFiveMinutes();
+Schedule::command(SendSubscriptionExpiryRemindersCommand::class)->everyFiveMinutes();
 Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyFiveMinutes();
 Schedule::command(SendPaidInvoicesToTaxCommand::class)->dailyAt('06:00')->timezone('UTC');
 

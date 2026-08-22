@@ -37,6 +37,16 @@
 3. Выполняется `GET /telegram-app/me`.
 4. Пользователь попадает на `Home`.
 
+### 2.4 Вход по deep link на оплату
+
+Если передан `start_param=payments`:
+
+1. Выполняется обычная авторизация.
+2. Frontend обрабатывает `redirectFromTelegramStartParam(...)`.
+3. Пользователь сразу попадает на `/telegram-app/payments`.
+
+Это используется, например, из reminder-уведомлений об окончании подписки.
+
 ### 2.2 Вход по тикету поддержки
 
 Если в Telegram передан `start_param=ticket_{id}`, frontend делает редирект:

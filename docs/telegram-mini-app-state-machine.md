@@ -17,6 +17,7 @@
   - авто-регистрация / авто-привязка пользователя
   - загрузка профиля
   - переход в `HOME`
+  - либо переход в `SUBSCRIPTION_OVERVIEW`, если `start_param=payments`
   - при ошибке переход в `APP_INIT_ERROR`
 
 ### Основные пользовательские экраны
@@ -61,6 +62,7 @@
 | `HOME` | `WireGuard` | Открыть список WireGuard-конфигов | `GET /api/users/{telegramId}/wireguard/configs` или mini-app proxy `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, `EMPTY_WIREGUARD_CONFIGS`, generic error |
 | `HOME` | `VLESS` | Открыть VLESS-экран | `GET /api/users/{telegramId}/vless/link` или mini-app proxy `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
 | `HOME` | `Подписка` | Открыть обзор подписки | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
+| `BOOTSTRAP` | auto with `start_param=payments` | Открыть экран подписки по deep link | `POST /telegram-app/auth/telegram`, затем `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
 | `HOME` | `Помощь` | Открыть меню помощи | none | `HELP_MENU` | none |
 | `HOME` | `Розыгрыш` | Открыть экран giveaway | `GET /telegram-app/giveaway/current` | `GIVEAWAY` | `APP_INIT_ERROR`, generic error |
 | `HOME` | auto after guest bootstrap | В текущем mini-app отдельный guest menu не нужен, потому что вход сразу делает регистрацию | `POST /telegram-app/auth/telegram` | `HOME` | `APP_INIT_ERROR` |

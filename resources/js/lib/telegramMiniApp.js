@@ -294,13 +294,18 @@ export const redirectFromTelegramStartParam = (routes) => {
 
     const lastConsumedStartParam = window.sessionStorage.getItem(START_PARAM_KEY) ?? '';
     const ticketMatch = startParam.match(/^ticket_(\d+)$/);
+    let targetUrl = null;
 
-    if (!ticketMatch) {
+    if (ticketMatch) {
+        targetUrl = `${routes?.support}/${ticketMatch[1]}`;
+    } else if (startParam === 'payments') {
+        targetUrl = routes?.payments ?? null;
+    }
+
+    if (!targetUrl) {
         window.sessionStorage.setItem(START_PARAM_KEY, startParam);
         return false;
     }
-
-    const targetUrl = `${routes?.support}/${ticketMatch[1]}`;
     const currentPath = window.location.pathname.replace(/\/+$/, '');
     const targetPath = new URL(targetUrl, window.location.origin).pathname.replace(/\/+$/, '');
 

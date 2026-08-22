@@ -11,12 +11,14 @@ use App\Models\CurrentPayment;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Services\Crud\UserCrudService;
+use App\Services\VlessDeepLinkService;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
     public function __construct(
         private readonly UserCrudService $userService,
+        private readonly VlessDeepLinkService $vlessDeepLinks,
     ) {}
 
     public function index(Request $request)
@@ -83,6 +85,10 @@ class UserController extends Controller
             'submit_url' => route('users.update', $user),
             'user' => (new UserResource($user))->toArray($request),
             'payments' => CurrentPaymentResource::collection($payments)->toArray($request),
+            'subscription_links' => [
+                'standard' => $this->vlessDeepLinks->getConnectUrl($user),
+                'whitelist' => $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl'),
+            ],
         ]);
     }
 

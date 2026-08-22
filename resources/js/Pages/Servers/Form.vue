@@ -34,6 +34,7 @@ const form = useForm({
     inbounds: props.server?.inbounds ?? [],
     connect_items: props.server?.connect_items ?? [],
 });
+const isPanelPasswordVisible = ref(false);
 
 const sortItems = ref([...(props.server?.connect_items ?? [])]);
 const sortForm = useForm({
@@ -128,7 +129,19 @@ const removePriceRow = (index) => {
             <label class="field"><span>Panel API Version</span>
                 <AppSelect v-model="form.panel_api_version" :options="panelApiVersionOptions" />
             </label>
-            <label class="field" style="grid-column: 1 / -1;"><span>Panel Password</span><AppInput v-model="form.panel_password" type="password" /></label>
+            <label class="field" style="grid-column: 1 / -1;">
+                <span>Panel Password</span>
+                <div class="password-field">
+                    <AppInput v-model="form.panel_password" :type="isPanelPasswordVisible ? 'text' : 'password'" />
+                    <button
+                        class="password-toggle"
+                        type="button"
+                        @click="isPanelPasswordVisible = !isPanelPasswordVisible"
+                    >
+                        {{ isPanelPasswordVisible ? 'Скрыть пароль' : 'Показать пароль' }}
+                    </button>
+                </div>
+            </label>
             <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><AppInput v-model="form.app_path" required /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><AppTextarea v-model="form.ssh_private_key"  /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><AppTextarea v-model="form.ssh_public_key"  /></label>
@@ -244,6 +257,29 @@ const removePriceRow = (index) => {
         </form>
     </section>
 </template>
+
+<style scoped>
+.password-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.password-toggle {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: #2563eb;
+    font: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.password-toggle:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+</style>
 
 <style scoped>
 .price-list {

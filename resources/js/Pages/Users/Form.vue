@@ -9,6 +9,7 @@ const props = defineProps({
     submit_url: String,
     user: Object,
     payments: Array,
+    subscription_links: Object,
 });
 
 const form = useForm({
@@ -57,6 +58,23 @@ const joinAtOptions = props.payments.map((payment) => ({
         <div class="page-header">
             <div>
                 <h1>{{ mode === 'edit' ? 'Редактирование участника' : 'Создание участника' }}</h1>
+            </div>
+        </div>
+
+        <div v-if="mode === 'edit' && subscription_links" class="grid grid--two">
+            <label class="field">
+                <span>Стандартная подписка</span>
+                <AppInput :model-value="subscription_links.standard" readonly />
+            </label>
+
+            <label class="field">
+                <span>Белые списки</span>
+                <AppInput :model-value="subscription_links.whitelist" readonly />
+            </label>
+
+            <div class="actions" style="grid-column: 1 / -1;">
+                <AppButton variant="secondary" :href="subscription_links.standard" target="_blank">Открыть стандартную</AppButton>
+                <AppButton variant="secondary" :href="subscription_links.whitelist" target="_blank">Открыть white list</AppButton>
             </div>
         </div>
 

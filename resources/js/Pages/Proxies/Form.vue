@@ -1,4 +1,5 @@
 <script setup>
+import { computed, watch } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -10,6 +11,7 @@ const props = defineProps({
     method: String,
     proxy: Object,
     server_options: Array,
+    inbound_options_by_server: Object,
 });
 
 const form = useForm({
@@ -29,6 +31,41 @@ const serverOptions = [
     ...props.server_options,
 ];
 
+const selectedServerId = computed(() => {
+    if (form.server_id === '' || form.server_id === null || form.server_id === undefined) {
+        return null;
+    }
+
+    return Number(form.server_id);
+});
+
+const inboundOptions = computed(() => {
+    if (selectedServerId.value === null) {
+        return [{ label: 'Сначала выберите сервер', value: '', disabled: true }];
+    }
+
+    return [
+        { label: 'Все inbound', value: '' },
+        ...(props.inbound_options_by_server?.[selectedServerId.value] ?? []),
+    ];
+});
+
+watch(selectedServerId, (serverId) => {
+    if (serverId === null) {
+        form.inbound_id = '';
+
+        return;
+    }
+
+    const allowedInboundValues = new Set(
+        (props.inbound_options_by_server?.[serverId] ?? []).map((option) => String(option.value))
+    );
+
+    if (form.inbound_id !== '' && ! allowedInboundValues.has(String(form.inbound_id))) {
+        form.inbound_id = '';
+    }
+});
+
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
 </script>
 
@@ -45,7 +82,9 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
             <label class="field"><span>Сервер</span>
                 <AppSelect v-model="form.server_id" :options="serverOptions" required />
             </label>
-            <label class="field"><span>Inbound ID</span><AppInput v-model="form.inbound_id" type="number" min="1" placeholder="Пусто = для всех inbound" /></label>
+            <label class="field"><span>Inbound</span>
+                <AppSelect v-model="form.inbound_id" :options="inboundOptions" :disabled="selectedServerId === null" />
+            </label>
             <label class="field"><span>HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
             <label class="field"><span>Ready</span><AppCheckbox v-model="form.is_ready" /></label>
             <label class="field"><span>Скрыть основную</span><AppCheckbox v-model="form.hide_main_node_name" /></label>

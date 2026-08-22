@@ -8,6 +8,7 @@ use App\Http\Resources\ProxyFormResource;
 use App\Http\Resources\ProxyResource;
 use App\Models\Proxy;
 use App\Models\Server;
+use App\Models\XrayInbound;
 use App\Services\Crud\ProxyCrudService;
 use Illuminate\Http\Request;
 
@@ -39,6 +40,7 @@ class ProxyController extends Controller
             'method' => 'post',
             'proxy' => null,
             'server_options' => $this->getServerOptions(),
+            'inbound_options_by_server' => $this->getInboundOptionsByServer(),
         ]);
     }
 
@@ -60,6 +62,7 @@ class ProxyController extends Controller
             'method' => 'patch',
             'proxy' => (new ProxyFormResource($proxy))->toArray(request()),
             'server_options' => $this->getServerOptions(),
+            'inbound_options_by_server' => $this->getInboundOptionsByServer(),
         ]);
     }
 
@@ -93,5 +96,36 @@ class ProxyController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, array<int, array{value:int, label:string}>>
+     */
+    private function getInboundOptionsByServer(): array
+    {
+        return XrayInbound::query()
+            ->with('server:id')
+            ->ordered()
+            ->get()
+            ->groupBy(fn (XrayInbound $inbound) => (int) $inbound->server_id)
+            ->map(fn ($inbounds) => $inbounds
+                ->map(fn (XrayInbound $inbound) => [
+                    'value' => (int) $inbound->external_id,
+                    'label' => $this->buildInboundLabel($inbound),
+                ])
+                ->values()
+                ->all())
+            ->all();
+    }
+
+    private function buildInboundLabel(XrayInbound $inbound): string
+    {
+        $remark = trim((string) data_get($inbound->params, 'remark', ''));
+
+        if ($remark !== '') {
+            return sprintf('Inbound #%d - %s', (int) $inbound->external_id, $remark);
+        }
+
+        return sprintf('Inbound #%d', (int) $inbound->external_id);
     }
 }

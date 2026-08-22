@@ -123,11 +123,13 @@ Flow:
 1. Mini-app принимает код.
 2. `SubscriptionCodeService::activateForUser()` валидирует код.
 3. `SubscriptionService::activateGiftCodeForUser()` создаёт подписку.
-4. Если после этого доступ активен, диспатчится `DispatchDefaultConfigsForUserJob`.
+4. Если у пользователя есть `referrer_id`, первая qualifying activation такого кода тоже может запланировать referral reward.
+5. Если после этого доступ активен, диспатчится `DispatchDefaultConfigsForUserJob`.
 
 Важно:
 
 - Gift activation сейчас запускает создание конфигов.
+- Для реферальной логики важен факт активации кода приглашённым пользователем, а не то, кто код оплатил.
 - Если изменяется логика post-activation, trial, gift и paid flow нужно держать синхронными.
 
 ## 7. Автопродление

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\ReferralRewardStatus;
 use App\Jobs\ProcessReferralRewardJob;
 use App\Models\Referral;
+use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Repositories\ReferralRepository;
@@ -36,38 +37,38 @@ class ReferralRewardService
 
     public function scheduleForSubscriptionPurchase(User $user, Transaction $transaction): void
     {
-        if ($user->referrer_id === null) {
-            return;
-        }
-
         $rewardData = $this->resolveRewardData($transaction);
 
         if ($rewardData === null) {
             return;
         }
 
-        $referral = DB::transaction(function () use ($user, $transaction, $rewardData): ?Referral {
-            $referral = $this->referrals->findByReferralUserIdForUpdate($user->id);
+        $this->scheduleReward(
+            user: $user,
+            transaction: $transaction,
+            rewardData: $rewardData,
+            qualifiedAt: Carbon::parse($transaction->created_at),
+        );
+    }
 
-            if (! $referral || $referral->qualifying_transaction_id !== null || $referral->rewarded_at !== null) {
-                return null;
-            }
+    public function scheduleForSubscriptionCodeActivation(User $user, SubscriptionCode $code): void
+    {
+        $rewardData = $this->resolveRewardDataFromSubscriptionCode($code);
 
-            return $this->referrals->update($referral, [
-                'qualifying_transaction_id' => $transaction->id,
-                'invitee_bonus_days' => $rewardData['bonus_days'],
-                'referrer_reward_percent' => $rewardData['reward_percent'],
-                'reward_status' => ReferralRewardStatus::WaitingConfirmation,
-                'reward_scheduled_at' => Carbon::parse($transaction->created_at)->addDay()->max(now()),
-            ]);
-        });
-
-        if (! $referral) {
+        if ($rewardData === null || ! $code->transaction) {
             return;
         }
 
-        ProcessReferralRewardJob::dispatch($referral->id)
-            ->delay($referral->reward_scheduled_at);
+        $qualifiedAt = $code->activated_at
+            ? Carbon::parse($code->activated_at)
+            : now();
+
+        $this->scheduleReward(
+            user: $user,
+            transaction: $code->transaction,
+            rewardData: $rewardData,
+            qualifiedAt: $qualifiedAt,
+        );
     }
 
     public function backfillFirstPurchaseReward(User $user): ?Referral
@@ -82,15 +83,17 @@ class ReferralRewardService
             return $referral;
         }
 
-        $qualifyingTransaction = $this->referrals
-            ->findPotentialQualifyingTransactions($user)
-            ->first(fn (Transaction $transaction) => $this->resolveRewardData($transaction) !== null);
+        $qualifyingSource = $this->resolveFirstQualifyingRewardSource($user);
 
-        if (! $qualifyingTransaction) {
+        if ($qualifyingSource === null) {
             return $referral;
         }
 
-        $this->scheduleForSubscriptionPurchase($user, $qualifyingTransaction);
+        if ($qualifyingSource['type'] === 'transaction') {
+            $this->scheduleForSubscriptionPurchase($user, $qualifyingSource['transaction']);
+        } else {
+            $this->scheduleForSubscriptionCodeActivation($user, $qualifyingSource['code']);
+        }
 
         $referral = $referral->fresh();
 
@@ -168,6 +171,102 @@ class ReferralRewardService
         return $stats;
     }
 
+    /**
+     * @param array{months:int, bonus_days:int, reward_percent:int} $rewardData
+     */
+    private function scheduleReward(User $user, Transaction $transaction, array $rewardData, Carbon $qualifiedAt): void
+    {
+        if ($user->referrer_id === null) {
+            return;
+        }
+
+        $referral = DB::transaction(function () use ($user, $transaction, $rewardData, $qualifiedAt): ?Referral {
+            $referral = $this->referrals->findByReferralUserIdForUpdate($user->id);
+
+            if (! $referral || $referral->qualifying_transaction_id !== null || $referral->rewarded_at !== null) {
+                return null;
+            }
+
+            return $this->referrals->update($referral, [
+                'qualifying_transaction_id' => $transaction->id,
+                'invitee_bonus_days' => $rewardData['bonus_days'],
+                'referrer_reward_percent' => $rewardData['reward_percent'],
+                'reward_status' => ReferralRewardStatus::WaitingConfirmation,
+                'reward_scheduled_at' => $qualifiedAt->copy()->addDay()->max(now()),
+            ]);
+        });
+
+        if (! $referral) {
+            return;
+        }
+
+        ProcessReferralRewardJob::dispatch($referral->id)
+            ->delay($referral->reward_scheduled_at);
+    }
+
+    /**
+     * @return array{type:'transaction',transaction:Transaction}|array{type:'code',code:SubscriptionCode}|null
+     */
+    private function resolveFirstQualifyingRewardSource(User $user): ?array
+    {
+        $candidate = null;
+
+        foreach ($this->referrals->findPotentialQualifyingTransactions($user) as $transaction) {
+            $rewardData = $this->resolveRewardData($transaction);
+
+            if ($rewardData === null) {
+                continue;
+            }
+
+            $candidate = [
+                'type' => 'transaction',
+                'qualified_at' => Carbon::parse($transaction->created_at),
+                'sort_id' => (int) $transaction->id,
+                'payload' => $transaction,
+            ];
+
+            break;
+        }
+
+        foreach ($this->referrals->findPotentialQualifyingSubscriptionCodes($user) as $code) {
+            $rewardData = $this->resolveRewardDataFromSubscriptionCode($code);
+
+            if ($rewardData === null || ! $code->transaction || ! $code->activated_at) {
+                continue;
+            }
+
+            $qualifiedAt = Carbon::parse($code->activated_at);
+
+            if ($candidate === null
+                || $qualifiedAt->lt($candidate['qualified_at'])
+                || ($qualifiedAt->equalTo($candidate['qualified_at']) && $code->id < $candidate['sort_id'])
+            ) {
+                $candidate = [
+                    'type' => 'code',
+                    'qualified_at' => $qualifiedAt,
+                    'sort_id' => (int) $code->id,
+                    'payload' => $code,
+                ];
+            }
+        }
+
+        if ($candidate === null) {
+            return null;
+        }
+
+        if ($candidate['type'] === 'transaction') {
+            return [
+                'type' => 'transaction',
+                'transaction' => $candidate['payload'],
+            ];
+        }
+
+        return [
+            'type' => 'code',
+            'code' => $candidate['payload'],
+        ];
+    }
+
     private function isRewardDueForBackfill(Referral $referral): bool
     {
         if ($referral->reward_status !== ReferralRewardStatus::WaitingConfirmation) {
@@ -232,6 +331,27 @@ class ReferralRewardService
         if ($months <= 0 && preg_match('/Покупка подписки на (\d+) мес/u', (string) $transaction->description, $matches)) {
             $months = (int) $matches[1];
         }
+
+        $bonusDays = self::INVITEE_BONUS_DAYS[$months] ?? 0;
+        $rewardPercent = self::REFERRER_REWARD_PERCENT[$months] ?? 0;
+
+        if ($bonusDays === 0 || $rewardPercent === 0) {
+            return null;
+        }
+
+        return [
+            'months' => $months,
+            'bonus_days' => $bonusDays,
+            'reward_percent' => $rewardPercent,
+        ];
+    }
+
+    /**
+     * @return array{months:int, bonus_days:int, reward_percent:int}|null
+     */
+    private function resolveRewardDataFromSubscriptionCode(SubscriptionCode $code): ?array
+    {
+        $months = (int) ($code->months ?? data_get($code->meta, 'subscription_months', 0));
 
         $bonusDays = self::INVITEE_BONUS_DAYS[$months] ?? 0;
         $rewardPercent = self::REFERRER_REWARD_PERCENT[$months] ?? 0;

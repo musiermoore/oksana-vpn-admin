@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Referral;
+use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -70,6 +71,17 @@ class ReferralRepository
             ->where('user_id', $user->id)
             ->where('is_approved', true)
             ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function findPotentialQualifyingSubscriptionCodes(User $user): Collection
+    {
+        return SubscriptionCode::query()
+            ->with('transaction')
+            ->where('activated_by_user_id', $user->id)
+            ->where('status', SubscriptionCode::STATUS_ACTIVATED)
+            ->orderBy('activated_at')
             ->orderBy('id')
             ->get();
     }

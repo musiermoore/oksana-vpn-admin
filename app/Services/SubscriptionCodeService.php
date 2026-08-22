@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Enums\SubscriptionPurchaseType;
@@ -179,7 +181,11 @@ class SubscriptionCodeService
                 ReconcileUserAccessStateJob::dispatch($user->id)->afterCommit();
             }
 
-            return $code->refresh();
+            $freshCode = $code->refresh()->loadMissing('transaction');
+
+            app(ReferralRewardService::class)->scheduleForSubscriptionCodeActivation($user, $freshCode);
+
+            return $freshCode;
         });
     }
 

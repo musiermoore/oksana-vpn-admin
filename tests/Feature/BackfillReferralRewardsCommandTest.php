@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Enums\ReferralRewardStatus;
 use App\Jobs\ProcessReferralRewardJob;
 use App\Models\Referral;
+use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
@@ -120,5 +121,86 @@ class BackfillReferralRewardsCommandTest extends TestCase
         $this->assertSame(ReferralRewardStatus::Pending, $referral->reward_status);
         $this->assertNull($referral->qualifying_transaction_id);
         $this->assertSame(0, $referrer->fresh()->referral_accumulated_discount_percent);
+    }
+
+    public function test_command_backfills_pending_referral_reward_from_activated_subscription_code(): void
+    {
+        $referrer = User::query()->create([
+            'name' => 'Referrer',
+            'telegram' => '@ref-code',
+            'telegram_id' => '555',
+        ]);
+
+        $buyer = User::query()->create([
+            'name' => 'Buyer',
+            'telegram' => '@buyer-code',
+            'telegram_id' => '666',
+        ]);
+
+        $invitee = User::query()->create([
+            'name' => 'Invitee',
+            'telegram' => '@invitee-code',
+            'telegram_id' => '777',
+            'referrer_id' => $referrer->id,
+        ]);
+
+        $referral = Referral::query()->create([
+            'referrer_id' => $referrer->id,
+            'referral_user_id' => $invitee->id,
+            'created_at' => '2026-07-03 17:03:08',
+            'updated_at' => '2026-07-03 17:03:08',
+        ]);
+
+        $giftTransaction = Transaction::query()->create([
+            'user_id' => $buyer->id,
+            'type_id' => TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
+            'amount' => -1260,
+            'is_approved' => true,
+            'description' => 'Подарочный код на 12 мес.',
+            'extra_data' => [
+                'purchase_type' => 'GIFT',
+                'subscription_months' => 12,
+                'package_price' => 1260,
+            ],
+            'created_at' => '2026-07-03 17:04:00',
+            'updated_at' => '2026-07-03 17:04:00',
+        ]);
+
+        SubscriptionCode::query()->create([
+            'buyer_user_id' => $buyer->id,
+            'activated_by_user_id' => $invitee->id,
+            'transaction_id' => $giftTransaction->id,
+            'code' => 'SUBSCODE1234',
+            'months' => 12,
+            'days' => 365,
+            'price' => 1260,
+            'status' => SubscriptionCode::STATUS_ACTIVATED,
+            'activated_at' => '2026-07-03 17:05:37',
+            'meta' => [
+                'subscription_months' => 12,
+                'purchase_type' => 'GIFT',
+            ],
+        ]);
+
+        $this->artisan('referrals:backfill-rewards', [
+            'referral_id' => $referral->id,
+        ])
+            ->assertSuccessful()
+            ->expectsOutput('Referral reward backfill completed.');
+
+        $referral->refresh();
+
+        $this->assertSame(ReferralRewardStatus::Rewarded, $referral->reward_status);
+        $this->assertSame($giftTransaction->id, $referral->qualifying_transaction_id);
+        $this->assertSame(30, $referral->invitee_bonus_days);
+        $this->assertSame(25, $referral->referrer_reward_percent);
+        $this->assertNotNull($referral->rewarded_at);
+        $this->assertSame(25, $referrer->fresh()->referral_accumulated_discount_percent);
+        $this->assertDatabaseHas('user_subscriptions', [
+            'user_id' => $invitee->id,
+            'source' => 'referral_bonus',
+            'price' => 0,
+            'transaction_id' => $giftTransaction->id,
+        ]);
     }
 }

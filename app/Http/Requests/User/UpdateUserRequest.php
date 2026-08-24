@@ -24,6 +24,7 @@ class UpdateUserRequest extends DataFormRequest
             'is_active' => ['required', 'boolean'],
             'max_devices' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'traffic_limit_bytes' => ['nullable', 'integer', 'min:0'],
+            'subscription_expires_at' => ['nullable', 'date'],
         ];
     }
 

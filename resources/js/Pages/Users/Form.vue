@@ -12,6 +12,22 @@ const props = defineProps({
     subscription_links: Object,
 });
 
+const formatDateTimeLocal = (value) => {
+    if (!value) {
+        return '';
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    const pad = (part) => String(part).padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const form = useForm({
     name: props.user?.name ?? '',
     telegram: props.user?.telegram ?? '',
@@ -21,6 +37,7 @@ const form = useForm({
     is_active: props.user?.is_active ?? true,
     max_devices: props.user?.max_devices ?? 10,
     traffic_limit_bytes: props.user?.traffic_limit_bytes ?? 0,
+    subscription_expires_at: formatDateTimeLocal(props.user?.subscription_expires_at),
 });
 
 const submit = () => {
@@ -107,6 +124,11 @@ const joinAtOptions = props.payments.map((payment) => ({
             <label class="field">
                 <span>Лимит трафика (байт)</span>
                 <AppInput v-model="form.traffic_limit_bytes" type="number" min="0" step="1" />
+            </label>
+
+            <label v-if="mode === 'edit'" class="field">
+                <span>Подписка активна до</span>
+                <AppInput v-model="form.subscription_expires_at" type="datetime-local" />
             </label>
 
             <label class="field" style="grid-column: 1 / -1;">

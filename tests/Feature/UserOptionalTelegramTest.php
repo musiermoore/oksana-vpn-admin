@@ -48,6 +48,7 @@ class UserOptionalTelegramTest extends TestCase
                 'is_active' => true,
                 'max_devices' => 5,
                 'traffic_limit_bytes' => 0,
+                'subscription_expires_at' => '2026-09-15T23:59',
             ])
             ->assertRedirect(route('users.index'));
 
@@ -55,6 +56,7 @@ class UserOptionalTelegramTest extends TestCase
             'id' => $user->id,
             'name' => 'Alice Updated',
             'telegram' => null,
+            'subscription_expires_at' => '2026-09-15 23:59:00',
         ]);
     }
 

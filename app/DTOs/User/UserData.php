@@ -17,6 +17,7 @@ class UserData extends Data
         public bool $createConfigs = false,
         public int $maxDevices = 0,
         public int $trafficLimitBytes = 0,
+        public ?string $subscriptionExpiresAt = null,
     ) {}
 
     public function toArray(): array
@@ -31,6 +32,9 @@ class UserData extends Data
             'is_active' => $this->isActive,
             'max_devices' => $this->maxDevices,
             'traffic_limit_bytes' => $this->trafficLimitBytes,
+            'subscription_expires_at' => $this->subscriptionExpiresAt !== null && trim($this->subscriptionExpiresAt) !== ''
+                ? $this->subscriptionExpiresAt
+                : null,
         ];
     }
 }

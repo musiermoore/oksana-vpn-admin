@@ -117,6 +117,32 @@ class ApiUserRoutesTest extends TestCase
             ]);
     }
 
+    public function test_configs_route_allows_negative_balance_when_subscription_is_active(): void
+    {
+        $user = $this->createActiveUser(balance: -50);
+        $server = $this->createServer(code: 'WG');
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'ios-main',
+            'description' => 'Primary config',
+            'is_active' => true,
+        ]);
+
+        $this->getJson("/api/users/{$user->telegram_id}/wireguard/configs")
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [
+                    [
+                        'id' => $config->id,
+                        'name' => 'ios-main',
+                        'download_url' => "/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/download",
+                        'qr_code_url' => "/api/users/{$user->telegram_id}/configs/wireguard/{$config->id}/qr-code",
+                    ],
+                ],
+            ]);
+    }
+
     public function test_wireguard_configs_route_returns_config_resource_payload(): void
     {
         $user = $this->createActiveUser(balance: 500);

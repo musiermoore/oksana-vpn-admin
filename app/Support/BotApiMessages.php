@@ -11,7 +11,7 @@ class BotApiMessages
 
     public static function accessRequiresPayment(): string
     {
-        return 'VPN не оплачен, необходимо пополнить баланс. Команда /balance';
+        return 'Нет активной подписки. Откройте раздел оплаты и активируйте доступ.';
     }
 
     public static function configNotFound(): string

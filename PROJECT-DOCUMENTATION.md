@@ -229,20 +229,13 @@ This means subscription renewal should:
 
 ## Access Model
 
-A user has active access only when both conditions are true:
+A user has active access when:
 
 - the user has an active subscription
-- the user does not have debt
 
-Configs should be disabled when the user:
+Configs should be disabled when the user has no active subscription.
 
-- has negative balance, or
-- has no active subscription
-
-Configs can be enabled when the user:
-
-- has non-negative balance, and
-- has an active subscription
+Configs can be enabled when the user has an active subscription.
 
 ## Commands
 

@@ -31,7 +31,7 @@ class WireGuardUserService
             ], 404);
         }
 
-        if ($this->user->hasDebt()) {
+        if (! $this->user->hasActiveSubscription()) {
             return response()->json([
                 'status' => false,
                 'user' => $this->user,

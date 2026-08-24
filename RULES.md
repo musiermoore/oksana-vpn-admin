@@ -39,7 +39,7 @@ This file captures project-specific working rules so future development stays co
 
 ## Subscription Rules
 
-- Access depends on both an active subscription and a non-negative balance.
+- Access depends on an active subscription.
 - The command `configs:disable-overdue-debtors` only checks access and enables/disables configs.
 - Subscription renewal is handled by a separate command: `subscriptions:renew`.
 - Renewal should happen one day before the active subscription ends, only if the user balance is enough.

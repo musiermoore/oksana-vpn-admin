@@ -42,7 +42,7 @@ const availablePackages = computed(() => (
 ));
 
 const hasTrialPackage = computed(() => packages.value.some((item) => Boolean(item?.is_trial)));
-const shouldPromoteTrial = computed(() => !user.value?.subscription_expires_at && !hasDebt.value && hasTrialPackage.value);
+const shouldPromoteTrial = computed(() => !user.value?.subscription_expires_at && hasTrialPackage.value);
 
 const selectedPackage = computed(() => (
     availablePackages.value.find((item) => item.month === selectedMonth.value)
@@ -339,7 +339,7 @@ onMounted(async () => {
 
         <template v-else>
             <section v-if="screen === 'overview'" class="tg-section">
-                <div class="tg-status-card" :class="hasDebt ? 'tg-status-card--danger' : user?.subscription_expires_at ? 'tg-status-card--success' : 'tg-status-card--warning'">
+                <div class="tg-status-card" :class="user?.subscription_expires_at ? 'tg-status-card--success' : 'tg-status-card--warning'">
                     <div class="tg-status-card__top">
                         <div>
                             <div class="tg-status-card__title">
@@ -353,15 +353,15 @@ onMounted(async () => {
                         </div>
 
                         <div class="tg-status-card__icon">
-                            <AppIcon :name="hasDebt ? 'circleExclamation' : 'circleCheck'" />
+                            <AppIcon :name="user?.subscription_expires_at ? 'circleCheck' : 'circleExclamation'" />
                         </div>
                     </div>
 
                     <div class="tg-kv-grid">
                         <div class="tg-kv">
                             <span class="tg-kv__label">Статус</span>
-                            <strong class="tg-kv__value" :class="hasDebt ? 'tg-kv__value--danger' : 'tg-kv__value--success'">
-                                {{ hasDebt ? 'Ограничен' : (user?.subscription_expires_at ? 'Активен' : 'Не активен') }}
+                            <strong class="tg-kv__value" :class="user?.subscription_expires_at ? 'tg-kv__value--success' : 'tg-kv__value--danger'">
+                                {{ user?.subscription_expires_at ? 'Активен' : 'Не активен' }}
                             </strong>
                         </div>
                         <div class="tg-kv">
@@ -371,10 +371,10 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <div v-if="hasDebt || (!hasMoneyForNextMonth && !shouldPromoteTrial)" class="tg-note" :class="hasDebt ? 'tg-note--danger' : 'tg-note--warning'">
-                    <strong v-if="hasDebt">Сначала закройте долг</strong>
+                <div v-if="hasDebt || (!hasMoneyForNextMonth && !shouldPromoteTrial)" class="tg-note tg-note--warning">
+                    <strong v-if="hasDebt">Есть отрицательный баланс</strong>
                     <strong v-else-if="!hasMoneyForNextMonth">Лучше продлить заранее</strong>
-                    <p v-if="hasDebt">Пока долг не погашен, доступ к конфигам и ссылкам может быть ограничен.</p>
+                    <p v-if="hasDebt">Доступ остаётся активным по подписке, но при следующем продлении может не хватить средств.</p>
                     <p v-else-if="!hasMoneyForNextMonth">На следующий месяц может не хватить средств. Лучше продлить заранее, чтобы не потерять доступ.</p>
                 </div>
 

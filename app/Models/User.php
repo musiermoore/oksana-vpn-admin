@@ -280,7 +280,7 @@ class User extends Authenticatable
 
     public function hasActiveAccess(): bool
     {
-        return $this->hasActiveSubscription() && ! $this->hasDebt();
+        return $this->hasActiveSubscription();
     }
 
     public function hasActiveSubscription(?Carbon $date = null): bool

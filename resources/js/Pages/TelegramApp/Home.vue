@@ -38,7 +38,7 @@ const accessTone = computed(() => {
         return 'warning';
     }
 
-    if (Number(user.value?.debt ?? 0) > 0 || !user.value?.has_active_access) {
+    if (!user.value?.has_active_access) {
         return 'danger';
     }
 
@@ -46,10 +46,6 @@ const accessTone = computed(() => {
 });
 
 const accessTitle = computed(() => {
-    if (Number(user.value?.debt ?? 0) > 0) {
-        return 'Доступ ограничен';
-    }
-
     if (user.value?.has_active_access) {
         return `Подписка активна до ${formatShortDate(user.value.subscription_expires_at)}`;
     }
@@ -66,10 +62,6 @@ const accessMeta = computed(() => {
 });
 
 const nextSectionSubtitle = computed(() => {
-    if (Number(user.value?.debt ?? 0) > 0) {
-        return 'Сначала закройте долг, затем можно снова открыть конфиги.';
-    }
-
     if (!user.value?.has_active_access) {
         return 'Сначала оформите подписку, затем откройте конфиги.';
     }
@@ -78,7 +70,7 @@ const nextSectionSubtitle = computed(() => {
 });
 
 const primaryActionHref = computed(() => {
-    if (!user.value?.has_active_access || Number(user.value?.debt ?? 0) > 0) {
+    if (!user.value?.has_active_access) {
         return props.routes?.payments;
     }
 
@@ -88,11 +80,11 @@ const primaryActionHref = computed(() => {
 const hasTrialPackage = computed(() => packages.value.some((item) => Boolean(item?.is_trial)));
 
 const primaryActionLabel = computed(() => {
-    if (!user.value?.subscription_expires_at && Number(user.value?.debt ?? 0) <= 0 && hasTrialPackage.value) {
+    if (!user.value?.subscription_expires_at && hasTrialPackage.value) {
         return 'Пробный период';
     }
 
-    if (!user.value?.has_active_access || Number(user.value?.debt ?? 0) > 0) {
+    if (!user.value?.has_active_access) {
         return 'Продлить подписку';
     }
 
@@ -271,7 +263,7 @@ onMounted(async () => {
                 </div>
                 <div class="tg-actions">
                     <Link :href="primaryActionHref" class="tg-button">
-                        <AppIcon :name="user?.has_active_access && Number(user?.debt ?? 0) <= 0 ? 'bolt' : 'receipt'" />
+                        <AppIcon :name="user?.has_active_access ? 'bolt' : 'receipt'" />
                         <span>{{ primaryActionLabel }}</span>
                     </Link>
                     <Link :href="routes?.help" class="tg-button tg-button--secondary">

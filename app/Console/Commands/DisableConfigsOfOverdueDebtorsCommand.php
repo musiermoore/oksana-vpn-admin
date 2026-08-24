@@ -27,19 +27,45 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Disable configs of overdue debtors';
+    protected $description = 'Reconcile config access by active subscription state';
 
     /**
      * Execute the console command.
      */
     public function handle(): int
     {
+        $this->syncStoredBalances();
         $this->disableWireGuardConfigs();
         $this->enableWireGuardConfigs();
         $this->disableVlessConfigs();
         $this->enableVlessConfigs();
 
         return self::SUCCESS;
+    }
+
+    private function syncStoredBalances(): void
+    {
+        $userId = $this->argument('user_id');
+
+        $balances = DB::table('transactions')
+            ->selectRaw('user_id, COALESCE(SUM(amount), 0) AS balance')
+            ->where('is_approved', true)
+            ->when($userId, fn ($query, $value) => $query->where('user_id', $value))
+            ->groupBy('user_id')
+            ->pluck('balance', 'user_id');
+
+        User::query()
+            ->select('id')
+            ->when($userId, fn ($query, $value) => $query->whereKey($value))
+            ->chunkById(200, function ($users) use ($balances): void {
+                foreach ($users as $user) {
+                    User::query()
+                        ->whereKey($user->id)
+                        ->update([
+                            'balance' => round((float) ($balances[$user->id] ?? 0.0), 2),
+                        ]);
+                }
+            });
     }
 
     private function getQuery()
@@ -49,7 +75,6 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->select([
                 'users.id',
                 'users.telegram',
-                DB::raw('COALESCE(users.balance, 0) AS final_balance'),
             ])
             ->when($this->argument('user_id'), fn ($query, $userId) => $query->whereKey($userId))
             ->groupBy('users.id');
@@ -69,7 +94,7 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
                     ->whereHas('server', fn ($serverQuery) => $serverQuery->whereIn('type', Server::wireGuardTypes()));
             }])
             ->get()
-            ->filter(fn (User $user) => $user->final_balance < 0 || ! $user->hasActiveSubscription());
+            ->filter(fn (User $user) => ! $user->hasActiveSubscription());
 
         $ids = [];
 
@@ -98,7 +123,7 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             }])
             ->where('is_active', '=', true)
             ->get()
-            ->filter(fn (User $user) => $user->final_balance >= 0 && $user->hasActiveSubscription());
+            ->filter(fn (User $user) => $user->hasActiveSubscription());
 
         $ids = [];
 
@@ -126,7 +151,7 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
                     ->whereHas('server', fn ($serverQuery) => $serverQuery->where('type', Server::TYPE_VLESS));
             }])
             ->get()
-            ->filter(fn (User $user) => $user->final_balance < 0 || ! $user->hasActiveSubscription());
+            ->filter(fn (User $user) => ! $user->hasActiveSubscription());
 
         $ids = [];
         $service = app(VlessConfigCrudService::class);
@@ -168,7 +193,7 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             }])
             ->where('is_active', '=', true)
             ->get()
-            ->filter(fn (User $user) => $user->final_balance >= 0 && $user->hasActiveSubscription());
+            ->filter(fn (User $user) => $user->hasActiveSubscription());
 
         $ids = [];
         $service = app(VlessConfigCrudService::class);

@@ -97,7 +97,7 @@ class TelegramAppConnectionRoutesTest extends TestCase
             ]);
     }
 
-    public function test_wireguard_and_vless_routes_return_debt_payload_for_user_without_active_access(): void
+    public function test_wireguard_and_vless_routes_return_access_error_for_user_without_active_subscription(): void
     {
         [, $token] = $this->createAuthorizedUser(balance: 0);
 
@@ -116,6 +116,36 @@ class TelegramAppConnectionRoutesTest extends TestCase
                 'type' => 'debt',
                 'message' => BotApiMessages::accessRequiresPayment(),
             ]);
+    }
+
+    public function test_negative_balance_does_not_block_telegram_app_access_when_subscription_is_active(): void
+    {
+        [$user, $token] = $this->createAuthorizedUser(balance: -150);
+        $server = $this->createServer('WG');
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addMonth()->toDateString(),
+            'price' => 150,
+        ]);
+
+        Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'ios-main',
+            'description' => 'Primary config',
+            'is_active' => true,
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/wireguard/configs')
+            ->assertOk()
+            ->assertJsonCount(1, 'configs');
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/vless/link')
+            ->assertOk();
     }
 
     public function test_authenticated_user_can_load_vless_links_via_telegram_app_routes(): void

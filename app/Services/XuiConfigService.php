@@ -54,8 +54,7 @@ class XuiConfigService
      */
     public function getAllVlessInbounds(): array
     {
-        return collect($this->getInbounds())
-            ->map(fn (array $row) => $this->normalizeInbound($row))
+        return $this->normalizedInboundCollection()
             ->filter(fn (array $row) => $this->hasUsableInboundDefinition($row))
             ->filter(fn (array $row) => $this->isSupportedVlessInboundProtocol($row['protocol'] ?? null) && ! empty($row['id']))
             ->values()
@@ -424,7 +423,7 @@ class XuiConfigService
             }
         }
 
-        $rows = collect($this->getInbounds())
+        $rows = $this->rawInboundRows()
             ->flatMap(function (array $row): array {
                 $inbound = $this->normalizeInbound($row);
                 $stats = $this->normalizeClientStats($row['clientStats'] ?? $row['client_stats'] ?? $inbound['client_stats'] ?? []);
@@ -734,6 +733,24 @@ class XuiConfigService
         $data = $payload['obj'] ?? $payload['data'] ?? $payload;
 
         return is_array($data) ? array_values($data) : [];
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function rawInboundRows()
+    {
+        return collect($this->getInbounds())
+            ->filter(fn (mixed $row): bool => is_array($row));
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function normalizedInboundCollection()
+    {
+        return $this->rawInboundRows()
+            ->map(fn (array $row): array => $this->normalizeInbound($row));
     }
 
     private function getConfigSettings(string $ownerKey, array $inbound = []): array
@@ -1239,8 +1256,7 @@ class XuiConfigService
      */
     private function findInboundById(int $inboundId): ?array
     {
-        return collect($this->getInbounds())
-            ->map(fn (array $row) => $this->normalizeInbound($row))
+        return $this->normalizedInboundCollection()
             ->first(fn (array $row) => (int) ($row['id'] ?? 0) === $inboundId);
     }
 
@@ -1510,8 +1526,7 @@ class XuiConfigService
         bool $enabled,
         array $context = [],
     ): array {
-        $inbounds = collect($this->getInbounds())
-            ->map(fn (array $row) => $this->normalizeInbound($row));
+        $inbounds = $this->normalizedInboundCollection();
 
         $matchedInbound = $inbounds->first(function (array $inbound) use ($inboundId): bool {
             return $inboundId <= 0 || (int) ($inbound['id'] ?? 0) === $inboundId;

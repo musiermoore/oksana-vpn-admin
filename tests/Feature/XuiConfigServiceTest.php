@@ -333,4 +333,57 @@ class XuiConfigServiceTest extends TestCase
             && $request->hasHeader('X-CSRF-Token', 'csrf-token-from-endpoint'));
     }
 
+    public function test_get_all_vless_inbounds_skips_non_array_rows_from_panel_response(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Modern Panel',
+            'code' => 'MPN',
+            'ip' => '10.0.0.6',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [
+                    false,
+                    [
+                        'id' => 10,
+                        'protocol' => 'vless',
+                        'port' => 443,
+                        'settings' => json_encode([
+                            'clients' => [],
+                        ], JSON_UNESCAPED_SLASHES),
+                        'streamSettings' => json_encode([
+                            'network' => 'tcp',
+                            'security' => 'reality',
+                        ], JSON_UNESCAPED_SLASHES),
+                    ],
+                ],
+            ]),
+        ]);
+
+        $inbounds = (new XuiConfigService($server))->getAllVlessInbounds();
+
+        $this->assertCount(1, $inbounds);
+        $this->assertSame(10, $inbounds[0]['id']);
+        $this->assertSame('vless', $inbounds[0]['protocol']);
+    }
+
 }

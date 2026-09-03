@@ -33,6 +33,14 @@ const whiteListRoute = computed(() => {
     return `${props.routes.vless_wl}?step=links`;
 });
 
+const amneziaRoute = computed(() => {
+    if (!props.routes?.wireguard) {
+        return '';
+    }
+
+    return `${props.routes.wireguard}?step=list`;
+});
+
 const accessTone = computed(() => {
     if (!user.value) {
         return 'warning';
@@ -94,7 +102,7 @@ const primaryActionLabel = computed(() => {
 const hasPositiveBalance = computed(() => Number(user.value?.balance ?? 0) > 0);
 
 const quickLinks = computed(() => {
-    const items = [
+    const configItems = [
         {
             title: 'Стандартные',
             description: 'Прямая ссылка, быстрое подключение и QR-код.',
@@ -102,10 +110,24 @@ const quickLinks = computed(() => {
             icon: 'shield',
             iconClass: 'tg-list-card__icon',
         },
+    ];
+
+    if (user.value?.has_vless_wl_configs && whiteListRoute.value) {
+        configItems.push({
+            title: 'Белые списки',
+            description: 'Отдельные БС-ссылки для поддерживаемых клиентов.',
+            href: whiteListRoute.value,
+            icon: 'shield',
+            iconClass: 'tg-list-card__icon--blue',
+        });
+    }
+
+    return [
+        ...configItems,
         {
             title: 'Amnezia',
             description: 'Конфиги, QR-код и отправка файла в Telegram.',
-            href: props.routes?.wireguard,
+            href: amneziaRoute.value,
             icon: 'shield',
             iconClass: 'tg-list-card__icon--success',
         },
@@ -131,18 +153,6 @@ const quickLinks = computed(() => {
             iconClass: 'tg-list-card__icon--warning',
         },
     ];
-
-    if (user.value?.has_vless_wl_configs && whiteListRoute.value) {
-        items.splice(2, 0, {
-            title: 'Белые списки',
-            description: 'Отдельные БС-ссылки для поддерживаемых клиентов.',
-            href: whiteListRoute.value,
-            icon: 'shield',
-            iconClass: 'tg-list-card__icon--blue',
-        });
-    }
-
-    return items;
 });
 
 const referral = computed(() => user.value?.referral ?? null);

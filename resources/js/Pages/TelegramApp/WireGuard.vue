@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
@@ -30,6 +30,18 @@ const selectedConfig = ref(null);
 const loadingAction = ref(false);
 const sendingToBot = ref(false);
 const qrImageUrl = ref('');
+
+const initialStep = () => {
+    const stepParam = new URLSearchParams(window.location.search).get('step');
+
+    return stepParam === 'list' ? 'list' : 'hub';
+};
+
+const frameTitle = computed(() => step.value === 'hub' ? 'Конфиги' : 'Amnezia');
+const frameDescription = computed(() => step.value === 'hub'
+    ? 'Выберите тип конфигов и получите данные для подключения.'
+    : 'Выберите конфиг, QR-код или отправку файла в Telegram.'
+);
 
 const revokeQrUrl = () => {
     if (qrImageUrl.value) {
@@ -62,6 +74,7 @@ const loadConfigs = async () => {
 
     configs.value = response.data?.configs ?? [];
     state.value = configs.value.length > 0 ? 'ready' : 'empty';
+    step.value = state.value === 'ready' ? initialStep() : 'hub';
 };
 
 const selectConfig = (config) => {
@@ -164,8 +177,8 @@ onBeforeUnmount(() => {
 
 <template>
     <TelegramMiniAppFrame
-        title="Конфиги"
-        description="Выберите тип конфигов и получите данные для подключения."
+        :title="frameTitle"
+        :description="frameDescription"
         :routes="routes"
         :user="user"
     >

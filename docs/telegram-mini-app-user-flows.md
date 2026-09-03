@@ -147,7 +147,7 @@ SUPPORT_SHOW
 
 Доступные действия на `ready`:
 
-- `Amnezia` -> переход на `/telegram-app/wireguard`
+- `Amnezia` -> переход на `/telegram-app/wireguard?step=list`
 - `VLESS` -> переход на `/telegram-app/vless`
 - `VLESS Белые списки` -> переход на `/telegram-app/vless-wl?step=links`
   - показывается только если `user.has_vless_wl_configs === true`
@@ -226,7 +226,7 @@ Support-боту полезно понимать:
 
 ### Основной путь
 
-1. Открыть `Amnezia` с `Home` или через нижнюю навигацию.
+1. Открыть `Amnezia` с `Home` или через hub конфигов в нижней навигации.
 2. `GET /telegram-app/wireguard/configs`.
 3. Если конфиги есть -> показывается список конфигов.
    - Xray-backed AmneziaWG конфиги показываются в этом же разделе: пользователь выбирает конфиг, получает QR или `.conf` файл.

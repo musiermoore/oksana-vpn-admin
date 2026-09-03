@@ -42,10 +42,6 @@ const sortForm = useForm({
 });
 const dragKey = ref(null);
 const hasSortableItems = computed(() => sortItems.value.length > 0 && !!props.sort_connect_items_url);
-const inboundRows = computed(() => form.inbounds.map((inbound, index) => ({
-    ...inbound,
-    inbound_position: index + 1,
-})));
 const serverTypeOptions = [
     { label: 'WireGuard (legacy)', value: 'wireguard-old' },
     { label: 'WireGuard Agent API', value: 'wireguard' },
@@ -237,8 +233,8 @@ const removePriceRow = (index) => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="inbound in inboundRows" :key="inbound.id">
-                            <td>{{ inbound.inbound_position }}</td>
+                        <tr v-for="(inbound, index) in form.inbounds" :key="inbound.id">
+                            <td>{{ index + 1 }}</td>
                             <td>{{ inbound.sort_order }}</td>
                             <td>{{ inbound.external_id }}</td>
                             <td>{{ inbound.remark || '—' }}</td>

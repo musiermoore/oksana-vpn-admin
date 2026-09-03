@@ -59,7 +59,7 @@
 | --- | --- | --- | --- | --- | --- |
 | `BOOTSTRAP` | auto | Валидация Telegram WebApp `initData` | `POST /telegram-app/auth/telegram` | `BOOTSTRAP_PROFILE_LOAD` | `APP_INIT_ERROR` при невалидном `hash`, истекшей сессии, пустом `telegram id`, ошибке конфигурации |
 | `BOOTSTRAP_PROFILE_LOAD` | auto | Загрузка профиля после входа | `GET /telegram-app/me` | `HOME` | `APP_INIT_ERROR` при `401` или ошибке загрузки |
-| `HOME` | `Amnezia` | Открыть список Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` или mini-app proxy `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, `EMPTY_WIREGUARD_CONFIGS`, generic error |
+| `HOME` | `Amnezia` | Открыть список Amnezia-конфигов через `/telegram-app/wireguard?step=list` | `GET /api/users/{telegramId}/wireguard/configs` или mini-app proxy `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, `EMPTY_WIREGUARD_CONFIGS`, generic error |
 | `HOME` | `VLESS` | Открыть VLESS-экран | `GET /api/users/{telegramId}/vless/link` или mini-app proxy `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
 | `HOME` | `Подписка` | Открыть обзор подписки | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
 | `BOOTSTRAP` | auto with `start_param=payments` | Открыть экран подписки по deep link | `POST /telegram-app/auth/telegram`, затем `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |

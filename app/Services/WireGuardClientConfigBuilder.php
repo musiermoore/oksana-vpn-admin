@@ -14,6 +14,7 @@ class WireGuardClientConfigBuilder
 {
     public function __construct(
         private readonly SubscriptionUriParser $parser,
+        private readonly WireGuardSubscriptionLinkService $links,
     ) {}
 
     public function buildFromVlessConfig(VlessConfig $config): string
@@ -24,8 +25,18 @@ class WireGuardClientConfigBuilder
 
         $parsed = $this->parser->parse($config->getStaticLink());
 
-        if (! is_array($parsed) || ($parsed['protocol'] ?? null) !== 'wireguard') {
+        if (! is_array($parsed) || ! in_array(($parsed['protocol'] ?? null), ['wireguard', 'amneziawg'], true)) {
             throw new RuntimeException('WireGuard link is invalid.');
+        }
+
+        if (($parsed['protocol'] ?? null) === 'amneziawg') {
+            $content = $this->links->amneziaWireGuardUriToConfigContent($config->getStaticLink());
+
+            if ($content === null) {
+                throw new RuntimeException('AmneziaWG link is invalid.');
+            }
+
+            return $content;
         }
 
         $lines = [
@@ -79,11 +90,15 @@ class WireGuardClientConfigBuilder
                 ->value();
         }
 
+        if (trim(mb_strtolower((string) $config->protocol)) === 'amneziawg') {
+            return $normalized !== '' ? $normalized.'-amneziawg.conf' : 'amneziawg.conf';
+        }
+
         return $normalized !== '' ? $normalized.'.conf' : 'wireguard.conf';
     }
 
     public function isWireGuardConfig(VlessConfig $config): bool
     {
-        return trim(mb_strtolower((string) $config->protocol)) === 'wireguard';
+        return in_array(trim(mb_strtolower((string) $config->protocol)), ['wireguard', 'amneziawg'], true);
     }
 }

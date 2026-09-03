@@ -34,7 +34,7 @@ class UserSubscriptionService
                     'config_id' => $node->configId,
                     'uri' => $node->uri,
                 ],
-                array_filter($namedNodes, fn (NormalizedNode $node): bool => $node->protocol === 'wireguard')
+                array_filter($namedNodes, fn (NormalizedNode $node): bool => in_array($node->protocol, ['wireguard', 'amneziawg'], true))
             )),
         ]);
 
@@ -220,6 +220,7 @@ class UserSubscriptionService
             'hysteria' => 3,
             'hysteria2' => 4,
             'wireguard' => 5,
+            'amneziawg' => 6,
             default => 99,
         };
     }

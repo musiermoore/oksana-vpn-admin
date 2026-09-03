@@ -25,6 +25,8 @@ class SubscriptionUriTransformer
             'shadowsocks' => $this->buildShadowsocks($parsed, $host, $port),
             'hysteria2' => $this->buildHysteria2($uri, $parsed, $host, $port),
             'hysteria' => $this->buildHysteria($parsed, $host, $port),
+            'wireguard' => $this->replaceWireGuardAddress($uri, $host, $port),
+            'amneziawg' => $this->replaceAmneziaWireGuardAddress($uri, $parsed, $host, $port),
             default => null,
         };
     }
@@ -150,6 +152,91 @@ class SubscriptionUriTransformer
             $query,
             (string) ($parsed['fragment'] ?? ''),
         );
+    }
+
+    private function replaceWireGuardAddress(string $uri, string $host, int $port): string
+    {
+        [$withoutFragment, $fragment] = array_pad(explode('#', $uri, 2), 2, '');
+        [$beforeQuery, $query] = array_pad(explode('?', $withoutFragment, 2), 2, '');
+        $user = Str::before(Str::after($beforeQuery, 'wireguard://'), '@');
+
+        return 'wireguard://'.$user.'@'.$this->formatHost($host).':'.$port
+            .($query !== '' ? '?'.$query : '')
+            .$this->buildFragment(rawurldecode($fragment));
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     */
+    private function replaceAmneziaWireGuardAddress(string $uri, array $parsed, string $host, int $port): string
+    {
+        $content = $this->buildAmneziaWireGuardConfigContent($parsed, $host, $port);
+        $payload = rtrim(strtr(base64_encode($content), '+/', '-_'), '=');
+        $scheme = Str::startsWith($uri, 'awg://') ? 'awg' : 'amneziawg';
+
+        return $scheme.'://'.$payload.$this->buildFragment((string) ($parsed['fragment'] ?? ''));
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsed
+     */
+    private function buildAmneziaWireGuardConfigContent(array $parsed, string $host, int $port): string
+    {
+        $lines = [
+            '[Interface]',
+            'PrivateKey = '.$parsed['private_key'],
+            'Address = '.$parsed['address'],
+        ];
+
+        if (($parsed['dns'] ?? '') !== '') {
+            $lines[] = 'DNS = '.$parsed['dns'];
+        }
+
+        if ((int) ($parsed['mtu'] ?? 0) > 0) {
+            $lines[] = 'MTU = '.(int) $parsed['mtu'];
+        }
+
+        foreach (($parsed['amnezia'] ?? []) as $key => $value) {
+            if (is_scalar($value) && trim((string) $value) !== '') {
+                $lines[] = $this->formatAmneziaOptionName((string) $key).' = '.trim((string) $value);
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = '[Peer]';
+        $lines[] = 'PublicKey = '.$parsed['public_key'];
+
+        if (($parsed['preshared_key'] ?? '') !== '') {
+            $lines[] = 'PresharedKey = '.$parsed['preshared_key'];
+        }
+
+        $lines[] = 'Endpoint = '.$this->formatHost($host).':'.$port;
+        $lines[] = 'AllowedIPs = 0.0.0.0/0, ::/0';
+
+        if ((int) ($parsed['keepalive'] ?? 0) > 0) {
+            $lines[] = 'PersistentKeepalive = '.(int) $parsed['keepalive'];
+        }
+
+        return implode(PHP_EOL, $lines).PHP_EOL;
+    }
+
+    private function formatAmneziaOptionName(string $key): string
+    {
+        return match ($key) {
+            'jc' => 'Jc',
+            'jmin' => 'Jmin',
+            'jmax' => 'Jmax',
+            'headerprotectionkey' => 'HeaderProtectionKey',
+            'contentpaddingaddition' => 'ContentPaddingAddition',
+            'randomtrailers' => 'RandomTrailers',
+            'disablecookies' => 'DisableCookies',
+            'rekeyaftertime' => 'RekeyAfterTime',
+            'rekeytimeout' => 'RekeyTimeout',
+            'rejectaftertime' => 'RejectAfterTime',
+            'keepalivetimeout' => 'KeepaliveTimeout',
+            'maxhandshakeattempts' => 'MaxHandshakeAttempts',
+            default => strtoupper($key),
+        };
     }
 
     /**

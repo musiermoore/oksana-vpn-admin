@@ -177,7 +177,7 @@ class ApiUserService
     private function isVisibleWireGuardVlessConfig(Model $config): bool
     {
         return $config instanceof VlessConfig
-            && trim(mb_strtolower((string) $config->protocol)) === 'wireguard'
+            && $this->isWireGuardFamilyProtocol($config->protocol)
             && $this->isVisibleVlessConfig($config);
     }
 
@@ -337,7 +337,7 @@ class ApiUserService
 
     public function isWireGuardType(string $type): bool
     {
-        return trim(mb_strtolower($type)) === 'wireguard';
+        return $this->isWireGuardFamilyProtocol($type);
     }
 
     public function isSupportedConfigType(string $type): bool
@@ -354,6 +354,11 @@ class ApiUserService
         }
 
         return '@'.ltrim($telegram, '@');
+    }
+
+    private function isWireGuardFamilyProtocol(mixed $protocol): bool
+    {
+        return in_array(trim(mb_strtolower((string) $protocol)), ['wireguard', 'amneziawg'], true);
     }
 
     private function resolveName(string $telegram, string $telegramId, ?string $name): string

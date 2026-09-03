@@ -97,6 +97,66 @@ class TelegramAppConnectionRoutesTest extends TestCase
             ]);
     }
 
+    public function test_authenticated_user_can_download_xray_amneziawg_config_via_telegram_app_routes(): void
+    {
+        [$user, $token] = $this->createAuthorizedActiveUser();
+        $server = Server::query()->create([
+            'name' => 'AmneziaWG Server',
+            'code' => 'AWG',
+            'ip' => '127.0.0.21',
+            'link_host' => 'awg.example.com',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $xrayInbound = $server->xrayInbounds()->create([
+            'external_id' => 5,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => [],
+        ]);
+        $content = implode(PHP_EOL, [
+            '[Interface]',
+            'PrivateKey = +IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=',
+            'Address = 10.8.1.2/32',
+            'Jc = 4',
+            'H1 = 293319625-311102883',
+            '',
+            '[Peer]',
+            'PublicKey = H6c2cEqFtAN39I8RjWg9Q1ZxvD+0ZqTl+fHTwVh/YQY=',
+            'Endpoint = awg.example.com:13249',
+            'AllowedIPs = 0.0.0.0/0, ::/0',
+            '',
+        ]);
+        $uri = app(\App\Services\WireGuardSubscriptionLinkService::class)
+            ->fromConfigContent($content, $server, 'test');
+
+        $config = \App\Models\VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $xrayInbound->id,
+            'user_id' => $user->id,
+            'name' => 'test',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'cd677047-46de-406c-9ca4-ef47cbaecc8a',
+            'port' => 13249,
+            'protocol' => 'amneziawg',
+            'type' => 'amneziawg',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => $uri,
+        ]);
+
+        $this->withToken($token)
+            ->get("/telegram-app/wireguard/configs/xray-{$config->id}/download")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertSeeText('PrivateKey = +IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=')
+            ->assertSeeText('Jc = 4')
+            ->assertSeeText('Endpoint = awg.example.com:13249');
+    }
+
     public function test_wireguard_and_vless_routes_return_access_error_for_user_without_active_subscription(): void
     {
         [, $token] = $this->createAuthorizedUser(balance: 0);

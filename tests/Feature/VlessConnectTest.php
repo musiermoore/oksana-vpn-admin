@@ -285,6 +285,85 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('#'.rawurlencode('🇸🇪 Швеция • WIREGUARD • UDP'), $decoded);
     }
 
+    public function test_connect_includes_amneziawg_configs_in_uri_subscription_and_json_profile(): void
+    {
+        $user = $this->createActiveUser('Amnezia User', '@awg-user', '223359');
+        $server = $this->createServer('AmneziaWG', 'AWG', 'awg.example.com');
+        $content = implode(PHP_EOL, [
+            '[Interface]',
+            'PrivateKey = +IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=',
+            'Address = 10.8.1.2/32',
+            'DNS = 77.88.8.8,9.9.9.9',
+            'Jc = 4',
+            'Jmin = 56',
+            'Jmax = 278',
+            'S1 = 118',
+            'S2 = 131',
+            'S3 = 35',
+            'S4 = 26',
+            'H1 = 293319625-311102883',
+            'H2 = 1023863381-1026190637',
+            'H3 = 1418042436-1494419776',
+            'H4 = 1936828868-2002242551',
+            'I1 = <r 165>',
+            'HeaderProtectionKey = ngDW+OHLDB0dg8EcqPHqjYlOg0xI4acd5tnaaogfRpM=',
+            'ContentPaddingAddition = 24-56',
+            'RandomTrailers = true',
+            'DisableCookies = true',
+            '',
+            '[Peer]',
+            'PublicKey = H6c2cEqFtAN39I8RjWg9Q1ZxvD+0ZqTl+fHTwVh/YQY=',
+            'Endpoint = awg.example.com:13249',
+            'AllowedIPs = 0.0.0.0/0, ::/0',
+            '',
+        ]);
+        $uri = app(\App\Services\WireGuardSubscriptionLinkService::class)
+            ->fromConfigContent($content, $server, 'test');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 5,
+            'name' => 'test',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'cd677047-46de-406c-9ca4-ef47cbaecc8a',
+            'port' => 13249,
+            'protocol' => 'amneziawg',
+            'type' => 'amneziawg',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => $uri,
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('223359'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $decoded = base64_decode((string) $response->getContent(), true);
+
+        $this->assertNotFalse($decoded);
+        $this->assertStringContainsString('amneziawg://', $decoded);
+        $this->assertStringContainsString('#'.rawurlencode('AmneziaWG • AMNEZIAWG • UDP'), $decoded);
+
+        $jsonResponse = $this->get(route('vless.connect-json', [
+            'tg' => Crypt::encrypt('223359'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $jsonResponse->assertOk();
+
+        $payload = json_decode((string) $jsonResponse->getContent(), true);
+
+        $this->assertSame('wireguard', data_get($payload, '0.outbounds.0.protocol'));
+        $this->assertSame('+IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=', data_get($payload, '0.outbounds.0.settings.secretKey'));
+        $this->assertSame('4', data_get($payload, '0.outbounds.0.settings.amnezia.jc'));
+        $this->assertSame('293319625-311102883', data_get($payload, '0.outbounds.0.settings.amnezia.h1'));
+    }
+
     public function test_connect_json_returns_xray_profile_array_with_hardcoded_dns_and_route_settings(): void
     {
         $user = $this->createActiveUser('JSON User', '@json-user', '112233');

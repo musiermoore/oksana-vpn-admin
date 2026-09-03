@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\Config;
@@ -26,13 +28,17 @@ class WireGuardSubscriptionLinkService
             return null;
         }
 
-        if (Str::startsWith($content, 'wireguard://')) {
+        if ($this->isWireGuardUri($content) || $this->isAmneziaWireGuardUri($content)) {
             return $this->normalizeExistingUri($content, $name);
         }
 
         $sections = $this->parseConfigSections($content);
         $interface = $sections['interface'] ?? [];
         $peer = $sections['peer'] ?? [];
+
+        if ($this->hasAmneziaWireGuardOptions($interface)) {
+            return $this->buildAmneziaWireGuardUri($content, $name);
+        }
 
         $privateKey = $this->firstNonEmptyString([
             $interface['privatekey'] ?? null,
@@ -109,7 +115,7 @@ class WireGuardSubscriptionLinkService
 
             $candidate = trim($candidate);
 
-            if (Str::startsWith($candidate, 'wireguard://')) {
+            if ($this->isWireGuardUri($candidate) || $this->isAmneziaWireGuardUri($candidate)) {
                 return $this->normalizeExistingUri($candidate, $name);
             }
 
@@ -118,6 +124,10 @@ class WireGuardSubscriptionLinkService
             if ($uri !== null) {
                 return $uri;
             }
+        }
+
+        if ($this->isAmneziaWireGuardProtocol($inbound['protocol'] ?? null)) {
+            return $this->buildAmneziaWireGuardUriFromXui($server, $inbound, $client, $name);
         }
 
         [$host, $port] = $this->parseEndpoint($this->firstNonEmptyString([
@@ -203,6 +213,14 @@ class WireGuardSubscriptionLinkService
 
     private function normalizeExistingUri(string $uri, ?string $name = null): ?string
     {
+        if ($this->isAmneziaWireGuardUri($uri)) {
+            $content = $this->amneziaWireGuardUriToConfigContent($uri);
+
+            return $content !== null
+                ? $this->buildAmneziaWireGuardUri($content, $name)
+                : $this->withName($uri, $name);
+        }
+
         $parsed = $this->parseWireGuardUri($uri);
 
         if ($parsed === null) {
@@ -222,6 +240,23 @@ class WireGuardSubscriptionLinkService
             keepalive: $parsed['keepalive'],
             reserved: $parsed['reserved'],
         );
+    }
+
+    public function amneziaWireGuardUriToConfigContent(string $uri): ?string
+    {
+        if (! $this->isAmneziaWireGuardUri($uri)) {
+            return null;
+        }
+
+        $normalized = Str::after($uri, '://');
+        [$payload] = explode('#', $normalized, 2);
+        $decoded = $this->decodeBase64Url(trim($payload)) ?? base64_decode(trim($payload), true);
+
+        if (! is_string($decoded) || trim($decoded) === '') {
+            return null;
+        }
+
+        return trim($decoded).PHP_EOL;
     }
 
     /**
@@ -308,6 +343,144 @@ class WireGuardSubscriptionLinkService
             .$port
             .($queryString !== '' ? '?'.$queryString : '')
             .($name !== null && trim($name) !== '' ? '#'.rawurlencode(trim($name)) : '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $inbound
+     * @param  array<string, mixed>  $client
+     */
+    private function buildAmneziaWireGuardUriFromXui(Server $server, array $inbound, array $client, ?string $name): ?string
+    {
+        $serverSettings = $inbound['settings']['server'] ?? $inbound['settings'] ?? [];
+
+        if (! is_array($serverSettings)) {
+            $serverSettings = [];
+        }
+
+        [$host, $port] = $this->parseEndpoint($this->firstNonEmptyString([
+            $client['endpoint'] ?? null,
+            Arr::get($client, 'peer.endpoint'),
+            Arr::get($inbound, 'endpoint'),
+            Arr::get($inbound, 'settings.endpoint'),
+        ]), $server, isset($inbound['port']) ? (int) $inbound['port'] : null);
+
+        $privateKey = $this->firstNonEmptyString([
+            $client['privateKey'] ?? null,
+            $client['private_key'] ?? null,
+            $client['secretKey'] ?? null,
+            $client['secret_key'] ?? null,
+        ]);
+        $publicKey = $this->firstNonEmptyString([
+            $serverSettings['publicKey'] ?? null,
+            $serverSettings['public_key'] ?? null,
+            Arr::get($inbound, 'settings.publicKey'),
+            Arr::get($inbound, 'settings.public_key'),
+        ]);
+        $address = $this->normalizeCsvValue($this->firstNonEmptyValue([
+            $client['allowedIPs'] ?? null,
+            $client['allowed_ips'] ?? null,
+            $client['address'] ?? null,
+            $client['addresses'] ?? null,
+            $client['allowedIp'] ?? null,
+        ]));
+
+        if (blank($privateKey) || blank($publicKey) || blank($address) || blank($host) || $port === null || $port <= 0) {
+            return null;
+        }
+
+        $lines = [
+            '[Interface]',
+            'PrivateKey = '.$privateKey,
+            'Address = '.$address,
+        ];
+
+        $dns = $this->normalizeCsvValue($this->firstNonEmptyValue([
+            $client['dns'] ?? null,
+            $serverSettings['dns'] ?? null,
+            array_filter([$serverSettings['primaryDns'] ?? null, $serverSettings['secondaryDns'] ?? null]),
+        ]));
+
+        if ($dns !== null) {
+            $lines[] = 'DNS = '.$dns;
+        }
+
+        foreach ($this->amneziaInterfaceOptionMap() as $sourceKey => $configKey) {
+            $value = $serverSettings[$sourceKey] ?? null;
+
+            if (is_bool($value)) {
+                $lines[] = $configKey.' = '.($value ? 'true' : 'false');
+
+                continue;
+            }
+
+            if (is_scalar($value) && trim((string) $value) !== '') {
+                $lines[] = $configKey.' = '.trim((string) $value);
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = '[Peer]';
+        $lines[] = 'PublicKey = '.$publicKey;
+        $lines[] = 'Endpoint = '.$this->formatHost($host).':'.$port;
+        $lines[] = 'AllowedIPs = 0.0.0.0/0, ::/0';
+
+        $keepalive = $this->nullableInt($client['persistentKeepalive'] ?? $client['keepalive'] ?? null);
+
+        if ($keepalive !== null && $keepalive > 0) {
+            $lines[] = 'PersistentKeepalive = '.$keepalive;
+        }
+
+        return $this->buildAmneziaWireGuardUri(implode(PHP_EOL, $lines).PHP_EOL, $name);
+    }
+
+    private function buildAmneziaWireGuardUri(string $content, ?string $name = null): string
+    {
+        $payload = rtrim(strtr(base64_encode(trim($content).PHP_EOL), '+/', '-_'), '=');
+
+        return 'amneziawg://'.$payload.($name !== null && trim($name) !== '' ? '#'.rawurlencode(trim($name)) : '');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function amneziaInterfaceOptionMap(): array
+    {
+        return [
+            'jc' => 'Jc',
+            'jmin' => 'Jmin',
+            'jmax' => 'Jmax',
+            's1' => 'S1',
+            's2' => 'S2',
+            's3' => 'S3',
+            's4' => 'S4',
+            'h1' => 'H1',
+            'h2' => 'H2',
+            'h3' => 'H3',
+            'h4' => 'H4',
+            'i1' => 'I1',
+            'i2' => 'I2',
+            'i3' => 'I3',
+            'i4' => 'I4',
+            'i5' => 'I5',
+            'headerProtectionKey' => 'HeaderProtectionKey',
+            'contentPaddingAddition' => 'ContentPaddingAddition',
+            'randomTrailers' => 'RandomTrailers',
+            'disableCookies' => 'DisableCookies',
+            'rekeyAfterTime' => 'RekeyAfterTime',
+            'rekeyTimeout' => 'RekeyTimeout',
+            'rejectAfterTime' => 'RejectAfterTime',
+            'keepaliveTimeout' => 'KeepaliveTimeout',
+            'maxHandshakeAttempts' => 'MaxHandshakeAttempts',
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $interface
+     */
+    private function hasAmneziaWireGuardOptions(array $interface): bool
+    {
+        return collect($this->amneziaInterfaceOptionMap())
+            ->contains(fn (string $configKey): bool => array_key_exists(mb_strtolower($configKey), $interface));
     }
 
     /**
@@ -596,5 +769,34 @@ class WireGuardSubscriptionLinkService
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function decodeBase64Url(string $value): ?string
+    {
+        $normalized = strtr($value, '-_', '+/');
+        $padding = strlen($normalized) % 4;
+
+        if ($padding > 0) {
+            $normalized .= str_repeat('=', 4 - $padding);
+        }
+
+        $decoded = base64_decode($normalized, true);
+
+        return $decoded === false ? null : $decoded;
+    }
+
+    private function isWireGuardUri(string $uri): bool
+    {
+        return Str::startsWith($uri, 'wireguard://');
+    }
+
+    private function isAmneziaWireGuardUri(string $uri): bool
+    {
+        return Str::startsWith($uri, ['amneziawg://', 'awg://']);
+    }
+
+    private function isAmneziaWireGuardProtocol(mixed $protocol): bool
+    {
+        return mb_strtolower((string) $protocol) === 'amneziawg';
     }
 }

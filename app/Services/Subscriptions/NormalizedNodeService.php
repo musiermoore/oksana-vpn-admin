@@ -225,6 +225,7 @@ class NormalizedNodeService
             'hysteria' => 2,
             'hysteria2' => 3,
             'wireguard' => 4,
+            'amneziawg' => 5,
             default => 99,
         };
     }

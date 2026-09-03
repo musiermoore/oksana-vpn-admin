@@ -16,6 +16,7 @@ class SubscriptionUriParser
 
         return match ($scheme) {
             'wireguard' => $this->parseWireGuard($uri),
+            'amneziawg' => $this->parseAmneziaWireGuard($uri),
             'vless' => $this->parseVless($uri),
             'trojan' => $this->parseTrojan($uri),
             'shadowsocks' => $this->parseShadowsocks($uri),
@@ -32,6 +33,7 @@ class SubscriptionUriParser
             Str::startsWith($uri, 'trojan://') => 'trojan',
             Str::startsWith($uri, 'ss://') => 'shadowsocks',
             Str::startsWith($uri, 'wireguard://') => 'wireguard',
+            Str::startsWith($uri, ['amneziawg://', 'awg://']) => 'amneziawg',
             Str::startsWith($uri, 'hy2://'),
             Str::startsWith($uri, 'hysteria2://') => 'hysteria2',
             Str::startsWith($uri, 'hysteria://') => 'hysteria',
@@ -48,7 +50,7 @@ class SubscriptionUriParser
         }
 
         return match ($parsed['protocol']) {
-            'wireguard' => 'udp',
+            'wireguard', 'amneziawg' => 'udp',
             'hysteria', 'hysteria2' => 'quic',
             'shadowsocks' => (string) ($parsed['plugin'] ? 'plugin' : 'tcp'),
             default => (string) ($parsed['transport'] ?? 'tcp'),
@@ -91,6 +93,102 @@ class SubscriptionUriParser
             'reserved' => rawurldecode((string) Arr::get($query, 'reserved', '')),
             'fragment' => rawurldecode($fragment),
         ];
+    }
+
+    private function parseAmneziaWireGuard(string $uri): ?array
+    {
+        $normalized = Str::after($uri, '://');
+        [$payload, $fragment] = array_pad(explode('#', $normalized, 2), 2, '');
+        $content = $this->decodeBase64Url(trim($payload)) ?? base64_decode(trim($payload), true);
+
+        if (! is_string($content) || trim($content) === '') {
+            return null;
+        }
+
+        $sections = $this->parseConfigSections($content);
+        $interface = $sections['interface'] ?? [];
+        $peer = $sections['peer'] ?? [];
+        [$host, $port] = $this->parseHostAndPort((string) ($peer['endpoint'] ?? ''));
+
+        if ($host === '') {
+            return null;
+        }
+
+        return [
+            'protocol' => 'amneziawg',
+            'private_key' => (string) ($interface['privatekey'] ?? ''),
+            'server' => $host,
+            'port' => $port,
+            'address' => (string) ($interface['address'] ?? ''),
+            'public_key' => (string) ($peer['publickey'] ?? ''),
+            'mtu' => (int) ($interface['mtu'] ?? 0),
+            'preshared_key' => (string) ($peer['presharedkey'] ?? ''),
+            'keepalive' => (int) ($peer['persistentkeepalive'] ?? 0),
+            'dns' => (string) ($interface['dns'] ?? ''),
+            'reserved' => (string) ($interface['reserved'] ?? $peer['reserved'] ?? ''),
+            'fragment' => rawurldecode($fragment),
+            'amnezia' => $this->extractAmneziaOptions($interface),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    private function parseConfigSections(string $content): array
+    {
+        $sections = [];
+        $currentSection = null;
+
+        foreach (preg_split('/\r\n|\r|\n/', $content) ?: [] as $line) {
+            $line = trim($line);
+
+            if ($line === '' || str_starts_with($line, '#') || str_starts_with($line, ';')) {
+                continue;
+            }
+
+            if (preg_match('/^\[(.+)\]$/', $line, $matches) === 1) {
+                $currentSection = mb_strtolower(trim($matches[1]));
+                $sections[$currentSection] ??= [];
+
+                continue;
+            }
+
+            if ($currentSection === null || ! str_contains($line, '=')) {
+                continue;
+            }
+
+            [$key, $value] = array_map('trim', explode('=', $line, 2));
+
+            if ($key === '') {
+                continue;
+            }
+
+            $sections[$currentSection][mb_strtolower($key)] = $value;
+        }
+
+        return $sections;
+    }
+
+    /**
+     * @param  array<string, string>  $interface
+     * @return array<string, string>
+     */
+    private function extractAmneziaOptions(array $interface): array
+    {
+        $options = [];
+
+        foreach ([
+            'jc', 'jmin', 'jmax', 's1', 's2', 's3', 's4', 'h1', 'h2', 'h3', 'h4',
+            'i1', 'i2', 'i3', 'i4', 'i5', 'headerprotectionkey', 'contentpaddingaddition',
+            'randomtrailers', 'disablecookies', 'rekeyaftertime', 'rekeytimeout',
+            'rejectaftertime', 'keepalivetimeout', 'maxhandshakeattempts',
+        ] as $key) {
+            if (array_key_exists($key, $interface) && trim((string) $interface[$key]) !== '') {
+                $options[$key] = trim((string) $interface[$key]);
+            }
+        }
+
+        return $options;
     }
 
     /**

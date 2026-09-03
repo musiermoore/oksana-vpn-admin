@@ -232,6 +232,139 @@ class PullVlessConfigsForServerJobTest extends TestCase
         $this->assertStringContainsString('publickey=X6MviN4r5SUGwdlMpY7ahO39/w2NumpTOHfK0zA6Q2Q=', $config->extra);
     }
 
+    public function test_job_pulls_amneziawg_inbounds_into_subscription_ready_records(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Amnezia Panel',
+            'code' => 'AWG',
+            'ip' => '10.0.0.8',
+            'link_host' => 'awg.example.com',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+        $server->xrayInbounds()->create([
+            'external_id' => 5,
+            'is_active' => true,
+            'is_public' => true,
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 5,
+                    'protocol' => 'amneziawg',
+                    'port' => 13249,
+                    'settings' => [
+                        'server' => [
+                            'publicKey' => 'H6c2cEqFtAN39I8RjWg9Q1ZxvD+0ZqTl+fHTwVh/YQY=',
+                            'primaryDns' => '77.88.8.8',
+                            'secondaryDns' => '9.9.9.9',
+                            'jc' => 4,
+                            'jmin' => 56,
+                            'jmax' => 278,
+                            's1' => 118,
+                            's2' => 131,
+                            's3' => 35,
+                            's4' => 26,
+                            'h1' => '293319625-311102883',
+                            'h2' => '1023863381-1026190637',
+                            'h3' => '1418042436-1494419776',
+                            'h4' => '1936828868-2002242551',
+                            'i1' => '<r 165>',
+                            'headerProtectionKey' => 'ngDW+OHLDB0dg8EcqPHqjYlOg0xI4acd5tnaaogfRpM=',
+                            'contentPaddingAddition' => '24-56',
+                            'disableCookies' => true,
+                            'randomTrailers' => true,
+                            'rekeyAfterTime' => '105-116',
+                            'rekeyTimeout' => '4-7',
+                            'rejectAfterTime' => '174-240',
+                            'keepaliveTimeout' => '11-18',
+                            'maxHandshakeAttempts' => '25-33',
+                        ],
+                        'clients' => [[
+                            'id' => 'cd677047-46de-406c-9ca4-ef47cbaecc8a',
+                            'email' => 'test',
+                            'privateKey' => '+IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=',
+                            'publicKey' => 'VE8XAkIGR0MVOUdznT2Io5TQ/3D/6xambhKVTnY+L2c=',
+                            'allowedIPs' => ['10.8.1.2/32'],
+                            'enable' => true,
+                        ]],
+                    ],
+                    'streamSettings' => null,
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/list' => Http::response([
+                'obj' => [[
+                    'uuid' => 'cd677047-46de-406c-9ca4-ef47cbaecc8a',
+                    'email' => 'test',
+                    'privateKey' => '+IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=',
+                    'allowedIPs' => ['10.8.1.2/32'],
+                    'enable' => true,
+                    'inboundIds' => [5],
+                ]],
+            ]),
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Bob',
+            'telegram' => '@bob',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 5,
+            'name' => 'test',
+            'uuid' => 'cd677047-46de-406c-9ca4-ef47cbaecc8a',
+            'protocol' => 'amneziawg',
+            'type' => 'amneziawg',
+            'is_active' => true,
+            'enable' => true,
+            'port' => 13249,
+        ]);
+
+        (new PullVlessConfigsForServerJob($server->id))->handle();
+
+        $config = VlessConfig::query()
+            ->where('server_id', $server->id)
+            ->where('name', 'test')
+            ->first();
+
+        $this->assertNotNull($config);
+        $this->assertSame('amneziawg', $config->protocol);
+        $this->assertSame('amneziawg', $config->type);
+        $this->assertStringStartsWith('amneziawg://', (string) $config->extra);
+
+        $content = app(\App\Services\WireGuardSubscriptionLinkService::class)
+            ->amneziaWireGuardUriToConfigContent((string) $config->extra);
+
+        $this->assertIsString($content);
+        $this->assertStringContainsString('PrivateKey = +IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=', $content);
+        $this->assertStringContainsString('Address = 10.8.1.2/32', $content);
+        $this->assertStringContainsString('DNS = 77.88.8.8,9.9.9.9', $content);
+        $this->assertStringContainsString('Jc = 4', $content);
+        $this->assertStringContainsString('H1 = 293319625-311102883', $content);
+        $this->assertStringContainsString('I1 = <r 165>', $content);
+        $this->assertStringContainsString('HeaderProtectionKey = ngDW+OHLDB0dg8EcqPHqjYlOg0xI4acd5tnaaogfRpM=', $content);
+        $this->assertStringContainsString('Endpoint = awg.example.com:13249', $content);
+    }
+
     public function test_job_skips_deleted_inbounds_with_empty_payload(): void
     {
         $server = Server::query()->create([

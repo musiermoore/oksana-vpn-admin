@@ -82,7 +82,7 @@ class ClashBuilder implements SubscriptionBuilder
             'shadowsocks' => $this->buildShadowsocksProxy($parsed, $name),
             'hysteria2' => $this->buildHysteria2Proxy($parsed, $name),
             'hysteria' => $this->buildHysteriaProxy($parsed, $name),
-            'wireguard' => $this->buildWireGuardProxy($parsed, $name),
+            'wireguard', 'amneziawg' => $this->buildWireGuardProxy($parsed, $name),
             default => null,
         };
     }

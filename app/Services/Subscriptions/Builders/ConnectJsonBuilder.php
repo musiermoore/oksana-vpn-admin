@@ -51,7 +51,7 @@ class ConnectJsonBuilder
             'shadowsocks' => $this->buildShadowsocksOutbound($parsed),
             'hysteria2' => $this->buildHysteria2Outbound($parsed),
             'hysteria' => $this->buildHysteriaOutbound($parsed),
-            'wireguard' => $this->buildWireGuardOutbound($parsed),
+            'wireguard', 'amneziawg' => $this->buildWireGuardOutbound($parsed),
             default => null,
         };
 
@@ -263,6 +263,7 @@ class ConnectJsonBuilder
                 'mtu' => $parsed['mtu'] > 0 ? $parsed['mtu'] : null,
                 'peers' => [$peer],
                 'reserved' => ($reserved = $this->parseReserved((string) ($parsed['reserved'] ?? ''))) !== [] ? $reserved : null,
+                'amnezia' => ($parsed['amnezia'] ?? []) !== [] ? $parsed['amnezia'] : null,
             ], fn (mixed $value) => $value !== null),
         ];
     }

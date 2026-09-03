@@ -228,6 +228,7 @@
   - либо новый слой `/telegram-app/wireguard/*`, который прячет `telegramId` и использует mini-app bearer auth
 - Нормальный ответ списка:
   - `200 { configs: [{ id, name, download_url, qr_code_url }] }`
+- Xray-backed AmneziaWG configs are returned through the same WireGuard mini-app routes; download/QR output is native AmneziaWG `.conf` content.
 - Долг:
   - `403 { type: "debt", message }`
 - Пустое состояние:

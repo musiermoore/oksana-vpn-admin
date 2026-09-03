@@ -83,7 +83,7 @@ class SingBoxBuilder implements SubscriptionBuilder
             'shadowsocks' => $this->buildShadowsocksOutbound($parsed, $tag),
             'hysteria2' => $this->buildHysteria2Outbound($parsed, $tag),
             'hysteria' => $this->buildHysteriaOutbound($parsed, $tag),
-            'wireguard' => $this->buildWireGuardOutbound($parsed, $tag),
+            'wireguard', 'amneziawg' => $this->buildWireGuardOutbound($parsed, $tag),
             default => null,
         };
     }

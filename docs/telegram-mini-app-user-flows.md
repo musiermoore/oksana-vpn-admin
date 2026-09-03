@@ -229,6 +229,7 @@ Support-боту полезно понимать:
 1. Открыть `WireGuard` с `Home` или через нижнюю навигацию.
 2. `GET /telegram-app/wireguard/configs`.
 3. Если конфиги есть -> показывается список конфигов.
+   - Xray-backed AmneziaWG конфиги показываются в этом же разделе, потому что пользовательский flow совпадает с WireGuard: выбрать конфиг, получить QR или `.conf` файл.
 4. Пользователь выбирает конфиг.
 5. Попадает на экран действий по конфигу.
 
@@ -258,6 +259,8 @@ Support-боту полезно понимать:
 - `Отправить файл в бота`
   - вызывает `POST /telegram-app/wireguard/configs/{configId}/send-file`
   - открывает шаг `file`
+
+Для AmneziaWG QR и файл содержат native AmneziaWG `.conf` с obfuscation-параметрами из 3x-ui.
 - `VLESS`
   - переводит на `/telegram-app/vless`
 - `Конфиги`

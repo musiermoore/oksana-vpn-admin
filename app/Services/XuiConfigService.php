@@ -760,7 +760,7 @@ class XuiConfigService
             ->latest('id')
             ->value('id')) + 1;
 
-        if ($this->isWireGuardInbound($inbound)) {
+        if ($this->isWireGuardFamilyInbound($inbound)) {
             return array_filter([
                 'email' => sprintf(
                     '%s_%s_%d',
@@ -824,7 +824,7 @@ class XuiConfigService
 
     private function isSupportedVlessInboundProtocol(?string $protocol): bool
     {
-        return in_array(mb_strtolower((string) $protocol), ['vless', 'trojan', 'hysteria', 'hysteria2', 'hy2', 'wireguard'], true);
+        return in_array(mb_strtolower((string) $protocol), ['vless', 'trojan', 'hysteria', 'hysteria2', 'hy2', 'wireguard', 'amneziawg'], true);
     }
 
     /**
@@ -921,7 +921,7 @@ class XuiConfigService
 
     public function buildLocalConfigAttributes(array $inbound, array $settings, ?int $userId = null): array
     {
-        if ($this->isWireGuardInbound($inbound)) {
+        if ($this->isWireGuardFamilyInbound($inbound)) {
             return $this->buildWireGuardLocalConfigAttributes($inbound, $settings, $userId);
         }
 
@@ -1038,8 +1038,8 @@ class XuiConfigService
                 $settings['preSharedKey'] ?? null,
             ]),
             'port' => $inbound['port'] ?? null,
-            'protocol' => 'wireguard',
-            'type' => 'wireguard',
+            'protocol' => $this->normalizeWireGuardFamilyProtocol($inbound['protocol'] ?? null),
+            'type' => $this->normalizeWireGuardFamilyProtocol($inbound['protocol'] ?? null),
             'encryption' => 'none',
             'security' => 'none',
             'flow' => null,
@@ -1237,7 +1237,7 @@ class XuiConfigService
      */
     private function resolveLocalConfigLookupAttributes(array $inbound, array $attributes): array
     {
-        if (! $this->isWireGuardInbound($inbound) && filled($attributes['uuid'] ?? null)) {
+        if (! $this->isWireGuardFamilyInbound($inbound) && filled($attributes['uuid'] ?? null)) {
             return [
                 'server_id' => $this->server->id,
                 'uuid' => $attributes['uuid'],
@@ -1277,9 +1277,14 @@ class XuiConfigService
     /**
      * @param  array<string, mixed>  $inbound
      */
-    private function isWireGuardInbound(array $inbound): bool
+    private function isWireGuardFamilyInbound(array $inbound): bool
     {
-        return mb_strtolower((string) ($inbound['protocol'] ?? '')) === 'wireguard';
+        return in_array(mb_strtolower((string) ($inbound['protocol'] ?? '')), ['wireguard', 'amneziawg'], true);
+    }
+
+    private function normalizeWireGuardFamilyProtocol(mixed $protocol): string
+    {
+        return mb_strtolower((string) $protocol) === 'amneziawg' ? 'amneziawg' : 'wireguard';
     }
 
     /**

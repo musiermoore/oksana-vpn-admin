@@ -150,7 +150,7 @@ class VlessConfig extends Model
 
     public function getLink(): string
     {
-        if ($this->getNormalizedProtocol() === 'wireguard') {
+        if ($this->isWireGuardFamilyProtocol()) {
             return $this->getStaticLink();
         }
 
@@ -164,7 +164,7 @@ class VlessConfig extends Model
     public function getStaticLink(): string
     {
         return match ($this->getNormalizedProtocol()) {
-            'wireguard' => $this->getWireGuardStaticLink(),
+            'wireguard', 'amneziawg' => $this->getWireGuardStaticLink(),
             'trojan' => $this->getTrojanStaticLink(),
             'hysteria', 'hy' => $this->shouldBuildHysteria2Link()
                 ? $this->getHysteria2StaticLink()
@@ -253,7 +253,11 @@ class VlessConfig extends Model
     {
         $link = trim((string) $this->extra);
 
-        return str_starts_with($link, 'wireguard://') ? $link : '';
+        return str_starts_with($link, 'wireguard://')
+            || str_starts_with($link, 'amneziawg://')
+            || str_starts_with($link, 'awg://')
+            ? $link
+            : '';
     }
 
     private function getTrojanStaticLink(): string
@@ -344,6 +348,11 @@ class VlessConfig extends Model
     private function getNormalizedProtocol(): string
     {
         return mb_strtolower((string) ($this->protocol ?: 'vless'));
+    }
+
+    private function isWireGuardFamilyProtocol(): bool
+    {
+        return in_array($this->getNormalizedProtocol(), ['wireguard', 'amneziawg'], true);
     }
 
     private function shouldBuildHysteria2Link(): bool

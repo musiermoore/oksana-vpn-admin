@@ -149,12 +149,15 @@ Its order is explicit rather than inferred from ids:
 - `xray_inbounds.sort_order` and `proxies.sort_order` control order inside one server
 - soft-deleted servers are excluded from `/connect` by default because `servers` now use Eloquent soft delete
 
-Important WireGuard rule:
+Important WireGuard/AmneziaWG rules:
 
 - WireGuard URIs are normalized before output
 - the app accepts both raw and legacy-encoded `wireguard://...` values during parsing
 - URI subscription output keeps WireGuard keys raw so clients that import subscriptions do not break on secret keys containing `/`
 - the same normalization is applied even for older records that already store a `wireguard://...` string in `vless_configs.extra`
+- 3x-ui `amneziawg` inbounds are stored as Xray-backed `VlessConfig` records with `protocol=amneziawg`
+- AmneziaWG clients are serialized as native `.conf` content and wrapped in an `amneziawg://{base64url-conf}` URI for `/connect`
+- Mini-app download/QR flows decode that URI back to the native AmneziaWG `.conf` content
 
 ### User Subscriptions
 

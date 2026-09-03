@@ -214,10 +214,13 @@ Flow:
   - `proxies.sort_order` управляет местом proxy-вариантов в общем списке элементов сервера
   - proxy теперь считается частью одного сервера через `proxies.server_id`, а не общего many-to-many списка серверов
   - если у proxy включён `hide_main_node_name`, его display name в `/connect` берётся только из имени proxy, без префикса основного сервера
-- WireGuard-узлы перед выдачей в URI-подписку нормализуются повторно:
+- WireGuard/AmneziaWG-узлы перед выдачей в URI-подписку нормализуются повторно:
   - сервер умеет читать и legacy-encoded, и raw `wireguard://...`
   - в итоговой URI-подписке WireGuard-ссылка отдаётся в raw-виде, чтобы клиентские импортеры корректно обрабатывали `secretKey` с символом `/`
   - это правило применяется и к старым локальным записям, где в `extra` уже сохранён `wireguard://...`
+  - 3x-ui `amneziawg` inbound сохраняется как Xray-backed config с `protocol=amneziawg`
+  - для `/connect` AmneziaWG отдаётся одной URI-строкой `amneziawg://{base64url-conf}`, где payload — native AmneziaWG `.conf`
+  - mini-app download/QR для таких конфигов используют декодированный native `.conf`, включая `Jc/Jmin/Jmax`, `S1-S4`, `H1-H4`, `I1-I5` и новые protection/timing параметры
 - `/connect-json` использует тот же набор узлов, но отдаёт JSON-массив полных Xray-style конфигов, по одному объекту на узел
 - каждый объект в `/connect-json` содержит индивидуальный `remarks` и `outbounds`, а общие `dns`/`routing`/`inbounds` подмешиваются из конфигурации приложения
 - текущие DNS/routing/inbounds-настройки для `/connect-json` захардкожены в `config/connect_json.php` и вынесены в отдельный provider, чтобы позже их можно было заменить значениями из админки без смены маршрута

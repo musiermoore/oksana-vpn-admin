@@ -123,7 +123,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
             $uuid = $client['id'] ?? $client['uuid'] ?? null;
             $protocol = mb_strtolower((string) ($row['protocol'] ?? ''));
 
-            if (! $uuid && ($protocol !== 'wireguard' || blank($client['email'] ?? null))) {
+            if (! $uuid && (! $this->isWireGuardFamilyProtocol($protocol) || blank($client['email'] ?? null))) {
                 continue;
             }
 
@@ -177,7 +177,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
      */
     private function resolveLookupAttributes(Server $server, array $inbound, array $client, array $attributes): array
     {
-        if (mb_strtolower((string) ($inbound['protocol'] ?? '')) !== 'wireguard' && filled($attributes['uuid'] ?? null)) {
+        if (! $this->isWireGuardFamilyProtocol($inbound['protocol'] ?? null) && filled($attributes['uuid'] ?? null)) {
             return [
                 'server_id' => $server->id,
                 'uuid' => $attributes['uuid'],
@@ -239,6 +239,11 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
             $lookupAttributes['xray_inbound_id'] === null ? 'null' : (string) (int) $lookupAttributes['xray_inbound_id'],
             (string) ($lookupAttributes['name'] ?? ''),
         );
+    }
+
+    private function isWireGuardFamilyProtocol(mixed $protocol): bool
+    {
+        return in_array(mb_strtolower((string) $protocol), ['wireguard', 'amneziawg'], true);
     }
 
     /**

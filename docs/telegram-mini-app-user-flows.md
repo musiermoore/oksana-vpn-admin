@@ -9,7 +9,7 @@
 Реализованные страницы:
 
 - `/telegram-app/` -> `Home`
-- `/telegram-app/wireguard` -> `WireGuard`
+- `/telegram-app/wireguard` -> `Amnezia`
 - `/telegram-app/vless` -> `VLESS`
 - `/telegram-app/vless-wl` -> `VLESS White List`
 - `/telegram-app/payments` -> `Payments`
@@ -23,7 +23,7 @@
 
 - Почти каждая страница начинает с авто-авторизации через `POST /telegram-app/auth/telegram`.
 - Затем страница загружает профиль через `GET /telegram-app/me`.
-- На всех страницах есть нижняя навигация: `Главная`, `WG`, `VLESS`, `Подписка`, `Помощь`, `Чаты`, `Розыгрыш`.
+- На всех страницах есть нижняя навигация: `Главная`, `Конфиги`, `Подписка`, `Помощь`, `Чаты`, `Розыгрыш`.
 - Экран `Support` не вынесен в нижнюю навигацию, но доступен из `Help` и по прямой ссылке.
 
 ## 2. Специальные входы в mini-app
@@ -112,13 +112,13 @@ PAYMENTS
   packages -> overview
 
 HELP
-  menu -> WG help
+  menu -> Amnezia help
   menu -> VLESS help
   menu -> Clients
   menu -> SUPPORT
-  wg -> WG clients
+  wg -> Amnezia clients
   vless -> VLESS clients
-  clients -> WG clients
+  clients -> Amnezia clients
   clients -> VLESS clients
 
 CHATS
@@ -147,7 +147,7 @@ SUPPORT_SHOW
 
 Доступные действия на `ready`:
 
-- `WireGuard` -> переход на `/telegram-app/wireguard`
+- `Amnezia` -> переход на `/telegram-app/wireguard`
 - `VLESS` -> переход на `/telegram-app/vless`
 - `VLESS Белые списки` -> переход на `/telegram-app/vless-wl?step=links`
   - показывается только если `user.has_vless_wl_configs === true`
@@ -205,7 +205,7 @@ Support-боту полезно понимать:
 - правило реферала прямо объясняется на странице giveaway
 - реферальная ссылка и шэринг переиспользуют текущий referral flow, а не создают отдельную механику
 
-## 4.2 WireGuard
+## 4.2 Amnezia
 
 Файл: [WireGuard.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/WireGuard.vue)
 
@@ -226,16 +226,16 @@ Support-боту полезно понимать:
 
 ### Основной путь
 
-1. Открыть `WireGuard` с `Home` или через нижнюю навигацию.
+1. Открыть `Amnezia` с `Home` или через нижнюю навигацию.
 2. `GET /telegram-app/wireguard/configs`.
 3. Если конфиги есть -> показывается список конфигов.
-   - Xray-backed AmneziaWG конфиги показываются в этом же разделе, потому что пользовательский flow совпадает с WireGuard: выбрать конфиг, получить QR или `.conf` файл.
+   - Xray-backed AmneziaWG конфиги показываются в этом же разделе: пользователь выбирает конфиг, получает QR или `.conf` файл.
 4. Пользователь выбирает конфиг.
 5. Попадает на экран действий по конфигу.
 
 ### Ветка `debt`
 
-1. Пользователь открывает `WireGuard`.
+1. Пользователь открывает `Amnezia`.
 2. API возвращает `403` с `type=debt`, если нет активной подписки.
 3. Показывается экран `Доступ к конфигам закрыт`.
 4. Доступны кнопки:
@@ -244,7 +244,7 @@ Support-боту полезно понимать:
 
 ### Ветка `empty`
 
-1. Пользователь открывает `WireGuard`.
+1. Пользователь открывает `Amnezia`.
 2. API возвращает пустой список конфигов.
 3. Показывается `Конфиги не найдены`.
 4. Доступна кнопка `К началу`.
@@ -289,7 +289,7 @@ Support-боту полезно понимать:
 Support-боту важно:
 
 - В mini-app нет локальной кнопки "скачать файл в браузер", хотя backend-роут существует.
-- Базовый пользовательский сценарий для WireGuard в UI сейчас такой:
+- Базовый пользовательский сценарий для Amnezia в UI сейчас такой:
   - выбрать конфиг
   - показать QR
   - или отправить файл/QR в Telegram-бота
@@ -514,7 +514,7 @@ Support-боту важно:
   - продлить себе подписку
   - купить подарочный код
   - активировать уже полученный код
-- Если у пользователя долг, именно здесь он увидит объяснение, почему закрыт доступ к `WireGuard` и `VLESS`.
+- Если у пользователя долг, именно здесь он увидит объяснение, почему закрыт доступ к `Amnezia` и `VLESS`.
 
 ## 4.6 Help
 
@@ -539,7 +539,7 @@ Support-боту важно:
 
 Действия:
 
-- `WG`
+- `Amnezia`
 - `VLESS`
 - `Клиенты`
 - `Поддержка` -> `/telegram-app/support`
@@ -547,11 +547,11 @@ Support-боту важно:
 
 ### Раздел `wg`
 
-Показывает текстовую инструкцию по WireGuard.
+Показывает текстовую инструкцию по Amnezia.
 
 Действия:
 
-- `WG клиенты`
+- `Amnezia клиенты`
 - `Назад`
 - `К началу`
 
@@ -569,7 +569,7 @@ Support-боту важно:
 
 Действия:
 
-- `WG клиенты`
+- `Amnezia клиенты`
 - `VLESS клиенты`
 - `Назад`
 - `К началу`
@@ -700,14 +700,14 @@ Support-боту важно:
 
 - `BOOTSTRAP -> success -> HOME`
 - `BOOTSTRAP -> start_param ticket_{id} -> SUPPORT_SHOW`
-- `HOME -> WireGuard -> WIREGUARD`
+- `HOME -> Amnezia -> WIREGUARD`
 - `HOME -> VLESS -> VLESS`
 - `HOME -> VLESS Белые списки -> VLESS_WL(links)`
 - `HOME -> Подписка -> PAYMENTS`
 - `HOME -> Помощь -> HELP`
 - `любая страница с bottom nav -> Чаты -> CHATS`
 
-### WireGuard
+### Amnezia
 
 - `WIREGUARD(list) -> выбрать конфиг -> WIREGUARD(actions)`
 - `WIREGUARD(actions) -> QR Code -> WIREGUARD(qr)`
@@ -746,13 +746,13 @@ Support-боту важно:
 
 ### Help
 
-- `HELP(menu) -> WG -> HELP(wg)`
+- `HELP(menu) -> Amnezia -> HELP(wg)`
 - `HELP(menu) -> VLESS -> HELP(vless)`
 - `HELP(menu) -> Клиенты -> HELP(clients)`
 - `HELP(menu) -> Поддержка -> SUPPORT`
-- `HELP(wg) -> WG клиенты -> HELP(wg-clients)`
+- `HELP(wg) -> Amnezia клиенты -> HELP(wg-clients)`
 - `HELP(vless) -> VLESS клиенты -> HELP(vless-clients)`
-- `HELP(clients) -> WG клиенты -> HELP(wg-clients)`
+- `HELP(clients) -> Amnezia клиенты -> HELP(wg-clients)`
 - `HELP(clients) -> VLESS клиенты -> HELP(vless-clients)`
 
 ### Support
@@ -795,8 +795,8 @@ Support-боту важно:
 
 ## 7. Важные edge cases
 
-- Если у пользователя нет активной подписки, `WireGuard` и `VLESS` уходят в состояние `debt`.
-- Отрицательный баланс сам по себе доступ к `WireGuard`, `VLESS` и `VLESS WL` не блокирует.
+- Если у пользователя нет активной подписки, `Amnezia` и `VLESS` уходят в состояние `debt`.
+- Отрицательный баланс сам по себе доступ к `Amnezia`, `VLESS` и `VLESS WL` не блокирует.
 - `Chats` доступны через нижнее меню, но не показаны карточкой на главной.
 - `Support` доступен из `Help`, но не через нижнюю навигацию.
 - `VLESS WL` может быть доступен только части пользователей.
@@ -807,7 +807,7 @@ Support-боту важно:
 ## 8. Что можно использовать как быстрый FAQ для бота
 
 - "Где продлить подписку?" -> `Home -> Подписка`
-- "Как подключить WireGuard?" -> `Home -> WireGuard -> выбрать конфиг -> QR Code` или `Отправить файл в бота`
+- "Как подключить Amnezia?" -> `Home -> Amnezia -> выбрать конфиг -> QR Code` или `Отправить файл в бота`
 - "Как подключить VLESS?" -> `Home -> VLESS -> Link`
 - "Что делать, если deep link не открылся?" -> `VLESS -> Link -> Скопировать raw-ссылку` или `QR-Code`
 - "Где взять приложение?" -> `Home -> Помощь -> Клиенты`

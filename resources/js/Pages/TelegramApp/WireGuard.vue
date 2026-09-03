@@ -153,7 +153,7 @@ onMounted(async () => {
         }
 
         state.value = 'error';
-        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить конфиги WireGuard.');
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось загрузить конфиги Amnezia.');
     }
 });
 
@@ -179,7 +179,7 @@ onBeforeUnmount(() => {
             <div class="tg-state-card__icon">
                 <AppIcon name="circleExclamation" />
             </div>
-            <h2>Не удалось открыть WireGuard</h2>
+            <h2>Не удалось открыть Amnezia</h2>
             <p>{{ error }}</p>
             <button class="tg-button" type="button" @click="retry">Повторить</button>
         </section>
@@ -201,7 +201,7 @@ onBeforeUnmount(() => {
                 <AppIcon name="shield" />
             </div>
             <h2>Конфиги пока не готовы</h2>
-            <p>Для вашего аккаунта ещё нет доступных WireGuard-конфигов.</p>
+            <p>Для вашего аккаунта ещё нет доступных Amnezia-конфигов.</p>
             <Link :href="routes?.home" class="tg-button">На главную</Link>
         </section>
 
@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
                         <span>Конфиги</span>
                     </div>
                     <h2>Выберите тип конфигов</h2>
-                    <p>Откройте стандартные, белые списки или WireGuard.</p>
+                    <p>Откройте стандартные, белые списки или Amnezia.</p>
                 </div>
 
                 <Link :href="routes?.vless" class="tg-list-card">
@@ -247,7 +247,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">WireGuard</div>
+                        <div class="tg-list-card__title">Amnezia</div>
                         <div class="tg-list-card__description">Открыть список конфигов для импорта по QR-коду или через файл.</div>
                     </div>
                     <div class="tg-list-card__aside">
@@ -262,7 +262,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="chevronLeft" />
                         <span>Назад ко всем конфигам</span>
                     </button>
-                    <h2>WireGuard</h2>
+                    <h2>Amnezia</h2>
                     <p>Выберите конфиг, который хотите открыть, показать по QR-коду или отправить в Telegram.</p>
                 </div>
 
@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
                         <span>Назад к конфигам</span>
                     </button>
                     <h2>{{ selectedConfig?.name }}</h2>
-                    <p>Самый быстрый путь: открыть QR-код и импортировать конфиг в приложение WireGuard.</p>
+                    <p>Самый быстрый путь: открыть QR-код и импортировать конфиг в приложение Amnezia.</p>
                 </div>
 
                 <div class="tg-actions">
@@ -321,11 +321,11 @@ onBeforeUnmount(() => {
                         <span>Назад к действиям</span>
                     </button>
                     <h2>Сканируйте QR-код</h2>
-                    <p>Откройте приложение WireGuard и импортируйте конфиг с экрана.</p>
+                    <p>Откройте приложение Amnezia и импортируйте конфиг с экрана.</p>
                 </div>
 
                 <div class="tg-qr-card">
-                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="WireGuard QR" class="tg-qr-card__image">
+                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="Amnezia QR" class="tg-qr-card__image">
                 </div>
 
                 <div class="tg-actions">

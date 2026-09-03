@@ -182,7 +182,7 @@ class ConnectionController extends Controller
             Telegram::sendDocument([
                 'chat_id' => (string) $user->telegram_id,
                 'document' => InputFile::create($path, $filename),
-                'caption' => "WireGuard конфиг: {$config->name}",
+                'caption' => "Amnezia конфиг: {$config->name}",
             ]);
 
             return response()->json([
@@ -224,12 +224,12 @@ class ConnectionController extends Controller
             $png = $config instanceof VlessConfig
                 ? $this->buildXrayWireGuardQrPng($config)
                 : $this->buildWireGuardQrPng($config);
-            $temporaryPath = $this->storeTemporaryTelegramFile($png, 'wireguard-qrcode.png');
+            $temporaryPath = $this->storeTemporaryTelegramFile($png, 'amnezia-qrcode.png');
 
             Telegram::sendPhoto([
                 'chat_id' => (string) $user->telegram_id,
-                'photo' => InputFile::create($temporaryPath, 'wireguard-qrcode.png'),
-                'caption' => "WireGuard QR: {$config->name}",
+                'photo' => InputFile::create($temporaryPath, 'amnezia-qrcode.png'),
+                'caption' => "Amnezia QR: {$config->name}",
             ]);
 
             return response()->json([

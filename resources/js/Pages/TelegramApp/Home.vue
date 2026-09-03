@@ -103,7 +103,7 @@ const quickLinks = computed(() => {
             iconClass: 'tg-list-card__icon',
         },
         {
-            title: 'WireGuard',
+            title: 'Amnezia',
             description: 'Конфиги, QR-код и отправка файла в Telegram.',
             href: props.routes?.wireguard,
             icon: 'shield',

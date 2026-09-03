@@ -21,13 +21,10 @@ const user = ref(null);
 const section = ref('menu');
 const previousClientsScreen = ref('menu');
 
-const wgClients = [
+const amneziaClients = [
     { title: 'Amnezia для iPhone', url: 'https://apps.apple.com/app/amnezia-vpn/id1600529900' },
     { title: 'Amnezia для Android', url: 'https://play.google.com/store/apps/details?id=org.amnezia.vpn' },
-    { title: 'WireGuard для iPhone', url: 'https://apps.apple.com/us/app/wireguard/id1441195209' },
-    { title: 'WireGuard для Android', url: 'https://play.google.com/store/apps/details?id=com.wireguard.android' },
-    { title: 'WireGuard для Windows', url: 'https://download.wireguard.com/windows-client/' },
-    { title: 'WireGuard для macOS', url: 'https://www.wireguard.com/install/' },
+    { title: 'Amnezia официальный сайт', url: 'https://amnezia.org/' },
 ];
 
 const vlessClients = [
@@ -115,7 +112,7 @@ onMounted(async () => {
                         <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Как подключить WireGuard</div>
+                        <div class="tg-list-card__title">Как подключить Amnezia</div>
                         <div class="tg-list-card__description">Пошагово: QR-код или файл конфигурации.</div>
                     </div>
                     <div class="tg-list-card__aside">
@@ -169,14 +166,14 @@ onMounted(async () => {
                         <AppIcon name="chevronLeft" />
                         <span>Назад</span>
                     </button>
-                    <h2>Подключение WireGuard</h2>
+                    <h2>Подключение Amnezia</h2>
                     <p>Откройте экран подключения, выберите конфиг и импортируйте его по QR-коду. Если так удобнее, отправьте файл в Telegram и заберите его из чата с ботом.</p>
                 </div>
 
                 <div class="tg-actions">
                     <button class="tg-button tg-button--secondary" type="button" @click="openSection('wg-clients')">
                         <AppIcon name="download" />
-                        <span>Скачать приложение WireGuard</span>
+                        <span>Скачать приложение Amnezia</span>
                     </button>
                     <Link :href="routes?.wireguard" class="tg-button">
                         <AppIcon name="shield" />
@@ -214,13 +211,13 @@ onMounted(async () => {
                         <span>Назад</span>
                     </button>
                     <h2>Выберите тип подключения</h2>
-                    <p>Если нужен максимально простой импорт, чаще всего выбирают WireGuard. Если используете стандартные конфиги, откройте второй список.</p>
+                    <p>Если нужен максимально простой импорт, чаще всего выбирают Amnezia. Если используете стандартные конфиги, откройте второй список.</p>
                 </div>
 
                 <div class="tg-actions">
                     <button class="tg-button tg-button--secondary" type="button" @click="openSection('wg-clients')">
                         <AppIcon name="shield" />
-                        <span>Приложения для WireGuard</span>
+                        <span>Приложения для Amnezia</span>
                     </button>
                     <button class="tg-button tg-button--soft" type="button" @click="openSection('vless-clients')">
                         <AppIcon name="link" />
@@ -235,12 +232,12 @@ onMounted(async () => {
                         <AppIcon name="chevronLeft" />
                         <span>Назад</span>
                     </button>
-                    <h2>Приложения для WireGuard</h2>
+                    <h2>Приложения для Amnezia</h2>
                     <p>Выберите магазин приложений для вашего устройства.</p>
                 </div>
 
                 <button
-                    v-for="item in wgClients"
+                    v-for="item in amneziaClients"
                     :key="item.title"
                     class="tg-list-card tg-list-card--button"
                     type="button"

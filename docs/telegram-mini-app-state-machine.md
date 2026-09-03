@@ -5,7 +5,7 @@
 Статус по коду на 2026-06-28:
 - Уже реализованы mini-app страницы: `Home`, `Payments`, `Support`, `SupportShow`.
 - Уже реализованы mini-app API: `auth/telegram`, `me`, `subscription-packages`, `payments/subscriptions`, `support/*`, `referrals/claim`.
-- Еще не перенесены в mini-app как отдельные экраны: `WireGuard`, `WireGuard Config Actions`, `VLESS`, `Help`, `Help WG`, `Help VLESS`, `Clients`, `WG Clients`, `VLESS Clients`.
+- Еще не перенесены в mini-app как отдельные экраны: `Amnezia`, `Amnezia Config Actions`, `VLESS`, `Help`, `Help Amnezia`, `Help VLESS`, `Clients`, `Amnezia Clients`, `VLESS Clients`.
 - Исходная бот-логика продолжает жить в API-маршрутах `/api/users/{telegramId}/...` и должна быть адаптирована под mini-app UI.
 
 ## 1. Краткая карта экранов
@@ -59,7 +59,7 @@
 | --- | --- | --- | --- | --- | --- |
 | `BOOTSTRAP` | auto | Валидация Telegram WebApp `initData` | `POST /telegram-app/auth/telegram` | `BOOTSTRAP_PROFILE_LOAD` | `APP_INIT_ERROR` при невалидном `hash`, истекшей сессии, пустом `telegram id`, ошибке конфигурации |
 | `BOOTSTRAP_PROFILE_LOAD` | auto | Загрузка профиля после входа | `GET /telegram-app/me` | `HOME` | `APP_INIT_ERROR` при `401` или ошибке загрузки |
-| `HOME` | `WireGuard` | Открыть список WireGuard-конфигов | `GET /api/users/{telegramId}/wireguard/configs` или mini-app proxy `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, `EMPTY_WIREGUARD_CONFIGS`, generic error |
+| `HOME` | `Amnezia` | Открыть список Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` или mini-app proxy `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, `EMPTY_WIREGUARD_CONFIGS`, generic error |
 | `HOME` | `VLESS` | Открыть VLESS-экран | `GET /api/users/{telegramId}/vless/link` или mini-app proxy `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
 | `HOME` | `Подписка` | Открыть обзор подписки | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
 | `BOOTSTRAP` | auto with `start_param=payments` | Открыть экран подписки по deep link | `POST /telegram-app/auth/telegram`, затем `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
@@ -76,11 +76,11 @@
 | `ACCESS_DENIED_DEBT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
 | `WIREGUARD_CONFIG_ACTIONS` | `QR Code` | Получить QR для выбранного конфига | `GET /api/users/{telegramId}/configs/wireguard/{configId}/qr-code` | `WIREGUARD_QR_RESULT` | `CONFIG_NOT_FOUND`, `UNEXPECTED_ERROR` |
 | `WIREGUARD_CONFIG_ACTIONS` | `Файл` | Скачать конфиг-файл | `GET /api/users/{telegramId}/configs/wireguard/{configId}/download` | `WIREGUARD_FILE_RESULT` | `CONFIG_NOT_FOUND`, `UNEXPECTED_ERROR` |
-| `WIREGUARD_CONFIG_ACTIONS` | `WireGuard Конфиги` | Назад к списку WireGuard-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
+| `WIREGUARD_CONFIG_ACTIONS` | `Amnezia Конфиги` | Назад к списку Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
 | `WIREGUARD_CONFIG_ACTIONS` | `VLESS` | Перейти в VLESS | `GET /api/users/{telegramId}/vless/link` или mini-app proxy `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
-| `WIREGUARD_QR_RESULT` | `Конфиги` | Назад к списку WireGuard-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
+| `WIREGUARD_QR_RESULT` | `Конфиги` | Назад к списку Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
 | `WIREGUARD_QR_RESULT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `WIREGUARD_FILE_RESULT` | `Конфиги` | Назад к списку WireGuard-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
+| `WIREGUARD_FILE_RESULT` | `Конфиги` | Назад к списку Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
 | `WIREGUARD_FILE_RESULT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
 | `VLESS_HOME` | auto | Проверить доступ к VLESS и получить базовые ссылки | `GET /api/users/{telegramId}/vless/link` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
 | `VLESS_HOME` | `Link` | Показать deep links и raw link | `GET /api/users/{telegramId}/vless/link` | `VLESS_LINK_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
@@ -103,17 +103,17 @@
 | `PAYMENT_CANCELLED` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
 | `PAYMENT_ERROR` | `Повторить` | Повторно загрузить пакеты или повторить покупку | `GET /telegram-app/subscription-packages` или `POST /telegram-app/payments/subscriptions` | `SUBSCRIPTION_PACKAGE_SELECT` | повторная ошибка |
 | `PAYMENT_ERROR` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_MENU` | `WG` | Открыть инструкцию WireGuard | none или локальный контент | `HELP_WG` | none |
+| `HELP_MENU` | `Amnezia` | Открыть инструкцию Amnezia | none или локальный контент | `HELP_WG` | none |
 | `HELP_MENU` | `VLESS` | Открыть инструкцию VLESS | none или локальный контент | `HELP_VLESS` | none |
 | `HELP_MENU` | `Клиенты` | Открыть выбор клиентских приложений | none | `HELP_CLIENTS` | none |
 | `HELP_MENU` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_WG` | `WG клиенты` | Открыть список WG-клиентов | none | `HELP_WG_CLIENTS` | none |
+| `HELP_WG` | `Amnezia клиенты` | Открыть список Amnezia-клиентов | none | `HELP_WG_CLIENTS` | none |
 | `HELP_WG` | `Назад` | Вернуться в меню помощи | none | `HELP_MENU` | none |
 | `HELP_WG` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
 | `HELP_VLESS` | `VLESS клиенты` | Открыть список VLESS-клиентов | none | `HELP_VLESS_CLIENTS` | none |
 | `HELP_VLESS` | `Назад` | Вернуться в меню помощи | none | `HELP_MENU` | none |
 | `HELP_VLESS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_CLIENTS` | `WG клиенты` | Открыть WG-клиенты | none | `HELP_WG_CLIENTS` | none |
+| `HELP_CLIENTS` | `Amnezia клиенты` | Открыть Amnezia-клиенты | none | `HELP_WG_CLIENTS` | none |
 | `HELP_CLIENTS` | `VLESS клиенты` | Открыть VLESS-клиенты | none | `HELP_VLESS_CLIENTS` | none |
 | `HELP_CLIENTS` | `Назад` | Вернуться в меню помощи | none | `HELP_MENU` | none |
 | `HELP_CLIENTS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
@@ -218,7 +218,7 @@
   - `subscription_expires_at`
   - `referral`
 
-### 4.3 WireGuard configs
+### 4.3 Amnezia configs
 - Текущее backend-ядро:
   - `GET /api/users/{telegramId}/wireguard/configs`
   - `GET /api/users/{telegramId}/configs/wireguard/{configId}/download`
@@ -228,7 +228,7 @@
   - либо новый слой `/telegram-app/wireguard/*`, который прячет `telegramId` и использует mini-app bearer auth
 - Нормальный ответ списка:
   - `200 { configs: [{ id, name, download_url, qr_code_url }] }`
-- Xray-backed AmneziaWG configs are returned through the same WireGuard mini-app routes; download/QR output is native AmneziaWG `.conf` content.
+- Xray-backed AmneziaWG configs are returned through the existing `/telegram-app/wireguard/*` mini-app routes; download/QR output is native AmneziaWG `.conf` content.
 - Долг:
   - `403 { type: "debt", message }`
 - Пустое состояние:
@@ -287,11 +287,11 @@
 - Отсутствует `user.id` в Telegram payload -> блок входа
 - `401 Unauthorized` по bearer token -> silent logout и повторный bootstrap
 
-### WireGuard
+### Amnezia
 - `403 type=debt` -> не показывать список конфигов, показывать CTA в подписку
 - `configs=[]` -> пустой экран `Конфиги не найдены`
 - `404 config not found` при скачивании/QR -> конфиг удален или скрыт после загрузки списка
-- `500` генерации QR или получения modern WireGuard config -> экран ошибки с повтором
+- `500` генерации QR или получения Amnezia config -> экран ошибки с повтором
 - Для non-admin конфиги могут быть скрыты по `server.hide_configs_for_non_admins`
 
 ### VLESS
@@ -338,7 +338,7 @@
   - в mini-app это нужно заменить на обычный deterministic переход `SUBSCRIPTION_PACKAGE_SELECT -> SUBSCRIPTION_OVERVIEW`
 - Долг сейчас обрабатывается как API-ошибка `403`
   - для mini-app лучше нормализовать в осознанный бизнес-state `ACCESS_DENIED_DEBT`, а не общий error toast
-- VLESS и WireGuard пока не имеют mini-app собственных роутов
+- VLESS и Amnezia пока не имеют mini-app собственных роутов
   - логика остается размазанной между bot/API и mini-app
 
 ### Спорные места
@@ -431,7 +431,7 @@
 
 ### UX-рекомендация
 - Главный экран mini-app лучше перестроить под 4 явных CTA:
-  - `WireGuard`
+  - `Amnezia`
   - `VLESS`
   - `Подписка`
   - `Помощь`
@@ -448,9 +448,9 @@
 - referral flow
 
 ### Нужно добавить для полного переноса логики бота
-- mini-app страницы для WireGuard
+- mini-app страницы для Amnezia
 - mini-app страницы для VLESS
 - mini-app страницы для Help
-- mini-app scoped endpoints для WireGuard/VLESS без `telegramId` в URL
+- mini-app scoped endpoints для Amnezia/VLESS без `telegramId` в URL
 - явные UI state-экраны `debt`, `empty`, `payment error`, `config missing`
 - cleanup legacy callback веток

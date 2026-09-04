@@ -203,6 +203,8 @@ Flow:
 Основная выдача:
 
 - `/connect` собирается через [UserSubscriptionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Subscriptions/UserSubscriptionService.php)
+- успешный запрос `/connect` сохраняет или обновляет запись в `user_connected_devices` по пользователю и `User-Agent`
+- `skip_connection=true` отключает запись connected-device и используется для административных запросов
 - в основную подписку входят:
   - обычные пользовательские VLESS-узлы
   - внешние `vless_external_subscriptions`, у которых включён `include_in_main_subscription`
@@ -229,6 +231,7 @@ Flow:
 White list выдача:
 
 - `/connect-wl-version-2` использует `VlessExternalSubscriptionAccessService`
+- успешный запрос `/connect-wl-version-2` тоже сохраняет или обновляет `user_connected_devices`, кроме случаев с `skip_connection=true`
 - туда входят внешние подписки с флагом `include_in_whitelist`
 - внешний источник может быть как обычным `direct`, так и `incy`
 - для `incy` backend сначала:

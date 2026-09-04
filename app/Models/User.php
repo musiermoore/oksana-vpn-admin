@@ -135,6 +135,11 @@ class User extends Authenticatable
         return $this->hasMany(ActiveConnection::class);
     }
 
+    public function connectedDevices(): HasMany
+    {
+        return $this->hasMany(UserConnectedDevice::class);
+    }
+
     public function blockedConfigs(): HasMany
     {
         return $this->hasMany(BlockedConfig::class);

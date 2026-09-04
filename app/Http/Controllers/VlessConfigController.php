@@ -14,8 +14,8 @@ use App\Services\Crud\VlessConfigCrudService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\SubscriptionMetadataService;
 use App\Services\Subscriptions\UserSubscriptionService;
+use App\Services\UserConnectedDeviceService;
 use App\Services\VlessDeepLinkService;
-use App\Services\VlessSubscriptionService;
 use App\Services\XuiConfigServiceFactory;
 use Exception;
 use Illuminate\Http\Request;
@@ -28,6 +28,7 @@ class VlessConfigController extends Controller
 {
     public function __construct(
         private readonly VlessConfigCrudService $vlessConfigService,
+        private readonly UserConnectedDeviceService $connectedDevices,
     ) {}
 
     public function index(Request $request)
@@ -179,13 +180,14 @@ class VlessConfigController extends Controller
         Request $request,
         SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService
-    )
-    {
+    ) {
         $user = $this->resolveUserFromConnectionRequest($request);
 
         if (! $user) {
             return null;
         }
+
+        $this->connectedDevices->recordConnection($user, $request);
 
         Log::info('connect.req', [
             'user_id' => (int) $user->id,
@@ -264,6 +266,8 @@ class VlessConfigController extends Controller
         if (! $user) {
             return null;
         }
+
+        $this->connectedDevices->recordConnection($user, $request);
 
         $nodes = $externalSubscriptions->getNamedNodesForUser($user);
 

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\User;
+use App\Models\UserConnectedDevice;
 use App\Models\UserServerStat;
 use App\Models\UserSubscription;
 use App\Models\VlessConfig;
@@ -12,6 +13,7 @@ use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Models\XrayInbound;
 use App\Services\Subscriptions\UserSubscriptionService;
+use App\Services\WireGuardSubscriptionLinkService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -21,6 +23,93 @@ use Tests\TestCase;
 class VlessConnectTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_connect_records_user_connected_device_from_user_agent(): void
+    {
+        $user = $this->createActiveUser('Device User', '@device-user', '100001');
+
+        $response = $this
+            ->withHeader('User-Agent', 'Telegram iOS/10.0 Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
+            ->get(route('vless.connect', [
+                'tg' => Crypt::encrypt('100001'),
+                'i' => Crypt::encrypt((string) $user->id),
+            ]));
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('user_connected_devices', [
+            'user_id' => $user->id,
+            'label' => null,
+            'device' => 'Telegram on iPhone',
+            'connection_count' => 1,
+            'last_connection_route' => 'vless.connect',
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_connect_updates_existing_connected_device_for_same_user_agent(): void
+    {
+        $user = $this->createActiveUser('Device User', '@device-user', '100002');
+        $query = [
+            'tg' => Crypt::encrypt('100002'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ];
+
+        $this
+            ->withHeader('User-Agent', 'Hiddify/2.0 (Android)')
+            ->get(route('vless.connect', $query))
+            ->assertOk();
+
+        $this
+            ->withHeader('User-Agent', 'Hiddify/2.0 (Android)')
+            ->get(route('vless.connect', $query))
+            ->assertOk();
+
+        $this->assertSame(1, UserConnectedDevice::query()->where('user_id', $user->id)->count());
+        $this->assertDatabaseHas('user_connected_devices', [
+            'user_id' => $user->id,
+            'device' => 'Hiddify on Android',
+            'connection_count' => 2,
+        ]);
+    }
+
+    public function test_connect_skip_connection_does_not_record_user_connected_device(): void
+    {
+        $user = $this->createActiveUser('Admin Device User', '@admin-device-user', '100003');
+
+        $this
+            ->withHeader('User-Agent', 'AdminClient/1.0')
+            ->get(route('vless.connect', [
+                'tg' => Crypt::encrypt('100003'),
+                'i' => Crypt::encrypt((string) $user->id),
+                'skip_connection' => true,
+            ]))
+            ->assertOk();
+
+        $this->assertDatabaseMissing('user_connected_devices', [
+            'user_id' => $user->id,
+        ]);
+    }
+
+    public function test_connect_wl_records_user_connected_device(): void
+    {
+        $user = $this->createActiveUser('WL Device User', '@wl-device-user', '100004');
+
+        $this
+            ->withHeader('User-Agent', 'V2RayTun/6.0 (iPad)')
+            ->get(route('vless.connect-wl', [
+                'tg' => Crypt::encrypt('100004'),
+                'i' => Crypt::encrypt((string) $user->id),
+            ]))
+            ->assertOk();
+
+        $this->assertDatabaseHas('user_connected_devices', [
+            'user_id' => $user->id,
+            'device' => 'V2RayTun on iPad',
+            'connection_count' => 1,
+            'last_connection_route' => 'vless.connect-wl',
+        ]);
+    }
 
     public function test_connect_rewrites_subscription_names_and_numbers_duplicate_servers(): void
     {
@@ -317,7 +406,7 @@ class VlessConnectTest extends TestCase
             'AllowedIPs = 0.0.0.0/0, ::/0',
             '',
         ]);
-        $uri = app(\App\Services\WireGuardSubscriptionLinkService::class)
+        $uri = app(WireGuardSubscriptionLinkService::class)
             ->fromConfigContent($content, $server, 'test');
 
         VlessConfig::query()->create([
@@ -1870,7 +1959,7 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString("name: 'Auto'", $content);
         $this->assertStringContainsString("type: 'url-test'", $content);
         $this->assertStringContainsString("name: 'Manual'", $content);
-        $this->assertStringContainsString("xhttp-opts:", $content);
+        $this->assertStringContainsString('xhttp-opts:', $content);
         $this->assertStringContainsString("type: 'hysteria2'", $content);
         $this->assertStringContainsString("name: 'Германия • VLESS • XHTTP'", $content);
         $this->assertStringContainsString("name: 'Германия • HYSTERIA2 • QUIC'", $content);
@@ -2086,8 +2175,7 @@ class VlessConnectTest extends TestCase
         ?int $inboundId = null,
         bool $isReady = true,
         bool $hideMainNodeName = false,
-    ): Proxy
-    {
+    ): Proxy {
         $xrayInboundId = null;
 
         if ($inboundId !== null) {

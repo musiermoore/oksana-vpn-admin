@@ -173,6 +173,26 @@ Each subscription has:
 The active subscription is the subscription covering today.
 The latest subscription is the one with the greatest `end_date`.
 
+### User Connected Devices
+
+Subscription-link refreshes from `/connect` and `/connect-wl-version-2` are tracked in `user_connected_devices`.
+
+Each connected device has:
+
+- `user_id`
+- `label`
+- `device`
+- `user_agent`
+- `user_agent_hash`
+- `ip_address`
+- `first_connection_at`
+- `last_connection_at`
+- `connection_count`
+- `last_connection_route`
+- `deleted_at`
+
+Requests with `skip_connection=true` skip this tracking for admin workflows.
+
 ### Subscription Expiry Notifications
 
 Subscription reminder logs are stored in `subscription_expiry_notifications`.

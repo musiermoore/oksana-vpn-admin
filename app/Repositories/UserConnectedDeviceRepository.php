@@ -8,11 +8,15 @@ use App\Models\UserConnectedDevice;
 
 class UserConnectedDeviceRepository
 {
-    public function findActiveByUserAndAgentHash(int $userId, string $userAgentHash): ?UserConnectedDevice
-    {
+    public function findActiveByUserAgentHashAndRoute(
+        int $userId,
+        string $userAgentHash,
+        string $connectionRoute,
+    ): ?UserConnectedDevice {
         return UserConnectedDevice::query()
             ->where('user_id', $userId)
             ->where('user_agent_hash', $userAgentHash)
+            ->where('connection_route', $connectionRoute)
             ->first();
     }
 

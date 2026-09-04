@@ -21,12 +21,15 @@ return new class extends Migration
             $table->timestamp('first_connection_at')->nullable();
             $table->timestamp('last_connection_at');
             $table->unsignedInteger('connection_count')->default(0);
-            $table->string('last_connection_route', 64)->nullable();
+            $table->string('connection_route', 64);
             $table->timestamps();
             $table->softDeletes();
 
             $table->index(['user_id', 'deleted_at'], 'user_connected_devices_user_deleted_idx');
-            $table->index(['user_id', 'user_agent_hash', 'deleted_at'], 'user_connected_devices_user_agent_idx');
+            $table->index(
+                ['user_id', 'user_agent_hash', 'connection_route', 'deleted_at'],
+                'user_connected_devices_user_agent_route_idx'
+            );
             $table->index(['user_id', 'last_connection_at'], 'user_connected_devices_user_last_connection_idx');
         });
     }

@@ -42,7 +42,7 @@ class VlessConnectTest extends TestCase
             'label' => null,
             'device' => 'Telegram on iPhone',
             'connection_count' => 1,
-            'last_connection_route' => 'vless.connect',
+            'connection_route' => 'connect',
             'deleted_at' => null,
         ]);
     }
@@ -70,6 +70,40 @@ class VlessConnectTest extends TestCase
             'user_id' => $user->id,
             'device' => 'Hiddify on Android',
             'connection_count' => 2,
+        ]);
+    }
+
+    public function test_connect_and_connect_wl_keep_separate_connected_device_rows_for_same_user_agent(): void
+    {
+        $user = $this->createActiveUser('Split Device User', '@split-device-user', '100005');
+        $userAgent = 'V2RayTun/6.0 (iPhone)';
+        $query = [
+            'tg' => Crypt::encrypt('100005'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ];
+
+        $this
+            ->withHeader('User-Agent', $userAgent)
+            ->get(route('vless.connect', $query))
+            ->assertOk();
+
+        $this
+            ->withHeader('User-Agent', $userAgent)
+            ->get(route('vless.connect-wl', $query))
+            ->assertOk();
+
+        $this->assertSame(2, UserConnectedDevice::query()->where('user_id', $user->id)->count());
+        $this->assertDatabaseHas('user_connected_devices', [
+            'user_id' => $user->id,
+            'device' => 'V2RayTun on iPhone',
+            'connection_route' => 'connect',
+            'connection_count' => 1,
+        ]);
+        $this->assertDatabaseHas('user_connected_devices', [
+            'user_id' => $user->id,
+            'device' => 'V2RayTun on iPhone',
+            'connection_route' => 'connect-wl',
+            'connection_count' => 1,
         ]);
     }
 
@@ -107,7 +141,7 @@ class VlessConnectTest extends TestCase
             'user_id' => $user->id,
             'device' => 'V2RayTun on iPad',
             'connection_count' => 1,
-            'last_connection_route' => 'vless.connect-wl',
+            'connection_route' => 'connect-wl',
         ]);
     }
 

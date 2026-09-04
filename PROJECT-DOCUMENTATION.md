@@ -188,8 +188,10 @@ Each connected device has:
 - `first_connection_at`
 - `last_connection_at`
 - `connection_count`
-- `last_connection_route`
+- `connection_route`
 - `deleted_at`
+
+One user agent can create separate rows per subscription route, for example one `connect` row and one `connect-wl` row for the same device.
 
 Requests with `skip_connection=true` skip this tracking for admin workflows.
 

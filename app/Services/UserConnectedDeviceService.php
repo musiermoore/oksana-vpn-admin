@@ -26,9 +26,13 @@ class UserConnectedDeviceService
             $now = now();
             $device = $this->resolveDevice($userAgent);
             $userAgentHash = hash('sha256', $userAgent ?? '');
-            $routeName = $request->route()?->getName();
+            $connectionRoute = $this->resolveConnectionRoute($request);
 
-            $connectedDevice = $this->devices->findActiveByUserAndAgentHash((int) $user->id, $userAgentHash);
+            $connectedDevice = $this->devices->findActiveByUserAgentHashAndRoute(
+                (int) $user->id,
+                $userAgentHash,
+                $connectionRoute,
+            );
 
             if (! $connectedDevice) {
                 $this->devices->create([
@@ -40,7 +44,7 @@ class UserConnectedDeviceService
                     'first_connection_at' => $now,
                     'last_connection_at' => $now,
                     'connection_count' => 1,
-                    'last_connection_route' => $routeName,
+                    'connection_route' => $connectionRoute,
                 ]);
 
                 return;
@@ -52,11 +56,19 @@ class UserConnectedDeviceService
                 'ip_address' => $request->ip(),
                 'last_connection_at' => $now,
                 'connection_count' => (int) $connectedDevice->connection_count + 1,
-                'last_connection_route' => $routeName,
             ])->save();
         } catch (Throwable $throwable) {
             report($throwable);
         }
+    }
+
+    private function resolveConnectionRoute(Request $request): string
+    {
+        return match ($request->route()?->getName()) {
+            'vless.connect' => 'connect',
+            'vless.connect-wl' => 'connect-wl',
+            default => mb_substr($request->route()?->getName() ?? $request->path(), 0, 64),
+        };
     }
 
     private function normalizeUserAgent(?string $userAgent): ?string

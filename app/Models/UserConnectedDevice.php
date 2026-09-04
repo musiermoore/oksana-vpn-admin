@@ -22,7 +22,7 @@ class UserConnectedDevice extends Model
         'first_connection_at',
         'last_connection_at',
         'connection_count',
-        'last_connection_route',
+        'connection_route',
     ];
 
     protected function casts(): array

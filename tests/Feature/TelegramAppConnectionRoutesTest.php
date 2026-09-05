@@ -65,10 +65,10 @@ class TelegramAppConnectionRoutesTest extends TestCase
                 'configs' => [[
                     'id' => $config->id,
                     'name' => 'ios-main',
-                    'download_url' => "/public/wireguard/configs/{$config->id}/download",
-                    'qr_code_url' => "/public/wireguard/configs/{$config->id}/qr-code",
-                    'send_file_to_bot_url' => "/public/wireguard/configs/{$config->id}/send-file",
-                    'send_qr_to_bot_url' => "/public/wireguard/configs/{$config->id}/send-qr",
+                    'download_url' => "/wireguard/configs/{$config->id}/download",
+                    'qr_code_url' => "/wireguard/configs/{$config->id}/qr-code",
+                    'send_file_to_bot_url' => "/wireguard/configs/{$config->id}/send-file",
+                    'send_qr_to_bot_url' => "/wireguard/configs/{$config->id}/send-qr",
                 ]],
             ]);
     }

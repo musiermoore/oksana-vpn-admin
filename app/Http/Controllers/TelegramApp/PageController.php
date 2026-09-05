@@ -81,41 +81,53 @@ class PageController extends Controller
 
         return $this->inertia($component, [
             'routes' => [
-                'login' => route($routePrefix.'.login'),
-                'register' => route($routePrefix.'.register'),
-                'home' => route($routePrefix.'.home'),
-                'wireguard' => route($routePrefix.'.pages.wireguard'),
-                'vless' => route($routePrefix.'.pages.vless'),
-                'vless_wl' => route($routePrefix.'.pages.vless-wl'),
-                'payments' => route($routePrefix.'.pages.payments'),
-                'help' => route($routePrefix.'.pages.help'),
-                'chats' => route($routePrefix.'.pages.chats'),
-                'support' => route($routePrefix.'.pages.support'),
-                'giveaway' => route($routePrefix.'.pages.giveaway'),
-                'giveaway_summary' => route($routePrefix.'.giveaway.summary'),
-                'referrals' => route($routePrefix.'.pages.referrals'),
+                'login' => $this->appRoute($routePrefix, 'login'),
+                'register' => $this->appRoute($routePrefix, 'register'),
+                'home' => $this->appRoute($routePrefix, 'home'),
+                'wireguard' => $this->appRoute($routePrefix, 'pages.wireguard'),
+                'vless' => $this->appRoute($routePrefix, 'pages.vless'),
+                'vless_wl' => $this->appRoute($routePrefix, 'pages.vless-wl'),
+                'payments' => $this->appRoute($routePrefix, 'pages.payments'),
+                'help' => $this->appRoute($routePrefix, 'pages.help'),
+                'chats' => $this->appRoute($routePrefix, 'pages.chats'),
+                'support' => $this->appRoute($routePrefix, 'pages.support'),
+                'giveaway' => $this->appRoute($routePrefix, 'pages.giveaway'),
+                'giveaway_summary' => $this->appRoute($routePrefix, 'giveaway.summary'),
+                'referrals' => $this->appRoute($routePrefix, 'pages.referrals'),
             ],
-            'auth_url' => route($routePrefix.'.auth.telegram'),
-            'password_auth_url' => route($routePrefix.'.auth.password'),
-            'password_registration_url' => route($routePrefix.'.auth.register'),
-            'profile_url' => route($routePrefix.'.me'),
-            'wireguard_configs_url' => route($routePrefix.'.wireguard.configs.index'),
-            'vless_link_url' => route($routePrefix.'.vless.link'),
-            'vless_qr_url' => route($routePrefix.'.vless.qr-code'),
-            'vless_send_qr_url' => route($routePrefix.'.vless.send-qr'),
-            'vless_wl_link_url' => route($routePrefix.'.vless-wl.link'),
-            'vless_wl_qr_url' => route($routePrefix.'.vless-wl.qr-code'),
-            'vless_wl_send_qr_url' => route($routePrefix.'.vless-wl.send-qr'),
-            'support_tickets_url' => route($routePrefix.'.support.tickets.index'),
-            'support_ticket_store_url' => route($routePrefix.'.support.tickets.store'),
-            'subscription_packages_url' => route($routePrefix.'.subscription-packages'),
-            'claim_referral_url' => route($routePrefix.'.referrals.claim'),
-            'giveaway_url' => route($routePrefix.'.giveaway.show'),
-            'giveaway_participate_url' => route($routePrefix.'.giveaway.participate'),
-            'payment_url' => route($routePrefix.'.payments.subscriptions'),
-            'activate_subscription_code_url' => route($routePrefix.'.payments.subscription-codes.activate'),
+            'auth_url' => $this->appRoute($routePrefix, 'auth.telegram'),
+            'password_auth_url' => $this->appRoute($routePrefix, 'auth.password'),
+            'password_registration_url' => $this->appRoute($routePrefix, 'auth.register'),
+            'profile_url' => $this->appRoute($routePrefix, 'me'),
+            'wireguard_configs_url' => $this->appRoute($routePrefix, 'wireguard.configs.index'),
+            'vless_link_url' => $this->appRoute($routePrefix, 'vless.link'),
+            'vless_qr_url' => $this->appRoute($routePrefix, 'vless.qr-code'),
+            'vless_send_qr_url' => $this->appRoute($routePrefix, 'vless.send-qr'),
+            'vless_wl_link_url' => $this->appRoute($routePrefix, 'vless-wl.link'),
+            'vless_wl_qr_url' => $this->appRoute($routePrefix, 'vless-wl.qr-code'),
+            'vless_wl_send_qr_url' => $this->appRoute($routePrefix, 'vless-wl.send-qr'),
+            'support_tickets_url' => $this->appRoute($routePrefix, 'support.tickets.index'),
+            'support_ticket_store_url' => $this->appRoute($routePrefix, 'support.tickets.store'),
+            'subscription_packages_url' => $this->appRoute($routePrefix, 'subscription-packages'),
+            'claim_referral_url' => $this->appRoute($routePrefix, 'referrals.claim'),
+            'giveaway_url' => $this->appRoute($routePrefix, 'giveaway.show'),
+            'giveaway_participate_url' => $this->appRoute($routePrefix, 'giveaway.participate'),
+            'payment_url' => $this->appRoute($routePrefix, 'payments.subscriptions'),
+            'activate_subscription_code_url' => $this->appRoute($routePrefix, 'payments.subscription-codes.activate'),
             ...$extra,
         ]);
+    }
+
+    private function appRoute(string $routePrefix, string $name, array $parameters = []): string
+    {
+        if ($routePrefix !== 'public') {
+            return route($routePrefix.'.'.$name, $parameters);
+        }
+
+        $url = route($routePrefix.'.'.$name, $parameters, absolute: false);
+        $url = preg_replace('#^/public(?=/|$)#', '', $url) ?: '/';
+
+        return $url === '' ? '/' : $url;
     }
 
     private function routeNamePrefix(): string

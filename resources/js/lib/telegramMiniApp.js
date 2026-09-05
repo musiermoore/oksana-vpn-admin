@@ -380,25 +380,33 @@ export const fetchTelegramAppProfile = async (profileUrl) => {
     return response.data.user;
 };
 
-const isPublicAppPath = () => {
+const isPublicAppPath = (profileUrl = '') => {
     const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const profilePath = new URL(profileUrl || '/telegram-app/me', window.location.origin).pathname.replace(/\/+$/, '');
 
-    return path === '/public' || path.startsWith('/public/');
+    return path === '/public' || path.startsWith('/public/') || profilePath === '/me' || profilePath === '/public/me';
 };
 
-const redirectToPublicLogin = () => {
-    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/public';
+const publicLoginUrl = (profileUrl = '') => {
+    const profilePath = new URL(profileUrl || '/public/me', window.location.origin).pathname.replace(/\/+$/, '');
 
-    if (currentPath === '/public/login') {
+    return profilePath === '/me' ? '/login' : '/public/login';
+};
+
+const redirectToPublicLogin = (profileUrl = '') => {
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/public';
+    const loginUrl = publicLoginUrl(profileUrl);
+
+    if (currentPath === loginUrl) {
         return;
     }
 
-    window.location.replace('/public/login');
+    window.location.replace(loginUrl);
 };
 
 const ensurePublicAppSession = async (profileUrl) => {
     if (getTelegramAppToken() === '') {
-        redirectToPublicLogin();
+        redirectToPublicLogin(profileUrl);
         throw new Error('Требуется вход.');
     }
 
@@ -407,7 +415,7 @@ const ensurePublicAppSession = async (profileUrl) => {
     } catch (error) {
         if (error?.response?.status === 401) {
             setTelegramAppToken('');
-            redirectToPublicLogin();
+            redirectToPublicLogin(profileUrl);
             throw new Error('Требуется вход.');
         }
 
@@ -416,7 +424,7 @@ const ensurePublicAppSession = async (profileUrl) => {
 };
 
 export const ensureTelegramAppSession = async ({ authUrl, profileUrl }) => {
-    if (isPublicAppPath()) {
+    if (isPublicAppPath(profileUrl)) {
         return ensurePublicAppSession(profileUrl);
     }
 

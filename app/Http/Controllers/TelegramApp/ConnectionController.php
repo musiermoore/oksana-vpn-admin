@@ -49,18 +49,18 @@ class ConnectionController extends Controller
                     return [
                         'id' => $configId,
                         'name' => $config->name,
-                        'download_url' => route($routePrefix.'.wireguard.configs.download', [
+                        'download_url' => $this->appRoute($routePrefix, 'wireguard.configs.download', [
                             'configId' => $configId,
-                        ], absolute: false),
-                        'qr_code_url' => route($routePrefix.'.wireguard.configs.qr-code', [
+                        ]),
+                        'qr_code_url' => $this->appRoute($routePrefix, 'wireguard.configs.qr-code', [
                             'configId' => $configId,
-                        ], absolute: false),
-                        'send_file_to_bot_url' => route($routePrefix.'.wireguard.configs.send-file', [
+                        ]),
+                        'send_file_to_bot_url' => $this->appRoute($routePrefix, 'wireguard.configs.send-file', [
                             'configId' => $configId,
-                        ], absolute: false),
-                        'send_qr_to_bot_url' => route($routePrefix.'.wireguard.configs.send-qr', [
+                        ]),
+                        'send_qr_to_bot_url' => $this->appRoute($routePrefix, 'wireguard.configs.send-qr', [
                             'configId' => $configId,
-                        ], absolute: false),
+                        ]),
                     ];
                 })
                 ->values()
@@ -286,6 +286,22 @@ class ConnectionController extends Controller
         $routeName = (string) $request->route()?->getName();
 
         return str_starts_with($routeName, 'public.') ? 'public' : 'telegram-app';
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
+    private function appRoute(string $routePrefix, string $name, array $parameters = []): string
+    {
+        $url = route($routePrefix.'.'.$name, $parameters, absolute: false);
+
+        if ($routePrefix !== 'public') {
+            return $url;
+        }
+
+        $url = preg_replace('#^/public(?=/|$)#', '', $url) ?: '/';
+
+        return $url === '' ? '/' : $url;
     }
 
     private function buildXrayWireGuardQrPng(VlessConfig $config): string

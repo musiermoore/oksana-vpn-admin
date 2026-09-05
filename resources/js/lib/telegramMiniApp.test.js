@@ -33,6 +33,7 @@ const createWindow = ({ initData = '', search = '', hash = '', storedInitData = 
     const sessionStorage = new MemoryStorage();
     const location = {
         href: `https://example.com${pathname}${search}`,
+        origin: 'https://example.com',
         pathname,
         search,
         hash,
@@ -179,6 +180,21 @@ test('ensureTelegramAppSession redirects public app users without token to publi
     });
 
     assert.equal(window.location.replacedWith, '/public/login');
+});
+
+test('ensureTelegramAppSession redirects hidden public app users without token to root login', async () => {
+    global.window = createWindow({
+        pathname: '/',
+    });
+
+    await assert.rejects(ensureTelegramAppSession({
+        authUrl: '/auth/telegram',
+        profileUrl: '/me',
+    }), {
+        message: 'Требуется вход.',
+    });
+
+    assert.equal(window.location.replacedWith, '/login');
 });
 
 test('ensureTelegramAppSession loads public app profile when token exists', async () => {

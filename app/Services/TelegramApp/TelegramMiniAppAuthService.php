@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\TelegramApp;
 
 use App\DTOs\TelegramApp\TelegramAppAuthData;
+use App\DTOs\TelegramApp\TelegramAppPasswordAuthData;
+use App\DTOs\TelegramApp\TelegramAppPasswordRegistrationData;
 use App\DTOs\User\ApiUserRegistrationData;
 use App\Models\TelegramAppToken;
 use App\Models\User;
@@ -11,6 +15,7 @@ use App\Services\Api\ApiUserService;
 use DomainException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class TelegramMiniAppAuthService
@@ -51,20 +56,57 @@ class TelegramMiniAppAuthService
             startParam: $startParam !== '' ? $startParam : null,
         ));
 
-        $plainTextToken = Str::random(80);
-        $expiresAt = $this->resolveExpiration();
+        return $this->issueToken($result->user);
+    }
 
-        $this->tokens->createForUser($result->user, [
-            'token_hash' => hash('sha256', $plainTextToken),
-            'expires_at' => $expiresAt,
-            'last_used_at' => now(),
+    /**
+     * @return array{user: User, token: string, expires_at: string|null}
+     */
+    public function authenticateWithPassword(TelegramAppPasswordAuthData $data): array
+    {
+        $login = trim($data->login);
+        $password = $data->password;
+
+        $user = User::query()
+            ->where('login', $login)
+            ->first();
+
+        if (! $user || empty($user->password) || ! Hash::check($password, $user->password)) {
+            throw new DomainException('Неверный логин или пароль.');
+        }
+
+        return $this->issueToken($user);
+    }
+
+    /**
+     * @return array{user: User, token: string, expires_at: string|null}
+     */
+    public function registerWithPassword(TelegramAppPasswordRegistrationData $data): array
+    {
+        $name = trim($data->name);
+        $login = trim($data->login);
+
+        if ($name === '' || $login === '') {
+            throw new DomainException('Заполните имя, логин и пароль.');
+        }
+
+        $existingUser = User::query()
+            ->where('login', $login)
+            ->first();
+
+        if ($existingUser) {
+            throw new DomainException('Этот логин уже занят.');
+        }
+
+        $user = User::query()->create([
+            'name' => $name,
+            'login' => $login,
+            'password' => $data->password,
+            'join_at' => now()->toDateString(),
+            'is_admin' => false,
         ]);
 
-        return [
-            'user' => $result->user->fresh(),
-            'token' => $plainTextToken,
-            'expires_at' => $expiresAt?->toAtomString(),
-        ];
+        return $this->issueToken($user);
     }
 
     public function resolveUserByToken(?string $plainTextToken): ?User
@@ -163,5 +205,26 @@ class TelegramMiniAppAuthService
         $ttlMinutes = (int) config('services.telegram.mini_app_token_ttl_minutes', 43200);
 
         return $ttlMinutes > 0 ? now()->addMinutes($ttlMinutes) : null;
+    }
+
+    /**
+     * @return array{user: User, token: string, expires_at: string|null}
+     */
+    private function issueToken(User $user): array
+    {
+        $plainTextToken = Str::random(80);
+        $expiresAt = $this->resolveExpiration();
+
+        $this->tokens->createForUser($user, [
+            'token_hash' => hash('sha256', $plainTextToken),
+            'expires_at' => $expiresAt,
+            'last_used_at' => now(),
+        ]);
+
+        return [
+            'user' => $user->fresh(),
+            'token' => $plainTextToken,
+            'expires_at' => $expiresAt?->toAtomString(),
+        ];
     }
 }

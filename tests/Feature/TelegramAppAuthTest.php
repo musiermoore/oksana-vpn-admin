@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\TelegramAppToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class TelegramAppAuthTest extends TestCase
@@ -139,6 +141,110 @@ class TelegramAppAuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.telegram_id', '123456789')
             ->assertJsonPath('user.telegram', '@alice');
+    }
+
+    public function test_telegram_app_login_page_is_available(): void
+    {
+        $this->get('/telegram-app/login')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('TelegramApp/Login')
+                ->where('routes.home', route('telegram-app.home'))
+                ->where('password_auth_url', route('telegram-app.auth.password'))
+            );
+    }
+
+    public function test_telegram_app_register_page_is_available(): void
+    {
+        $this->get('/telegram-app/register')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('TelegramApp/Register')
+                ->where('routes.login', route('telegram-app.login'))
+                ->where('password_registration_url', route('telegram-app.auth.register'))
+            );
+    }
+
+    public function test_telegram_app_password_auth_returns_mini_app_token(): void
+    {
+        User::factory()->create([
+            'name' => 'Alice Doe',
+            'login' => 'alice',
+            'password' => Hash::make('secret-password'),
+            'telegram' => '@alice',
+            'telegram_id' => '123456789',
+        ]);
+
+        $response = $this->postJson('/telegram-app/auth/login', [
+            'login' => 'alice',
+            'password' => 'secret-password',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('user.telegram', '@alice')
+            ->assertJsonPath('user.telegram_id', '123456789')
+            ->assertJsonStructure(['token', 'expires_at', 'user']);
+
+        $this->assertDatabaseCount('telegram_app_tokens', 1);
+    }
+
+    public function test_telegram_app_password_auth_rejects_invalid_credentials(): void
+    {
+        User::factory()->create([
+            'login' => 'alice',
+            'password' => Hash::make('secret-password'),
+        ]);
+
+        $this->postJson('/telegram-app/auth/login', [
+            'login' => 'alice',
+            'password' => 'wrong-password',
+        ])->assertStatus(422)
+            ->assertJsonPath('message', 'Неверный логин или пароль.');
+
+        $this->assertDatabaseCount('telegram_app_tokens', 0);
+    }
+
+    public function test_telegram_app_password_registration_creates_user_and_returns_token(): void
+    {
+        $response = $this->postJson('/telegram-app/auth/register', [
+            'name' => 'Alice Doe',
+            'login' => 'alice',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('user.name', 'Alice Doe')
+            ->assertJsonPath('user.telegram_id', null)
+            ->assertJsonStructure(['token', 'expires_at', 'user']);
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'Alice Doe',
+            'login' => 'alice',
+            'is_admin' => false,
+        ]);
+        $this->assertTrue(Hash::check('secret-password', (string) User::query()->where('login', 'alice')->value('password')));
+        $this->assertDatabaseCount('telegram_app_tokens', 1);
+    }
+
+    public function test_telegram_app_password_registration_requires_unique_login(): void
+    {
+        User::factory()->create([
+            'login' => 'alice',
+            'password' => Hash::make('secret-password'),
+        ]);
+
+        $this->postJson('/telegram-app/auth/register', [
+            'name' => 'Alice Doe',
+            'login' => 'alice',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['login']);
+
+        $this->assertDatabaseCount('telegram_app_tokens', 0);
     }
 
     /**

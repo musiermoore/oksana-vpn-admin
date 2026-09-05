@@ -1,11 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\TelegramApp;
 
 use App\Http\Controllers\Controller;
 
 class PageController extends Controller
 {
+    public function login()
+    {
+        return $this->page('TelegramApp/Login');
+    }
+
+    public function register()
+    {
+        return $this->page('TelegramApp/Register');
+    }
+
     public function home()
     {
         return $this->page('TelegramApp/Home');
@@ -67,6 +79,8 @@ class PageController extends Controller
     {
         return $this->inertia($component, [
             'routes' => [
+                'login' => route('telegram-app.login'),
+                'register' => route('telegram-app.register'),
                 'home' => route('telegram-app.home'),
                 'wireguard' => route('telegram-app.pages.wireguard'),
                 'vless' => route('telegram-app.pages.vless'),
@@ -80,6 +94,8 @@ class PageController extends Controller
                 'referrals' => route('telegram-app.pages.referrals'),
             ],
             'auth_url' => route('telegram-app.auth.telegram'),
+            'password_auth_url' => route('telegram-app.auth.password'),
+            'password_registration_url' => route('telegram-app.auth.register'),
             'profile_url' => route('telegram-app.me'),
             'wireguard_configs_url' => route('telegram-app.wireguard.configs.index'),
             'vless_link_url' => route('telegram-app.vless.link'),

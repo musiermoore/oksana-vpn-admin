@@ -12,6 +12,10 @@ const props = defineProps({
     description: String,
     routes: Object,
     user: Object,
+    showNavigation: {
+        type: Boolean,
+        default: true,
+    },
 });
 
 const theme = ref('light');
@@ -128,7 +132,7 @@ watch(() => props.user?.id, () => {
             </main>
         </div>
 
-        <nav class="tg-bottom-nav">
+        <nav v-if="showNavigation" class="tg-bottom-nav">
             <div class="tg-bottom-nav__grid">
                 <Link
                     v-for="item in navItems"

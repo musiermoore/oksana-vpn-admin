@@ -19,6 +19,16 @@
   - переход в `HOME`
   - либо переход в `SUBSCRIPTION_OVERVIEW`, если `start_param=payments`
   - при ошибке переход в `APP_INIT_ERROR`
+- `PUBLIC_LOGIN`
+  - вход на `/telegram-app/login`
+  - проверка `login` и `password`
+  - сохранение mini-app bearer token
+  - переход в `HOME`
+- `PUBLIC_REGISTER`
+  - вход на `/telegram-app/register`
+  - создание пользователя по имени, `login` и `password`
+  - сохранение mini-app bearer token
+  - переход в `HOME`
 
 ### Основные пользовательские экраны
 - `HOME`
@@ -57,6 +67,10 @@
 
 | screen | element/button | action | api request | next screen | error state |
 | --- | --- | --- | --- | --- | --- |
+| `PUBLIC_LOGIN` | `Войти` | Авторизация по логину и паролю для публичной версии app | `POST /telegram-app/auth/login` | `HOME` | `APP_INIT_ERROR` при неверных учетных данных или ошибке входа |
+| `PUBLIC_LOGIN` | `Создать аккаунт` | Открыть публичную регистрацию | none | `PUBLIC_REGISTER` | none |
+| `PUBLIC_REGISTER` | `Создать аккаунт` | Создать пользователя публичной версии app | `POST /telegram-app/auth/register` | `HOME` | `APP_INIT_ERROR` при занятом логине, невалидном пароле или ошибке регистрации |
+| `PUBLIC_REGISTER` | `Уже есть аккаунт` | Вернуться ко входу | none | `PUBLIC_LOGIN` | none |
 | `BOOTSTRAP` | auto | Валидация Telegram WebApp `initData` | `POST /telegram-app/auth/telegram` | `BOOTSTRAP_PROFILE_LOAD` | `APP_INIT_ERROR` при невалидном `hash`, истекшей сессии, пустом `telegram id`, ошибке конфигурации |
 | `BOOTSTRAP_PROFILE_LOAD` | auto | Загрузка профиля после входа | `GET /telegram-app/me` | `HOME` | `APP_INIT_ERROR` при `401` или ошибке загрузки |
 | `HOME` | `Amnezia` | Открыть список Amnezia-конфигов через `/telegram-app/wireguard?step=list` | `GET /api/users/{telegramId}/wireguard/configs` или mini-app proxy `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, `EMPTY_WIREGUARD_CONFIGS`, generic error |
@@ -159,10 +173,14 @@
 
 ### Идентификаторы действий в текущем mini-app
 - page route: `/telegram-app/`
+- page route: `/telegram-app/login`
+- page route: `/telegram-app/register`
 - page route: `/telegram-app/payments`
 - page route: `/telegram-app/support`
 - page route: `/telegram-app/support/{ticketId}`
 - API action: `POST /telegram-app/auth/telegram`
+- API action: `POST /telegram-app/auth/login`
+- API action: `POST /telegram-app/auth/register`
 - API action: `GET /telegram-app/me`
 - API action: `GET /telegram-app/subscription-packages`
 - API action: `POST /telegram-app/payments/subscriptions`
@@ -204,6 +222,18 @@
    - выдает bearer token mini-app сессии
 4. Frontend вызывает `GET /telegram-app/me`.
 5. UI строит `HOME`.
+
+### 4.1.1 Публичная авторизация mini-app
+1. Пользователь открывает `/telegram-app/login`.
+2. Frontend вызывает `POST /telegram-app/auth/login` с `login` и `password`.
+3. Backend ищет пользователя по `users.login`, проверяет `users.password` через hash check и выпускает bearer token mini-app сессии.
+4. Frontend сохраняет token в том же localStorage ключе, что и Telegram bootstrap, и открывает `HOME`.
+
+### 4.1.2 Публичная регистрация mini-app
+1. Пользователь открывает `/telegram-app/register`.
+2. Frontend вызывает `POST /telegram-app/auth/register` с `name`, `login`, `password` и `password_confirmation`.
+3. Backend проверяет уникальность `users.login`, создаёт не-админского пользователя с `join_at=today`, сохраняет хешированный пароль и выпускает bearer token mini-app сессии.
+4. Frontend сохраняет token в том же localStorage ключе, что и Telegram bootstrap, и открывает `HOME`.
 
 ### 4.2 Получение профиля и статуса подписки
 - `GET /telegram-app/me`

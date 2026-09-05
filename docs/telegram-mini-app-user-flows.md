@@ -8,6 +8,8 @@
 
 Реализованные страницы:
 
+- `/telegram-app/login` -> `Login`
+- `/telegram-app/register` -> `Register`
 - `/telegram-app/` -> `Home`
 - `/telegram-app/wireguard` -> `Amnezia`
 - `/telegram-app/vless` -> `VLESS`
@@ -23,6 +25,8 @@
 
 - Почти каждая страница начинает с авто-авторизации через `POST /telegram-app/auth/telegram`.
 - Затем страница загружает профиль через `GET /telegram-app/me`.
+- Публичный вход доступен через `/telegram-app/login` и авторизует пользователя логином и паролем через `POST /telegram-app/auth/login`; после входа frontend сохраняет тот же bearer token, что и Telegram mini-app.
+- Публичная регистрация доступна через `/telegram-app/register`, создаёт пользователя по имени, логину и паролю через `POST /telegram-app/auth/register`, затем сохраняет тот же bearer token.
 - На всех страницах есть нижняя навигация: `Главная`, `Конфиги`, `Подписка`, `Помощь`, `Чаты`, `Розыгрыш`.
 - Экран `Support` не вынесен в нижнюю навигацию, но доступен из `Help` и по прямой ссылке.
 
@@ -36,6 +40,26 @@
 2. Выполняется `POST /telegram-app/auth/telegram`.
 3. Выполняется `GET /telegram-app/me`.
 4. Пользователь попадает на `Home`.
+
+### 2.1.1 Публичный вход по логину и паролю
+
+Путь:
+
+1. Пользователь открывает `/telegram-app/login`.
+2. Вводит `login` и `password`.
+3. Frontend вызывает `POST /telegram-app/auth/login`.
+4. Backend проверяет `users.login` и хешированный `users.password`.
+5. Frontend сохраняет mini-app bearer token и переводит пользователя на `/telegram-app/`.
+
+### 2.1.2 Публичная регистрация
+
+Путь:
+
+1. Пользователь открывает `/telegram-app/register`.
+2. Вводит имя, `login`, `password` и подтверждение пароля.
+3. Frontend вызывает `POST /telegram-app/auth/register`.
+4. Backend создаёт не-админского пользователя с `join_at=today` и хешированным паролем.
+5. Frontend сохраняет mini-app bearer token и переводит пользователя на `/telegram-app/`.
 
 ### 2.4 Вход по deep link на оплату
 
@@ -75,6 +99,14 @@
 BOOTSTRAP
   -> HOME
   -> SUPPORT_SHOW (если start_param=ticket_{id})
+
+PUBLIC_LOGIN
+  -> HOME
+  -> PUBLIC_REGISTER
+
+PUBLIC_REGISTER
+  -> HOME
+  -> PUBLIC_LOGIN
 
 HOME
   -> WIREGUARD

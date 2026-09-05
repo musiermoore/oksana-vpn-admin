@@ -167,6 +167,8 @@ Route::get('connect-wl/deep-link/{client}', [VlessConfigController::class, 'deep
     ->name('vless.deep-link-wl');
 
 Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
+    Route::get('login', [TelegramAppPageController::class, 'login'])->name('login');
+    Route::get('register', [TelegramAppPageController::class, 'register'])->name('register');
     Route::get('/', [TelegramAppPageController::class, 'home'])->name('home');
     Route::get('wireguard', [TelegramAppPageController::class, 'wireGuard'])->name('pages.wireguard');
     Route::get('vless', [TelegramAppPageController::class, 'vless'])->name('pages.vless');
@@ -182,6 +184,10 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
         ->name('pages.support.show');
     Route::post('auth/telegram', [TelegramAppAuthController::class, 'authenticate'])
         ->name('auth.telegram');
+    Route::post('auth/login', [TelegramAppAuthController::class, 'authenticateWithPassword'])
+        ->name('auth.password');
+    Route::post('auth/register', [TelegramAppAuthController::class, 'registerWithPassword'])
+        ->name('auth.register');
     Route::post('diagnostics/bootstrap', [TelegramAppDiagnosticController::class, 'bootstrap'])
         ->name('diagnostics.bootstrap');
 

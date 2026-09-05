@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+    ensureTelegramAppSession,
     getTelegramInitData,
     getTelegramStartParam,
     redirectFromTelegramStartParam,
@@ -28,11 +29,11 @@ class MemoryStorage {
     }
 }
 
-const createWindow = ({ initData = '', search = '', hash = '', storedInitData = '' } = {}) => {
+const createWindow = ({ initData = '', search = '', hash = '', storedInitData = '', pathname = '/telegram-app/' } = {}) => {
     const sessionStorage = new MemoryStorage();
     const location = {
-        href: `https://example.com/telegram-app/${search}`,
-        pathname: '/telegram-app/',
+        href: `https://example.com${pathname}${search}`,
+        pathname,
         search,
         hash,
         replacedWith: null,
@@ -54,6 +55,7 @@ const createWindow = ({ initData = '', search = '', hash = '', storedInitData = 
         },
         axios: {
             post: async () => ({ data: { message: 'ok' } }),
+            get: async () => ({ data: { user: { id: 1, name: 'Alice' } } }),
         },
         navigator: {
             userAgent: 'Telegram-WebApp-Test',
@@ -162,6 +164,69 @@ test('redirectFromTelegramStartParam routes payments start param to payments pag
     assert.equal(redirected, true);
     assert.equal(window.location.replacedWith, 'https://example.com/telegram-app/payments');
     assert.equal(window.sessionStorage.getItem('telegram-mini-app-last-start-param'), 'payments');
+});
+
+test('ensureTelegramAppSession redirects public app users without token to public login', async () => {
+    global.window = createWindow({
+        pathname: '/public/',
+    });
+
+    await assert.rejects(ensureTelegramAppSession({
+        authUrl: '/public/auth/telegram',
+        profileUrl: '/public/me',
+    }), {
+        message: 'Требуется вход.',
+    });
+
+    assert.equal(window.location.replacedWith, '/public/login');
+});
+
+test('ensureTelegramAppSession loads public app profile when token exists', async () => {
+    const requests = [];
+
+    global.window = createWindow({
+        pathname: '/public/',
+    });
+    window.localStorage.setItem('telegram-mini-app-token', 'plain-token');
+    window.axios.get = async (url, options) => {
+        requests.push({ url, options });
+
+        return { data: { user: { id: 1, name: 'Alice' } } };
+    };
+
+    const user = await ensureTelegramAppSession({
+        authUrl: '/public/auth/telegram',
+        profileUrl: '/public/me',
+    });
+
+    assert.deepEqual(user, { id: 1, name: 'Alice' });
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/public/me');
+    assert.equal(requests[0].options.headers.Authorization, 'Bearer plain-token');
+    assert.equal(window.location.replacedWith, null);
+});
+
+test('ensureTelegramAppSession clears token and redirects public app users after 401', async () => {
+    global.window = createWindow({
+        pathname: '/public/payments',
+    });
+    window.localStorage.setItem('telegram-mini-app-token', 'expired-token');
+    window.axios.get = async () => {
+        const error = new Error('Unauthorized');
+        error.response = { status: 401 };
+
+        throw error;
+    };
+
+    await assert.rejects(ensureTelegramAppSession({
+        authUrl: '/public/auth/telegram',
+        profileUrl: '/public/me',
+    }), {
+        message: 'Требуется вход.',
+    });
+
+    assert.equal(window.localStorage.getItem('telegram-mini-app-token'), null);
+    assert.equal(window.location.replacedWith, '/public/login');
 });
 
 test('reportTelegramBootstrapDiagnostic sends a deduplicated diagnostic payload', async () => {

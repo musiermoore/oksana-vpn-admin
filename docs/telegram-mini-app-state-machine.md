@@ -24,6 +24,7 @@
   - проверка `login` и `password`
   - сохранение mini-app bearer token
   - переход в `HOME`
+  - открытие защищённой `/public/*` страницы без token переводит сюда без Telegram bootstrap
 - `PUBLIC_REGISTER`
   - вход на `/telegram-app/register` или `/public/register`
   - создание пользователя по имени, `login` и `password`

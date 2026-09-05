@@ -380,7 +380,46 @@ export const fetchTelegramAppProfile = async (profileUrl) => {
     return response.data.user;
 };
 
+const isPublicAppPath = () => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+
+    return path === '/public' || path.startsWith('/public/');
+};
+
+const redirectToPublicLogin = () => {
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/public';
+
+    if (currentPath === '/public/login') {
+        return;
+    }
+
+    window.location.replace('/public/login');
+};
+
+const ensurePublicAppSession = async (profileUrl) => {
+    if (getTelegramAppToken() === '') {
+        redirectToPublicLogin();
+        throw new Error('Требуется вход.');
+    }
+
+    try {
+        return await fetchTelegramAppProfile(profileUrl);
+    } catch (error) {
+        if (error?.response?.status === 401) {
+            setTelegramAppToken('');
+            redirectToPublicLogin();
+            throw new Error('Требуется вход.');
+        }
+
+        throw error;
+    }
+};
+
 export const ensureTelegramAppSession = async ({ authUrl, profileUrl }) => {
+    if (isPublicAppPath()) {
+        return ensurePublicAppSession(profileUrl);
+    }
+
     try {
         prepareTelegramWebApp();
         const startParam = getTelegramStartParam();

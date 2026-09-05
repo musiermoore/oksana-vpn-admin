@@ -12,5 +12,6 @@ class TelegramAppPasswordRegistrationData extends Data
         public string $name,
         public string $login,
         public string $password,
+        public ?string $referral = null,
     ) {}
 }

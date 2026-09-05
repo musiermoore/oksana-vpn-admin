@@ -28,6 +28,7 @@
 - `PUBLIC_REGISTER`
   - вход на `/telegram-app/register` или `/public/register`
   - создание пользователя по имени, `login` и `password`
+  - опциональная привязка реферера по коду или ссылке
   - сохранение mini-app bearer token
   - переход в `HOME`
 
@@ -235,7 +236,7 @@
 ### 4.1.2 Публичная регистрация mini-app
 1. Пользователь открывает `/telegram-app/register`.
 2. Frontend вызывает `POST /telegram-app/auth/register` с `name`, `login`, `password` и `password_confirmation`.
-3. Backend проверяет уникальность `users.login`, создаёт не-админского пользователя с `join_at=today`, сохраняет хешированный пароль и выпускает bearer token mini-app сессии.
+3. Backend проверяет уникальность `users.login`, создаёт не-админского пользователя с `join_at=today`, сохраняет хешированный пароль, опционально привязывает реферера и выпускает bearer token mini-app сессии.
 4. Frontend сохраняет token в том же localStorage ключе, что и Telegram bootstrap, и открывает `HOME`.
 
 ### 4.2 Получение профиля и статуса подписки

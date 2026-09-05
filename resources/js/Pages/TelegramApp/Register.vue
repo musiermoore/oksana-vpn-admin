@@ -10,11 +10,19 @@ const props = defineProps({
     password_registration_url: String,
 });
 
+const urlParams = new URLSearchParams(window.location.search);
+const initialReferral = urlParams.get('referral')
+    ?? urlParams.get('ref')
+    ?? urlParams.get('startapp')
+    ?? urlParams.get('start')
+    ?? '';
+
 const form = ref({
     name: '',
     login: '',
     password: '',
     password_confirmation: '',
+    referral: initialReferral,
 });
 const processing = ref(false);
 const error = ref('');
@@ -56,7 +64,6 @@ const submit = async () => {
     >
         <section class="tg-section">
             <div class="tg-page-header__copy">
-                <div class="tg-tag tg-tag--primary">Public app</div>
                 <h2>Регистрация</h2>
                 <p>Создайте логин и пароль для доступа к кабинету.</p>
             </div>
@@ -109,6 +116,18 @@ const submit = async () => {
                         minlength="8"
                         required
                     >
+                </label>
+
+                <label class="tg-field">
+                    <span class="tg-field__label">Реферальный код</span>
+                    <input
+                        v-model="form.referral"
+                        class="tg-input"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="ref_123"
+                    >
+                    <small v-if="fieldErrors.referral?.[0]" class="tg-error">{{ fieldErrors.referral[0] }}</small>
                 </label>
 
                 <button class="tg-button" type="submit" :disabled="processing">

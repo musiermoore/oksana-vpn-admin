@@ -51,7 +51,6 @@ const submit = async () => {
     >
         <section class="tg-section">
             <div class="tg-page-header__copy">
-                <div class="tg-tag tg-tag--primary">Public app</div>
                 <h2>Вход</h2>
                 <p>Используйте логин и пароль от аккаунта.</p>
             </div>

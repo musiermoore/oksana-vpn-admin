@@ -275,11 +275,16 @@ class TelegramAppAuthTest extends TestCase
 
     public function test_telegram_app_password_registration_creates_user_and_returns_token(): void
     {
+        $referrer = User::factory()->create([
+            'name' => 'Referrer',
+        ]);
+
         $response = $this->postJson('/telegram-app/auth/register', [
             'name' => 'Alice Doe',
             'login' => 'alice',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
+            'referral' => 'ref_'.$referrer->id,
         ]);
 
         $response
@@ -292,6 +297,10 @@ class TelegramAppAuthTest extends TestCase
             'name' => 'Alice Doe',
             'login' => 'alice',
             'is_admin' => false,
+            'referrer_id' => $referrer->id,
+        ]);
+        $this->assertDatabaseHas('referrals', [
+            'referrer_id' => $referrer->id,
         ]);
         $this->assertTrue(Hash::check('secret-password', (string) User::query()->where('login', 'alice')->value('password')));
         $this->assertDatabaseCount('telegram_app_tokens', 1);

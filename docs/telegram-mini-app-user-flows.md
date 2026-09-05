@@ -26,7 +26,7 @@
 - Почти каждая страница начинает с авто-авторизации через `POST /telegram-app/auth/telegram`.
 - Затем страница загружает профиль через `GET /telegram-app/me`.
 - Публичный вход доступен через `/telegram-app/login` и авторизует пользователя логином и паролем через `POST /telegram-app/auth/login`; после входа frontend сохраняет тот же bearer token, что и Telegram mini-app.
-- Публичная регистрация доступна через `/telegram-app/register`, создаёт пользователя по имени, логину и паролю через `POST /telegram-app/auth/register`, затем сохраняет тот же bearer token.
+- Публичная регистрация доступна через `/telegram-app/register`, создаёт пользователя по имени, логину и паролю через `POST /telegram-app/auth/register`, опционально принимает реферальный код или ссылку, затем сохраняет тот же bearer token.
 - Тот же набор страниц, auth endpoints и защищённых mini-app API дополнительно смонтирован под `/public/*`; защищённая часть `/public/*` использует отдельный middleware `public.app`.
 - При открытии защищённой `/public/*` страницы без сохранённого bearer token frontend переводит пользователя на `/public/login`, не пытаясь выполнить Telegram bootstrap.
 - На всех страницах есть нижняя навигация: `Главная`, `Конфиги`, `Подписка`, `Помощь`, `Чаты`, `Розыгрыш`.
@@ -58,9 +58,9 @@
 Путь:
 
 1. Пользователь открывает `/telegram-app/register`.
-2. Вводит имя, `login`, `password` и подтверждение пароля.
+2. Вводит имя, `login`, `password`, подтверждение пароля и, при наличии, реферальный код.
 3. Frontend вызывает `POST /telegram-app/auth/register`.
-4. Backend создаёт не-админского пользователя с `join_at=today` и хешированным паролем.
+4. Backend создаёт не-админского пользователя с `join_at=today` и хешированным паролем, затем привязывает реферера через общий `ReferralService`.
 5. Frontend сохраняет mini-app bearer token и переводит пользователя на `/telegram-app/`.
 
 ### 2.4 Вход по deep link на оплату

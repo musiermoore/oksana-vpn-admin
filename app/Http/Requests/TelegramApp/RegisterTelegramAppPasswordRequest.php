@@ -29,6 +29,7 @@ class RegisterTelegramAppPasswordRequest extends DataFormRequest
                 Rule::unique('users', 'login')->whereNull('deleted_at'),
             ],
             'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'referral' => ['nullable', 'string', 'max:2000'],
         ];
     }
 

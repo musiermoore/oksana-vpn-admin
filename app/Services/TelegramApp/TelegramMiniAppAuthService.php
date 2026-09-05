@@ -12,6 +12,7 @@ use App\Models\TelegramAppToken;
 use App\Models\User;
 use App\Repositories\TelegramAppTokenRepository;
 use App\Services\Api\ApiUserService;
+use App\Services\ReferralService;
 use DomainException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -22,6 +23,7 @@ class TelegramMiniAppAuthService
 {
     public function __construct(
         private readonly ApiUserService $apiUserService,
+        private readonly ReferralService $referrals,
         private readonly TelegramAppTokenRepository $tokens,
     ) {}
 
@@ -105,6 +107,8 @@ class TelegramMiniAppAuthService
             'join_at' => now()->toDateString(),
             'is_admin' => false,
         ]);
+
+        $this->referrals->attachReferral($user, $data->referral);
 
         return $this->issueToken($user);
     }

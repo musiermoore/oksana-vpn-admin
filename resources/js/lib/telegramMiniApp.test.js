@@ -29,11 +29,19 @@ class MemoryStorage {
     }
 }
 
-const createWindow = ({ initData = '', search = '', hash = '', storedInitData = '', pathname = '/telegram-app/' } = {}) => {
+const createWindow = ({
+    initData = '',
+    search = '',
+    hash = '',
+    storedInitData = '',
+    pathname = '/telegram-app/',
+    hostname = 'example.com',
+} = {}) => {
     const sessionStorage = new MemoryStorage();
     const location = {
-        href: `https://example.com${pathname}${search}`,
-        origin: 'https://example.com',
+        href: `https://${hostname}${pathname}${search}`,
+        origin: `https://${hostname}`,
+        hostname,
         pathname,
         search,
         hash,
@@ -185,11 +193,28 @@ test('ensureTelegramAppSession redirects public app users without token to publi
 test('ensureTelegramAppSession redirects hidden public app users without token to root login', async () => {
     global.window = createWindow({
         pathname: '/',
+        hostname: 'public.oksana1984.ru',
     });
 
     await assert.rejects(ensureTelegramAppSession({
         authUrl: '/auth/telegram',
         profileUrl: '/me',
+    }), {
+        message: 'Требуется вход.',
+    });
+
+    assert.equal(window.location.replacedWith, '/login');
+});
+
+test('ensureTelegramAppSession redirects public host users to root login even with internal public profile url', async () => {
+    global.window = createWindow({
+        pathname: '/',
+        hostname: 'public.oksana1984.ru',
+    });
+
+    await assert.rejects(ensureTelegramAppSession({
+        authUrl: '/public/auth/telegram',
+        profileUrl: '/public/me',
     }), {
         message: 'Требуется вход.',
     });

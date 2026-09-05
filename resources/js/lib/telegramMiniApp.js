@@ -384,13 +384,24 @@ const isPublicAppPath = (profileUrl = '') => {
     const path = window.location.pathname.replace(/\/+$/, '') || '/';
     const profilePath = new URL(profileUrl || '/telegram-app/me', window.location.origin).pathname.replace(/\/+$/, '');
 
-    return path === '/public' || path.startsWith('/public/') || profilePath === '/me' || profilePath === '/public/me';
+    return isPublicAppHost() || path === '/public' || path.startsWith('/public/') || profilePath === '/me' || profilePath === '/public/me';
+};
+
+const isPublicAppHost = () => {
+    const hostname = window.location.hostname ?? '';
+
+    return hostname === 'public.oksana1984.ru' || hostname === 'www.public.oksana1984.ru';
 };
 
 const publicLoginUrl = (profileUrl = '') => {
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
     const profilePath = new URL(profileUrl || '/public/me', window.location.origin).pathname.replace(/\/+$/, '');
 
-    return profilePath === '/me' ? '/login' : '/public/login';
+    if (isPublicAppHost() || (currentPath !== '/public' && !currentPath.startsWith('/public/')) || profilePath === '/me') {
+        return '/login';
+    }
+
+    return '/public/login';
 };
 
 const redirectToPublicLogin = (profileUrl = '') => {

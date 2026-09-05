@@ -77,42 +77,51 @@ class PageController extends Controller
 
     private function page(string $component, array $extra = [])
     {
+        $routePrefix = $this->routeNamePrefix();
+
         return $this->inertia($component, [
             'routes' => [
-                'login' => route('telegram-app.login'),
-                'register' => route('telegram-app.register'),
-                'home' => route('telegram-app.home'),
-                'wireguard' => route('telegram-app.pages.wireguard'),
-                'vless' => route('telegram-app.pages.vless'),
-                'vless_wl' => route('telegram-app.pages.vless-wl'),
-                'payments' => route('telegram-app.pages.payments'),
-                'help' => route('telegram-app.pages.help'),
-                'chats' => route('telegram-app.pages.chats'),
-                'support' => route('telegram-app.pages.support'),
-                'giveaway' => route('telegram-app.pages.giveaway'),
-                'giveaway_summary' => route('telegram-app.giveaway.summary'),
-                'referrals' => route('telegram-app.pages.referrals'),
+                'login' => route($routePrefix.'.login'),
+                'register' => route($routePrefix.'.register'),
+                'home' => route($routePrefix.'.home'),
+                'wireguard' => route($routePrefix.'.pages.wireguard'),
+                'vless' => route($routePrefix.'.pages.vless'),
+                'vless_wl' => route($routePrefix.'.pages.vless-wl'),
+                'payments' => route($routePrefix.'.pages.payments'),
+                'help' => route($routePrefix.'.pages.help'),
+                'chats' => route($routePrefix.'.pages.chats'),
+                'support' => route($routePrefix.'.pages.support'),
+                'giveaway' => route($routePrefix.'.pages.giveaway'),
+                'giveaway_summary' => route($routePrefix.'.giveaway.summary'),
+                'referrals' => route($routePrefix.'.pages.referrals'),
             ],
-            'auth_url' => route('telegram-app.auth.telegram'),
-            'password_auth_url' => route('telegram-app.auth.password'),
-            'password_registration_url' => route('telegram-app.auth.register'),
-            'profile_url' => route('telegram-app.me'),
-            'wireguard_configs_url' => route('telegram-app.wireguard.configs.index'),
-            'vless_link_url' => route('telegram-app.vless.link'),
-            'vless_qr_url' => route('telegram-app.vless.qr-code'),
-            'vless_send_qr_url' => route('telegram-app.vless.send-qr'),
-            'vless_wl_link_url' => route('telegram-app.vless-wl.link'),
-            'vless_wl_qr_url' => route('telegram-app.vless-wl.qr-code'),
-            'vless_wl_send_qr_url' => route('telegram-app.vless-wl.send-qr'),
-            'support_tickets_url' => route('telegram-app.support.tickets.index'),
-            'support_ticket_store_url' => route('telegram-app.support.tickets.store'),
-            'subscription_packages_url' => route('telegram-app.subscription-packages'),
-            'claim_referral_url' => route('telegram-app.referrals.claim'),
-            'giveaway_url' => route('telegram-app.giveaway.show'),
-            'giveaway_participate_url' => route('telegram-app.giveaway.participate'),
-            'payment_url' => route('telegram-app.payments.subscriptions'),
-            'activate_subscription_code_url' => route('telegram-app.payments.subscription-codes.activate'),
+            'auth_url' => route($routePrefix.'.auth.telegram'),
+            'password_auth_url' => route($routePrefix.'.auth.password'),
+            'password_registration_url' => route($routePrefix.'.auth.register'),
+            'profile_url' => route($routePrefix.'.me'),
+            'wireguard_configs_url' => route($routePrefix.'.wireguard.configs.index'),
+            'vless_link_url' => route($routePrefix.'.vless.link'),
+            'vless_qr_url' => route($routePrefix.'.vless.qr-code'),
+            'vless_send_qr_url' => route($routePrefix.'.vless.send-qr'),
+            'vless_wl_link_url' => route($routePrefix.'.vless-wl.link'),
+            'vless_wl_qr_url' => route($routePrefix.'.vless-wl.qr-code'),
+            'vless_wl_send_qr_url' => route($routePrefix.'.vless-wl.send-qr'),
+            'support_tickets_url' => route($routePrefix.'.support.tickets.index'),
+            'support_ticket_store_url' => route($routePrefix.'.support.tickets.store'),
+            'subscription_packages_url' => route($routePrefix.'.subscription-packages'),
+            'claim_referral_url' => route($routePrefix.'.referrals.claim'),
+            'giveaway_url' => route($routePrefix.'.giveaway.show'),
+            'giveaway_participate_url' => route($routePrefix.'.giveaway.participate'),
+            'payment_url' => route($routePrefix.'.payments.subscriptions'),
+            'activate_subscription_code_url' => route($routePrefix.'.payments.subscription-codes.activate'),
             ...$extra,
         ]);
+    }
+
+    private function routeNamePrefix(): string
+    {
+        $routeName = (string) request()->route()?->getName();
+
+        return str_starts_with($routeName, 'public.') ? 'public' : 'telegram-app';
     }
 }

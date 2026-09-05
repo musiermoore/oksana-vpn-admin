@@ -46,6 +46,33 @@ class TelegramAppConnectionRoutesTest extends TestCase
             ]);
     }
 
+    public function test_authenticated_user_can_load_wireguard_configs_via_public_routes(): void
+    {
+        [$user, $token] = $this->createAuthorizedActiveUser();
+        $server = $this->createServer('WG');
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'ios-main',
+            'description' => 'Primary config',
+            'is_active' => true,
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/public/wireguard/configs')
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [[
+                    'id' => $config->id,
+                    'name' => 'ios-main',
+                    'download_url' => "/public/wireguard/configs/{$config->id}/download",
+                    'qr_code_url' => "/public/wireguard/configs/{$config->id}/qr-code",
+                    'send_file_to_bot_url' => "/public/wireguard/configs/{$config->id}/send-file",
+                    'send_qr_to_bot_url' => "/public/wireguard/configs/{$config->id}/send-qr",
+                ]],
+            ]);
+    }
+
     public function test_authenticated_user_can_load_xray_wireguard_configs_via_telegram_app_routes(): void
     {
         [$user, $token] = $this->createAuthorizedActiveUser();
@@ -148,13 +175,16 @@ class TelegramAppConnectionRoutesTest extends TestCase
             'extra' => $uri,
         ]);
 
-        $this->withToken($token)
+        $response = $this->withToken($token)
             ->get("/telegram-app/wireguard/configs/xray-{$config->id}/download")
             ->assertOk()
-            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
-            ->assertSeeText('PrivateKey = +IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=')
-            ->assertSeeText('Jc = 4')
-            ->assertSeeText('Endpoint = awg.example.com:13249');
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
+
+        $content = $response->streamedContent();
+
+        $this->assertStringContainsString('PrivateKey = +IJ5UNG15iKllLDeHjRqwxeFSbTCLbBzWGu4kEbPSm4=', $content);
+        $this->assertStringContainsString('Jc = 4', $content);
+        $this->assertStringContainsString('Endpoint = awg.example.com:13249', $content);
     }
 
     public function test_wireguard_and_vless_routes_return_access_error_for_user_without_active_subscription(): void

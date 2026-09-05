@@ -20,12 +20,12 @@
   - либо переход в `SUBSCRIPTION_OVERVIEW`, если `start_param=payments`
   - при ошибке переход в `APP_INIT_ERROR`
 - `PUBLIC_LOGIN`
-  - вход на `/telegram-app/login`
+  - вход на `/telegram-app/login` или `/public/login`
   - проверка `login` и `password`
   - сохранение mini-app bearer token
   - переход в `HOME`
 - `PUBLIC_REGISTER`
-  - вход на `/telegram-app/register`
+  - вход на `/telegram-app/register` или `/public/register`
   - создание пользователя по имени, `login` и `password`
   - сохранение mini-app bearer token
   - переход в `HOME`
@@ -175,6 +175,7 @@
 - page route: `/telegram-app/`
 - page route: `/telegram-app/login`
 - page route: `/telegram-app/register`
+- duplicated public page routes: `/public/*`
 - page route: `/telegram-app/payments`
 - page route: `/telegram-app/support`
 - page route: `/telegram-app/support/{ticketId}`
@@ -182,6 +183,7 @@
 - API action: `POST /telegram-app/auth/login`
 - API action: `POST /telegram-app/auth/register`
 - API action: `GET /telegram-app/me`
+- duplicated public API actions: `/public/*`
 - API action: `GET /telegram-app/subscription-packages`
 - API action: `POST /telegram-app/payments/subscriptions`
 - API action: `GET /telegram-app/support/tickets`

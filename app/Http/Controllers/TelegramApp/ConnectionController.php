@@ -33,6 +33,7 @@ class ConnectionController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $routePrefix = $this->routeNamePrefix($request);
 
         if ($response = $this->ensureActiveAccess($user)) {
             return $response;
@@ -42,22 +43,22 @@ class ConnectionController extends Controller
 
         return response()->json([
             'configs' => $configs
-                ->map(function (Config|VlessConfig $config): array {
+                ->map(function (Config|VlessConfig $config) use ($routePrefix): array {
                     $configId = WireGuardConfigPublicId::encode($config);
 
                     return [
                         'id' => $configId,
                         'name' => $config->name,
-                        'download_url' => route('telegram-app.wireguard.configs.download', [
+                        'download_url' => route($routePrefix.'.wireguard.configs.download', [
                             'configId' => $configId,
                         ], absolute: false),
-                        'qr_code_url' => route('telegram-app.wireguard.configs.qr-code', [
+                        'qr_code_url' => route($routePrefix.'.wireguard.configs.qr-code', [
                             'configId' => $configId,
                         ], absolute: false),
-                        'send_file_to_bot_url' => route('telegram-app.wireguard.configs.send-file', [
+                        'send_file_to_bot_url' => route($routePrefix.'.wireguard.configs.send-file', [
                             'configId' => $configId,
                         ], absolute: false),
-                        'send_qr_to_bot_url' => route('telegram-app.wireguard.configs.send-qr', [
+                        'send_qr_to_bot_url' => route($routePrefix.'.wireguard.configs.send-qr', [
                             'configId' => $configId,
                         ], absolute: false),
                     ];
@@ -278,6 +279,13 @@ class ConnectionController extends Controller
             $this->wireGuardClientConfigBuilder->buildDownloadFilename($config),
             $temporaryPath,
         ];
+    }
+
+    private function routeNamePrefix(Request $request): string
+    {
+        $routeName = (string) $request->route()?->getName();
+
+        return str_starts_with($routeName, 'public.') ? 'public' : 'telegram-app';
     }
 
     private function buildXrayWireGuardQrPng(VlessConfig $config): string

@@ -143,6 +143,29 @@ class TelegramAppAuthTest extends TestCase
             ->assertJsonPath('user.telegram', '@alice');
     }
 
+    public function test_authorized_user_can_load_public_profile_via_bearer_token(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Alice Doe',
+            'login' => 'alice',
+        ]);
+
+        $plainTextToken = str_repeat('b', 80);
+
+        TelegramAppToken::query()->create([
+            'user_id' => $user->id,
+            'token_hash' => hash('sha256', $plainTextToken),
+            'last_used_at' => now(),
+        ]);
+
+        $response = $this->withToken($plainTextToken)
+            ->getJson('/public/me');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('user.name', 'Alice Doe');
+    }
+
     public function test_telegram_app_login_page_is_available(): void
     {
         $this->get('/telegram-app/login')
@@ -154,6 +177,19 @@ class TelegramAppAuthTest extends TestCase
             );
     }
 
+    public function test_public_login_page_uses_public_routes(): void
+    {
+        $this->get('/public/login')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('TelegramApp/Login')
+                ->where('routes.home', route('public.home'))
+                ->where('routes.register', route('public.register'))
+                ->where('password_auth_url', route('public.auth.password'))
+                ->where('profile_url', route('public.me'))
+            );
+    }
+
     public function test_telegram_app_register_page_is_available(): void
     {
         $this->get('/telegram-app/register')
@@ -162,6 +198,17 @@ class TelegramAppAuthTest extends TestCase
                 ->component('TelegramApp/Register')
                 ->where('routes.login', route('telegram-app.login'))
                 ->where('password_registration_url', route('telegram-app.auth.register'))
+            );
+    }
+
+    public function test_public_register_page_uses_public_routes(): void
+    {
+        $this->get('/public/register')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('TelegramApp/Register')
+                ->where('routes.login', route('public.login'))
+                ->where('password_registration_url', route('public.auth.register'))
             );
     }
 
@@ -184,6 +231,27 @@ class TelegramAppAuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.telegram', '@alice')
             ->assertJsonPath('user.telegram_id', '123456789')
+            ->assertJsonStructure(['token', 'expires_at', 'user']);
+
+        $this->assertDatabaseCount('telegram_app_tokens', 1);
+    }
+
+    public function test_public_password_auth_returns_public_app_token(): void
+    {
+        User::factory()->create([
+            'name' => 'Alice Doe',
+            'login' => 'alice',
+            'password' => Hash::make('secret-password'),
+        ]);
+
+        $response = $this->postJson('/public/auth/login', [
+            'login' => 'alice',
+            'password' => 'secret-password',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('user.name', 'Alice Doe')
             ->assertJsonStructure(['token', 'expires_at', 'user']);
 
         $this->assertDatabaseCount('telegram_app_tokens', 1);

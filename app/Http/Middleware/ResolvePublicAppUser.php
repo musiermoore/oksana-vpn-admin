@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class ResolveTelegramAppUser
+class ResolvePublicAppUser
 {
     public function __construct(
         private readonly TelegramMiniAppAuthService $authService,
@@ -18,8 +18,7 @@ class ResolveTelegramAppUser
 
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->bearerToken();
-        $user = $this->authService->resolveUserByToken($token);
+        $user = $this->authService->resolveUserByToken($request->bearerToken());
 
         if (! $user) {
             return response()->json([
@@ -27,7 +26,7 @@ class ResolveTelegramAppUser
             ], 401);
         }
 
-        $request->attributes->set('telegramAppUser', $user);
+        $request->attributes->set('publicAppUser', $user);
         $request->setUserResolver(fn () => $user);
         Auth::guard()->setUser($user);
 

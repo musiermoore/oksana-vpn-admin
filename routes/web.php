@@ -166,7 +166,7 @@ Route::get('connect-wl/deep-link/{client}', [VlessConfigController::class, 'deep
     ->middleware(TrackApiRequests::class)
     ->name('vless.deep-link-wl');
 
-Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
+$telegramAppPublicRoutes = function (): void {
     Route::get('login', [TelegramAppPageController::class, 'login'])->name('login');
     Route::get('register', [TelegramAppPageController::class, 'register'])->name('register');
     Route::get('/', [TelegramAppPageController::class, 'home'])->name('home');
@@ -190,8 +190,9 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
         ->name('auth.register');
     Route::post('diagnostics/bootstrap', [TelegramAppDiagnosticController::class, 'bootstrap'])
         ->name('diagnostics.bootstrap');
+};
 
-    Route::middleware('telegram.app')->group(function () {
+$telegramAppAuthenticatedRoutes = function (): void {
         Route::get('me', [TelegramAppUserController::class, 'show'])->name('me');
         Route::post('logout', [TelegramAppAuthController::class, 'logout'])->name('logout');
         Route::get('subscription-packages', [TelegramAppUserController::class, 'subscriptionPackages'])
@@ -239,5 +240,19 @@ Route::prefix('telegram-app')->name('telegram-app.')->group(function () {
             ->name('support.tickets.show');
         Route::post('support/tickets/{ticketId}/messages', [TelegramAppSupportTicketController::class, 'addMessage'])
             ->name('support.tickets.messages.store');
+};
+
+foreach ([
+    'public' => 'public.app',
+    'telegram-app' => 'telegram.app',
+] as $prefix => $middleware) {
+    Route::prefix($prefix)->name($prefix.'.')->group(function () use (
+        $telegramAppPublicRoutes,
+        $telegramAppAuthenticatedRoutes,
+        $middleware,
+    ): void {
+        $telegramAppPublicRoutes();
+
+        Route::middleware($middleware)->group($telegramAppAuthenticatedRoutes);
     });
-});
+}

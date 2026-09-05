@@ -3,6 +3,7 @@
 use App\Support\TelegramExceptionReporter;
 use App\Http\Middleware\EnsureApiUserHasActiveAccess;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ResolvePublicAppUser;
 use App\Http\Middleware\ResolveApiUser;
 use App\Http\Middleware\ResolveTelegramAppUser;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'api.user' => ResolveApiUser::class,
             'api.user.access' => EnsureApiUserHasActiveAccess::class,
+            'public.app' => ResolvePublicAppUser::class,
             'telegram.app' => ResolveTelegramAppUser::class,
         ]);
 
@@ -36,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->preventRequestForgery(except: [
             'api/users/register',
             'api/users/*/save-id',
+            'public/*',
             'telegram-app/*',
         ]);
     })

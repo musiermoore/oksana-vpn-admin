@@ -222,6 +222,37 @@ test('ensureTelegramAppSession redirects public host users to root login even wi
     assert.equal(window.location.replacedWith, '/login');
 });
 
+test('ensureTelegramAppSession does not redirect root public login page', async () => {
+    global.window = createWindow({
+        pathname: '/login',
+        hostname: 'public.oksana1984.ru',
+    });
+
+    await assert.rejects(ensureTelegramAppSession({
+        authUrl: '/public/auth/telegram',
+        profileUrl: '/public/me',
+    }), {
+        message: 'Требуется вход.',
+    });
+
+    assert.equal(window.location.replacedWith, null);
+});
+
+test('ensureTelegramAppSession does not redirect internal public login page', async () => {
+    global.window = createWindow({
+        pathname: '/public/login',
+    });
+
+    await assert.rejects(ensureTelegramAppSession({
+        authUrl: '/public/auth/telegram',
+        profileUrl: '/public/me',
+    }), {
+        message: 'Требуется вход.',
+    });
+
+    assert.equal(window.location.replacedWith, null);
+});
+
 test('ensureTelegramAppSession loads public app profile when token exists', async () => {
     const requests = [];
 

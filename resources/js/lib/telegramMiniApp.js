@@ -404,7 +404,17 @@ const publicLoginUrl = (profileUrl = '') => {
     return '/public/login';
 };
 
+const isPublicAuthPage = () => {
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+
+    return ['/login', '/register', '/public/login', '/public/register'].includes(currentPath);
+};
+
 const redirectToPublicLogin = (profileUrl = '') => {
+    if (isPublicAuthPage()) {
+        return;
+    }
+
     const currentPath = window.location.pathname.replace(/\/+$/, '') || '/public';
     const loginUrl = publicLoginUrl(profileUrl);
 

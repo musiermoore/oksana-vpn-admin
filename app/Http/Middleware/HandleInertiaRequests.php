@@ -2,12 +2,28 @@
 
 namespace App\Http\Middleware;
 
+use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
+
+    public function urlResolver(): ?Closure
+    {
+        return function (Request $request): string {
+            $url = Str::start(Str::after($request->fullUrl(), $request->getSchemeAndHttpHost()), '/');
+            $routeName = (string) $request->route()?->getName();
+
+            if (str_starts_with($routeName, 'public.')) {
+                $url = preg_replace('#^/public(?=/|$)#', '', $url) ?: '/';
+            }
+
+            return $url === '' ? '/' : $url;
+        };
+    }
 
     public function share(Request $request): array
     {

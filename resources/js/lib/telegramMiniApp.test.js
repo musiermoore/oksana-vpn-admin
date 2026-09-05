@@ -35,13 +35,11 @@ const createWindow = ({
     hash = '',
     storedInitData = '',
     pathname = '/telegram-app/',
-    hostname = 'example.com',
 } = {}) => {
     const sessionStorage = new MemoryStorage();
     const location = {
-        href: `https://${hostname}${pathname}${search}`,
-        origin: `https://${hostname}`,
-        hostname,
+        href: `https://example.com${pathname}${search}`,
+        origin: 'https://example.com',
         pathname,
         search,
         hash,
@@ -193,7 +191,6 @@ test('ensureTelegramAppSession redirects public app users without token to publi
 test('ensureTelegramAppSession redirects hidden public app users without token to root login', async () => {
     global.window = createWindow({
         pathname: '/',
-        hostname: 'public.oksana1984.ru',
     });
 
     await assert.rejects(ensureTelegramAppSession({
@@ -206,10 +203,9 @@ test('ensureTelegramAppSession redirects hidden public app users without token t
     assert.equal(window.location.replacedWith, '/login');
 });
 
-test('ensureTelegramAppSession redirects public host users to root login even with internal public profile url', async () => {
+test('ensureTelegramAppSession redirects hidden public app users to root login even with internal public profile url', async () => {
     global.window = createWindow({
         pathname: '/',
-        hostname: 'public.oksana1984.ru',
     });
 
     await assert.rejects(ensureTelegramAppSession({
@@ -225,7 +221,6 @@ test('ensureTelegramAppSession redirects public host users to root login even wi
 test('ensureTelegramAppSession does not redirect root public login page', async () => {
     global.window = createWindow({
         pathname: '/login',
-        hostname: 'public.oksana1984.ru',
     });
 
     await assert.rejects(ensureTelegramAppSession({

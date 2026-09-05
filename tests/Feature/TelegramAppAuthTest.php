@@ -183,6 +183,7 @@ class TelegramAppAuthTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Login')
+                ->url('/login')
                 ->where('routes.home', '/')
                 ->where('routes.register', '/register')
                 ->where('password_auth_url', '/auth/login')
@@ -207,6 +208,7 @@ class TelegramAppAuthTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Register')
+                ->url('/register')
                 ->where('routes.login', '/login')
                 ->where('password_registration_url', '/auth/register')
             );

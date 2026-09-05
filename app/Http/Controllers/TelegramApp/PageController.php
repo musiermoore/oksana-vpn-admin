@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\TelegramApp;
 
 use App\Http\Controllers\Controller;
+use App\Support\PublicAppUrl;
 
 class PageController extends Controller
 {
@@ -124,10 +125,10 @@ class PageController extends Controller
             return route($routePrefix.'.'.$name, $parameters);
         }
 
-        $url = route($routePrefix.'.'.$name, $parameters, absolute: false);
-        $url = preg_replace('#^/public(?=/|$)#', '', $url) ?: '/';
-
-        return $url === '' ? '/' : $url;
+        return PublicAppUrl::toVisibleUrl(
+            route($routePrefix.'.'.$name, $parameters, absolute: false),
+            request()
+        );
     }
 
     private function routeNamePrefix(): string

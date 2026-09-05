@@ -177,9 +177,35 @@ class TelegramAppAuthTest extends TestCase
             );
     }
 
+    public function test_admin_login_page_keeps_admin_inertia_url(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Auth/Login')
+                ->url('/login')
+            );
+    }
+
     public function test_public_login_page_uses_public_routes(): void
     {
         $this->get('/public/login')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('TelegramApp/Login')
+                ->url('/public/login')
+                ->where('routes.home', '/public')
+                ->where('routes.register', '/public/register')
+                ->where('password_auth_url', '/public/auth/login')
+                ->where('profile_url', '/public/me')
+            );
+    }
+
+    public function test_hidden_public_login_page_uses_root_public_routes(): void
+    {
+        config()->set('app.public_hosts', ['public.oksana1984.ru']);
+
+        $this->get('https://public.oksana1984.ru/public/login')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Login')
@@ -205,6 +231,20 @@ class TelegramAppAuthTest extends TestCase
     public function test_public_register_page_uses_public_routes(): void
     {
         $this->get('/public/register')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('TelegramApp/Register')
+                ->url('/public/register')
+                ->where('routes.login', '/public/login')
+                ->where('password_registration_url', '/public/auth/register')
+            );
+    }
+
+    public function test_hidden_public_register_page_uses_root_public_routes(): void
+    {
+        config()->set('app.public_hosts', ['public.oksana1984.ru']);
+
+        $this->get('https://public.oksana1984.ru/public/register')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Register')
@@ -345,4 +385,5 @@ class TelegramAppAuthTest extends TestCase
             'hash' => $hash,
         ]);
     }
+
 }

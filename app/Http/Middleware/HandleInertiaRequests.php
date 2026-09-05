@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PublicAppUrl;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ class HandleInertiaRequests extends Middleware
             $routeName = (string) $request->route()?->getName();
 
             if (str_starts_with($routeName, 'public.')) {
-                $url = preg_replace('#^/public(?=/|$)#', '', $url) ?: '/';
+                $url = PublicAppUrl::toVisibleUrl($url, $request);
             }
 
             return $url === '' ? '/' : $url;

@@ -65,6 +65,35 @@ class TelegramAppConnectionRoutesTest extends TestCase
                 'configs' => [[
                     'id' => $config->id,
                     'name' => 'ios-main',
+                    'download_url' => "/public/wireguard/configs/{$config->id}/download",
+                    'qr_code_url' => "/public/wireguard/configs/{$config->id}/qr-code",
+                    'send_file_to_bot_url' => "/public/wireguard/configs/{$config->id}/send-file",
+                    'send_qr_to_bot_url' => "/public/wireguard/configs/{$config->id}/send-qr",
+                ]],
+            ]);
+    }
+
+    public function test_authenticated_user_can_load_wireguard_configs_via_hidden_public_routes(): void
+    {
+        config()->set('app.public_hosts', ['public.oksana1984.ru']);
+
+        [$user, $token] = $this->createAuthorizedActiveUser();
+        $server = $this->createServer('WG');
+        $config = Config::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'name' => 'ios-main',
+            'description' => 'Primary config',
+            'is_active' => true,
+        ]);
+
+        $this->withToken($token)
+            ->getJson('https://public.oksana1984.ru/public/wireguard/configs')
+            ->assertOk()
+            ->assertExactJson([
+                'configs' => [[
+                    'id' => $config->id,
+                    'name' => 'ios-main',
                     'download_url' => "/wireguard/configs/{$config->id}/download",
                     'qr_code_url' => "/wireguard/configs/{$config->id}/qr-code",
                     'send_file_to_bot_url' => "/wireguard/configs/{$config->id}/send-file",

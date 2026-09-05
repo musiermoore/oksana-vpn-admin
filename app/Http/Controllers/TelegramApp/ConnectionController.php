@@ -10,6 +10,7 @@ use App\Models\VlessConfig;
 use App\Services\Api\ApiUserService;
 use App\Services\WireGuardClientConfigBuilder;
 use App\Services\WireGuardAgentConfigService;
+use App\Support\PublicAppUrl;
 use App\Support\WireGuardConfigPublicId;
 use App\Support\BotApiMessages;
 use Exception;
@@ -299,9 +300,7 @@ class ConnectionController extends Controller
             return $url;
         }
 
-        $url = preg_replace('#^/public(?=/|$)#', '', $url) ?: '/';
-
-        return $url === '' ? '/' : $url;
+        return PublicAppUrl::toVisibleUrl($url, request());
     }
 
     private function buildXrayWireGuardQrPng(VlessConfig $config): string

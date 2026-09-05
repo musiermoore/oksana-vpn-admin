@@ -54,6 +54,11 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'public_hosts' => array_filter(array_map(
+        'trim',
+        explode(',', env('PUBLIC_APP_HOSTS', 'public.oksana1984.ru,www.public.oksana1984.ru'))
+    )),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

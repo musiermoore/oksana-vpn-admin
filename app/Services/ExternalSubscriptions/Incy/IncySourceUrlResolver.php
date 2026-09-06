@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\ExternalSubscriptions\Incy;
 
 use App\Enums\ExternalSubscriptionSourceFormat;
+use App\Services\ExternalSubscriptions\ExternalSubscriptionPullHeaders;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -44,7 +45,8 @@ class IncySourceUrlResolver
 
     private function resolveRedirectTarget(string $sourceUrl): string
     {
-        $response = Http::timeout(max(5, (int) config('incy.redirect.request_timeout_seconds', 20)))
+        $response = Http::withHeaders(ExternalSubscriptionPullHeaders::HEADERS)
+            ->timeout(max(5, (int) config('incy.redirect.request_timeout_seconds', 20)))
             ->withoutRedirecting()
             ->get($sourceUrl);
 

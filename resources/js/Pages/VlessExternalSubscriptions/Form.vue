@@ -56,12 +56,12 @@ const loadPreview = async () => {
 </script>
 
 <template>
-    <Head :title="mode === 'edit' ? 'Редактирование WL-подписки' : 'Создание WL-подписки'" />
+    <Head :title="mode === 'edit' ? 'Редактирование внешней подписки' : 'Создание внешней подписки'" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>{{ mode === 'edit' ? 'Редактирование WL-подписки' : 'Создание WL-подписки' }}</h1>
+                <h1>{{ mode === 'edit' ? 'Редактирование внешней подписки' : 'Создание внешней подписки' }}</h1>
             </div>
         </div>
 

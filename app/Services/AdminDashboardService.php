@@ -119,17 +119,17 @@ class AdminDashboardService
                 [
                     'label' => 'Сеть',
                     'icon' => 'server',
-                    'description' => 'Серверы, Xray-конфигурации, прокси и whitelist-подписки.',
+                    'description' => 'Серверы, Xray-конфигурации, прокси и внешние подписки.',
                     'links' => [
                         ['label' => 'Серверы', 'href' => route('servers.index')],
                         ['label' => 'Xray Configs', 'href' => route('xray-configs.index')],
                         ['label' => 'Прокси', 'href' => route('proxies.index')],
-                        ['label' => 'VLESS WL', 'href' => route('vless-external-subscriptions.index')],
+                        ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index')],
                     ],
                     'highlights' => [
                         sprintf('%d активных серверов', $activeServers),
                         sprintf('%d серверов с предупреждениями', $serverWarnings),
-                        sprintf('%d активных whitelist-подписок', VlessExternalSubscription::query()->where('is_active', true)->count()),
+                        sprintf('%d активных внешних подписок', VlessExternalSubscription::query()->where('is_active', true)->count()),
                     ],
                 ],
                 [

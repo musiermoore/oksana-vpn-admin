@@ -6,8 +6,10 @@ namespace Tests\Feature;
 
 use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Models\VlessExternalSubscription;
+use App\Services\ExternalSubscriptions\ExternalSubscriptionPullHeaders;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -60,6 +62,31 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
         );
     }
 
+    public function test_sync_sends_incy_client_headers_when_fetching_subscription_url(): void
+    {
+        Http::fake([
+            'https://subscription.example.com/list' => Http::response(base64_encode(
+                "vless://uuid-headers@headers.example.com:443?type=tcp&security=reality#Headers\n"
+            )),
+        ]);
+
+        $subscription = VlessExternalSubscription::query()->create([
+            'name' => 'Header WL',
+            'type' => VlessExternalSubscription::TYPE_SUBSCRIPTION,
+            'source_format' => ExternalSubscriptionSourceFormat::Direct->value,
+            'source_url' => 'https://subscription.example.com/list',
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        app(VlessExternalSubscriptionSyncService::class)->sync($subscription);
+
+        Http::assertSent(function (Request $request): bool {
+            return $request->url() === 'https://subscription.example.com/list'
+                && $this->hasIncyClientHeaders($request);
+        });
+    }
+
     public function test_sync_resolves_https_page_that_redirects_to_incy_link(): void
     {
         Http::fake([
@@ -86,6 +113,11 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
         $this->assertCount(1, $result->configs);
         $this->assertSame('Germany 2', $result->configs[0]->name);
         $this->assertSame('trojan', $result->configs[0]->protocol);
+
+        Http::assertSent(function (Request $request): bool {
+            return $request->url() === self::REMOTE_INCY_REDIRECT_URL
+                && $this->hasIncyClientHeaders($request);
+        });
     }
 
     public function test_sync_falls_back_to_local_key_material_when_remote_source_is_unavailable(): void
@@ -128,5 +160,16 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
             base64_encode($a),
             base64_encode($b),
         );
+    }
+
+    private function hasIncyClientHeaders(Request $request): bool
+    {
+        foreach (ExternalSubscriptionPullHeaders::HEADERS as $name => $value) {
+            if ($request->header($name) !== [$value]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

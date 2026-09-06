@@ -182,7 +182,9 @@ class VlessExternalSubscriptionSyncService
      */
     private function parseSubscriptionLines(string $url): array
     {
-        $response = Http::timeout(20)->get($url);
+        $response = Http::withHeaders(ExternalSubscriptionPullHeaders::HEADERS)
+            ->timeout(20)
+            ->get($url);
 
         if (! $response->successful()) {
             throw new RuntimeException('Не удалось загрузить внешнюю подписку.');

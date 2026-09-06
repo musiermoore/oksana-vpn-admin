@@ -46,7 +46,7 @@ class HandleInertiaRequests extends Middleware
                     ['label' => 'Сервера', 'href' => route('servers.index'), 'badge' => 'SV', 'icon' => 'server'],
                     ['label' => 'Xray Configs', 'href' => route('xray-configs.index'), 'badge' => 'XR', 'icon' => 'nodes'],
                     ['label' => 'Прокси', 'href' => route('proxies.index'), 'badge' => 'PX', 'icon' => 'link'],
-                    ['label' => 'VLESS WL', 'href' => route('vless-external-subscriptions.index'), 'badge' => 'VW', 'icon' => 'spark'],
+                    ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index'), 'badge' => 'VS', 'icon' => 'spark'],
                 ],
             ],
             [

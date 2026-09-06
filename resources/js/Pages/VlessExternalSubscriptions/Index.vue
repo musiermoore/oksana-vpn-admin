@@ -20,13 +20,13 @@ const syncSubscription = (subscription) => {
 </script>
 
 <template>
-    <Head title="VLESS Белые списки" />
+    <Head title="Внешние подписки" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>VLESS Белые списки</h1>
-                <p>Внешние подписки и прямые конфиги для белых списков.</p>
+                <h1>Внешние подписки</h1>
+                <p>Внешние подписки и прямые конфиги для выдачи в connect.</p>
             </div>
 
             <div class="actions">

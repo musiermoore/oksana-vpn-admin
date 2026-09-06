@@ -66,6 +66,7 @@ class VlessExternalSubscriptionSyncService
                     'normalized_name' => (string) $item['normalized_name'],
                     'protocol' => $item['protocol'] ? (string) $item['protocol'] : null,
                     'url' => (string) $item['url'],
+                    'json' => $item['json'] ?? null,
                     'sort_order' => $index,
                 ]);
 
@@ -147,18 +148,21 @@ class VlessExternalSubscriptionSyncService
         ExternalSubscriptionSourceFormat $sourceFormat,
         string $sourceUrl,
         ?string $filterPattern
-    ): array
-    {
+    ): array {
         $resolvedSourceUrl = $this->sourceUrlResolver->resolve($sourceUrl, $sourceFormat);
 
         $lines = match ($type) {
-            VlessExternalSubscription::TYPE_SUBSCRIPTION => $this->parseSubscriptionLines($resolvedSourceUrl),
-            VlessExternalSubscription::TYPE_DIRECT => [trim($resolvedSourceUrl)],
+            VlessExternalSubscription::TYPE_SUBSCRIPTION => $this->parseSubscriptionConfigs($resolvedSourceUrl),
+            VlessExternalSubscription::TYPE_DIRECT => [['url' => trim($resolvedSourceUrl), 'json' => null]],
             default => throw new RuntimeException('Неизвестный тип внешней подписки.'),
         };
 
         $full = collect($lines)
-            ->map(fn (string $line, int $index) => $this->mapLine($line, $index))
+            ->map(fn (array $line, int $index) => $this->mapLine(
+                (string) $line['url'],
+                $index,
+                is_array($line['json'] ?? null) ? $line['json'] : null,
+            ))
             ->filter()
             ->values();
 
@@ -178,9 +182,9 @@ class VlessExternalSubscriptionSyncService
     }
 
     /**
-     * @return array<int, string>
+     * @return array<int, array{url: string, json: array<string, mixed>|null}>
      */
-    private function parseSubscriptionLines(string $url): array
+    private function parseSubscriptionConfigs(string $url): array
     {
         $response = Http::withHeaders(ExternalSubscriptionPullHeaders::HEADERS)
             ->timeout(20)
@@ -197,7 +201,7 @@ class VlessExternalSubscriptionSyncService
         }
 
         $decoded = base64_decode(preg_replace('/\s+/', '', $body) ?: '', true);
-        $content = $decoded !== false && $this->containsSupportedConfig($decoded)
+        $content = $decoded !== false && $this->containsSupportedSubscriptionContent($decoded)
             ? $decoded
             : $body;
 
@@ -210,6 +214,7 @@ class VlessExternalSubscriptionSyncService
         return collect(preg_split('/\r\n|\r|\n/', $content) ?: [])
             ->map(fn (string $line) => trim($line))
             ->filter(fn (string $line) => $line !== '' && $this->isSupportedSubscriptionLink($line))
+            ->map(fn (string $line) => ['url' => $line, 'json' => null])
             ->values()
             ->all();
     }
@@ -217,7 +222,7 @@ class VlessExternalSubscriptionSyncService
     /**
      * @return array<string, mixed>|null
      */
-    private function mapLine(string $line, int $index): ?array
+    private function mapLine(string $line, int $index, ?array $json = null): ?array
     {
         $parsed = $this->parser->parse($line);
 
@@ -239,6 +244,7 @@ class VlessExternalSubscriptionSyncService
             'normalized_name' => mb_strtolower($name),
             'protocol' => $protocol !== '' ? $protocol : null,
             'url' => $line,
+            'json' => $json,
         ];
     }
 
@@ -257,8 +263,13 @@ class VlessExternalSubscriptionSyncService
             ->contains(fn (string $line) => $this->isSupportedSubscriptionLink(trim($line)));
     }
 
+    private function containsSupportedSubscriptionContent(string $content): bool
+    {
+        return $this->containsSupportedConfig($content) || $this->parseJsonProfiles($content) !== [];
+    }
+
     /**
-     * @return array<int, string>
+     * @return array<int, array{url: string, json: array<string, mixed>|null}>
      */
     private function parseJsonProfiles(string $content): array
     {
@@ -272,9 +283,26 @@ class VlessExternalSubscriptionSyncService
             return [];
         }
 
-        return collect($decoded)
-            ->map(fn (mixed $profile) => is_array($profile) ? $this->buildUriFromJsonProfile($profile) : null)
-            ->filter(fn (mixed $uri) => is_string($uri) && $uri !== '')
+        $profiles = array_is_list($decoded) ? $decoded : [$decoded];
+
+        return collect($profiles)
+            ->map(function (mixed $profile): ?array {
+                if (! is_array($profile)) {
+                    return null;
+                }
+
+                $uri = $this->buildUriFromJsonProfile($profile);
+
+                if (! is_string($uri) || $uri === '') {
+                    return null;
+                }
+
+                return [
+                    'url' => $uri,
+                    'json' => $profile,
+                ];
+            })
+            ->filter()
             ->values()
             ->all();
     }
@@ -479,9 +507,6 @@ class VlessExternalSubscriptionSyncService
         );
     }
 
-    /**
-     * @param  mixed  $value
-     */
     private function normalizeJsonString(mixed $value): ?string
     {
         if ($value === null || $value === '') {
@@ -497,9 +522,6 @@ class VlessExternalSubscriptionSyncService
         return $encoded === false ? null : $encoded;
     }
 
-    /**
-     * @param  mixed  $value
-     */
     private function implodeList(mixed $value): string
     {
         if (is_string($value)) {

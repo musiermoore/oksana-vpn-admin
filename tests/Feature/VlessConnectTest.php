@@ -545,6 +545,90 @@ class VlessConnectTest extends TestCase
         $this->assertSame('blackhole', data_get($payload, '0.outbounds.2.protocol'));
     }
 
+    public function test_connect_json_returns_stored_external_subscription_json_profile(): void
+    {
+        $user = $this->createActiveUser('External JSON User', '@external-json-user', '112244');
+
+        $externalSubscription = VlessExternalSubscription::query()->create([
+            'name' => 'External JSON',
+            'sort_order' => 0,
+            'type' => VlessExternalSubscription::TYPE_SUBSCRIPTION,
+            'source_url' => 'https://example.com/json-sub',
+            'include_in_main_subscription' => true,
+            'include_in_whitelist' => true,
+            'is_free' => true,
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        $profile = [
+            'remarks' => 'Upstream JSON',
+            'routing' => [
+                'domainStrategy' => 'AsIs',
+                'balancers' => [[
+                    'tag' => 'auto',
+                    'selector' => ['proxy', 'direct'],
+                ]],
+            ],
+            'outbounds' => [
+                [
+                    'tag' => 'proxy',
+                    'protocol' => 'vless',
+                    'settings' => [
+                        'vnext' => [[
+                            'address' => 'external-json.example.com',
+                            'port' => 443,
+                            'users' => [[
+                                'id' => 'external-json-uuid',
+                                'encryption' => 'none',
+                            ]],
+                        ]],
+                    ],
+                    'streamSettings' => [
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                    ],
+                ],
+                [
+                    'tag' => 'direct',
+                    'protocol' => 'freedom',
+                ],
+            ],
+        ];
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $externalSubscription->id,
+            'config_key' => 'external-json',
+            'name' => 'Upstream JSON',
+            'normalized_name' => 'upstream json',
+            'protocol' => 'vless',
+            'url' => 'vless://external-json-uuid@external-json.example.com:443?type=tcp&security=reality#Upstream%20JSON',
+            'json' => $profile,
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->get(route('vless.connect-json', [
+            'tg' => Crypt::encrypt('112244'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $payload = json_decode((string) $response->getContent(), true);
+
+        $this->assertSame([$profile], $payload);
+        $this->assertSame('auto', data_get($payload, '0.routing.balancers.0.tag'));
+
+        $whiteListResponse = $this->get(route('vless.connect-wl', [
+            'tg' => Crypt::encrypt('112244'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'json',
+        ]));
+
+        $whiteListResponse->assertOk();
+        $this->assertSame([$profile], json_decode((string) $whiteListResponse->getContent(), true));
+    }
+
     public function test_connect_json_can_return_base64_encoded_profile_array(): void
     {
         $user = $this->createActiveUser('JSON Base64 User', '@json-base64-user', '445566');

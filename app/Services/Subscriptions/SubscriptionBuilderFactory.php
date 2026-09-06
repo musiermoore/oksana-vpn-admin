@@ -3,6 +3,7 @@
 namespace App\Services\Subscriptions;
 
 use App\Services\Subscriptions\Builders\ClashBuilder;
+use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
 use App\Services\Subscriptions\Builders\SingBoxBuilder;
 use App\Services\Subscriptions\Builders\SubscriptionBuilder;
 use App\Services\Subscriptions\Builders\UriBuilder;
@@ -14,6 +15,7 @@ class SubscriptionBuilderFactory
         private readonly UriBuilder $uriBuilder,
         private readonly ClashBuilder $clashBuilder,
         private readonly SingBoxBuilder $singBoxBuilder,
+        private readonly ConnectJsonBuilder $connectJsonBuilder,
     ) {}
 
     public function make(string $format): SubscriptionBuilder
@@ -22,6 +24,7 @@ class SubscriptionBuilderFactory
             'uri' => $this->uriBuilder,
             'clash' => $this->clashBuilder,
             'sing-box' => $this->singBoxBuilder,
+            'json' => $this->connectJsonBuilder,
             default => throw new InvalidArgumentException('Unsupported subscription format'),
         };
     }
@@ -32,6 +35,7 @@ class SubscriptionBuilderFactory
             '', 'uri', 'links', 'raw' => 'uri',
             'clash', 'mihomo', 'meta', 'hiddify' => 'clash',
             'sing-box', 'singbox', 'sb' => 'sing-box',
+            'json', 'connect-json' => 'json',
             default => throw new InvalidArgumentException('Unsupported subscription format'),
         };
     }

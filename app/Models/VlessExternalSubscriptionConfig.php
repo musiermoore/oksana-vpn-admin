@@ -14,7 +14,12 @@ class VlessExternalSubscriptionConfig extends Model
         'normalized_name',
         'protocol',
         'url',
+        'json',
         'sort_order',
+    ];
+
+    protected $casts = [
+        'json' => 'array',
     ];
 
     public function subscription(): BelongsTo

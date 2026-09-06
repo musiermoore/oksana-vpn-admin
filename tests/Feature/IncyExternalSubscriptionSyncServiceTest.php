@@ -87,6 +87,60 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
         });
     }
 
+    public function test_sync_stores_original_json_profile_from_json_subscription(): void
+    {
+        $profile = [
+            'remarks' => 'JSON Germany',
+            'routing' => [
+                'balancers' => [[
+                    'tag' => 'primary',
+                    'selector' => ['proxy', 'direct'],
+                ]],
+            ],
+            'outbounds' => [[
+                'tag' => 'proxy',
+                'protocol' => 'vless',
+                'settings' => [
+                    'vnext' => [[
+                        'address' => 'json-de.example.com',
+                        'port' => 443,
+                        'users' => [[
+                            'id' => 'json-uuid',
+                            'encryption' => 'none',
+                        ]],
+                    ]],
+                ],
+                'streamSettings' => [
+                    'network' => 'tcp',
+                    'security' => 'reality',
+                    'realitySettings' => [
+                        'serverName' => 'www.example.com',
+                    ],
+                ],
+            ]],
+        ];
+
+        Http::fake([
+            'https://subscription.example.com/json' => Http::response(base64_encode(json_encode([$profile], JSON_THROW_ON_ERROR))),
+        ]);
+
+        $subscription = VlessExternalSubscription::query()->create([
+            'name' => 'JSON WL',
+            'type' => VlessExternalSubscription::TYPE_SUBSCRIPTION,
+            'source_format' => ExternalSubscriptionSourceFormat::Direct->value,
+            'source_url' => 'https://subscription.example.com/json',
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        $result = app(VlessExternalSubscriptionSyncService::class)->sync($subscription);
+
+        $this->assertCount(1, $result->configs);
+        $this->assertSame('JSON Germany', $result->configs[0]->name);
+        $this->assertSame($profile, $result->configs[0]->json);
+        $this->assertSame('vless://json-uuid@json-de.example.com:443?type=tcp&encryption=none&security=reality&sni=www.example.com#JSON%20Germany', $result->configs[0]->url);
+    }
+
     public function test_sync_resolves_https_page_that_redirects_to_incy_link(): void
     {
         Http::fake([

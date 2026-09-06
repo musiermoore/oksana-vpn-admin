@@ -225,6 +225,7 @@ Flow:
   - mini-app download/QR для таких конфигов используют декодированный native `.conf`, включая `Jc/Jmin/Jmax`, `S1-S4`, `H1-H4`, `I1-I5` и новые protection/timing параметры
 - `/connect-json` использует тот же набор узлов, но отдаёт JSON-массив полных Xray-style конфигов, по одному объекту на узел
 - каждый объект в `/connect-json` содержит индивидуальный `remarks` и `outbounds`, а общие `dns`/`routing`/`inbounds` подмешиваются из конфигурации приложения
+- если внешний источник вернул JSON-профили, `/connect-json` и `format=json` отдают сохранённый upstream JSON для этих внешних конфигов без пересборки, чтобы не потерять routing rules, balancers и другие profile-level настройки
 - текущие DNS/routing/inbounds-настройки для `/connect-json` захардкожены в `config/connect_json.php` и вынесены в отдельный provider, чтобы позже их можно было заменить значениями из админки без смены маршрута
 - soft-deleted серверы не участвуют в `/connect` по умолчанию, потому что `servers` теперь используют Eloquent soft delete
 
@@ -249,6 +250,7 @@ White list выдача:
 Сущность:
 
 - `vless_external_subscriptions`
+- `vless_external_subscription_configs`
 
 Ключевые флаги:
 
@@ -266,6 +268,7 @@ White list выдача:
 - `sort_order` задаёт порядок самой внешней подписки среди локальных серверов в основном `/connect`
 - плановая и ручная синхронизация внешних подписок ставят job в очередь через явный `Bus::dispatch(new SyncVlessExternalSubscriptionJob(...))`
 - при загрузке внешнего источника backend отправляет INCY-like client headers, чтобы upstream видел запрос как обычный клиентский pull
+- если источник отдаёт JSON, оригинальный профиль сохраняется в `vless_external_subscription_configs.json` рядом с нормализованной URI-ссылкой
 
 Дополнительное правило нейминга:
 

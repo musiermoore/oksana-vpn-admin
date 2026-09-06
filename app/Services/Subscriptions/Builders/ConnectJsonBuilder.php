@@ -9,7 +9,7 @@ use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use App\Services\Subscriptions\SubscriptionUriParser;
 
-class ConnectJsonBuilder
+class ConnectJsonBuilder implements SubscriptionBuilder
 {
     public function __construct(
         private readonly SubscriptionUriParser $parser,
@@ -39,6 +39,10 @@ class ConnectJsonBuilder
      */
     private function buildProfile(NormalizedNode $node): ?array
     {
+        if (is_array($node->meta['json_profile'] ?? null)) {
+            return $node->meta['json_profile'];
+        }
+
         $parsed = $this->parser->parse($node->uri);
 
         if (! is_array($parsed)) {

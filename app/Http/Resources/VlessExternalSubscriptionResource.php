@@ -34,6 +34,7 @@ class VlessExternalSubscriptionResource extends JsonResource
                 'name' => $config->name,
                 'protocol' => $config->protocol,
                 'url' => $config->url,
+                'json' => $config->json,
             ])->values()->all()),
             'links' => [
                 'edit' => route('vless-external-subscriptions.edit', $this->resource),

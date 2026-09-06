@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Services\Subscriptions\NodeNameService;
 use App\Services\Subscriptions\SubscriptionUriParser;
+use Illuminate\Support\Collection;
 
 class VlessExternalSubscriptionAccessService
 {
@@ -116,21 +117,22 @@ class VlessExternalSubscriptionAccessService
                 'config_protocol' => (string) ($config->protocol ?: ($parsed['protocol'] ?? 'unknown')),
                 'server' => (string) ($parsed['server'] ?? ''),
                 'port' => (int) ($parsed['port'] ?? 0),
+                'json_profile' => $config->json,
             ],
         );
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, VlessExternalSubscriptionConfig>  $configs
+     * @param  Collection<int, VlessExternalSubscriptionConfig>  $configs
      * @return array<string, string>
      */
-    private function buildCustomNames(\Illuminate\Support\Collection $configs): array
+    private function buildCustomNames(Collection $configs): array
     {
         $names = [];
 
         $configs
             ->groupBy(fn (VlessExternalSubscriptionConfig $config) => (int) $config->vless_external_subscription_id)
-            ->each(function (\Illuminate\Support\Collection $group) use (&$names): void {
+            ->each(function (Collection $group) use (&$names): void {
                 $prefix = trim((string) $group->first()?->subscription?->connect_name_prefix);
 
                 if ($prefix === '') {

@@ -141,6 +141,7 @@ External VLESS subscriptions support multiple source formats:
 
 - `direct` for regular links and subscription URLs
 - `incy` for sources that start as `incy://...` or as an `https://...` page that redirects to `incy://...`
+- JSON subscription sources keep the original profile payload on each external config so `/connect-json` can preserve upstream routing rules, balancers, and other profile-level settings.
 
 Its order is explicit rather than inferred from ids:
 

@@ -225,7 +225,7 @@ Flow:
   - mini-app download/QR для таких конфигов используют декодированный native `.conf`, включая `Jc/Jmin/Jmax`, `S1-S4`, `H1-H4`, `I1-I5` и новые protection/timing параметры
 - `/connect-json` использует тот же набор узлов, но отдаёт JSON-массив полных Xray-style конфигов, по одному объекту на узел
 - каждый объект в `/connect-json` содержит индивидуальный `remarks` и `outbounds`, а общие `dns`/`routing`/`inbounds` подмешиваются из конфигурации приложения
-- если внешний источник вернул JSON-профили, `/connect-json` и `format=json` отдают сохранённый upstream JSON для этих внешних конфигов без пересборки, чтобы не потерять routing rules, balancers и другие profile-level настройки
+- если внешний источник вернул JSON-профили, `/connect-json` и `format=json` отдают сохранённый upstream JSON для этих внешних конфигов без пересборки, чтобы не потерять routing rules, balancers и другие profile-level настройки; `remarks` заменяется на наше рассчитанное имя узла
 - текущие DNS/routing/inbounds-настройки для `/connect-json` захардкожены в `config/connect_json.php` и вынесены в отдельный provider, чтобы позже их можно было заменить значениями из админки без смены маршрута
 - soft-deleted серверы не участвуют в `/connect` по умолчанию, потому что `servers` теперь используют Eloquent soft delete
 
@@ -234,6 +234,7 @@ White list выдача:
 - `/connect-wl-version-2` использует `VlessExternalSubscriptionAccessService`
 - успешный запрос `/connect-wl-version-2` тоже сохраняет или обновляет `user_connected_devices` по route `connect-wl`, кроме случаев с `skip_connection=true`
 - туда входят внешние подписки с флагом `include_in_whitelist`
+- по умолчанию `/connect-wl-version-2` отдаёт `format=json`; старый URI/base64 output доступен явно через `format=uri`, `format=links` или `format=raw`
 - внешний источник может быть как обычным `direct`, так и `incy`
 - для `incy` backend сначала:
   - если source URL начинается с `https://` или `http://`, забирает `incy://...` redirect из ответа

@@ -40,7 +40,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     private function buildProfile(NormalizedNode $node): ?array
     {
         if (is_array($node->meta['json_profile'] ?? null)) {
-            return $node->meta['json_profile'];
+            return [
+                ...$node->meta['json_profile'],
+                'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
+            ];
         }
 
         $parsed = $this->parser->parse($node->uri);

@@ -278,7 +278,7 @@ class VlessConfigController extends Controller
             ];
         }
 
-        $subscription = $subscriptionService->buildFromNodes($nodes, $request->query('format'));
+        $subscription = $subscriptionService->buildFromNodes($nodes, $request->query('format', 'json'));
 
         $response = response($subscription->content);
 

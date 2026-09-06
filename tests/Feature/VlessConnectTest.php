@@ -616,17 +616,21 @@ class VlessConnectTest extends TestCase
 
         $payload = json_decode((string) $response->getContent(), true);
 
-        $this->assertSame([$profile], $payload);
+        $expectedProfile = [
+            ...$profile,
+            'remarks' => 'External JSON • VLESS • TCP',
+        ];
+
+        $this->assertSame([$expectedProfile], $payload);
         $this->assertSame('auto', data_get($payload, '0.routing.balancers.0.tag'));
 
         $whiteListResponse = $this->get(route('vless.connect-wl', [
             'tg' => Crypt::encrypt('112244'),
             'i' => Crypt::encrypt((string) $user->id),
-            'format' => 'json',
         ]));
 
         $whiteListResponse->assertOk();
-        $this->assertSame([$profile], json_decode((string) $whiteListResponse->getContent(), true));
+        $this->assertSame([$expectedProfile], json_decode((string) $whiteListResponse->getContent(), true));
     }
 
     public function test_connect_json_can_return_base64_encoded_profile_array(): void
@@ -1071,6 +1075,7 @@ class VlessConnectTest extends TestCase
         $response = $this->get(route('vless.connect-wl', [
             'tg' => Crypt::encrypt('777777'),
             'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'uri',
         ]));
 
         $response->assertOk();

@@ -40,8 +40,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     private function buildProfile(NormalizedNode $node): ?array
     {
         if (is_array($node->meta['json_profile'] ?? null)) {
+            $profile = $this->normalizePreservedJsonProfile($node->meta['json_profile']);
+
             return [
-                ...$node->meta['json_profile'],
+                ...$profile,
                 'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
             ];
         }
@@ -80,6 +82,33 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->settingsProvider->blockOutbound(),
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     * @return array<string, mixed>
+     */
+    private function normalizePreservedJsonProfile(array $profile): array
+    {
+        if (! is_array($profile['outbounds'] ?? null)) {
+            return $profile;
+        }
+
+        $profile['outbounds'] = array_map(function (mixed $outbound): mixed {
+            if (! is_array($outbound) || ! is_array($outbound['streamSettings'] ?? null)) {
+                return $outbound;
+            }
+
+            if (($outbound['streamSettings']['network'] ?? null) === 'tcp'
+                && ($outbound['streamSettings']['tcpSettings'] ?? null) === []
+            ) {
+                $outbound['streamSettings']['tcpSettings'] = (object) [];
+            }
+
+            return $outbound;
+        }, $profile['outbounds']);
+
+        return $profile;
     }
 
     /**

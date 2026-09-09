@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use stdClass;
 use Tests\TestCase;
 
 class VlessConnectTest extends TestCase
@@ -617,13 +618,12 @@ class VlessConnectTest extends TestCase
 
         $payload = json_decode((string) $response->getContent(), true);
 
-        $expectedProfile = [
-            ...$profile,
-            'remarks' => 'External JSON • VLESS • TCP',
-        ];
-
-        $this->assertSame([$expectedProfile], $payload);
+        $this->assertCount(1, $payload);
+        $this->assertSame('External JSON • VLESS • TCP', data_get($payload, '0.remarks'));
         $this->assertSame('auto', data_get($payload, '0.routing.balancers.0.tag'));
+        $this->assertSame('AsIs', data_get($payload, '0.routing.domainStrategy'));
+        $this->assertSame('external-json.example.com', data_get($payload, '0.outbounds.0.settings.vnext.0.address'));
+        $this->assertSame('external-json-uuid', data_get($payload, '0.outbounds.0.settings.vnext.0.users.0.id'));
         $this->assertStringContainsString('"tcpSettings": {}', (string) $response->getContent());
 
         $whiteListResponse = $this->get(route('vless.connect-wl', [
@@ -632,8 +632,105 @@ class VlessConnectTest extends TestCase
         ]));
 
         $whiteListResponse->assertOk();
-        $this->assertSame([$expectedProfile], json_decode((string) $whiteListResponse->getContent(), true));
+        $whiteListPayload = json_decode((string) $whiteListResponse->getContent(), true);
+
+        $this->assertCount(1, $whiteListPayload);
+        $this->assertSame('External JSON • VLESS • TCP', data_get($whiteListPayload, '0.remarks'));
+        $this->assertSame('auto', data_get($whiteListPayload, '0.routing.balancers.0.tag'));
+        $this->assertSame('AsIs', data_get($whiteListPayload, '0.routing.domainStrategy'));
+        $this->assertSame('external-json.example.com', data_get($whiteListPayload, '0.outbounds.0.settings.vnext.0.address'));
+        $this->assertSame('external-json-uuid', data_get($whiteListPayload, '0.outbounds.0.settings.vnext.0.users.0.id'));
         $this->assertStringContainsString('"tcpSettings": {}', (string) $whiteListResponse->getContent());
+    }
+
+    public function test_connect_json_normalizes_http_inbound_settings_for_connect_and_whitelist_routes(): void
+    {
+        $user = $this->createActiveUser('Inbound JSON User', '@inbound-json-user', '112245');
+
+        $externalSubscription = VlessExternalSubscription::query()->create([
+            'name' => 'Inbound JSON',
+            'sort_order' => 0,
+            'type' => VlessExternalSubscription::TYPE_SUBSCRIPTION,
+            'source_url' => 'https://example.com/inbound-json-sub',
+            'include_in_main_subscription' => true,
+            'include_in_whitelist' => true,
+            'is_free' => true,
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $externalSubscription->id,
+            'config_key' => 'inbound-json',
+            'name' => 'Inbound JSON',
+            'normalized_name' => 'inbound json',
+            'protocol' => 'vless',
+            'url' => 'vless://inbound-json-uuid@inbound-json.example.com:443?type=tcp&security=reality#Inbound%20JSON',
+            'json' => [
+                'remarks' => 'Upstream Inbounds',
+                'inbounds' => [
+                    [
+                        'tag' => 'http-empty-array',
+                        'port' => 10809,
+                        'listen' => '127.0.0.1',
+                        'protocol' => 'http',
+                        'settings' => [],
+                    ],
+                    [
+                        'tag' => 'http-empty-object',
+                        'port' => 10810,
+                        'listen' => '127.0.0.1',
+                        'protocol' => 'http',
+                        'settings' => new stdClass(),
+                    ],
+                    [
+                        'tag' => 'http-non-empty-object',
+                        'port' => 10811,
+                        'listen' => '127.0.0.1',
+                        'protocol' => 'http',
+                        'settings' => [
+                            'accounts' => [[
+                                'user' => 'alice',
+                                'pass' => 'secret',
+                            ]],
+                        ],
+                    ],
+                    [
+                        'tag' => 'socks',
+                        'port' => 10808,
+                        'listen' => '127.0.0.1',
+                        'protocol' => 'socks',
+                        'settings' => [
+                            'udp' => true,
+                        ],
+                    ],
+                ],
+                'outbounds' => [
+                    [
+                        'tag' => 'proxy',
+                        'protocol' => 'vless',
+                    ],
+                ],
+            ],
+            'sort_order' => 0,
+        ]);
+
+        $query = [
+            'tg' => Crypt::encrypt('112245'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ];
+
+        $connectResponse = $this->get(route('vless.connect', [
+            ...$query,
+            'format' => 'json',
+        ]));
+        $whiteListResponse = $this->get(route('vless.connect-wl', $query));
+
+        $connectResponse->assertOk();
+        $whiteListResponse->assertOk();
+
+        $this->assertHttpInboundSettingsAreNormalized((string) $connectResponse->getContent());
+        $this->assertHttpInboundSettingsAreNormalized((string) $whiteListResponse->getContent());
     }
 
     public function test_connect_json_can_return_base64_encoded_profile_array(): void
@@ -2239,6 +2336,21 @@ class VlessConnectTest extends TestCase
             'is_https' => true,
             'type' => Server::TYPE_VLESS,
         ]);
+    }
+
+    private function assertHttpInboundSettingsAreNormalized(string $content): void
+    {
+        $payload = json_decode($content);
+
+        $this->assertIsArray($payload);
+        $this->assertInstanceOf(stdClass::class, $payload[0]->inbounds[0]->settings);
+        $this->assertSame([], get_object_vars($payload[0]->inbounds[0]->settings));
+        $this->assertInstanceOf(stdClass::class, $payload[0]->inbounds[1]->settings);
+        $this->assertSame([], get_object_vars($payload[0]->inbounds[1]->settings));
+        $this->assertSame('alice', $payload[0]->inbounds[2]->settings->accounts[0]->user);
+        $this->assertTrue($payload[0]->inbounds[3]->settings->udp);
+        $this->assertStringContainsString('"tag": "http-empty-array"', $content);
+        $this->assertStringContainsString('"settings": {}', $content);
     }
 
     private function createConfig(int $userId, int $serverId, string $uuid, ?string $subId = null): void

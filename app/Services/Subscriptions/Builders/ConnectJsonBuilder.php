@@ -8,12 +8,14 @@ use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use App\Services\Subscriptions\SubscriptionUriParser;
+use App\Services\Subscriptions\XrayJsonProfileNormalizer;
 
 class ConnectJsonBuilder implements SubscriptionBuilder
 {
     public function __construct(
         private readonly SubscriptionUriParser $parser,
         private readonly ConnectJsonProfileSettingsProvider $settingsProvider,
+        private readonly XrayJsonProfileNormalizer $profileNormalizer,
     ) {}
 
     /**
@@ -24,6 +26,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         $profiles = collect($nodes)
             ->map(fn (NormalizedNode $node) => $this->buildProfile($node))
             ->filter()
+            ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile))
             ->values()
             ->all();
 
@@ -40,10 +43,8 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     private function buildProfile(NormalizedNode $node): ?array
     {
         if (is_array($node->meta['json_profile'] ?? null)) {
-            $profile = $this->normalizePreservedJsonProfile($node->meta['json_profile']);
-
             return [
-                ...$profile,
+                ...$node->meta['json_profile'],
                 'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
             ];
         }
@@ -82,33 +83,6 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->settingsProvider->blockOutbound(),
             ],
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $profile
-     * @return array<string, mixed>
-     */
-    private function normalizePreservedJsonProfile(array $profile): array
-    {
-        if (! is_array($profile['outbounds'] ?? null)) {
-            return $profile;
-        }
-
-        $profile['outbounds'] = array_map(function (mixed $outbound): mixed {
-            if (! is_array($outbound) || ! is_array($outbound['streamSettings'] ?? null)) {
-                return $outbound;
-            }
-
-            if (($outbound['streamSettings']['network'] ?? null) === 'tcp'
-                && ($outbound['streamSettings']['tcpSettings'] ?? null) === []
-            ) {
-                $outbound['streamSettings']['tcpSettings'] = (object) [];
-            }
-
-            return $outbound;
-        }, $profile['outbounds']);
-
-        return $profile;
     }
 
     /**

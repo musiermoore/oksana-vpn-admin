@@ -143,6 +143,7 @@ External VLESS subscriptions support multiple source formats:
 - `incy` for sources that start as `incy://...` or as an `https://...` page that redirects to `incy://...`
 - JSON subscription sources keep the original profile payload on each external config so `/connect-json` can preserve upstream routing rules, balancers, and other profile-level settings.
 - The whitelist subscription route `/connect-wl-version-2` defaults to JSON output; URI/base64 output remains available through explicit URI aliases such as `format=uri`.
+- Xray JSON routing rules can be managed through `xray_routings`; each rule chooses `direct`, `proxy`, or `blocked`, stores Xray field-rule data in JSON, and uses JSON `subscription_types` to apply to `connect`, `connect_wl`, or future subscription outputs.
 
 Its order is explicit rather than inferred from ids:
 

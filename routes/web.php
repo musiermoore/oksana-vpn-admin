@@ -37,6 +37,7 @@ use App\Http\Controllers\VlessExternalSubscriptionController;
 use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
+use App\Http\Controllers\XrayRoutingController;
 use App\Http\Controllers\XuiDebugController;
 use App\Http\Middleware\BasicAuth;
 use App\Http\Middleware\TrackApiRequests;
@@ -96,6 +97,10 @@ Route::middleware('auth')->group(function () {
         ->name('vless-external-subscriptions.preview');
     Route::post('vless-external-subscriptions/{vlessExternalSubscription}/sync', [VlessExternalSubscriptionController::class, 'sync'])
         ->name('vless-external-subscriptions.sync');
+    Route::get('xray-routings', [XrayRoutingController::class, 'index'])
+        ->name('xray-routings.index');
+    Route::post('xray-routings/import', [XrayRoutingController::class, 'import'])
+        ->name('xray-routings.import');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
     Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Subscriptions;
 
+use App\Models\XrayJsonSetting;
+use App\Models\XrayRouting;
+
 class ConnectJsonProfileSettingsProvider
 {
     /**
@@ -36,6 +39,16 @@ class ConnectJsonProfileSettingsProvider
      */
     public function dns(): array
     {
+        $settings = $this->activeSettings()?->dns;
+
+        if (is_array($settings) && $settings !== []) {
+            return array_filter([
+                'hosts' => $settings['hosts'] ?? null,
+                'queryStrategy' => $settings['queryStrategy'] ?? (string) config('connect_json.dns.query_strategy', 'UseIPv4'),
+                'servers' => $settings['servers'] ?? [],
+            ], fn (mixed $value): bool => $value !== null && $value !== []);
+        }
+
         return [
             'queryStrategy' => (string) config('connect_json.dns.query_strategy', 'UseIPv4'),
             'servers' => config('connect_json.dns.servers', []),
@@ -45,12 +58,46 @@ class ConnectJsonProfileSettingsProvider
     /**
      * @return array<string, mixed>
      */
-    public function routing(): array
+    public function routing(string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT): array
     {
+        $settings = $this->activeSettings()?->routing;
+
         return [
-            'domainStrategy' => (string) config('connect_json.routing.domain_strategy', 'AsIs'),
-            'rules' => config('connect_json.routing.rules', []),
+            'domainStrategy' => is_array($settings) && isset($settings['domainStrategy'])
+                ? (string) $settings['domainStrategy']
+                : (string) config('connect_json.routing.domain_strategy', 'AsIs'),
+            'rules' => $this->routingRules($subscriptionType),
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function routingRules(string $subscriptionType): array
+    {
+        $rules = XrayRouting::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->filter(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType))
+            ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(
+                $this->directTag(),
+                $this->proxyTag(),
+                $this->blockTag(),
+            ))
+            ->values()
+            ->all();
+
+        return $rules !== []
+            ? $rules
+            : config('connect_json.routing.rules', []);
+    }
+
+    private function activeSettings(): ?XrayJsonSetting
+    {
+        return XrayJsonSetting::query()
+            ->latestActive()
+            ->first();
     }
 
     /**

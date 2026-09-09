@@ -10,6 +10,7 @@ use App\Models\Server;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Models\VlessConfig;
+use App\Models\XrayRouting;
 use App\Services\Crud\VlessConfigCrudService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\SubscriptionMetadataService;
@@ -278,7 +279,11 @@ class VlessConfigController extends Controller
             ];
         }
 
-        $subscription = $subscriptionService->buildFromNodes($nodes, $request->query('format', 'json'));
+        $subscription = $subscriptionService->buildFromNodes(
+            $nodes,
+            $request->query('format', 'json'),
+            XrayRouting::SUBSCRIPTION_CONNECT_WL,
+        );
 
         $response = response($subscription->content);
 

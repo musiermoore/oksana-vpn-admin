@@ -5,6 +5,7 @@ import {
     ensureTelegramAppSession,
     getTelegramInitData,
     getTelegramStartParam,
+    loginTelegramAppAndRedirect,
     redirectFromTelegramStartParam,
     reportTelegramBootstrapDiagnostic,
     requireTelegramInitData,
@@ -35,6 +36,7 @@ const createWindow = ({
     hash = '',
     storedInitData = '',
     pathname = '/telegram-app/',
+    telegramUser = {},
 } = {}) => {
     const sessionStorage = new MemoryStorage();
     const location = {
@@ -57,7 +59,9 @@ const createWindow = ({
         Telegram: {
             WebApp: {
                 initData,
-                initDataUnsafe: {},
+                initDataUnsafe: {
+                    user: telegramUser,
+                },
             },
         },
         axios: {
@@ -186,6 +190,69 @@ test('ensureTelegramAppSession redirects public app users without token to publi
     });
 
     assert.equal(window.location.replacedWith, '/public/login');
+});
+
+test('loginTelegramAppAndRedirect stores Telegram token and redirects home with valid initData', async () => {
+    const requests = [];
+
+    global.window = createWindow({
+        initData: 'query_id=abc&user=%7B%7D',
+        pathname: '/public/login',
+    });
+    window.axios.post = async (url, payload) => {
+        requests.push({ url, payload });
+
+        return {
+            data: {
+                token: 'telegram-token',
+                user: {
+                    telegram_id: '123456789',
+                },
+            },
+        };
+    };
+
+    const data = await loginTelegramAppAndRedirect({
+        authUrl: '/public/auth/telegram',
+        homeUrl: '/public',
+        attempts: 1,
+        delayMs: 1,
+    });
+
+    assert.equal(data.token, 'telegram-token');
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/public/auth/telegram');
+    assert.deepEqual(requests[0].payload, { init_data: 'query_id=abc&user=%7B%7D' });
+    assert.equal(window.localStorage.getItem('telegram-mini-app-token'), 'telegram-token');
+    assert.equal(window.localStorage.getItem('telegram-mini-app-telegram-user-id'), '123456789');
+    assert.equal(window.location.href, '/public');
+});
+
+test('loginTelegramAppAndRedirect shows missing initData as an error and does not redirect', async () => {
+    const requests = [];
+
+    global.window = createWindow({
+        pathname: '/public/login',
+    });
+    window.axios.post = async (url, payload) => {
+        requests.push({ url, payload });
+
+        return { data: { token: 'telegram-token' } };
+    };
+
+    await assert.rejects(loginTelegramAppAndRedirect({
+        authUrl: '/public/auth/telegram',
+        homeUrl: '/public',
+        attempts: 1,
+        delayMs: 1,
+    }), {
+        message: 'Откройте приложение через Telegram.',
+    });
+
+    assert.equal(requests.length, 0);
+    assert.equal(window.localStorage.getItem('telegram-mini-app-token'), null);
+    assert.equal(window.location.href, 'https://example.com/public/login');
+    assert.equal(window.location.replacedWith, null);
 });
 
 test('ensureTelegramAppSession redirects hidden public app users without token to root login', async () => {

@@ -4,6 +4,7 @@ namespace App\Services\Subscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
+use App\Models\XrayRouting;
 use App\Models\User;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
@@ -21,7 +22,11 @@ class UserSubscriptionService
         private readonly SubscriptionUriParser $subscriptionUriParser,
     ) {}
 
-    public function build(User $user, ?string $format = null): SubscriptionBuildResult
+    public function build(
+        User $user,
+        ?string $format = null,
+        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT
+    ): SubscriptionBuildResult
     {
         $namedNodes = $this->buildNamedNodes($user);
 
@@ -38,23 +43,29 @@ class UserSubscriptionService
             )),
         ]);
 
-        return $this->buildFromNodes($namedNodes, $format);
+        return $this->buildFromNodes($namedNodes, $format, $subscriptionType);
     }
 
     /**
      * @param  array<int, NormalizedNode>  $nodes
      */
-    public function buildFromNodes(array $nodes, ?string $format = null): SubscriptionBuildResult
+    public function buildFromNodes(
+        array $nodes,
+        ?string $format = null,
+        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT
+    ): SubscriptionBuildResult
     {
-        if ($nodes === []) {
-            return $this->builderFactory
-                ->make((string) $format)
-                ->build([]);
+        $builder = $this->builderFactory->make((string) $format);
+
+        if ($builder instanceof ConnectJsonBuilder) {
+            return $builder->buildForSubscriptionType($nodes, $subscriptionType);
         }
 
-        return $this->builderFactory
-            ->make((string) $format)
-            ->build($nodes);
+        if ($nodes === []) {
+            return $builder->build([]);
+        }
+
+        return $builder->build($nodes);
     }
 
     public function buildJsonProfile(User $user): SubscriptionBuildResult

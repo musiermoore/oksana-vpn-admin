@@ -3,10 +3,16 @@ import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
-import { setTelegramAppTelegramUserId, setTelegramAppToken } from '../../lib/telegramMiniApp';
+import {
+    loginTelegramAppAndRedirect,
+    normalizeTelegramAppError,
+    setTelegramAppTelegramUserId,
+    setTelegramAppToken,
+} from '../../lib/telegramMiniApp';
 
 const props = defineProps({
     routes: Object,
+    auth_url: String,
     password_auth_url: String,
 });
 
@@ -15,6 +21,7 @@ const form = ref({
     password: '',
 });
 const processing = ref(false);
+const processingTelegram = ref(false);
 const error = ref('');
 
 const submit = async () => {
@@ -38,6 +45,22 @@ const submit = async () => {
         processing.value = false;
     }
 };
+
+const submitTelegram = async () => {
+    processingTelegram.value = true;
+    error.value = '';
+
+    try {
+        await loginTelegramAppAndRedirect({
+            authUrl: props.auth_url,
+            homeUrl: props.routes?.home,
+        });
+    } catch (requestError) {
+        error.value = normalizeTelegramAppError(requestError, 'Не удалось выполнить вход через Telegram.');
+    } finally {
+        processingTelegram.value = false;
+    }
+};
 </script>
 
 <template>
@@ -52,10 +75,15 @@ const submit = async () => {
         <section class="tg-section">
             <div class="tg-page-header__copy">
                 <h2>Вход</h2>
-                <p>Используйте логин и пароль от аккаунта.</p>
+                <p>Используйте Telegram или логин и пароль от аккаунта.</p>
             </div>
 
             <form class="tg-surface-card tg-stack" @submit.prevent="submit">
+                <button class="tg-button" type="button" :disabled="processingTelegram || processing" @click="submitTelegram">
+                    <AppIcon name="send" />
+                    {{ processingTelegram ? 'Проверяем Telegram...' : 'Login with Telegram' }}
+                </button>
+
                 <label class="tg-field">
                     <span class="tg-field__label">Логин</span>
                     <input

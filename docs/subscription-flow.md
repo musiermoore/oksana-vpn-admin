@@ -225,6 +225,8 @@ Flow:
   - mini-app download/QR для таких конфигов используют декодированный native `.conf`, включая `Jc/Jmin/Jmax`, `S1-S4`, `H1-H4`, `I1-I5` и новые protection/timing параметры
 - `/connect-json` использует тот же набор узлов, но отдаёт JSON-массив полных Xray-style конфигов, по одному объекту на узел
 - каждый объект в `/connect-json` содержит индивидуальный `remarks` и `outbounds`, а общие `dns`/`routing`/`inbounds` подмешиваются из конфигурации приложения
+- routing rules для JSON-подписок могут задаваться в таблице `xray_routings`; правило хранит `outbound=direct|proxy|blocked`, Xray field-rule payload в JSON-поле `rules` и JSON-массив `subscription_types` для применения к `connect`, `connect_wl` или будущим типам подписок
+- если активные `xray_routings` для конкретного типа подписки отсутствуют, JSON builder использует fallback rules из `config/connect_json.php`
 - если внешний источник вернул JSON-профили, `/connect-json` и `format=json` отдают сохранённый upstream JSON для этих внешних конфигов без пересборки, чтобы не потерять routing rules, balancers и другие profile-level настройки; `remarks` заменяется на наше рассчитанное имя узла, а пустой `tcpSettings: []` нормализуется в `tcpSettings: {}` для совместимости с Xray config loader
 - перед финальной сериализацией Xray JSON-профилей HTTP inbound с пустым `settings: []` нормализуется в `settings: {}`, чтобы Xray config loader получал объект для `protocol=http`; корректные непустые settings и SOCKS inbound не меняются
 - текущие DNS/routing/inbounds-настройки для `/connect-json` захардкожены в `config/connect_json.php` и вынесены в отдельный provider, чтобы позже их можно было заменить значениями из админки без смены маршрута

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\XrayRoutingOutbound;
 use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\User;
@@ -12,6 +13,7 @@ use App\Models\VlessConfig;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Models\XrayInbound;
+use App\Models\XrayRouting;
 use App\Services\Subscriptions\UserSubscriptionService;
 use App\Services\WireGuardSubscriptionLinkService;
 use Carbon\Carbon;
@@ -544,6 +546,142 @@ class VlessConnectTest extends TestCase
         $this->assertSame('reality', data_get($payload, '0.outbounds.0.streamSettings.security'));
         $this->assertSame('freedom', data_get($payload, '0.outbounds.1.protocol'));
         $this->assertSame('blackhole', data_get($payload, '0.outbounds.2.protocol'));
+    }
+
+    public function test_connect_json_uses_active_xray_routing_rules_from_database(): void
+    {
+        $user = $this->createActiveUser('Routing User', '@routing-user', '112236');
+
+        $server = $this->createServer('Нидерланды', 'NL1', 'nl.oksana1984.ru');
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'user_id' => $user->id,
+            'inbound_id' => 10,
+            'name' => 'routing-vless',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => '5f13f625-cfd3-44d8-93da-8bd262937a61',
+            'port' => 39091,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'sni' => 'example.com',
+            'pbk' => 'public-key',
+            'sid' => 'abcd',
+            'fp' => 'chrome',
+            'flow' => 'xtls-rprx-vision',
+            'spx' => '/',
+        ]);
+
+        XrayRouting::query()->create([
+            'name' => 'Direct mail ports',
+            'outbound' => XrayRoutingOutbound::Direct,
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'rules' => [
+                'port' => '25,143',
+            ],
+            'sort_order' => 0,
+        ]);
+
+        XrayRouting::query()->create([
+            'name' => 'Proxy whitelist only',
+            'outbound' => XrayRoutingOutbound::Proxy,
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT_WL],
+            'rules' => [
+                'domain' => ['domain:wl-only.example'],
+            ],
+            'sort_order' => 1,
+        ]);
+
+        XrayRouting::query()->create([
+            'name' => 'Inactive block',
+            'outbound' => XrayRoutingOutbound::Blocked,
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'rules' => [
+                'domain' => ['domain:inactive.example'],
+            ],
+            'sort_order' => 2,
+            'is_active' => false,
+        ]);
+
+        $response = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('112236'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'json',
+        ]));
+
+        $response->assertOk();
+
+        $payload = json_decode((string) $response->getContent(), true);
+        $rules = data_get($payload, '0.routing.rules');
+
+        $this->assertCount(1, $rules);
+        $this->assertSame('field', data_get($rules, '0.type'));
+        $this->assertSame('25,143', data_get($rules, '0.port'));
+        $this->assertSame('direct', data_get($rules, '0.outboundTag'));
+    }
+
+    public function test_connect_wl_json_uses_rules_scoped_to_whitelist_subscription(): void
+    {
+        $user = $this->createActiveUser('WL Routing User', '@wl-routing-user', '112237');
+
+        $externalSubscription = VlessExternalSubscription::query()->create([
+            'name' => 'WL Routing',
+            'sort_order' => 0,
+            'type' => VlessExternalSubscription::TYPE_DIRECT,
+            'source_url' => 'vless://wl-routing-uuid@wl-routing.example.com:443?type=tcp&security=reality#WL%20Routing',
+            'include_in_main_subscription' => false,
+            'include_in_whitelist' => true,
+            'is_free' => true,
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $externalSubscription->id,
+            'config_key' => 'wl-routing',
+            'name' => 'WL Routing',
+            'normalized_name' => 'wl routing',
+            'protocol' => 'vless',
+            'url' => 'vless://wl-routing-uuid@wl-routing.example.com:443?type=tcp&security=reality#WL%20Routing',
+            'sort_order' => 0,
+        ]);
+
+        XrayRouting::query()->create([
+            'name' => 'Connect direct',
+            'outbound' => XrayRoutingOutbound::Direct,
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'rules' => [
+                'domain' => ['domain:connect-only.example'],
+            ],
+            'sort_order' => 0,
+        ]);
+
+        XrayRouting::query()->create([
+            'name' => 'Whitelist blocked',
+            'outbound' => XrayRoutingOutbound::Blocked,
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT_WL],
+            'rules' => [
+                'domain' => ['domain:blocked.example'],
+            ],
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get(route('vless.connect-wl', [
+            'tg' => Crypt::encrypt('112237'),
+            'i' => Crypt::encrypt((string) $user->id),
+        ]));
+
+        $response->assertOk();
+
+        $payload = json_decode((string) $response->getContent(), true);
+        $rules = data_get($payload, '0.routing.rules');
+
+        $this->assertCount(1, $rules);
+        $this->assertSame(['domain:blocked.example'], data_get($rules, '0.domain'));
+        $this->assertSame('block', data_get($rules, '0.outboundTag'));
     }
 
     public function test_connect_json_returns_stored_external_subscription_json_profile(): void

@@ -354,8 +354,18 @@ export const resolveTelegramInitData = async (attempts = INIT_DATA_RETRY_ATTEMPT
     throw new Error('Откройте приложение через Telegram.');
 };
 
-export const loginTelegramApp = async (authUrl) => {
-    const initData = await resolveTelegramInitData();
+const resolveTelegramUserIdFromAuthData = (data) => {
+    const profileId = getTelegramProfileId();
+
+    if (profileId !== '') {
+        return profileId;
+    }
+
+    return String(data?.user?.telegram_id ?? '').trim();
+};
+
+export const loginTelegramApp = async (authUrl, { attempts = INIT_DATA_RETRY_ATTEMPTS, delayMs = INIT_DATA_RETRY_DELAY_MS } = {}) => {
+    const initData = await resolveTelegramInitData(attempts, delayMs);
     const response = await window.axios.post(authUrl, {
         init_data: initData,
     });
@@ -367,9 +377,17 @@ export const loginTelegramApp = async (authUrl) => {
     }
 
     setTelegramAppToken(token);
-    setTelegramAppTelegramUserId(getTelegramProfileId());
+    setTelegramAppTelegramUserId(resolveTelegramUserIdFromAuthData(response.data));
 
     return response.data;
+};
+
+export const loginTelegramAppAndRedirect = async ({ authUrl, homeUrl, attempts, delayMs }) => {
+    const data = await loginTelegramApp(authUrl, { attempts, delayMs });
+
+    window.location.href = homeUrl ?? '/telegram-app';
+
+    return data;
 };
 
 export const fetchTelegramAppProfile = async (profileUrl) => {

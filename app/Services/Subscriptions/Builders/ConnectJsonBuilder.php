@@ -6,6 +6,7 @@ namespace App\Services\Subscriptions\Builders;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
+use App\Models\XrayRouting;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use App\Services\Subscriptions\SubscriptionUriParser;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
@@ -23,8 +24,16 @@ class ConnectJsonBuilder implements SubscriptionBuilder
      */
     public function build(array $nodes): SubscriptionBuildResult
     {
+        return $this->buildForSubscriptionType($nodes, XrayRouting::SUBSCRIPTION_CONNECT);
+    }
+
+    /**
+     * @param  array<int, NormalizedNode>  $nodes
+     */
+    public function buildForSubscriptionType(array $nodes, string $subscriptionType): SubscriptionBuildResult
+    {
         $profiles = collect($nodes)
-            ->map(fn (NormalizedNode $node) => $this->buildProfile($node))
+            ->map(fn (NormalizedNode $node) => $this->buildProfile($node, $subscriptionType))
             ->filter()
             ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile))
             ->values()
@@ -40,7 +49,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     /**
      * @return array<string, mixed>|null
      */
-    private function buildProfile(NormalizedNode $node): ?array
+    private function buildProfile(NormalizedNode $node, string $subscriptionType): ?array
     {
         if (is_array($node->meta['json_profile'] ?? null)) {
             return [
@@ -75,7 +84,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
             'log' => $this->settingsProvider->log(),
             'dns' => $this->settingsProvider->dns(),
-            'routing' => $this->settingsProvider->routing(),
+            'routing' => $this->settingsProvider->routing($subscriptionType),
             'inbounds' => $this->settingsProvider->inbounds(),
             'outbounds' => [
                 $proxyOutbound,

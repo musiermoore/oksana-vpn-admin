@@ -21,6 +21,8 @@ class XrayRouting extends Model
         'source_key',
         'outbound',
         'subscription_types',
+        'xray_inbound_ids',
+        'external_subscription_config_ids',
         'rules',
         'sort_order',
         'is_active',
@@ -31,6 +33,8 @@ class XrayRouting extends Model
         return [
             'outbound' => XrayRoutingOutbound::class,
             'subscription_types' => 'array',
+            'xray_inbound_ids' => 'array',
+            'external_subscription_config_ids' => 'array',
             'rules' => 'array',
             'sort_order' => 'integer',
             'is_active' => 'boolean',
@@ -58,6 +62,36 @@ class XrayRouting extends Model
         }
 
         return in_array($subscriptionType, $subscriptionTypes, true);
+    }
+
+    public function appliesToInbound(?int $xrayInboundId): bool
+    {
+        $xrayInboundIds = $this->xray_inbound_ids;
+
+        if (! is_array($xrayInboundIds) || $xrayInboundIds === [] || $xrayInboundId === null) {
+            return false;
+        }
+
+        return in_array($xrayInboundId, array_map('intval', $xrayInboundIds), true);
+    }
+
+    public function appliesToExternalSubscriptionConfig(?int $externalSubscriptionConfigId): bool
+    {
+        $externalSubscriptionConfigIds = $this->external_subscription_config_ids;
+
+        if (! is_array($externalSubscriptionConfigIds)
+            || $externalSubscriptionConfigIds === []
+            || $externalSubscriptionConfigId === null) {
+            return false;
+        }
+
+        return in_array($externalSubscriptionConfigId, array_map('intval', $externalSubscriptionConfigIds), true);
+    }
+
+    public function appliesToAnyTarget(?int $xrayInboundId, ?int $externalSubscriptionConfigId): bool
+    {
+        return $this->appliesToInbound($xrayInboundId)
+            || $this->appliesToExternalSubscriptionConfig($externalSubscriptionConfigId);
     }
 
     /**

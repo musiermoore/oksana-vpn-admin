@@ -155,6 +155,7 @@ class NormalizedNodeService
                 'config_port' => (int) $config->port,
                 'config_protocol' => (string) ($config->protocol ?: 'vless'),
                 'config_inbound_id' => $config->getResolvedInboundId(),
+                'xray_inbound_id' => $config->xray_inbound_id !== null ? (int) $config->xray_inbound_id : null,
             ],
         );
     }

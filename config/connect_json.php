@@ -120,4 +120,8 @@ return [
             ],
         ],
     ],
+    'geodata' => [
+        'cron' => env('CONNECT_JSON_GEODATA_CRON', '0 4 * * *'),
+        'outbound' => env('CONNECT_JSON_GEODATA_OUTBOUND', 'proxy'),
+    ],
 ];

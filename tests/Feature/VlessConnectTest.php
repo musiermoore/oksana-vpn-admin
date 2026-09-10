@@ -211,7 +211,7 @@ class VlessConnectTest extends TestCase
             'type' => Server::TYPE_VLESS,
         ]);
 
-        VlessConfig::query()->create([
+        $config = VlessConfig::query()->create([
             'server_id' => $server->id,
             'user_id' => $user->id,
             'inbound_id' => 8,
@@ -257,7 +257,7 @@ class VlessConnectTest extends TestCase
             'type' => Server::TYPE_VLESS,
         ]);
 
-        VlessConfig::query()->create([
+        $config = VlessConfig::query()->create([
             'server_id' => $server->id,
             'user_id' => $user->id,
             'inbound_id' => 9,
@@ -554,7 +554,7 @@ class VlessConnectTest extends TestCase
 
         $server = $this->createServer('Нидерланды', 'NL1', 'nl.oksana1984.ru');
 
-        VlessConfig::query()->create([
+        $config = VlessConfig::query()->create([
             'server_id' => $server->id,
             'user_id' => $user->id,
             'inbound_id' => 10,
@@ -579,6 +579,8 @@ class VlessConnectTest extends TestCase
             'name' => 'Direct mail ports',
             'outbound' => XrayRoutingOutbound::Direct,
             'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'xray_inbound_ids' => [$config->xray_inbound_id],
+            'external_subscription_config_ids' => [],
             'rules' => [
                 'port' => '25,143',
             ],
@@ -589,6 +591,8 @@ class VlessConnectTest extends TestCase
             'name' => 'Proxy whitelist only',
             'outbound' => XrayRoutingOutbound::Proxy,
             'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT_WL],
+            'xray_inbound_ids' => [],
+            'external_subscription_config_ids' => [],
             'rules' => [
                 'domain' => ['domain:wl-only.example'],
             ],
@@ -599,6 +603,8 @@ class VlessConnectTest extends TestCase
             'name' => 'Inactive block',
             'outbound' => XrayRoutingOutbound::Blocked,
             'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'xray_inbound_ids' => [$config->xray_inbound_id],
+            'external_subscription_config_ids' => [],
             'rules' => [
                 'domain' => ['domain:inactive.example'],
             ],
@@ -639,7 +645,7 @@ class VlessConnectTest extends TestCase
             'is_ready' => true,
         ]);
 
-        VlessExternalSubscriptionConfig::query()->create([
+        $externalConfig = VlessExternalSubscriptionConfig::query()->create([
             'vless_external_subscription_id' => $externalSubscription->id,
             'config_key' => 'wl-routing',
             'name' => 'WL Routing',
@@ -653,6 +659,8 @@ class VlessConnectTest extends TestCase
             'name' => 'Connect direct',
             'outbound' => XrayRoutingOutbound::Direct,
             'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'xray_inbound_ids' => [],
+            'external_subscription_config_ids' => [],
             'rules' => [
                 'domain' => ['domain:connect-only.example'],
             ],
@@ -663,6 +671,8 @@ class VlessConnectTest extends TestCase
             'name' => 'Whitelist blocked',
             'outbound' => XrayRoutingOutbound::Blocked,
             'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT_WL],
+            'xray_inbound_ids' => [],
+            'external_subscription_config_ids' => [$externalConfig->id],
             'rules' => [
                 'domain' => ['domain:blocked.example'],
             ],

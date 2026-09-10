@@ -14,12 +14,23 @@ class RoscomVpnJsonSettingsImporter
 {
     private const SOURCE = 'roscomvpn_json';
 
+    public function __construct(
+        private readonly XrayGeodataAssetService $geodataAssets,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $payload
      */
     public function import(array $payload): void
     {
-        DB::transaction(function () use ($payload): void {
+        $previousSetting = XrayJsonSetting::query()
+            ->where('source', self::SOURCE)
+            ->latestActive()
+            ->first();
+
+        $geodata = $this->buildGeodataSettings($payload, $previousSetting);
+
+        DB::transaction(function () use ($payload, $geodata): void {
             XrayJsonSetting::query()
                 ->where('source', self::SOURCE)
                 ->update(['is_active' => false]);
@@ -34,7 +45,7 @@ class RoscomVpnJsonSettingsImporter
                 'source' => self::SOURCE,
                 'dns' => $this->buildDnsSettings($payload),
                 'routing' => $this->buildRoutingSettings($payload),
-                'geodata' => $this->buildGeodataSettings($payload),
+                'geodata' => $geodata,
                 'raw' => $payload,
                 'is_active' => true,
                 'imported_at' => $this->resolveImportedAt($payload),
@@ -54,6 +65,8 @@ class RoscomVpnJsonSettingsImporter
                             XrayRouting::SUBSCRIPTION_CONNECT,
                             XrayRouting::SUBSCRIPTION_CONNECT_WL,
                         ],
+                        'xray_inbound_ids' => [],
+                        'external_subscription_config_ids' => [],
                         'rules' => $rule['rules'],
                         'sort_order' => $rule['sort_order'],
                         'is_active' => true,
@@ -129,12 +142,25 @@ class RoscomVpnJsonSettingsImporter
      * @param  array<string, mixed>  $payload
      * @return array<string, string>
      */
-    private function buildGeodataSettings(array $payload): array
+    private function buildGeodataSettings(array $payload, ?XrayJsonSetting $previousSetting): array
     {
-        return array_filter([
+        $lastUpdated = $this->stringValue($payload, 'LastUpdated');
+        $urls = array_filter([
             'geoip_url' => $this->stringValue($payload, 'Geoipurl'),
             'geosite_url' => $this->stringValue($payload, 'Geositeurl'),
         ], fn (string $value): bool => $value !== '');
+
+        $assets = $this->geodataAssets->prepare([
+            'geoip' => $urls['geoip_url'] ?? '',
+            'geosite' => $urls['geosite_url'] ?? '',
+        ], $lastUpdated, $previousSetting);
+
+        return array_filter([
+            ...$urls,
+            'last_updated' => $lastUpdated,
+            'use_chunk_files' => $this->boolValue($payload, 'UseChunkFiles'),
+            'assets' => $assets,
+        ], fn (mixed $value): bool => $value !== '' && $value !== [] && $value !== null);
     }
 
     /**

@@ -58,7 +58,11 @@ class ConnectJsonProfileSettingsProvider
     /**
      * @return array<string, mixed>
      */
-    public function routing(string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT): array
+    public function routing(
+        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
+        ?int $xrayInboundId = null,
+        ?int $externalSubscriptionConfigId = null,
+    ): array
     {
         $settings = $this->activeSettings()?->routing;
 
@@ -66,20 +70,82 @@ class ConnectJsonProfileSettingsProvider
             'domainStrategy' => is_array($settings) && isset($settings['domainStrategy'])
                 ? (string) $settings['domainStrategy']
                 : (string) config('connect_json.routing.domain_strategy', 'AsIs'),
-            'rules' => $this->routingRules($subscriptionType),
+            'rules' => $this->routingRules($subscriptionType, $xrayInboundId, $externalSubscriptionConfigId),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function geodata(): ?array
+    {
+        $assets = data_get($this->activeSettings()?->geodata, 'assets');
+
+        if (! is_array($assets) || $assets === []) {
+            return null;
+        }
+
+        $xrayAssets = collect($assets)
+            ->map(fn (mixed $asset): ?array => is_array($asset)
+                && is_string($asset['url'] ?? null)
+                && is_string($asset['file'] ?? null)
+                    ? [
+                        'url' => $asset['url'],
+                        'file' => $asset['file'],
+                    ]
+                    : null)
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($xrayAssets === []) {
+            return null;
+        }
+
+        return array_filter([
+            'cron' => (string) config('connect_json.geodata.cron', '0 4 * * *'),
+            'outbound' => (string) config('connect_json.geodata.outbound', $this->proxyTag()),
+            'assets' => $xrayAssets,
+        ], fn (mixed $value): bool => $value !== '');
+    }
+
+    public function hasTargetedRoutingRules(
+        string $subscriptionType,
+        ?int $xrayInboundId = null,
+        ?int $externalSubscriptionConfigId = null,
+    ): bool {
+        return XrayRouting::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->contains(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType)
+                && $routing->appliesToAnyTarget($xrayInboundId, $externalSubscriptionConfigId));
     }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function routingRules(string $subscriptionType): array
+    private function routingRules(
+        string $subscriptionType,
+        ?int $xrayInboundId,
+        ?int $externalSubscriptionConfigId,
+    ): array
     {
-        $rules = XrayRouting::query()
+        $routings = XrayRouting::query()
             ->active()
             ->ordered()
             ->get()
-            ->filter(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType))
+            ->filter(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType));
+
+        if ($routings->isEmpty()) {
+            return config('connect_json.routing.rules', []);
+        }
+
+        return $routings
+            ->filter(fn (XrayRouting $routing): bool => $routing->appliesToAnyTarget(
+                $xrayInboundId,
+                $externalSubscriptionConfigId,
+            ))
             ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(
                 $this->directTag(),
                 $this->proxyTag(),
@@ -87,10 +153,6 @@ class ConnectJsonProfileSettingsProvider
             ))
             ->values()
             ->all();
-
-        return $rules !== []
-            ? $rules
-            : config('connect_json.routing.rules', []);
     }
 
     private function activeSettings(): ?XrayJsonSetting

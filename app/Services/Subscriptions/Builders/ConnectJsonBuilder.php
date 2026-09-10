@@ -51,11 +51,30 @@ class ConnectJsonBuilder implements SubscriptionBuilder
      */
     private function buildProfile(NormalizedNode $node, string $subscriptionType): ?array
     {
+        $xrayInboundId = isset($node->meta['xray_inbound_id']) ? (int) $node->meta['xray_inbound_id'] : null;
+        $externalSubscriptionConfigId = isset($node->meta['external_subscription_config_id'])
+            ? (int) $node->meta['external_subscription_config_id']
+            : null;
+
         if (is_array($node->meta['json_profile'] ?? null)) {
-            return [
+            $profile = [
                 ...$node->meta['json_profile'],
                 'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
             ];
+
+            if ($this->settingsProvider->hasTargetedRoutingRules(
+                $subscriptionType,
+                $xrayInboundId,
+                $externalSubscriptionConfigId,
+            )) {
+                $profile['routing'] = $this->settingsProvider->routing(
+                    $subscriptionType,
+                    $xrayInboundId,
+                    $externalSubscriptionConfigId,
+                );
+            }
+
+            return $profile;
         }
 
         $parsed = $this->parser->parse($node->uri);
@@ -84,7 +103,14 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
             'log' => $this->settingsProvider->log(),
             'dns' => $this->settingsProvider->dns(),
-            'routing' => $this->settingsProvider->routing($subscriptionType),
+            ...array_filter([
+                'geodata' => $this->settingsProvider->geodata(),
+            ]),
+            'routing' => $this->settingsProvider->routing(
+                $subscriptionType,
+                $xrayInboundId,
+                $externalSubscriptionConfigId,
+            ),
             'inbounds' => $this->settingsProvider->inbounds(),
             'outbounds' => [
                 $proxyOutbound,

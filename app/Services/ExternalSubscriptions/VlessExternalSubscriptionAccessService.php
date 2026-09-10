@@ -117,6 +117,8 @@ class VlessExternalSubscriptionAccessService
                 'config_protocol' => (string) ($config->protocol ?: ($parsed['protocol'] ?? 'unknown')),
                 'server' => (string) ($parsed['server'] ?? ''),
                 'port' => (int) ($parsed['port'] ?? 0),
+                'external_subscription_id' => (int) $config->vless_external_subscription_id,
+                'external_subscription_config_id' => (int) $config->id,
                 'json_profile' => $config->json,
             ],
         );

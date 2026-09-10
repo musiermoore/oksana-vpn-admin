@@ -158,7 +158,11 @@ class XrayRoutingController extends Controller
     {
         return Server::query()
             ->whereHas('xrayInbounds')
-            ->with(['xrayInbounds' => fn ($query) => $query->ordered()])
+            ->with([
+                'xrayInbounds' => fn ($query) => $query
+                    ->select('id', 'server_id', 'external_id', 'sort_order', 'is_active', 'is_public')
+                    ->ordered(),
+            ])
             ->ordered()
             ->get()
             ->map(fn (Server $server): array => [

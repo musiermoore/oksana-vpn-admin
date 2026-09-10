@@ -16,8 +16,10 @@ use App\Models\XrayRouting;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class XrayRoutingJsonImportTest extends TestCase
@@ -29,6 +31,64 @@ class XrayRoutingJsonImportTest extends TestCase
         parent::setUp();
 
         File::deleteDirectory(storage_path('app/xray-geodata'));
+    }
+
+    public function test_index_eager_loads_xray_inbound_targets_without_params_payload(): void
+    {
+        $admin = User::query()->create([
+            'name' => 'Admin',
+            'telegram' => '@admin',
+            'telegram_id' => '1',
+            'is_admin' => true,
+        ]);
+
+        $server = Server::query()->create([
+            'name' => 'Finland',
+            'code' => 'FI-1',
+            'sort_order' => 1,
+            'ip' => '10.0.0.10',
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 101,
+            'sort_order' => 1,
+            'is_active' => true,
+            'is_public' => false,
+            'params' => [
+                'heavy' => str_repeat('x', 4096),
+            ],
+        ]);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this
+            ->actingAs($admin)
+            ->get(route('xray-routings.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('XrayRoutings/Index')
+                ->where('target_tree.servers.0.inbounds.0.id', $inbound->id)
+                ->where('target_tree.servers.0.inbounds.0.external_id', 101)
+                ->where('target_tree.servers.0.inbounds.0.is_active', true)
+                ->where('target_tree.servers.0.inbounds.0.is_public', false)
+            );
+
+        $xrayInboundSelect = collect(DB::getQueryLog())
+            ->pluck('query')
+            ->first(function (string $query): bool {
+                $normalizedQuery = str_replace(['`', '"'], '', $query);
+
+                return str_contains($normalizedQuery, 'from xray_inbounds')
+                    && str_contains($normalizedQuery, 'server_id in');
+            });
+
+        $this->assertIsString($xrayInboundSelect);
+        $normalizedXrayInboundSelect = str_replace(['`', '"'], '', $xrayInboundSelect);
+        $this->assertStringContainsString('select id, server_id, external_id, sort_order, is_active, is_public', $normalizedXrayInboundSelect);
+        $this->assertStringNotContainsString('params', $normalizedXrayInboundSelect);
     }
 
     public function test_admin_can_import_roscomvpn_json_settings_into_json_subscription(): void

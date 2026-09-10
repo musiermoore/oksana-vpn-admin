@@ -209,7 +209,7 @@ const targetLabel = (routing) => {
         </form>
     </section>
 
-    <section class="grid grid--two">
+    <section class="stack">
         <div class="page-card stack">
             <h2>Active Settings</h2>
             <div v-if="active_settings" class="stack">

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\User;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Vite;
 use Telegram\Bot\BotsManager;
@@ -39,6 +41,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::define('viewLogViewer', fn (?User $user): bool => (bool) $user?->is_admin);
+
         if (! $this->app->isLocal()) {
             Vite::useHotFile(storage_path('framework/vite.hot'));
         }

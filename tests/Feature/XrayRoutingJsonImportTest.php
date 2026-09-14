@@ -91,6 +91,39 @@ class XrayRoutingJsonImportTest extends TestCase
         $this->assertStringNotContainsString('params', $normalizedXrayInboundSelect);
     }
 
+    public function test_index_paginates_routing_rules(): void
+    {
+        $admin = $this->createAdmin();
+
+        foreach (range(1, 16) as $order) {
+            XrayRouting::query()->create([
+                'name' => 'Routing rule '.$order,
+                'description' => null,
+                'source' => 'manual',
+                'source_key' => null,
+                'outbound' => 'proxy',
+                'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+                'xray_inbound_ids' => [],
+                'external_subscription_config_ids' => [],
+                'rules' => ['domain' => ['geosite:rule-'.$order]],
+                'sort_order' => $order,
+                'is_active' => true,
+            ]);
+        }
+
+        $this
+            ->actingAs($admin)
+            ->get(route('xray-routings.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('XrayRoutings/Index')
+                ->has('routings.data', 15)
+                ->where('routings.total', 16)
+                ->where('routings.per_page', 15)
+                ->where('routings.data.0.name', 'Routing rule 1')
+            );
+    }
+
     public function test_admin_can_import_roscomvpn_json_settings_into_json_subscription(): void
     {
         $admin = User::query()->create([

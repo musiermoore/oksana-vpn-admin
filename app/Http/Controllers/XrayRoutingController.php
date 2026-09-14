@@ -28,7 +28,8 @@ class XrayRoutingController extends Controller
 
         $routings = XrayRouting::query()
             ->ordered()
-            ->get();
+            ->paginate(15)
+            ->withQueryString();
 
         return $this->inertia('XrayRoutings/Index', [
             'import_url' => route('xray-routings.import'),
@@ -63,7 +64,7 @@ class XrayRoutingController extends Controller
                 'imported_at' => $activeSettings->imported_at?->toDateTimeString(),
                 'created_at' => $activeSettings->created_at?->toDateTimeString(),
             ] : null,
-            'routings' => $routings->map(function (XrayRouting $routing): array {
+            'routings' => $routings->through(function (XrayRouting $routing): array {
                 $outbound = $routing->outbound;
 
                 return [
@@ -81,7 +82,7 @@ class XrayRoutingController extends Controller
                         'update' => route('xray-routings.update', $routing),
                     ],
                 ];
-            })->values(),
+            })->toArray(),
         ]);
     }
 

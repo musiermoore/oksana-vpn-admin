@@ -1,5 +1,5 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { computed, ref } from 'vue';
 
@@ -9,19 +9,46 @@ const props = defineProps({
     import_url: String,
     create_url: String,
     active_settings: Object,
-    routings: Array,
+    routings: {
+        type: Object,
+        default: () => ({ data: [], links: [], total: 0 }),
+    },
     outbound_options: Array,
     subscription_type_options: Array,
     target_tree: Object,
 });
 
-const form = useForm({
+const page = usePage();
+
+const importForm = useForm({
     settings_json: '',
 });
 
-const submit = () => form.post(props.import_url);
+const isImportModalOpen = ref(Boolean(page.props.errors?.settings_json));
+
+const openImportModal = () => {
+    isImportModalOpen.value = true;
+};
+
+const closeImportModal = () => {
+    isImportModalOpen.value = false;
+    importForm.clearErrors();
+};
+
+const submitImport = () => importForm.post(props.import_url, {
+    preserveScroll: true,
+    onError: openImportModal,
+    onSuccess: () => {
+        importForm.reset();
+        closeImportModal();
+    },
+});
 
 const pretty = (value) => JSON.stringify(value ?? {}, null, 2);
+
+const routingItems = computed(() => props.routings?.data ?? []);
+const paginationLinks = computed(() => props.routings?.links ?? []);
+const routingTotal = computed(() => props.routings?.total ?? props.routings?.meta?.total ?? routingItems.value.length);
 
 const editingRouting = ref(null);
 const editorMode = ref('');
@@ -61,7 +88,7 @@ const startCreate = () => {
     editingRouting.value = null;
     editorMode.value = 'create';
     resetEditorDefaults({
-        sort_order: props.routings?.length ?? 0,
+        sort_order: routingTotal.value,
     });
 };
 
@@ -194,19 +221,11 @@ const targetLabel = (routing) => {
                 <h1>Xray Routing</h1>
                 <p>JSON routing settings for connect subscriptions.</p>
             </div>
-        </div>
-
-        <form class="stack" @submit.prevent="submit">
-            <label class="field">
-                <span>Settings JSON</span>
-                <AppTextarea v-model="form.settings_json" rows="18" required />
-                <small v-if="form.errors.settings_json" class="field-error">{{ form.errors.settings_json }}</small>
-            </label>
-
             <div class="actions">
-                <AppButton type="submit" :disabled="form.processing">Import</AppButton>
+                <AppButton variant="secondary" type="button" @click="openImportModal">Импорт</AppButton>
+                <AppButton type="button" @click="startCreate">Создать правило</AppButton>
             </div>
-        </form>
+        </div>
     </section>
 
     <section class="stack">
@@ -231,7 +250,6 @@ const targetLabel = (routing) => {
                 <div>
                     <h2>Routing Rules</h2>
                 </div>
-                <AppButton type="button" @click="startCreate">Создать правило</AppButton>
             </div>
             <table>
                 <thead>
@@ -247,7 +265,7 @@ const targetLabel = (routing) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="routing in routings" :key="routing.id">
+                    <tr v-for="routing in routingItems" :key="routing.id">
                         <td>{{ routing.sort_order }}</td>
                         <td>{{ routing.name }}</td>
                         <td>{{ routing.outbound }}</td>
@@ -261,6 +279,27 @@ const targetLabel = (routing) => {
                     </tr>
                 </tbody>
             </table>
+            <div v-if="!routingItems.length" class="empty-state">Правил пока нет.</div>
+
+            <div v-if="paginationLinks.length > 3" class="actions">
+                <template v-for="link in paginationLinks" :key="link.label">
+                    <AppButton
+                        v-if="link.url"
+                        variant="secondary"
+                        :class="{ 'is-active': link.active }"
+                        :href="link.url"
+                    >
+                        <span v-html="link.label" />
+                    </AppButton>
+                    <span
+                        v-else
+                        class="pagination-pill"
+                        :class="{ 'is-active': link.active }"
+                    >
+                        <span v-html="link.label" />
+                    </span>
+                </template>
+            </div>
         </div>
     </section>
 
@@ -381,6 +420,31 @@ const targetLabel = (routing) => {
             </div>
         </form>
     </section>
+
+    <div v-if="isImportModalOpen" class="routing-modal" @click.self="closeImportModal">
+        <section class="page-card stack routing-modal__card">
+            <div class="page-header">
+                <div>
+                    <h2>Импорт настроек</h2>
+                    <p>Вставьте JSON routing settings для connect subscriptions.</p>
+                </div>
+                <AppButton variant="secondary" type="button" @click="closeImportModal">Закрыть</AppButton>
+            </div>
+
+            <form class="stack" @submit.prevent="submitImport">
+                <label class="field">
+                    <span>Settings JSON</span>
+                    <AppTextarea v-model="importForm.settings_json" rows="18" required />
+                    <small v-if="importForm.errors.settings_json" class="field-error">{{ importForm.errors.settings_json }}</small>
+                </label>
+
+                <div class="actions">
+                    <AppButton type="submit" :disabled="importForm.processing">Импортировать</AppButton>
+                    <AppButton variant="secondary" type="button" @click="closeImportModal">Отмена</AppButton>
+                </div>
+            </form>
+        </section>
+    </div>
 </template>
 
 <style scoped>
@@ -392,5 +456,22 @@ const targetLabel = (routing) => {
 
 .field-row--child {
     margin-left: 1.5rem;
+}
+
+.routing-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.42);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 30;
+}
+
+.routing-modal__card {
+    width: min(900px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: auto;
 }
 </style>

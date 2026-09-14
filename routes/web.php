@@ -99,10 +99,14 @@ Route::middleware('auth')->group(function () {
         ->name('vless-external-subscriptions.sync');
     Route::get('xray-routings', [XrayRoutingController::class, 'index'])
         ->name('xray-routings.index');
+    Route::get('xray-routings/create', [XrayRoutingController::class, 'create'])
+        ->name('xray-routings.create');
     Route::post('xray-routings', [XrayRoutingController::class, 'store'])
         ->name('xray-routings.store');
     Route::post('xray-routings/import', [XrayRoutingController::class, 'import'])
         ->name('xray-routings.import');
+    Route::get('xray-routings/{xrayRouting}/edit', [XrayRoutingController::class, 'edit'])
+        ->name('xray-routings.edit');
     Route::put('xray-routings/{xrayRouting}', [XrayRoutingController::class, 'update'])
         ->name('xray-routings.update');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);

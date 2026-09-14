@@ -33,27 +33,7 @@ class XrayRoutingController extends Controller
 
         return $this->inertia('XrayRoutings/Index', [
             'import_url' => route('xray-routings.import'),
-            'create_url' => route('xray-routings.store'),
-            'outbound_options' => collect(XrayRoutingOutbound::cases())
-                ->map(fn (XrayRoutingOutbound $outbound): array => [
-                    'label' => $outbound->value,
-                    'value' => $outbound->value,
-                ])
-                ->values(),
-            'subscription_type_options' => [
-                [
-                    'label' => 'Стандартная подписка (connect)',
-                    'value' => XrayRouting::SUBSCRIPTION_CONNECT,
-                ],
-                [
-                    'label' => 'Белые списки (connect-wl)',
-                    'value' => XrayRouting::SUBSCRIPTION_CONNECT_WL,
-                ],
-            ],
-            'target_tree' => [
-                'servers' => $this->serverTargets(),
-                'external_subscriptions' => $this->externalSubscriptionTargets(),
-            ],
+            'create_page_url' => route('xray-routings.create'),
             'active_settings' => $activeSettings ? [
                 'id' => $activeSettings->id,
                 'name' => $activeSettings->name,
@@ -79,10 +59,22 @@ class XrayRoutingController extends Controller
                     'sort_order' => $routing->sort_order,
                     'is_active' => $routing->is_active,
                     'links' => [
+                        'edit' => route('xray-routings.edit', $routing),
                         'update' => route('xray-routings.update', $routing),
                     ],
                 ];
             })->toArray(),
+        ]);
+    }
+
+    public function create()
+    {
+        return $this->inertia('XrayRoutings/Create', [
+            ...$this->formProps(),
+            'submit_url' => route('xray-routings.store'),
+            'routing' => [
+                'sort_order' => XrayRouting::query()->count(),
+            ],
         ]);
     }
 
@@ -108,6 +100,15 @@ class XrayRoutingController extends Controller
         return redirect()
             ->route('xray-routings.index')
             ->with('success', 'Xray routing created.');
+    }
+
+    public function edit(XrayRouting $xrayRouting)
+    {
+        return $this->inertia('XrayRoutings/Edit', [
+            ...$this->formProps(),
+            'submit_url' => route('xray-routings.update', $xrayRouting),
+            'routing' => $this->routingPayload($xrayRouting),
+        ]);
     }
 
     public function import(
@@ -150,6 +151,58 @@ class XrayRoutingController extends Controller
         return redirect()
             ->route('xray-routings.index')
             ->with('success', 'Xray routing updated.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formProps(): array
+    {
+        return [
+            'index_url' => route('xray-routings.index'),
+            'outbound_options' => collect(XrayRoutingOutbound::cases())
+                ->map(fn (XrayRoutingOutbound $outbound): array => [
+                    'label' => $outbound->value,
+                    'value' => $outbound->value,
+                ])
+                ->values()
+                ->all(),
+            'subscription_type_options' => [
+                [
+                    'label' => 'Стандартная подписка (connect)',
+                    'value' => XrayRouting::SUBSCRIPTION_CONNECT,
+                ],
+                [
+                    'label' => 'Белые списки (connect-wl)',
+                    'value' => XrayRouting::SUBSCRIPTION_CONNECT_WL,
+                ],
+            ],
+            'target_tree' => [
+                'servers' => $this->serverTargets(),
+                'external_subscriptions' => $this->externalSubscriptionTargets(),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function routingPayload(XrayRouting $routing): array
+    {
+        $outbound = $routing->outbound;
+
+        return [
+            'id' => $routing->id,
+            'name' => $routing->name,
+            'description' => $routing->description,
+            'outbound' => $outbound instanceof XrayRoutingOutbound ? $outbound->value : (string) $outbound,
+            'subscription_types' => $routing->subscription_types,
+            'xray_inbound_ids' => $routing->xray_inbound_ids,
+            'external_subscription_config_ids' => $routing->external_subscription_config_ids,
+            'rules' => $routing->rules,
+            'sort_order' => $routing->sort_order,
+            'is_active' => $routing->is_active,
+        ];
     }
 
     /**

@@ -33,7 +33,7 @@ class XrayRoutingJsonImportTest extends TestCase
         File::deleteDirectory(storage_path('app/xray-geodata'));
     }
 
-    public function test_index_eager_loads_xray_inbound_targets_without_params_payload(): void
+    public function test_create_page_eager_loads_xray_inbound_targets_without_params_payload(): void
     {
         $admin = User::query()->create([
             'name' => 'Admin',
@@ -66,10 +66,10 @@ class XrayRoutingJsonImportTest extends TestCase
 
         $this
             ->actingAs($admin)
-            ->get(route('xray-routings.index'))
+            ->get(route('xray-routings.create'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('XrayRoutings/Index')
+                ->component('XrayRoutings/Create')
                 ->where('target_tree.servers.0.inbounds.0.id', $inbound->id)
                 ->where('target_tree.servers.0.inbounds.0.external_id', 101)
                 ->where('target_tree.servers.0.inbounds.0.is_active', true)
@@ -117,10 +117,44 @@ class XrayRoutingJsonImportTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('XrayRoutings/Index')
+                ->where('create_page_url', route('xray-routings.create'))
                 ->has('routings.data', 15)
                 ->where('routings.total', 16)
                 ->where('routings.per_page', 15)
                 ->where('routings.data.0.name', 'Routing rule 1')
+                ->where('routings.data.0.links.edit', route('xray-routings.edit', XrayRouting::query()->ordered()->first()))
+            );
+    }
+
+    public function test_edit_page_loads_routing_rule_form_data(): void
+    {
+        $admin = $this->createAdmin();
+        $routing = XrayRouting::query()->create([
+            'name' => 'Editable routing',
+            'description' => 'Manual rule',
+            'source' => 'manual',
+            'source_key' => null,
+            'outbound' => 'direct',
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT_WL],
+            'xray_inbound_ids' => [10],
+            'external_subscription_config_ids' => [],
+            'rules' => ['domain' => ['geosite:editable']],
+            'sort_order' => 7,
+            'is_active' => false,
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->get(route('xray-routings.edit', $routing))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('XrayRoutings/Edit')
+                ->where('submit_url', route('xray-routings.update', $routing))
+                ->where('index_url', route('xray-routings.index'))
+                ->where('routing.name', 'Editable routing')
+                ->where('routing.outbound', 'direct')
+                ->where('routing.subscription_types.0', XrayRouting::SUBSCRIPTION_CONNECT_WL)
+                ->where('routing.rules.domain.0', 'geosite:editable')
             );
     }
 

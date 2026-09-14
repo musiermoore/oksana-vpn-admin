@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Entities\VlessConfig as VlessConfigData;
+use App\Exceptions\XuiConnectionException;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
 use App\Models\XrayInbound;
 use App\Services\WireGuardSubscriptionLinkService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
@@ -34,8 +36,7 @@ class XuiConfigService
 
     public function getInbounds(): array
     {
-        $inboundsResponse = $this->getRequest()
-            ->get('/panel/api/inbounds/list')
+        $inboundsResponse = $this->sendXuiRequest('GET', '/panel/api/inbounds/list')
             ->throw();
 
         return $this->normalizeResponseData($inboundsResponse->json());
@@ -361,20 +362,13 @@ class XuiConfigService
     {
         $method = mb_strtolower(trim($method));
         $path = $this->normalizeDiagnosticPath($path);
-        $request = $this->getRequest();
+        $request = null;
 
         if ($encoding === 'form') {
-            $request = $request->asForm();
+            $request = fn (PendingRequest $pendingRequest): PendingRequest => $pendingRequest->asForm();
         }
 
-        $response = match ($method) {
-            'get' => $request->get($path, $payload),
-            'post' => $request->post($path, $payload),
-            'put' => $request->put($path, $payload),
-            'patch' => $request->patch($path, $payload),
-            'delete' => $request->delete($path, $payload),
-            default => throw new RuntimeException("Unsupported diagnostic request method [{$method}]"),
-        };
+        $response = $this->sendXuiRequest($method, $path, $payload, $request);
 
         $json = $response->json();
 
@@ -476,8 +470,7 @@ class XuiConfigService
      */
     public function getClientIps(string $email): array
     {
-        $response = $this->getRequest()
-            ->post('/panel/api/clients/ips/'.urlencode($email));
+        $response = $this->sendXuiRequest('POST', '/panel/api/clients/ips/'.urlencode($email));
 
         if ($response->notFound()) {
             return [];
@@ -618,13 +611,15 @@ class XuiConfigService
     {
         $this->setStartSessionAndCsrf();
 
-        $response = $this->getRequest()
-            ->asForm()
-            ->post('/login', [
+        $response = $this->sendXuiRequest(
+            'POST',
+            '/login',
+            [
                 'username' => $this->server->panel_username,
                 'password' => $this->server->panel_password,
-            ])
-            ->throw();
+            ],
+            fn (PendingRequest $request): PendingRequest => $request->asForm(),
+        )->throw();
 
         $cookie = $this->getAuthorizationCookie($response);
 
@@ -642,7 +637,7 @@ class XuiConfigService
 
     private function setStartSessionAndCsrf(): void
     {
-        $response = $this->getRequest()->get('/csrf-token');
+        $response = $this->sendXuiRequest('GET', '/csrf-token');
 
         $this->csrf = $this->getCsrfToken($response);
         $this->session = $this->getAuthorizationCookie($response);
@@ -651,7 +646,7 @@ class XuiConfigService
             return;
         }
 
-        $response = $this->getRequest()->get('/');
+        $response = $this->sendXuiRequest('GET', '/');
 
         $this->csrf = $this->getCsrfToken($response);
         $this->session = $this->session ?: $this->getAuthorizationCookie($response);
@@ -727,6 +722,41 @@ class XuiConfigService
             ->timeout(30)
             ->withHeaders($headers)
             ->withOptions($options);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  callable(PendingRequest):PendingRequest|null  $configure
+     * @param  array<string, mixed>  $context
+     */
+    protected function sendXuiRequest(
+        string $method,
+        string $path,
+        array $payload = [],
+        ?callable $configure = null,
+        array $context = [],
+    ): Response {
+        $method = mb_strtoupper($method);
+        $request = $this->getRequest();
+
+        if ($configure !== null) {
+            $request = $configure($request);
+        }
+
+        try {
+            return match ($method) {
+                'GET' => $request->get($path, $payload),
+                'POST' => $request->post($path, $payload),
+                'PUT' => $request->put($path, $payload),
+                'PATCH' => $request->patch($path, $payload),
+                'DELETE' => $request->delete($path, $payload),
+                default => throw new RuntimeException("Unsupported XUI request method [{$method}]"),
+            };
+        } catch (ConnectionException $exception) {
+            throw $this->handleConnectionException($exception, $path, array_merge([
+                'method' => $method,
+            ], $context));
+        }
     }
 
     private function normalizeResponseData(mixed $payload): array
@@ -1488,9 +1518,13 @@ class XuiConfigService
 
         foreach ($paths as $index => $path) {
             try {
-                return $this->getRequest()
-                    ->asForm()
-                    ->post($path, $payload)
+                return $this->sendXuiRequest(
+                    'POST',
+                    $path,
+                    $payload,
+                    fn (PendingRequest $request): PendingRequest => $request->asForm(),
+                    ['fallback_index' => $index],
+                )
                     ->throw();
             } catch (RequestException $exception) {
                 $lastException = $exception;
@@ -1510,8 +1544,7 @@ class XuiConfigService
 
         foreach ($paths as $index => $path) {
             try {
-                return $this->getRequest()
-                    ->get($path)
+                return $this->sendXuiRequest('GET', $path, context: ['fallback_index' => $index])
                     ->throw();
             } catch (RequestException $exception) {
                 $lastException = $exception;
@@ -1523,6 +1556,25 @@ class XuiConfigService
         }
 
         throw $lastException ?? new RuntimeException('Unable to complete XUI request.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    protected function handleConnectionException(ConnectionException $exception, string $path, array $context = []): XuiConnectionException
+    {
+        Log::warning('Unable to connect to XUI panel.', array_merge([
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'panel_link' => $this->getBaseUrl(),
+            'path' => $path,
+            'message' => $exception->getMessage(),
+        ], $context));
+
+        return new XuiConnectionException(
+            "Не удалось подключиться к панели XUI сервера [{$this->server->name}]. Попробуйте повторить операцию позже.",
+            previous: $exception,
+        );
     }
 
     /**

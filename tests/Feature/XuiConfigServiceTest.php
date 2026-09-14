@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\XuiConnectionException;
 use App\Models\Server;
 use App\Models\VlessConfig;
 use App\Services\XuiConfigService;
 use App\Services\XuiConfigServiceFactory;
+use Illuminate\Contracts\Debug\ShouldntReport;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Tests\TestCase;
 
 class XuiConfigServiceTest extends TestCase
@@ -281,6 +286,149 @@ class XuiConfigServiceTest extends TestCase
 
         Http::assertSent(fn (Request $request) => $request->url() === 'https://panel.test/panel/api/clients/traffic/alice_modern_1');
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'getClientTraffics'));
+    }
+
+    public function test_v3_enable_client_wraps_connection_timeout_as_runtime_exception(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Modern Panel',
+            'code' => 'MPN',
+            'ip' => '10.0.0.6',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'panel_api_version' => Server::PANEL_API_V3_2_8,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'inbound_id' => 10,
+            'name' => 'alice_modern_1',
+            'description' => null,
+            'is_active' => true,
+            'enable' => false,
+            'uuid' => '22222222-2222-2222-2222-222222222222',
+            'sub_id' => 'sub-id-456',
+            'password' => 'modern-password',
+            'auth' => 'modern-auth',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'flow' => 'xtls-rprx-vision',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'host' => null,
+            'path' => null,
+            'service_name' => null,
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/inbounds/list' => Http::response([
+                'obj' => [[
+                    'id' => 10,
+                    'protocol' => 'vless',
+                    'port' => 443,
+                    'settings' => json_encode([
+                        'clients' => [[
+                            'id' => $config->uuid,
+                            'email' => $config->name,
+                            'flow' => $config->flow,
+                            'subId' => $config->sub_id,
+                            'password' => $config->password,
+                            'auth' => $config->auth,
+                            'enable' => false,
+                        ]],
+                    ], JSON_UNESCAPED_SLASHES),
+                    'streamSettings' => json_encode([
+                        'network' => 'tcp',
+                        'security' => 'reality',
+                    ], JSON_UNESCAPED_SLASHES),
+                ]],
+            ]),
+            'https://panel.test/panel/api/clients/update/'.$config->name.'?inboundIds=10' => Http::failedConnection(
+                'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received'
+            ),
+        ]);
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context) use ($server, $config): bool {
+                return $message === 'Unable to connect to XUI panel.'
+                    && ($context['server_id'] ?? null) === $server->id
+                    && ($context['path'] ?? null) === '/panel/api/clients/update/'.$config->name
+                    && ($context['client_identifier'] ?? null) === $config->name
+                    && ($context['inbound_id'] ?? null) === 10;
+            });
+
+        try {
+            XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server)
+                ->enableClient($config->uuid);
+
+            $this->fail('Expected XUI connection timeout to be wrapped.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('Не удалось подключиться к панели XUI сервера [Modern Panel]', $exception->getMessage());
+            $this->assertInstanceOf(XuiConnectionException::class, $exception);
+            $this->assertInstanceOf(ShouldntReport::class, $exception);
+            $this->assertInstanceOf(ConnectionException::class, $exception->getPrevious());
+        }
+    }
+
+    public function test_xui_session_bootstrap_wraps_connection_timeout_as_runtime_exception(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'Modern Panel',
+            'code' => 'MPN',
+            'ip' => '10.0.0.6',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'panel_api_version' => Server::PANEL_API_V3_2_8,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::failedConnection(
+                'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received'
+            ),
+        ]);
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context) use ($server): bool {
+                return $message === 'Unable to connect to XUI panel.'
+                    && ($context['server_id'] ?? null) === $server->id
+                    && ($context['path'] ?? null) === '/csrf-token'
+                    && ($context['method'] ?? null) === 'GET';
+            });
+
+        try {
+            XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
+
+            $this->fail('Expected XUI session timeout to be wrapped.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('Не удалось подключиться к панели XUI сервера [Modern Panel]', $exception->getMessage());
+            $this->assertInstanceOf(XuiConnectionException::class, $exception);
+            $this->assertInstanceOf(ShouldntReport::class, $exception);
+            $this->assertInstanceOf(ConnectionException::class, $exception->getPrevious());
+        }
     }
 
     public function test_service_prefers_csrf_token_endpoint_before_html_fallback(): void

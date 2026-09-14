@@ -477,8 +477,13 @@ class XuiConfigService
     public function getClientIps(string $email): array
     {
         $response = $this->getRequest()
-            ->post('/panel/api/clients/ips/'.urlencode($email))
-            ->throw();
+            ->post('/panel/api/clients/ips/'.urlencode($email));
+
+        if ($response->notFound()) {
+            return [];
+        }
+
+        $response->throw();
 
         $payload = $response->json();
         $rows = $payload['obj'] ?? $payload['data'] ?? [];

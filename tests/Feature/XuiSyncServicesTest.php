@@ -156,4 +156,72 @@ class XuiSyncServicesTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->method() === 'GET'
             && $request->url() === 'https://panel.test/panel/api/clients/list');
     }
+
+    public function test_online_connection_sync_ignores_missing_client_ips_endpoint(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Alice',
+            'telegram' => '@alice',
+            'join_at' => now()->toDateString(),
+        ]);
+
+        $server = Server::query()->create([
+            'name' => 'Germany',
+            'code' => 'DE',
+            'ip' => '10.0.0.5',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_active' => true,
+            'is_ready' => true,
+            'type' => Server::TYPE_VLESS,
+            'allowed_inbound_ids' => [10],
+        ]);
+
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'inbound_id' => 10,
+            'user_id' => $user->id,
+            'name' => 'alice-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'uuid-1',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        Http::fake([
+            'https://panel.test/csrf-token' => Http::response([
+                'token' => 'csrf-token-value',
+            ], 200, ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']),
+            'https://panel.test/' => Http::response(
+                '<meta name="csrf-token" content="csrf-token-value">',
+                200,
+                ['Set-Cookie' => '3x-ui=bootstrap-session; Path=/; HttpOnly']
+            ),
+            'https://panel.test/login' => Http::response([], 200, [
+                'Set-Cookie' => '3x-ui=test-session; Path=/; HttpOnly',
+            ]),
+            'https://panel.test/panel/api/clients/onlines' => Http::response([
+                'obj' => ['alice-config'],
+            ]),
+            'https://panel.test/panel/api/clients/ips/alice-config' => Http::response([], 404),
+        ]);
+
+        $touchedUsers = app(XuiConnectionSyncService::class)->syncServer($server);
+
+        $this->assertSame([], $touchedUsers);
+        $this->assertDatabaseCount('active_connections', 0);
+
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && $request->url() === 'https://panel.test/panel/api/clients/ips/alice-config');
+    }
 }

@@ -159,8 +159,7 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
         foreach ($users as $user) {
             foreach ($user->vlessConfigs as $config) {
                 if ($config->getResolvedInboundId() === null) {
-                    $ids[] = $config->id;
-                    $this->warn("Skipping remote disable for VLESS config [{$config->id}] because inbound is missing; config will be disabled locally.");
+                    $this->deleteVlessConfigWithMissingInbound($config, $user, 'disable');
 
                     continue;
                 }
@@ -200,6 +199,12 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
 
         foreach ($users as $user) {
             foreach ($user->vlessConfigs as $config) {
+                if ($config->getResolvedInboundId() === null) {
+                    $this->deleteVlessConfigWithMissingInbound($config, $user, 'enable');
+
+                    continue;
+                }
+
                 try {
                     $service->enable($config);
                     $ids[] = $config->id;
@@ -211,5 +216,12 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
         }
 
         VlessConfig::whereIn('id', $ids)->update(['enable' => true]);
+    }
+
+    private function deleteVlessConfigWithMissingInbound(VlessConfig $config, User $user, string $action): void
+    {
+        $this->warn("Deleting VLESS config [{$config->id}] for user [{$user->id}] because inbound is missing; remote {$action} was skipped.");
+
+        $config->delete();
     }
 }

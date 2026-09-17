@@ -35,7 +35,7 @@ class DisableConfigsOfOverdueDebtorsCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_command_disables_vless_config_locally_when_inbound_mapping_is_missing(): void
+    public function test_command_deletes_enabled_vless_config_when_inbound_mapping_is_missing(): void
     {
         $server = Server::query()->create([
             'name' => 'VLESS Server',
@@ -91,10 +91,84 @@ class DisableConfigsOfOverdueDebtorsCommandTest extends TestCase
         $inbound->delete();
 
         $this->artisan('configs:disable-overdue-debtors')
-            ->expectsOutputToContain('Skipping remote disable for VLESS config')
+            ->expectsOutputToContain('Deleting VLESS config')
             ->assertSuccessful();
 
-        $this->assertFalse((bool) $config->fresh()->enable);
+        $this->assertDatabaseMissing('vless_configs', [
+            'id' => $config->id,
+        ]);
+    }
+
+    public function test_command_deletes_disabled_vless_config_when_inbound_mapping_is_missing(): void
+    {
+        $server = Server::query()->create([
+            'name' => 'VLESS Server',
+            'code' => 'VLS',
+            'ip' => '10.0.0.10',
+            'app_path' => '/opt/app',
+            'panel_link' => 'https://panel.test',
+            'panel_username' => 'admin',
+            'panel_password' => 'secret',
+            'is_ready' => true,
+            'is_active' => true,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Active User',
+            'telegram' => '@active',
+            'telegram_id' => '223456789',
+            'balance' => 0,
+            'is_active' => true,
+            'password' => bcrypt('password'),
+        ]);
+
+        UserSubscription::query()->create([
+            'user_id' => $user->id,
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-08-10',
+            'price' => 150,
+        ]);
+
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 10,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['id' => 10],
+        ]);
+
+        $config = VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'xray_inbound_id' => $inbound->id,
+            'user_id' => $user->id,
+            'name' => 'active_config',
+            'is_active' => true,
+            'enable' => false,
+            'uuid' => '33333333-3333-3333-3333-333333333334',
+            'sub_id' => 'sub-334',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'flow' => 'xtls-rprx-vision',
+            'pbk' => 'public-key',
+            'fp' => 'chrome',
+            'sni' => 'example.com',
+            'sid' => 'abcd',
+            'spx' => '/',
+        ]);
+
+        $inbound->delete();
+
+        $this->artisan('configs:disable-overdue-debtors', ['user_id' => $user->id])
+            ->expectsOutputToContain('Deleting VLESS config')
+            ->assertSuccessful();
+
+        $this->assertDatabaseMissing('vless_configs', [
+            'id' => $config->id,
+        ]);
     }
 
     public function test_command_keeps_running_when_remote_disable_throws_non_runtime_exception(): void

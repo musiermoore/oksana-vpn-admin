@@ -158,6 +158,7 @@ class TelegramMiniAppAuthService
             throw new DomainException('TELEGRAM_BOT_TOKEN не настроен.');
         }
 
+        logger()->debug('Telegram InitData', [$initData]);
         parse_str($initData, $parsed);
 
         $hash = trim((string) ($parsed['hash'] ?? ''));

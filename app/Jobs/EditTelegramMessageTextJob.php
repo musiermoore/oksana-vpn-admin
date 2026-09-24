@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Support\TelegramDeliveryException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -30,6 +31,10 @@ class EditTelegramMessageTextJob implements ShouldQueue
         try {
             Telegram::editMessageText($this->payload);
         } catch (Throwable $throwable) {
+            if (TelegramDeliveryException::shouldSkip($throwable)) {
+                return;
+            }
+
             report($throwable);
         }
     }

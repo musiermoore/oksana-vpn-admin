@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\TelegramDeliveryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Telegram\Bot\FileUpload\InputFile;
@@ -57,6 +58,12 @@ class TelegramBroadcastService
                 $this->sendToUser((string) $user->telegram_id, $messageHtml, $photo, $extra);
                 $sent++;
             } catch (\Throwable $exception) {
+                if (TelegramDeliveryException::shouldSkip($exception)) {
+                    $skipped++;
+
+                    continue;
+                }
+
                 report($exception);
                 $failedUsers[] = $user->telegram ?: "#{$user->id}";
             }

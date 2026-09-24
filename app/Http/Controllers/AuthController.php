@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\TelegramDeliveryException;
+use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,10 +57,20 @@ class AuthController extends Controller
             'telegram' => $telegram,
         ], now()->addMinutes(self::LOGIN_CODE_TTL_MINUTES));
 
-        Telegram::sendMessage([
-            'chat_id' => $user->telegram_id,
-            'text' => "Код входа: {$code}\nОн действует 2 минуты.",
-        ]);
+        try {
+            Telegram::sendMessage([
+                'chat_id' => $user->telegram_id,
+                'text' => "Код входа: {$code}\nОн действует 2 минуты.",
+            ]);
+        } catch (Exception $exception) {
+            if (! TelegramDeliveryException::shouldSkip($exception)) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages([
+                'telegram' => 'Не удалось отправить код. Откройте диалог с ботом и попробуйте ещё раз.',
+            ]);
+        }
 
         return redirect()
             ->route('login', ['telegram' => $telegram])

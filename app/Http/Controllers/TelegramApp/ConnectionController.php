@@ -11,6 +11,7 @@ use App\Services\Api\ApiUserService;
 use App\Services\WireGuardClientConfigBuilder;
 use App\Services\WireGuardAgentConfigService;
 use App\Support\PublicAppUrl;
+use App\Support\TelegramDeliveryException;
 use App\Support\WireGuardConfigPublicId;
 use App\Support\BotApiMessages;
 use Exception;
@@ -191,6 +192,12 @@ class ConnectionController extends Controller
                 'message' => 'Файл отправлен в бот.',
             ]);
         } catch (Exception $exception) {
+            if (TelegramDeliveryException::shouldSkip($exception)) {
+                return response()->json([
+                    'message' => 'Не удалось отправить файл в бота. Откройте диалог с ботом и попробуйте ещё раз.',
+                ], 422);
+            }
+
             report($exception);
 
             return response()->json([
@@ -238,6 +245,12 @@ class ConnectionController extends Controller
                 'message' => 'QR-код отправлен в бот.',
             ]);
         } catch (Exception $exception) {
+            if (TelegramDeliveryException::shouldSkip($exception)) {
+                return response()->json([
+                    'message' => 'Не удалось отправить QR-код в бота. Откройте диалог с ботом и попробуйте ещё раз.',
+                ], 422);
+            }
+
             report($exception);
 
             return response()->json([
@@ -389,6 +402,12 @@ class ConnectionController extends Controller
                 'message' => 'QR-код отправлен в бот.',
             ]);
         } catch (Exception $exception) {
+            if (TelegramDeliveryException::shouldSkip($exception)) {
+                return response()->json([
+                    'message' => 'Не удалось отправить QR-код в бота. Откройте диалог с ботом и попробуйте ещё раз.',
+                ], 422);
+            }
+
             report($exception);
 
             return response()->json([
@@ -479,6 +498,12 @@ class ConnectionController extends Controller
                 'message' => 'QR-код отправлен в бот.',
             ]);
         } catch (Exception $exception) {
+            if (TelegramDeliveryException::shouldSkip($exception)) {
+                return response()->json([
+                    'message' => 'Не удалось отправить QR-код в бота. Откройте диалог с ботом и попробуйте ещё раз.',
+                ], 422);
+            }
+
             report($exception);
 
             return response()->json([

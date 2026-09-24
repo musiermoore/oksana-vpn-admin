@@ -4,10 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\Config;
 use App\Models\Traffic;
+use App\Support\TelegramDeliveryException;
 use App\Services\WireGuardTrafficService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Telegram\Bot\Laravel\Facades\Telegram;
+use Throwable;
 
 class DetectHighTraffic extends Command
 {
@@ -76,19 +78,35 @@ class DetectHighTraffic extends Command
             }
 
             if (!empty($devChatId)) {
-                Telegram::sendMessage([
+                $this->sendTelegramMessage([
                     'chat_id' => $devChatId,
                     'text' => $user->full_name . " ($config->name) даёт джаззу больше $highLimitInMb Мбайт. \n\nТрафик за 3 минуты: $size Мбайт"
                 ]);
             }
 
             if (!empty($user->telegram_id)) {
-                Telegram::sendMessage([
+                $this->sendTelegramMessage([
                     'chat_id' => $user->telegram_id,
                     'text' => "Привет! Ты используешь слишком много трафика. "
                         . "Проверь, вдруг у тебя что-то качается. Конфиг: $config->name"
                 ]);
             }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function sendTelegramMessage(array $payload): void
+    {
+        try {
+            Telegram::sendMessage($payload);
+        } catch (Throwable $throwable) {
+            if (TelegramDeliveryException::shouldSkip($throwable)) {
+                return;
+            }
+
+            report($throwable);
         }
     }
 

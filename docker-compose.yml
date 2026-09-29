@@ -68,6 +68,7 @@ services:
             - ./docker/mysql/conf.d/99-binlog-retention.cnf:/etc/mysql/conf.d/99-binlog-retention.cnf:ro
         networks:
             - app
+            - oksana-vpn
         healthcheck:
             test:
                 - CMD

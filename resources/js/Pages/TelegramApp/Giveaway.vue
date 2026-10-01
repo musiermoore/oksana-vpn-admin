@@ -5,17 +5,9 @@ import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 import { formatDateTimeInTimeZone, getClientTimeZone } from '../../lib/timezone';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    giveaway_url: String,
-    giveaway_participate_url: String,
-});
 
 const GIVEAWAY_SUMMARY_REFRESH_EVENT = 'telegram-app:refresh-giveaway-summary';
 const state = ref('loading');
@@ -31,9 +23,7 @@ const isParticipant = computed(() => Boolean(participant.value?.is_participant))
 const winners = computed(() => giveaway.value?.winners ?? []);
 
 const loadGiveaway = async () => {
-    const response = await window.axios.get(props.giveaway_url, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.giveaway);
 
     giveaway.value = response.data?.giveaway ?? null;
     participant.value = response.data?.participant ?? null;
@@ -42,11 +32,7 @@ const loadGiveaway = async () => {
 const participate = async () => {
     actionStatus.value = '';
 
-    const response = await window.axios.post(
-        props.giveaway_participate_url,
-        {},
-        { headers: telegramAppHeaders() },
-    );
+    const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.giveawayParticipate, {});
 
     participant.value = response.data?.participant ?? null;
     actionStatus.value = 'Вы участвуете в розыгрыше.';
@@ -98,8 +84,8 @@ const statusDescription = computed(() => {
 onMounted(async () => {
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: props.auth_url,
-            profileUrl: props.profile_url,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
         });
         await loadGiveaway();
         state.value = 'ready';
@@ -114,8 +100,6 @@ onMounted(async () => {
     <TelegramMiniAppFrame
         title="Розыгрыш"
         description="Явное участие, реферальный вес и призы на подписку."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -204,11 +188,11 @@ onMounted(async () => {
                     </div>
 
                     <div class="tg-inline-actions">
-                        <a class="tg-button tg-button--secondary" :href="routes.referrals">
+                        <a class="tg-button tg-button--secondary" :href="telegramMiniAppRoutes.referrals">
                             <AppIcon name="copy" />
                             <span>Скопировать ссылку</span>
                         </a>
-                        <a class="tg-button tg-button--soft" :href="routes.referrals">
+                        <a class="tg-button tg-button--soft" :href="telegramMiniAppRoutes.referrals">
                             <AppIcon name="send" />
                             <span>Поделиться</span>
                         </a>

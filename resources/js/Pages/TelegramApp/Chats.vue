@@ -7,13 +7,8 @@ import {
     normalizeTelegramAppError,
     openTelegramExternalLink,
 } from '../../lib/telegramMiniApp';
+import { telegramMiniAppEndpoint, telegramMiniAppEndpoints } from '../../lib/telegramMiniAppApi';
 import { telegramChatLinks } from '../../lib/telegramChatLinks';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-});
 
 const state = ref('loading');
 const error = ref('');
@@ -28,8 +23,8 @@ const retry = () => {
 onMounted(async () => {
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: props.auth_url,
-            profileUrl: props.profile_url,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
         });
         state.value = 'ready';
     } catch (requestError) {
@@ -43,8 +38,6 @@ onMounted(async () => {
     <TelegramMiniAppFrame
         title="Сообщество"
         description="Канал с обновлениями и чат, где можно задать быстрый вопрос."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>

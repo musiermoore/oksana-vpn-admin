@@ -8,17 +8,8 @@ import {
     normalizeTelegramAppError,
     openTelegramExternalLink,
     redirectFromTelegramStartParam,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    subscription_packages_url: String,
-    payment_url: String,
-    activate_subscription_code_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const screen = ref('overview');
@@ -168,15 +159,13 @@ const retry = () => {
 
 const loadProfile = async () => {
     user.value = await ensureTelegramAppSession({
-        authUrl: props.auth_url,
-        profileUrl: props.profile_url,
+        authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+        profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
     });
 };
 
 const loadPackages = async () => {
-    const response = await window.axios.get(props.subscription_packages_url, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.subscriptionPackages);
 
     packages.value = response.data?.data ?? [];
 };
@@ -225,12 +214,10 @@ const buySubscription = async () => {
     error.value = '';
 
     try {
-        const response = await window.axios.post(props.payment_url, {
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.payment, {
             month: selectedPackage.value.month,
             return_url: window.location.href,
             purchase_type: purchaseMode.value,
-        }, {
-            headers: telegramAppHeaders(),
         });
 
         paymentResult.value = response.data ?? null;
@@ -282,10 +269,8 @@ const activateCode = async () => {
     activationStatus.value = '';
 
     try {
-        const response = await window.axios.post(props.activate_subscription_code_url, {
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.activateSubscriptionCode, {
             code: activationCode.value.trim(),
-        }, {
-            headers: telegramAppHeaders(),
         });
 
         paymentResult.value = response.data ?? null;
@@ -300,7 +285,7 @@ const activateCode = async () => {
 };
 
 onMounted(async () => {
-    if (redirectFromTelegramStartParam(props.routes)) {
+    if (redirectFromTelegramStartParam(telegramMiniAppRoutes)) {
         return;
     }
 
@@ -319,8 +304,6 @@ onMounted(async () => {
     <TelegramMiniAppFrame
         title="Подписка"
         description="Проверяйте статус, продлевайте доступ и активируйте подарочные коды."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -538,7 +521,7 @@ onMounted(async () => {
                     <strong>Новый срок</strong>
                     <p>{{ paymentResult?.formatted_end_date || formatSubscriptionDate(user?.subscription_expires_at) }}</p>
                 </div>
-                <Link :href="routes?.home" class="tg-button">На главную</Link>
+                <Link :href="telegramMiniAppRoutes.home" class="tg-button">На главную</Link>
             </section>
 
             <section v-else-if="screen === 'gift-created'" class="tg-state-card">
@@ -575,7 +558,7 @@ onMounted(async () => {
                     <strong>Новый срок</strong>
                     <p>{{ formatSubscriptionDate(user?.subscription_expires_at) }}</p>
                 </div>
-                <Link :href="routes?.home" class="tg-button">На главную</Link>
+                <Link :href="telegramMiniAppRoutes.home" class="tg-button">На главную</Link>
             </section>
 
             <section v-else class="tg-state-card">
@@ -593,7 +576,7 @@ onMounted(async () => {
                         <AppIcon name="arrowUpRight" />
                         <span>Перейти к оплате</span>
                     </button>
-                    <Link :href="routes?.home" class="tg-button tg-button--secondary">На главную</Link>
+                    <Link :href="telegramMiniAppRoutes.home" class="tg-button tg-button--secondary">На главную</Link>
                 </div>
             </section>
         </template>

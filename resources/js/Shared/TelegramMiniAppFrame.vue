@@ -2,7 +2,8 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 import AppIcon from './AppIcon.vue';
-import { telegramAppHeaders } from '../lib/telegramMiniApp';
+import { getTelegramAppToken } from '../lib/telegramMiniApp';
+import { telegramMiniAppApi, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../lib/telegramMiniAppApi';
 
 const THEME_STORAGE_KEY = 'telegram-mini-app-theme';
 const GIVEAWAY_SUMMARY_REFRESH_EVENT = 'telegram-app:refresh-giveaway-summary';
@@ -10,8 +11,6 @@ const GIVEAWAY_SUMMARY_REFRESH_EVENT = 'telegram-app:refresh-giveaway-summary';
 const props = defineProps({
     title: String,
     description: String,
-    routes: Object,
-    user: Object,
     showNavigation: {
         type: Boolean,
         default: true,
@@ -25,15 +24,15 @@ const giveawaySummary = ref({
 });
 
 const navItems = computed(() => ([
-    { href: props.routes?.home, label: 'Главная', icon: 'home', keys: ['/telegram-app'], exact: true },
-    { href: props.routes?.wireguard, label: 'Конфиги', icon: 'shield', keys: ['/telegram-app/wireguard', '/telegram-app/vless', '/telegram-app/vless-wl'] },
-    { href: props.routes?.payments, label: 'Подписка', icon: 'receipt', keys: ['/telegram-app/payments'] },
-    { href: props.routes?.help, label: 'Помощь', icon: 'circleQuestion', keys: ['/telegram-app/help', '/telegram-app/support', '/telegram-app/chats'] },
+    { href: telegramMiniAppRoutes.home, label: 'Главная', icon: 'home', keys: ['/telegram-app', '/public'], exact: true },
+    { href: telegramMiniAppRoutes.wireguard, label: 'Конфиги', icon: 'shield', keys: ['/telegram-app/wireguard', '/telegram-app/vless', '/telegram-app/vless-wl', '/public/wireguard', '/public/vless', '/public/vless-wl'] },
+    { href: telegramMiniAppRoutes.payments, label: 'Подписка', icon: 'receipt', keys: ['/telegram-app/payments', '/public/payments'] },
+    { href: telegramMiniAppRoutes.help, label: 'Помощь', icon: 'circleQuestion', keys: ['/telegram-app/help', '/telegram-app/support', '/telegram-app/chats', '/public/help', '/public/support', '/public/chats'] },
     {
-        href: props.routes?.giveaway,
+        href: telegramMiniAppRoutes.giveaway,
         label: 'Розыгрыш',
         icon: 'gift',
-        keys: ['/telegram-app/giveaway'],
+        keys: ['/telegram-app/giveaway', '/public/giveaway'],
         counter: giveawaySummary.value.pending_participation_count > 0
             ? giveawaySummary.value.pending_participation_count
             : null,
@@ -58,7 +57,7 @@ const toggleTheme = () => {
 };
 
 const loadGiveawaySummary = async () => {
-    if (!props.user?.id || !props.routes?.giveaway_summary) {
+    if (getTelegramAppToken() === '') {
         giveawaySummary.value = {
             active_giveaways_count: 0,
             pending_participation_count: 0,
@@ -67,9 +66,7 @@ const loadGiveawaySummary = async () => {
     }
 
     try {
-        const response = await window.axios.get(props.routes.giveaway_summary, {
-            headers: telegramAppHeaders(),
-        });
+        const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.giveawaySummary);
 
         giveawaySummary.value = {
             active_giveaways_count: Number(response.data?.summary?.active_giveaways_count ?? 0),
@@ -100,9 +97,6 @@ watch(theme, (value) => {
     document.documentElement.style.colorScheme = value;
 });
 
-watch(() => props.user?.id, () => {
-    void loadGiveawaySummary();
-});
 </script>
 
 <template>

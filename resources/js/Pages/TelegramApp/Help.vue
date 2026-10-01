@@ -8,12 +8,7 @@ import {
     normalizeTelegramAppError,
     openTelegramExternalLink,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-});
+import { telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const error = ref('');
@@ -63,8 +58,8 @@ const goBack = () => {
 onMounted(async () => {
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: props.auth_url,
-            profileUrl: props.profile_url,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
         });
         state.value = 'ready';
     } catch (requestError) {
@@ -78,8 +73,6 @@ onMounted(async () => {
     <TelegramMiniAppFrame
         title="Помощь"
         description="Инструкции и приложения, которые помогут подключиться без лишних шагов."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -146,7 +139,7 @@ onMounted(async () => {
                     </div>
                 </button>
 
-                <Link :href="routes?.support" class="tg-list-card">
+                <Link :href="telegramMiniAppRoutes.support" class="tg-list-card">
                     <div class="tg-list-card__icon tg-list-card__icon--warning">
                         <AppIcon name="headset" />
                     </div>
@@ -175,7 +168,7 @@ onMounted(async () => {
                         <AppIcon name="download" />
                         <span>Скачать приложение Amnezia</span>
                     </button>
-                    <Link :href="routes?.wireguard" class="tg-button">
+                    <Link :href="telegramMiniAppRoutes.wireguard" class="tg-button">
                         <AppIcon name="shield" />
                         <span>Открыть подключение</span>
                     </Link>
@@ -197,7 +190,7 @@ onMounted(async () => {
                         <AppIcon name="download" />
                         <span>Скачать приложение для стандартных</span>
                     </button>
-                    <Link :href="routes?.vless" class="tg-button">
+                    <Link :href="telegramMiniAppRoutes.vless" class="tg-button">
                         <AppIcon name="shield" />
                         <span>Открыть стандартные</span>
                     </Link>

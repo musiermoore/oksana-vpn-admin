@@ -9,17 +9,8 @@ import {
     isTelegramDebtError,
     normalizeTelegramAppError,
     openTelegramExternalLink,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    vless_link_url: String,
-    vless_qr_url: String,
-    vless_send_qr_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const step = ref('menu');
@@ -35,7 +26,7 @@ const sendingQrToBot = ref(false);
 const qrStatus = ref('');
 let copyToastTimeoutId = null;
 
-const configHubHref = computed(() => props.routes?.wireguard || '/telegram-app/wireguard');
+const configHubHref = computed(() => telegramMiniAppRoutes.wireguard);
 
 const preferredLinks = computed(() => ([
     {
@@ -108,13 +99,11 @@ const retry = () => {
 
 const loadData = async () => {
     user.value = await ensureTelegramAppSession({
-        authUrl: props.auth_url,
-        profileUrl: props.profile_url,
+        authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+        profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
     });
 
-    const response = await window.axios.get(props.vless_link_url, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.vlessLink);
 
     links.value = response.data ?? null;
     state.value = 'ready';
@@ -127,7 +116,7 @@ const openQrResult = async () => {
     revokeQrUrl();
 
     try {
-        const response = await fetchTelegramBinary(props.vless_qr_url);
+        const response = await fetchTelegramBinary(telegramMiniAppEndpoint(telegramMiniAppEndpoints.vlessQrCode));
         qrImageUrl.value = URL.createObjectURL(response.data);
         step.value = 'qr';
     } catch (requestError) {
@@ -143,9 +132,7 @@ const sendQrToBot = async () => {
     qrStatus.value = '';
 
     try {
-        const response = await window.axios.post(props.vless_send_qr_url, {}, {
-            headers: telegramAppHeaders(),
-        });
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.vlessSendQr, {});
         qrStatus.value = response.data?.message ?? 'QR-код отправлен в Telegram.';
     } catch (requestError) {
         actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код.');
@@ -182,8 +169,6 @@ onBeforeUnmount(() => {
     <TelegramMiniAppFrame
         title="VLESS"
         description="Получите прямую ссылку, быстрое подключение или QR-код."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -207,8 +192,8 @@ onBeforeUnmount(() => {
             <h2>Сначала продлите подписку</h2>
             <p>{{ debtMessage }}</p>
             <div class="tg-actions">
-                <Link :href="routes?.payments" class="tg-button">Перейти к подписке</Link>
-                <Link :href="routes?.home" class="tg-button tg-button--secondary">На главную</Link>
+                <Link :href="telegramMiniAppRoutes.payments" class="tg-button">Перейти к подписке</Link>
+                <Link :href="telegramMiniAppRoutes.home" class="tg-button tg-button--secondary">На главную</Link>
             </div>
         </section>
 

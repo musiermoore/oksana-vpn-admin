@@ -6,17 +6,9 @@ import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
-    telegramAppHeaders,
     telegramAppLabels,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    support_tickets_url: String,
-    ticket_id: Number,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const error = ref('');
@@ -26,8 +18,9 @@ const message = ref('');
 const sending = ref(false);
 let pollTimer = null;
 
-const ticketUrl = computed(() => `${props.support_tickets_url}/${props.ticket_id}`);
-const messageUrl = computed(() => `${props.support_tickets_url}/${props.ticket_id}/messages`);
+const ticketId = computed(() => window.location.pathname.split('/').filter(Boolean).at(-1) ?? '');
+const ticketUrl = computed(() => `${telegramMiniAppEndpoints.supportTickets}/${ticketId.value}`);
+const messageUrl = computed(() => `${telegramMiniAppEndpoints.supportTickets}/${ticketId.value}/messages`);
 
 const formatDateTime = (value) => {
     if (!value) {
@@ -51,9 +44,7 @@ const formatDateTime = (value) => {
 const authorLabel = (item) => (item.sender_type === 'admin' ? 'Поддержка' : 'Вы');
 
 const loadTicket = async () => {
-    const response = await window.axios.get(ticketUrl.value, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(ticketUrl.value);
 
     ticket.value = response.data?.ticket ?? null;
 };
@@ -68,10 +59,8 @@ const sendMessage = async () => {
     error.value = '';
 
     try {
-        await window.axios.post(messageUrl.value, {
+        await telegramMiniAppApi.post(messageUrl.value, {
             message: message.value,
-        }, {
-            headers: telegramAppHeaders(),
         });
 
         message.value = '';
@@ -90,8 +79,8 @@ const retry = () => {
 onMounted(async () => {
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: props.auth_url,
-            profileUrl: props.profile_url,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
         });
         await loadTicket();
         pollTimer = window.setInterval(() => {
@@ -117,8 +106,6 @@ onBeforeUnmount(() => {
     <TelegramMiniAppFrame
         title="Диалог с поддержкой"
         description="Следите за ответами и продолжайте переписку в одном месте."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -138,7 +125,7 @@ onBeforeUnmount(() => {
         <template v-else-if="ticket">
             <section class="tg-section">
                 <div class="tg-page-header__copy">
-                    <Link :href="routes.support" class="tg-link-button">
+                    <Link :href="telegramMiniAppRoutes.support" class="tg-link-button">
                         <AppIcon name="chevronLeft" />
                         <span>К списку обращений</span>
                     </Link>

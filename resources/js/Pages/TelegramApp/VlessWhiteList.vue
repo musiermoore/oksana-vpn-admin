@@ -8,15 +8,8 @@ import {
     isTelegramDebtError,
     normalizeTelegramAppError,
     openTelegramExternalLink,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    vless_wl_link_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const initialStep = 'links';
 
@@ -95,13 +88,11 @@ const retry = () => {
 
 const loadData = async () => {
     user.value = await ensureTelegramAppSession({
-        authUrl: props.auth_url,
-        profileUrl: props.profile_url,
+        authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+        profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
     });
 
-    const response = await window.axios.get(props.vless_wl_link_url, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.vlessWhiteListLink);
 
     links.value = response.data ?? null;
     state.value = 'ready';
@@ -133,8 +124,6 @@ onBeforeUnmount(() => {
     <TelegramMiniAppFrame
         title="Белые списки"
         description="Отдельные ссылки для клиентов, которым нужен белый список."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -157,15 +146,15 @@ onBeforeUnmount(() => {
             <h2>Сначала продлите подписку</h2>
             <p>{{ debtMessage }}</p>
             <div class="tg-actions">
-                <Link :href="routes?.payments" class="tg-button">Перейти к подписке</Link>
-                <Link :href="routes?.home" class="tg-button tg-button--secondary">На главную</Link>
+                <Link :href="telegramMiniAppRoutes.payments" class="tg-button">Перейти к подписке</Link>
+                <Link :href="telegramMiniAppRoutes.home" class="tg-button tg-button--secondary">На главную</Link>
             </div>
         </section>
 
         <template v-else>
             <section class="tg-section">
                 <div class="tg-page-header__copy">
-                    <Link class="tg-link-button" :href="routes?.wireguard">
+                    <Link class="tg-link-button" :href="telegramMiniAppRoutes.wireguard">
                         <AppIcon name="chevronLeft" />
                         <span>Назад ко всем конфигам</span>
                     </Link>

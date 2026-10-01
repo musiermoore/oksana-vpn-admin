@@ -7,17 +7,9 @@ import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
     redirectFromTelegramStartParam,
-    telegramAppHeaders,
     telegramAppLabels,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    support_tickets_url: String,
-    support_ticket_store_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const error = ref('');
@@ -34,9 +26,7 @@ let pollTimer = null;
 const hasTickets = computed(() => tickets.value.length > 0);
 
 const loadTickets = async () => {
-    const response = await window.axios.get(props.support_tickets_url, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.supportTickets);
 
     tickets.value = response.data?.tickets ?? [];
 };
@@ -61,9 +51,7 @@ const submitTicket = async () => {
     error.value = '';
 
     try {
-        const response = await window.axios.post(props.support_ticket_store_url, form.value, {
-            headers: telegramAppHeaders(),
-        });
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.supportTickets, form.value);
         const ticketId = response.data?.ticket?.id;
 
         form.value = {
@@ -72,7 +60,7 @@ const submitTicket = async () => {
         };
 
         if (ticketId) {
-            window.location.href = `${props.routes.support}/${ticketId}`;
+            window.location.href = `${telegramMiniAppRoutes.support}/${ticketId}`;
             return;
         }
 
@@ -90,14 +78,14 @@ const retry = () => {
 };
 
 onMounted(async () => {
-    if (redirectFromTelegramStartParam(props.routes)) {
+    if (redirectFromTelegramStartParam(telegramMiniAppRoutes)) {
         return;
     }
 
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: props.auth_url,
-            profileUrl: props.profile_url,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
         });
         await loadTickets();
         pollTimer = window.setInterval(() => {
@@ -121,8 +109,6 @@ onBeforeUnmount(() => {
     <TelegramMiniAppFrame
         title="Поддержка"
         description="Напишите вопрос, посмотрите историю обращений или откройте нужный чат."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -150,7 +136,7 @@ onBeforeUnmount(() => {
                     <p>Если VPN не работает или есть вопрос по подписке, напишите нам. Обычно удобнее сразу описать проблему одним сообщением.</p>
                 </div>
 
-                <Link :href="routes?.chats" class="tg-list-card">
+                <Link :href="telegramMiniAppRoutes.chats" class="tg-list-card">
                     <div class="tg-list-card__icon tg-list-card__icon--blue">
                         <AppIcon name="chat" />
                     </div>
@@ -229,7 +215,7 @@ onBeforeUnmount(() => {
                 <Link
                     v-for="ticket in tickets"
                     :key="ticket.id"
-                    :href="`${routes.support}/${ticket.id}`"
+                    :href="`${telegramMiniAppRoutes.support}/${ticket.id}`"
                     class="tg-list-card"
                 >
                     <div class="tg-list-card__icon">

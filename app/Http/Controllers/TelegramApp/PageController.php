@@ -5,136 +5,72 @@ declare(strict_types=1);
 namespace App\Http\Controllers\TelegramApp;
 
 use App\Http\Controllers\Controller;
-use App\Support\PublicAppUrl;
+use Inertia\Response;
 
 class PageController extends Controller
 {
-    public function login()
+    public function login(): Response
     {
-        return $this->page('TelegramApp/Login');
+        return $this->inertia('TelegramApp/Login');
     }
 
-    public function register()
+    public function register(): Response
     {
-        return $this->page('TelegramApp/Register');
+        return $this->inertia('TelegramApp/Register');
     }
 
-    public function home()
+    public function home(): Response
     {
-        return $this->page('TelegramApp/Home');
+        return $this->inertia('TelegramApp/Home');
     }
 
-    public function payments()
+    public function payments(): Response
     {
-        return $this->page('TelegramApp/Payments');
+        return $this->inertia('TelegramApp/Payments');
     }
 
-    public function wireGuard()
+    public function wireGuard(): Response
     {
-        return $this->page('TelegramApp/WireGuard');
+        return $this->inertia('TelegramApp/WireGuard');
     }
 
-    public function vless()
+    public function vless(): Response
     {
-        return $this->page('TelegramApp/Vless');
+        return $this->inertia('TelegramApp/Vless');
     }
 
-    public function vlessWhiteList()
+    public function vlessWhiteList(): Response
     {
-        return $this->page('TelegramApp/VlessWhiteList');
+        return $this->inertia('TelegramApp/VlessWhiteList');
     }
 
-    public function help()
+    public function help(): Response
     {
-        return $this->page('TelegramApp/Help');
+        return $this->inertia('TelegramApp/Help');
     }
 
-    public function chats()
+    public function chats(): Response
     {
-        return $this->page('TelegramApp/Chats');
+        return $this->inertia('TelegramApp/Chats');
     }
 
-    public function support()
+    public function support(): Response
     {
-        return $this->page('TelegramApp/Support');
+        return $this->inertia('TelegramApp/Support');
     }
 
-    public function giveaway()
+    public function giveaway(): Response
     {
-        return $this->page('TelegramApp/Giveaway');
+        return $this->inertia('TelegramApp/Giveaway');
     }
 
-    public function referrals()
+    public function referrals(): Response
     {
-        return $this->page('TelegramApp/Referrals');
+        return $this->inertia('TelegramApp/Referrals');
     }
 
-    public function supportShow(int $ticketId)
+    public function supportShow(int $ticketId): Response
     {
-        return $this->page('TelegramApp/SupportShow', [
-            'ticket_id' => $ticketId,
-        ]);
-    }
-
-    private function page(string $component, array $extra = [])
-    {
-        $routePrefix = $this->routeNamePrefix();
-
-        return $this->inertia($component, [
-            'routes' => [
-                'login' => $this->appRoute($routePrefix, 'login'),
-                'register' => $this->appRoute($routePrefix, 'register'),
-                'home' => $this->appRoute($routePrefix, 'home'),
-                'wireguard' => $this->appRoute($routePrefix, 'pages.wireguard'),
-                'vless' => $this->appRoute($routePrefix, 'pages.vless'),
-                'vless_wl' => $this->appRoute($routePrefix, 'pages.vless-wl'),
-                'payments' => $this->appRoute($routePrefix, 'pages.payments'),
-                'help' => $this->appRoute($routePrefix, 'pages.help'),
-                'chats' => $this->appRoute($routePrefix, 'pages.chats'),
-                'support' => $this->appRoute($routePrefix, 'pages.support'),
-                'giveaway' => $this->appRoute($routePrefix, 'pages.giveaway'),
-                'giveaway_summary' => $this->appRoute($routePrefix, 'giveaway.summary'),
-                'referrals' => $this->appRoute($routePrefix, 'pages.referrals'),
-            ],
-            'auth_url' => $this->appRoute($routePrefix, 'auth.telegram'),
-            'password_auth_url' => $this->appRoute($routePrefix, 'auth.password'),
-            'password_registration_url' => $this->appRoute($routePrefix, 'auth.register'),
-            'profile_url' => $this->appRoute($routePrefix, 'me'),
-            'wireguard_configs_url' => $this->appRoute($routePrefix, 'wireguard.configs.index'),
-            'vless_link_url' => $this->appRoute($routePrefix, 'vless.link'),
-            'vless_qr_url' => $this->appRoute($routePrefix, 'vless.qr-code'),
-            'vless_send_qr_url' => $this->appRoute($routePrefix, 'vless.send-qr'),
-            'vless_wl_link_url' => $this->appRoute($routePrefix, 'vless-wl.link'),
-            'vless_wl_qr_url' => $this->appRoute($routePrefix, 'vless-wl.qr-code'),
-            'vless_wl_send_qr_url' => $this->appRoute($routePrefix, 'vless-wl.send-qr'),
-            'support_tickets_url' => $this->appRoute($routePrefix, 'support.tickets.index'),
-            'support_ticket_store_url' => $this->appRoute($routePrefix, 'support.tickets.store'),
-            'subscription_packages_url' => $this->appRoute($routePrefix, 'subscription-packages'),
-            'claim_referral_url' => $this->appRoute($routePrefix, 'referrals.claim'),
-            'giveaway_url' => $this->appRoute($routePrefix, 'giveaway.show'),
-            'giveaway_participate_url' => $this->appRoute($routePrefix, 'giveaway.participate'),
-            'payment_url' => $this->appRoute($routePrefix, 'payments.subscriptions'),
-            'activate_subscription_code_url' => $this->appRoute($routePrefix, 'payments.subscription-codes.activate'),
-            ...$extra,
-        ]);
-    }
-
-    private function appRoute(string $routePrefix, string $name, array $parameters = []): string
-    {
-        if ($routePrefix !== 'public') {
-            return route($routePrefix.'.'.$name, $parameters);
-        }
-
-        return PublicAppUrl::toVisibleUrl(
-            route($routePrefix.'.'.$name, $parameters, absolute: false),
-            request()
-        );
-    }
-
-    private function routeNamePrefix(): string
-    {
-        $routeName = (string) request()->route()?->getName();
-
-        return str_starts_with($routeName, 'public.') ? 'public' : 'telegram-app';
+        return $this->inertia('TelegramApp/SupportShow');
     }
 }

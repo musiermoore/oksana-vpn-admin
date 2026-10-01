@@ -8,16 +8,9 @@ import {
     normalizeTelegramAppError,
     openTelegramExternalLink,
     redirectFromTelegramStartParam,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 import { telegramChatLinks } from '../../lib/telegramChatLinks';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    subscription_packages_url: String,
-});
 
 const state = ref('loading');
 const error = ref('');
@@ -26,19 +19,11 @@ const referralStatus = ref('');
 const packages = ref([]);
 
 const whiteListRoute = computed(() => {
-    if (!props.routes?.vless_wl) {
-        return '';
-    }
-
-    return `${props.routes.vless_wl}?step=links`;
+    return `${telegramMiniAppRoutes.vless_wl}?step=links`;
 });
 
 const amneziaRoute = computed(() => {
-    if (!props.routes?.wireguard) {
-        return '';
-    }
-
-    return `${props.routes.wireguard}?step=list`;
+    return `${telegramMiniAppRoutes.wireguard}?step=list`;
 });
 
 const accessTone = computed(() => {
@@ -79,10 +64,10 @@ const nextSectionSubtitle = computed(() => {
 
 const primaryActionHref = computed(() => {
     if (!user.value?.has_active_access) {
-        return props.routes?.payments;
+        return telegramMiniAppRoutes.payments;
     }
 
-    return props.routes?.wireguard;
+    return telegramMiniAppRoutes.wireguard;
 });
 
 const hasTrialPackage = computed(() => packages.value.some((item) => Boolean(item?.is_trial)));
@@ -106,7 +91,7 @@ const quickLinks = computed(() => {
         {
             title: 'Стандартные',
             description: 'Прямая ссылка, быстрое подключение и QR-код.',
-            href: props.routes?.vless,
+            href: telegramMiniAppRoutes.vless,
             icon: 'shield',
             iconClass: 'tg-list-card__icon',
         },
@@ -134,21 +119,21 @@ const quickLinks = computed(() => {
         {
             title: 'Подписка и оплата',
             description: 'Статус, баланс, продление и подарочные коды.',
-            href: props.routes?.payments,
+            href: telegramMiniAppRoutes.payments,
             icon: 'receipt',
             iconClass: 'tg-list-card__icon--warning',
         },
         {
             title: 'Помощь и приложения',
             description: 'Инструкции, клиенты и подсказки по настройке.',
-            href: props.routes?.help,
+            href: telegramMiniAppRoutes.help,
             icon: 'circleQuestion',
             iconClass: 'tg-list-card__icon--blue',
         },
         {
             title: 'Розыгрыш',
             description: 'Участвуйте явно и увеличивайте шанс за новых рефералов текущей кампании.',
-            href: props.routes?.giveaway,
+            href: telegramMiniAppRoutes.giveaway,
             icon: 'gift',
             iconClass: 'tg-list-card__icon--warning',
         },
@@ -176,9 +161,7 @@ const retry = () => {
 };
 
 const loadPackages = async () => {
-    const response = await window.axios.get(props.subscription_packages_url, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.subscriptionPackages);
 
     packages.value = response.data?.data ?? [];
 };
@@ -218,14 +201,14 @@ const shareReferralLink = () => {
 };
 
 onMounted(async () => {
-    if (redirectFromTelegramStartParam(props.routes)) {
+    if (redirectFromTelegramStartParam(telegramMiniAppRoutes)) {
         return;
     }
 
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: props.auth_url,
-            profileUrl: props.profile_url,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
         });
         await loadPackages();
         state.value = 'ready';
@@ -240,8 +223,6 @@ onMounted(async () => {
     <TelegramMiniAppFrame
         title="OksanaVPN"
         description="Быстрый доступ к конфигам, подписке и поддержке."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>

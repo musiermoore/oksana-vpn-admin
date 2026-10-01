@@ -9,12 +9,7 @@ import {
     setTelegramAppTelegramUserId,
     setTelegramAppToken,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    password_auth_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const form = ref({
     login: '',
@@ -29,7 +24,7 @@ const submit = async () => {
     error.value = '';
 
     try {
-        const response = await window.axios.post(props.password_auth_url, form.value);
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.authPassword, form.value);
         const token = response.data?.token ?? '';
 
         if (token === '') {
@@ -38,7 +33,7 @@ const submit = async () => {
 
         setTelegramAppToken(token);
         setTelegramAppTelegramUserId(response.data?.user?.telegram_id ?? '');
-        window.location.href = props.routes?.home ?? '/telegram-app';
+        window.location.href = telegramMiniAppRoutes.home;
     } catch (requestError) {
         error.value = requestError?.response?.data?.message ?? requestError?.message ?? 'Не удалось выполнить вход.';
     } finally {
@@ -52,8 +47,8 @@ const submitTelegram = async () => {
 
     try {
         await loginTelegramAppAndRedirect({
-            authUrl: props.auth_url,
-            homeUrl: props.routes?.home,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            homeUrl: telegramMiniAppRoutes.home,
         });
     } catch (requestError) {
         error.value = normalizeTelegramAppError(requestError, 'Не удалось выполнить вход через Telegram.');
@@ -69,7 +64,6 @@ const submitTelegram = async () => {
     <TelegramMiniAppFrame
         title="OksanaVPN"
         description="Вход в личный кабинет."
-        :routes="routes"
         :show-navigation="false"
     >
         <section class="tg-section">
@@ -114,7 +108,7 @@ const submitTelegram = async () => {
                 <p v-if="error" class="tg-error">{{ error }}</p>
             </form>
 
-            <Link :href="routes?.register" class="tg-button tg-button--secondary">
+            <Link :href="telegramMiniAppRoutes.register" class="tg-button tg-button--secondary">
                 Создать аккаунт
             </Link>
         </section>

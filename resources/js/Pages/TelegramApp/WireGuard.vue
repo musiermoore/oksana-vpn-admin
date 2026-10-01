@@ -8,15 +8,8 @@ import {
     fetchTelegramBinary,
     isTelegramDebtError,
     normalizeTelegramAppError,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    wireguard_configs_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const step = ref('hub');
@@ -64,13 +57,11 @@ const goToConfigHub = () => {
 
 const loadConfigs = async () => {
     user.value = await ensureTelegramAppSession({
-        authUrl: props.auth_url,
-        profileUrl: props.profile_url,
+        authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+        profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
     });
 
-    const response = await window.axios.get(props.wireguard_configs_url, {
-        headers: telegramAppHeaders(),
-    });
+    const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.wireguardConfigs);
 
     configs.value = response.data?.configs ?? [];
     state.value = configs.value.length > 0 ? 'ready' : 'empty';
@@ -122,9 +113,7 @@ const sendConfigToBot = async () => {
     actionStatus.value = '';
 
     try {
-        const response = await window.axios.post(selectedConfig.value.send_file_to_bot_url, {}, {
-            headers: telegramAppHeaders(),
-        });
+        const response = await telegramMiniAppApi.post(selectedConfig.value.send_file_to_bot_url, {});
         actionStatus.value = response.data?.message ?? 'Файл отправлен в Telegram.';
         step.value = 'file';
     } catch (requestError) {
@@ -144,9 +133,7 @@ const sendQrToBot = async () => {
     actionStatus.value = '';
 
     try {
-        const response = await window.axios.post(selectedConfig.value.send_qr_to_bot_url, {}, {
-            headers: telegramAppHeaders(),
-        });
+        const response = await telegramMiniAppApi.post(selectedConfig.value.send_qr_to_bot_url, {});
         actionStatus.value = response.data?.message ?? 'QR-код отправлен в Telegram.';
     } catch (requestError) {
         actionError.value = normalizeTelegramAppError(requestError, 'Не удалось отправить QR-код.');
@@ -179,8 +166,6 @@ onBeforeUnmount(() => {
     <TelegramMiniAppFrame
         :title="frameTitle"
         :description="frameDescription"
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -204,8 +189,8 @@ onBeforeUnmount(() => {
             <h2>Сначала продлите подписку</h2>
             <p>{{ debtMessage }}</p>
             <div class="tg-actions">
-                <Link :href="routes?.payments" class="tg-button">Перейти к подписке</Link>
-                <Link :href="routes?.home" class="tg-button tg-button--secondary">На главную</Link>
+                <Link :href="telegramMiniAppRoutes.payments" class="tg-button">Перейти к подписке</Link>
+                <Link :href="telegramMiniAppRoutes.home" class="tg-button tg-button--secondary">На главную</Link>
             </div>
         </section>
 
@@ -215,7 +200,7 @@ onBeforeUnmount(() => {
             </div>
             <h2>Конфиги пока не готовы</h2>
             <p>Для вашего аккаунта ещё нет доступных Amnezia-конфигов.</p>
-            <Link :href="routes?.home" class="tg-button">На главную</Link>
+            <Link :href="telegramMiniAppRoutes.home" class="tg-button">На главную</Link>
         </section>
 
         <template v-else>
@@ -229,7 +214,7 @@ onBeforeUnmount(() => {
                     <p>Откройте стандартные, белые списки или Amnezia.</p>
                 </div>
 
-                <Link :href="routes?.vless" class="tg-list-card">
+                <Link :href="telegramMiniAppRoutes.vless" class="tg-list-card">
                     <div class="tg-list-card__icon">
                         <AppIcon name="shield" />
                     </div>
@@ -242,7 +227,7 @@ onBeforeUnmount(() => {
                     </div>
                 </Link>
 
-                <Link v-if="routes?.vless_wl" :href="`${routes.vless_wl}?step=links`" class="tg-list-card">
+                <Link :href="`${telegramMiniAppRoutes.vless_wl}?step=links`" class="tg-list-card">
                     <div class="tg-list-card__icon tg-list-card__icon--blue">
                         <AppIcon name="shield" />
                     </div>
@@ -318,7 +303,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="download" />
                         <span>{{ sendingToBot ? 'Отправляем...' : 'Отправить файл в Telegram' }}</span>
                     </button>
-                    <Link :href="routes?.vless" class="tg-button tg-button--soft">
+                    <Link :href="telegramMiniAppRoutes.vless" class="tg-button tg-button--soft">
                         <AppIcon name="link" />
                         <span>Открыть стандартные вместо этого</span>
                     </Link>

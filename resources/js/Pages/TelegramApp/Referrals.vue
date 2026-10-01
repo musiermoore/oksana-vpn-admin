@@ -7,15 +7,8 @@ import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
     redirectFromTelegramStartParam,
-    telegramAppHeaders,
 } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    auth_url: String,
-    profile_url: String,
-    claim_referral_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const error = ref('');
@@ -83,10 +76,8 @@ const claimReferral = async () => {
     referralStatus.value = '';
 
     try {
-        const response = await window.axios.post(props.claim_referral_url, {
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.claimReferral, {
             referral: referralInput.value.trim(),
-        }, {
-            headers: telegramAppHeaders(),
         });
 
         user.value = response.data?.user ?? user.value;
@@ -103,14 +94,14 @@ const claimReferral = async () => {
 };
 
 onMounted(async () => {
-    if (redirectFromTelegramStartParam(props.routes)) {
+    if (redirectFromTelegramStartParam(telegramMiniAppRoutes)) {
         return;
     }
 
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: props.auth_url,
-            profileUrl: props.profile_url,
+            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
         });
         state.value = 'ready';
     } catch (requestError) {
@@ -124,8 +115,6 @@ onMounted(async () => {
     <TelegramMiniAppFrame
         title="Реферальная программа"
         description="Правила, ваша ссылка и текущая скидка по приглашениям."
-        :routes="routes"
-        :user="user"
     >
         <section v-if="state === 'loading'" class="tg-section">
             <div class="tg-skeleton tg-skeleton--hero"></div>
@@ -145,7 +134,7 @@ onMounted(async () => {
         <template v-else>
             <section class="tg-section">
                 <div class="tg-page-header__copy">
-                    <Link :href="routes?.home" class="tg-link-button">
+                    <Link :href="telegramMiniAppRoutes.home" class="tg-link-button">
                         <AppIcon name="chevronLeft" />
                         <span>На главную</span>
                     </Link>

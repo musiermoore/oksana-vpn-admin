@@ -4,11 +4,7 @@ import { ref } from 'vue';
 import AppIcon from '../../Shared/AppIcon.vue';
 import TelegramMiniAppFrame from '../../Shared/TelegramMiniAppFrame.vue';
 import { setTelegramAppTelegramUserId, setTelegramAppToken } from '../../lib/telegramMiniApp';
-
-const props = defineProps({
-    routes: Object,
-    password_registration_url: String,
-});
+import { telegramMiniAppApi, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const urlParams = new URLSearchParams(window.location.search);
 const initialReferral = urlParams.get('referral')
@@ -34,7 +30,7 @@ const submit = async () => {
     fieldErrors.value = {};
 
     try {
-        const response = await window.axios.post(props.password_registration_url, form.value);
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.authRegister, form.value);
         const token = response.data?.token ?? '';
 
         if (token === '') {
@@ -43,7 +39,7 @@ const submit = async () => {
 
         setTelegramAppToken(token);
         setTelegramAppTelegramUserId(response.data?.user?.telegram_id ?? '');
-        window.location.href = props.routes?.home ?? '/telegram-app';
+        window.location.href = telegramMiniAppRoutes.home;
     } catch (requestError) {
         fieldErrors.value = requestError?.response?.data?.errors ?? {};
         error.value = requestError?.response?.data?.message ?? requestError?.message ?? 'Не удалось создать аккаунт.';
@@ -59,7 +55,6 @@ const submit = async () => {
     <TelegramMiniAppFrame
         title="OksanaVPN"
         description="Создание публичного аккаунта."
-        :routes="routes"
         :show-navigation="false"
     >
         <section class="tg-section">
@@ -138,7 +133,7 @@ const submit = async () => {
                 <p v-if="error" class="tg-error">{{ error }}</p>
             </form>
 
-            <Link :href="routes?.login" class="tg-button tg-button--secondary">
+            <Link :href="telegramMiniAppRoutes.login" class="tg-button tg-button--secondary">
                 Уже есть аккаунт
             </Link>
         </section>

@@ -1,300 +1,246 @@
 # Subscription Flow
 
-Актуально по коду на `2026-07-23`.
+Current for code as of `2026-07-23`.
 
-Документ описывает фактический end-to-end flow подписки в проекте: от выбора пакета в mini-app до создания подписки, списаний, включения конфигов и выдачи `/connect`.
+This document is the compact source of truth for subscription behavior: mini-app purchase, activation, billing transactions, config reconciliation, and `/connect` output.
 
-## 1. Базовые доменные правила
+## 1. Core Rules
 
-- Доступ пользователя определяется методом `User::hasActiveAccess()`.
-- Активный доступ есть, когда есть активная подписка.
-- Источник денежных движений: `transactions`
-- Подписочные интервалы хранятся в `user_subscriptions`
-- Источник цены продления: активный `PaymentPeriod`
+- Access is determined by `User::hasActiveAccess()`.
+- Active access requires an active subscription and, per current agent rules, a non-negative balance.
+- Money movement source: `transactions`.
+- Subscription periods: `user_subscriptions`.
+- Renewal price source: active `PaymentPeriod`.
 
-Ключевые файлы:
+Key files:
 
 - [app/Models/User.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Models/User.php)
 - [app/Models/UserSubscription.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Models/UserSubscription.php)
 - [app/Services/SubscriptionService.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/SubscriptionService.php)
 - [app/Console/Commands/DisableConfigsOfOverdueDebtorsCommand.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Console/Commands/DisableConfigsOfOverdueDebtorsCommand.php)
 
-## 2. Точки входа в подписку
+## 2. Subscription Entry Points
 
-В проекте сейчас есть 5 основных сценариев:
+Main scenarios:
 
-1. Пробная подписка
-2. Покупка пакета с мгновенной активацией
-3. Покупка пакета через external payment + подтверждение
-4. Активация подарочного кода
-5. Автопродление по балансу
-6. Бесплатная активация приза по розыгрышу
+1. Trial subscription.
+2. Paid package with immediate activation from balance.
+3. Paid package through external payment and approval.
+4. Gift code activation.
+5. Automatic renewal from balance.
+6. Free giveaway prize activation.
 
-## 3. Пробная подписка
-
-Flow:
-
-1. Mini-app вызывает `POST /telegram-app/payments/subscriptions` c `month=0`.
-2. [ApiTransactionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Api/ApiTransactionService.php) вызывает `SubscriptionService::activateTrialForUser()`.
-3. Создаётся approved transaction с `amount=0` и `type=subscription`.
-4. Создаётся запись в `user_subscriptions` со `source=trial`.
-5. Обновляется `users.subscription_expires_at`.
-6. После успешной активации вызываются:
-   - `DispatchDefaultConfigsForUserJob`
-   - `configs:disable-overdue-debtors {user_id}`
-
-Важно:
-
-- Trial не идёт через `TransactionApproved`, поэтому post-activation действия должны запускаться явно.
-- Trial доступен только если у пользователя ещё нет подписок.
-
-Ключевые файлы:
-
-- [app/Services/Api/ApiTransactionService.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Api/ApiTransactionService.php)
-- [app/Services/SubscriptionService.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/SubscriptionService.php)
-
-## 4. Покупка пакета с мгновенной активацией
-
-Сценарий:
-
-- пользователь выбирает платный пакет
-- у него уже достаточно баланса
-- внешний платёж не нужен
+## 3. Trial
 
 Flow:
 
-1. Mini-app вызывает `POST /telegram-app/payments/subscriptions`.
-2. `ApiTransactionService::purchaseSubscription()` считает quote через `SubscriptionService::buildPurchaseQuote()`.
-3. Если `deposit_amount <= 0`, вызывается `SubscriptionService::activatePackageForUser()`.
-4. Внутри создаётся запись в `user_subscriptions`.
-5. Создаётся approved negative transaction типа `subscription`.
-6. Обновляется `subscription_expires_at`.
-7. Если у пользователя есть `referrer_id`, первая qualifying purchase также планирует реферальную награду:
-   - приглашённому добавляются bonus days после confirmation delay
-   - пригласившему накапливается referral discount percent
+1. Mini-app calls `POST /telegram-app/payments/subscriptions` with `month=0`.
+2. [ApiTransactionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Api/ApiTransactionService.php) calls `SubscriptionService::activateTrialForUser()`.
+3. The app creates an approved `subscription` transaction with `amount=0`.
+4. The app creates `user_subscriptions.source=trial`.
+5. The app updates `users.subscription_expires_at`.
+6. Post-activation explicitly dispatches `DispatchDefaultConfigsForUserJob` and `configs:disable-overdue-debtors {user_id}`.
 
-Важно:
+Rules:
 
-- Старт новой подписки не должен уходить в прошлое.
-- Для этого используется `SubscriptionService::resolveNextSubscriptionStartDate()`.
+- Trial does not pass through `TransactionApproved`, so post-activation work must run explicitly.
+- Trial is available only when the user has no previous subscriptions.
 
-## 5. Покупка через external payment и подтверждение
+## 4. Paid Immediate Activation
 
-Сценарий:
-
-- пользователь выбирает платный пакет
-- текущего баланса недостаточно
+Scenario: the user chooses a paid package and already has enough balance.
 
 Flow:
 
-1. `ApiTransactionService::purchaseSubscription()` создаёт pending `deposit` transaction.
-2. Создаётся invoice и external payment через YooKassa.
-3. После подтверждения платежа транзакция становится approved.
-4. `TransactionCrudService::approve()` диспатчит `TransactionApproved`.
-5. `ActivateSubscriptionAfterTransactionApproval`:
-   - активирует пакет
-   - либо делает renewal для подходящего случая
-   - для qualifying first purchase также планирует referral reward по той же логике, что и при мгновенной paid activation
-   - запускает `DispatchDefaultConfigsForUserJob`
-   - ставит в очередь `ReconcileUserAccessStateJob`, который уже запускает `configs:disable-overdue-debtors {user_id}`
-6. Каждый входящий payment webhook сохраняется в `payment_webhook_logs` вместе с payload, привязкой к invoice/transaction и итоговым статусом обработки.
-7. При необходимости сохранённый webhook можно replay-нуть через внутренний API, чтобы backend повторно обработал тот же payload уже с нашей стороны.
+1. Mini-app calls `POST /telegram-app/payments/subscriptions`.
+2. `ApiTransactionService::purchaseSubscription()` builds a quote through `SubscriptionService::buildPurchaseQuote()`.
+3. If `deposit_amount <= 0`, `SubscriptionService::activatePackageForUser()` runs.
+4. The app creates a subscription period.
+5. The app creates an approved negative `subscription` transaction.
+6. The app updates `subscription_expires_at`.
+7. If `referrer_id` exists, the first qualifying purchase schedules referral rewards: bonus days for the invited user after confirmation delay, and discount percent for the referrer.
 
-Ключевые файлы:
+Rules:
+
+- New subscription start date must not move into the past.
+- Start date is resolved by `SubscriptionService::resolveNextSubscriptionStartDate()`.
+
+## 5. External Payment And Approval
+
+Scenario: the user chooses a paid package and balance is not enough.
+
+Flow:
+
+1. `ApiTransactionService::purchaseSubscription()` creates a pending `deposit` transaction.
+2. The app creates an invoice and YooKassa payment.
+3. After payment confirmation, the transaction becomes approved.
+4. `TransactionCrudService::approve()` dispatches `TransactionApproved`.
+5. `ActivateSubscriptionAfterTransactionApproval` activates the package or performs renewal when applicable, schedules qualifying referral rewards, dispatches `DispatchDefaultConfigsForUserJob`, and queues `ReconcileUserAccessStateJob`.
+6. `ReconcileUserAccessStateJob` runs `configs:disable-overdue-debtors {user_id}`.
+7. Every payment webhook is stored in `payment_webhook_logs` with payload, invoice/transaction link, and final processing status.
+8. Saved webhooks can be replayed through the internal API.
+
+Key files:
 
 - [app/Services/Crud/TransactionCrudService.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Crud/TransactionCrudService.php)
 - [app/Events/TransactionApproved.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Events/TransactionApproved.php)
 - [app/Listeners/ActivateSubscriptionAfterTransactionApproval.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Listeners/ActivateSubscriptionAfterTransactionApproval.php)
 
-## 6. Подарочные коды
+## 6. Gift Codes
 
-Сценарии два:
+Purchase flow:
 
-### 6.1 Покупка подарочного кода
+1. User buys a gift package.
+2. If balance is enough, the code is issued immediately.
+3. Otherwise the app creates a pending deposit and uses the normal approval flow.
 
-1. Пользователь покупает gift package.
-2. Если денег хватает, код выдаётся сразу.
-3. Иначе создаётся pending deposit и дальше работает обычный approve flow.
+Activation flow:
 
-### 6.2 Активация подарочного кода получателем
+1. Mini-app accepts a code.
+2. `SubscriptionCodeService::activateForUser()` validates it.
+3. `SubscriptionService::activateGiftCodeForUser()` creates the subscription.
+4. If `referrer_id` exists, first qualifying activation can schedule referral rewards.
+5. If access is active after activation, `DispatchDefaultConfigsForUserJob` is dispatched.
 
-1. Mini-app принимает код.
-2. `SubscriptionCodeService::activateForUser()` валидирует код.
-3. `SubscriptionService::activateGiftCodeForUser()` создаёт подписку.
-4. Если у пользователя есть `referrer_id`, первая qualifying activation такого кода тоже может запланировать referral reward.
-5. Если после этого доступ активен, диспатчится `DispatchDefaultConfigsForUserJob`.
+Rules:
 
-Важно:
+- Gift activation creates configs.
+- Referral logic depends on the invited user activating a code, not on who paid for it.
+- Keep trial, paid, and gift post-activation behavior aligned.
 
-- Gift activation сейчас запускает создание конфигов.
-- Для реферальной логики важен факт активации кода приглашённым пользователем, а не то, кто код оплатил.
-- Если изменяется логика post-activation, trial, gift и paid flow нужно держать синхронными.
-
-## 7. Автопродление
+## 7. Renewal
 
 Flow:
 
-1. Планировщик вызывает `RenewSubscriptionsCommand`.
-2. `SubscriptionService::renewEligibleSubscriptions()` проходит по пользователям.
-3. `renewOrCreateSubscription()` проверяет:
-   - есть ли активный `PaymentPeriod`
-   - наступила ли точка продления
-   - хватает ли баланса
-4. Если да, создаётся следующий подписочный период.
-5. Создаётся approved negative transaction типа `subscription`.
+1. Scheduler runs `RenewSubscriptionsCommand`.
+2. `SubscriptionService::renewEligibleSubscriptions()` iterates users.
+3. `renewOrCreateSubscription()` checks active `PaymentPeriod`, renewal window, and balance.
+4. If eligible, the app creates the next subscription period.
+5. The app creates an approved negative `subscription` transaction.
 
-Важно:
+Rules:
 
-- Продление не занимается enable/disable конфигов напрямую.
-- Для доступа и конфигов есть отдельная команда reconciliation.
-- Напоминания об окончании подписки отправляет отдельная команда `subscriptions:send-expiry-reminders`.
-- Антиспам для reminder-ов хранится в таблице `subscription_expiry_notifications`.
-- Reminder привязывается к конкретной записи `user_subscriptions`, поэтому после продления follow-up уведомления по старому периоду не отправляются.
-- Проверка reminder-окон сейчас такая:
-  - за 3 календарных дня до `end_date`
-  - за 2 календарных дня до `end_date`
-  - за 1 календарный день до `end_date`
-  - за 6 часов до конца дня `end_date`
+- Renewal does not directly enable/disable configs.
+- Config access is reconciled by a separate command/job.
+- Expiry reminders are sent by `subscriptions:send-expiry-reminders`.
+- Reminder anti-spam is stored in `subscription_expiry_notifications` and tied to a specific `user_subscriptions` row.
+- Reminder windows: 3 calendar days, 2 calendar days, 1 calendar day, and 6 hours before the end of `end_date`.
 
-## 7.1 Приз по розыгрышу
+## 8. Giveaway Prize
 
 Flow:
 
-1. `GiveawayDrawService` сохраняет победителя и конкретный prize slot.
-2. `GiveawayGrantService` вызывает `SubscriptionService::grantGiveawayMonths()`.
-3. Создаётся бесплатная запись в `user_subscriptions` с `source=giveaway`.
-4. Отрицательная billing transaction не создаётся.
-5. `users.subscription_expires_at` синхронизируется обычным `syncUserSubscriptionExpiry()`.
+1. `GiveawayDrawService` stores winner and prize slot.
+2. `GiveawayGrantService` calls `SubscriptionService::grantGiveawayMonths()`.
+3. The app creates a free `user_subscriptions` row with `source=giveaway`.
+4. No negative billing transaction is created.
+5. `users.subscription_expires_at` is synced by `syncUserSubscriptionExpiry()`.
 
-Важно:
+Rules:
 
-- prize grant не идёт через стандартный payment flow
-- prize grant не должен менять renewal/billing semantics
-- если у пользователя уже есть активная или будущая подписка, приз добавляется после последнего периода через существующую date arithmetic логику
+- Prize grants do not use standard payment flow.
+- Prize grants must not change renewal or billing semantics.
+- If the user already has an active or future subscription, the prize is appended after the latest period.
 
-## 8. Включение и отключение конфигов
+## 9. Config Provisioning And Reconciliation
 
-Команда:
+`configs:disable-overdue-debtors`:
 
-- `configs:disable-overdue-debtors`
+- disables WireGuard and VLESS configs for users without access
+- re-enables configs when users regain access
+- runs every 5 minutes
+- also runs through queued `ReconcileUserAccessStateJob` after paid/trial/gift activation
 
-Что делает:
+`DispatchDefaultConfigsForUserJob` creates missing default configs.
 
-- отключает WireGuard и VLESS конфиги пользователям без доступа
-- включает их обратно пользователям, которые снова получили доступ
+Correct reactivation usually needs both steps: create missing configs, then reconcile enabled/disabled state.
 
-Сейчас команда запускается:
+## 10. `/connect` And Whitelist Output
 
-- по расписанию каждые 5 минут
-- через queued `ReconcileUserAccessStateJob` после успешной paid/trial/gift activation
+Main `/connect`:
 
-Создание отсутствующих дефолтных конфигов делает отдельная job:
+- Built by [UserSubscriptionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Subscriptions/UserSubscriptionService.php).
+- Successful requests update `user_connected_devices` by user, `User-Agent`, and route `connect`.
+- `skip_connection=true` disables device tracking for admin requests.
+- Output includes regular user VLESS nodes and external subscriptions with `include_in_main_subscription`.
+- Ordering is explicit: `servers.sort_order`, `vless_external_subscriptions.sort_order`, `xray_inbounds.sort_order`, and `proxies.sort_order`.
+- `proxies.server_id` makes proxy variants part of one server. `hide_main_node_name` makes the proxy display name stand alone.
+- Soft-deleted servers are excluded.
 
-- `DispatchDefaultConfigsForUserJob`
+WireGuard/AmneziaWG output:
 
-Это важно:
+- URI output normalizes links before serialization.
+- The app reads both legacy-encoded and raw `wireguard://...`.
+- URI subscription output keeps WireGuard links raw so keys containing `/` survive client import.
+- 3x-ui `amneziawg` inbounds are stored as Xray-backed configs with `protocol=amneziawg`.
+- `/connect` emits AmneziaWG as `amneziawg://{base64url-conf}` where payload is native `.conf`.
+- Mini-app download/QR flows decode that URI back to native `.conf`.
 
-- `DispatchDefaultConfigsForUserJob` создаёт недостающие конфиги
-- `configs:disable-overdue-debtors` включает уже существующие выключенные конфиги
-- для корректной реактивации обычно нужны оба шага
+JSON output:
 
-## 9. Flow `/connect` и connect white list
+- `/connect-json` returns full Xray-style JSON configs, one object per node.
+- Objects include per-node `remarks` and `outbounds`; shared `dns`, `routing`, and `inbounds` come from app config.
+- Routing rules live in `xray_routings` with `outbound=direct|proxy|blocked`, JSON `rules`, JSON `subscription_types`, order, active state, and target arrays.
+- `/xray-routings` imports RoscomVPN/INCY JSON into `xray_json_settings` and generated Direct/Proxy/Block rules into `xray_routings`.
+- Empty `xray_inbound_ids` and `external_subscription_config_ids` mean a rule applies nowhere.
+- JSON builder filters rules per local inbound or external config.
+- Imported geodata URLs are validated and cached in `storage/app/xray-geodata`; unchanged `LastUpdated` reuses cache, changed `LastUpdated` downloads again.
+- Geodata replacement is atomic; failed downloads keep old active rules.
+- Laravel does not run Xray Core locally. JSON output includes Xray `geodata.assets` so the client downloads `geoip.dat` and `geosite.dat`.
+- `UseChunkFiles` is kept as import metadata only.
+- If no active routing rules exist for a subscription type, builder falls back to `config/connect_json.php`.
+- External JSON profiles are preserved for `/connect-json` and `format=json` to keep upstream routing, balancers, and profile-level settings; `remarks` is replaced with the calculated node name.
+- Empty `tcpSettings: []` and HTTP inbound `settings: []` are normalized to objects for Xray compatibility.
 
-Основная выдача:
+Whitelist `/connect-wl-version-2`:
 
-- `/connect` собирается через [UserSubscriptionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Subscriptions/UserSubscriptionService.php)
-- успешный запрос `/connect` сохраняет или обновляет запись в `user_connected_devices` по пользователю, `User-Agent` и route `connect`
-- `skip_connection=true` отключает запись connected-device и используется для административных запросов
-- в основную подписку входят:
-  - обычные пользовательские VLESS-узлы
-  - внешние `vless_external_subscriptions`, у которых включён `include_in_main_subscription`
-- порядок групп в основной подписке теперь задаётся явно:
-  - `servers.sort_order` управляет порядком локальных серверов
-  - `vless_external_subscriptions.sort_order` управляет местом внешней подписки среди серверов
-- внутри одного сервера порядок элементов `/connect` тоже задаётся явно:
-  - `xray_inbounds.sort_order` управляет порядком direct-узлов по inbound
-  - `proxies.sort_order` управляет местом proxy-вариантов в общем списке элементов сервера
-  - proxy теперь считается частью одного сервера через `proxies.server_id`, а не общего many-to-many списка серверов
-  - если у proxy включён `hide_main_node_name`, его display name в `/connect` берётся только из имени proxy, без префикса основного сервера
-- WireGuard/AmneziaWG-узлы перед выдачей в URI-подписку нормализуются повторно:
-  - сервер умеет читать и legacy-encoded, и raw `wireguard://...`
-  - в итоговой URI-подписке WireGuard-ссылка отдаётся в raw-виде, чтобы клиентские импортеры корректно обрабатывали `secretKey` с символом `/`
-  - это правило применяется и к старым локальным записям, где в `extra` уже сохранён `wireguard://...`
-  - 3x-ui `amneziawg` inbound сохраняется как Xray-backed config с `protocol=amneziawg`
-  - для `/connect` AmneziaWG отдаётся одной URI-строкой `amneziawg://{base64url-conf}`, где payload — native AmneziaWG `.conf`
-  - mini-app download/QR для таких конфигов используют декодированный native `.conf`, включая `Jc/Jmin/Jmax`, `S1-S4`, `H1-H4`, `I1-I5` и новые protection/timing параметры
-- `/connect-json` использует тот же набор узлов, но отдаёт JSON-массив полных Xray-style конфигов, по одному объекту на узел
-- каждый объект в `/connect-json` содержит индивидуальный `remarks` и `outbounds`, а общие `dns`/`routing`/`inbounds` подмешиваются из конфигурации приложения
-- routing rules для JSON-подписок могут задаваться в таблице `xray_routings`; правило хранит `outbound=direct|proxy|blocked`, Xray field-rule payload в JSON-поле `rules` и JSON-массив `subscription_types` для применения к `connect`, `connect_wl` или будущим типам подписок
-- админский импорт routing JSON доступен в UI на `/xray-routings`; он сохраняет исходный профиль и общие DNS/routing/geodata настройки в `xray_json_settings`, а отдельные Direct/Proxy/Block правила раскладывает в `xray_routings`
-- на той же странице можно создавать несколько правил и редактировать каждое из них: менять `outbound`, JSON payload, порядок, активность и область применения между стандартной подпиской `connect` и белыми списками `connect_wl`
-- каждое правило дополнительно привязывается к targets через JSON-массивы `xray_inbound_ids` и `external_subscription_config_ids`; пустые массивы означают, что правило не применяется ни к одному локальному inbound или внешнему конфигу
-- JSON builder фильтрует routing rules отдельно для каждого профиля: локальные профили матчятся по `xray_inbound_id`, внешние подписки матчятся по `vless_external_subscription_configs.id`
-- при импорте RoscomVPN/INCY JSON значения `Geoipurl`, `Geositeurl`, `LastUpdated` и `UseChunkFiles` не отбрасываются: geodata URL проверяются и скачиваются в кеш `storage/app/xray-geodata`, повторный импорт с теми же URL и `LastUpdated` использует кеш, а изменение `LastUpdated` заставляет скачать файлы заново
-- geodata файлы заменяются атомарно; если скачивание не удалось, новая настройка не активируется и старые активные правила остаются рабочими
-- Laravel-приложение не запускает Xray Core локально, поэтому физический путь Xray asset directory находится на стороне клиента; в JSON-профиль добавляется стандартный Xray `geodata.assets`, чтобы клиентский Xray Core скачал `geoip.dat`/`geosite.dat` в свой resource path
-- `UseChunkFiles` сохраняется как metadata импорта; plain Xray JSON не применяет INCY-специфичную нарезку chunk files
-- если активные `xray_routings` для конкретного типа подписки отсутствуют, JSON builder использует fallback rules из `config/connect_json.php`
-- если внешний источник вернул JSON-профили, `/connect-json` и `format=json` отдают сохранённый upstream JSON для этих внешних конфигов без пересборки, чтобы не потерять routing rules, balancers и другие profile-level настройки; `remarks` заменяется на наше рассчитанное имя узла, а пустой `tcpSettings: []` нормализуется в `tcpSettings: {}` для совместимости с Xray config loader
-- перед финальной сериализацией Xray JSON-профилей HTTP inbound с пустым `settings: []` нормализуется в `settings: {}`, чтобы Xray config loader получал объект для `protocol=http`; корректные непустые settings и SOCKS inbound не меняются
-- текущие DNS/routing/inbounds-настройки для `/connect-json` захардкожены в `config/connect_json.php` и вынесены в отдельный provider, чтобы позже их можно было заменить значениями из админки без смены маршрута
-- soft-deleted серверы не участвуют в `/connect` по умолчанию, потому что `servers` теперь используют Eloquent soft delete
+- Uses `VlessExternalSubscriptionAccessService`.
+- Tracks connected devices with route `connect-wl`, unless `skip_connection=true`.
+- Includes external subscriptions with `include_in_whitelist`.
+- Defaults to `format=json`; URI/base64 output is explicit through `format=uri`, `format=links`, or `format=raw`.
+- External source can be `direct` or `incy`.
+- For `incy`, backend follows an HTTP redirect to `incy://...` or decodes a direct `incy://...`, then continues normal sync through the decrypted subscription/direct URL.
 
-White list выдача:
+Expired subscriptions:
 
-- `/connect-wl-version-2` использует `VlessExternalSubscriptionAccessService`
-- успешный запрос `/connect-wl-version-2` тоже сохраняет или обновляет `user_connected_devices` по route `connect-wl`, кроме случаев с `skip_connection=true`
-- туда входят внешние подписки с флагом `include_in_whitelist`
-- по умолчанию `/connect-wl-version-2` отдаёт `format=json`; старый URI/base64 output доступен явно через `format=uri`, `format=links` или `format=raw`
-- внешний источник может быть как обычным `direct`, так и `incy`
-- для `incy` backend сначала:
-  - если source URL начинается с `https://` или `http://`, забирает `incy://...` redirect из ответа
-  - если source URL уже начинается с `incy://`, сразу декодирует его
-  - затем получает из расшифрованного payload обычный subscription/direct URL и продолжает стандартный sync flow
+- `/connect` and whitelist output include the placeholder `Your subscription has expired`.
+- Free external subscriptions with `is_free` can still be returned.
 
-Если подписка истекла:
+## 11. External VLESS Subscriptions
 
-- в `/connect` и white list добавляется placeholder `Ваша подписка закончилась 🚨`
-- при этом `is_free` внешних подписок позволяет всё равно выдавать их конфиги
-
-## 10. Внешние VLESS подписки
-
-Сущность:
+Entities:
 
 - `vless_external_subscriptions`
 - `vless_external_subscription_configs`
 
-Ключевые флаги:
+Key flags:
 
-- `include_in_main_subscription`
-- `include_in_whitelist`
-- `is_free`
-- `is_active`
-- `is_ready`
+- `include_in_main_subscription`: include configs in `/connect`
+- `include_in_whitelist`: include configs in whitelist output
+- `is_free`: allow configs without active subscription
+- `is_active`: source is active
+- `is_ready`: source finished sync and can be used
+- `sort_order`: external group position among local servers in `/connect`
 
-Смысл:
+Sync rules:
 
-- `include_in_main_subscription` включает конфиги в `/connect`
-- `include_in_whitelist` включает конфиги в white list подписку
-- `is_free` даёт доступ к этим конфигам даже без активной подписки
-- `sort_order` задаёт порядок самой внешней подписки среди локальных серверов в основном `/connect`
-- плановая и ручная синхронизация внешних подписок ставят job в очередь через явный `Bus::dispatch(new SyncVlessExternalSubscriptionJob(...))`
-- при загрузке внешнего источника backend отправляет INCY-like client headers, чтобы upstream видел запрос как обычный клиентский pull
-- если источник отдаёт JSON, оригинальный профиль сохраняется в `vless_external_subscription_configs.json` рядом с нормализованной URI-ссылкой
+- Scheduled and manual sync dispatch `SyncVlessExternalSubscriptionJob` through `Bus::dispatch(new SyncVlessExternalSubscriptionJob(...))`.
+- External fetch sends INCY-like client headers so upstream sees a normal client pull.
+- JSON sources store the original profile in `vless_external_subscription_configs.json` next to the normalized URI link.
 
-Дополнительное правило нейминга:
+Naming:
 
-- если в источнике один конфиг, к `connect_name_prefix` не добавляется номер
-- если конфигов несколько, используется формат `Prefix 1`, `Prefix 2`, ...
+- One config: use `connect_name_prefix` as-is.
+- Multiple configs: use `Prefix 1`, `Prefix 2`, and so on.
 
-## 11. Mini-app экраны, связанные с подпиской
+## 12. Mini-App Screens Related To Subscription
 
-Подробные пользовательские сценарии вынесены в:
+Detailed UI flows:
 
 - [docs/telegram-mini-app-user-flows.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-user-flows.md)
 - [docs/telegram-mini-app-state-machine.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-state-machine.md)
 
-Особенно важные экраны:
+Important screens:
 
 - `Payments`
 - `WireGuard`
@@ -303,28 +249,28 @@ White list выдача:
 - `Home`
 - `Giveaway`
 
-## 12. Что обязательно проверять при изменениях
+## 13. Required Checks For Changes
 
-Если меняется подписка, почти всегда нужно проверить:
+For subscription changes, usually check:
 
-1. Trial flow
-2. Paid immediate activation flow
-3. Paid approve flow
-4. Gift activation flow
-5. Renewal flow
-6. `DispatchDefaultConfigsForUserJob`
-7. `configs:disable-overdue-debtors`
-8. `/connect` и `/connect-wl-version-2`
+1. Trial flow.
+2. Paid immediate activation flow.
+3. Paid approval flow.
+4. Gift activation flow.
+5. Renewal flow.
+6. `DispatchDefaultConfigsForUserJob`.
+7. `configs:disable-overdue-debtors`.
+8. `/connect` and `/connect-wl-version-2`.
 
-## 13. Какие тесты обычно нужны
+## 14. Expected Tests
 
-Минимум:
+Minimum:
 
-- Feature test на API сценарий активации
-- Feature test на command/job, если меняется post-activation behavior
-- Тест на `/connect`, если меняется subscription output
+- Feature test for activation API scenarios.
+- Feature test for command/job paths when post-activation behavior changes.
+- `/connect` output test when subscription output changes.
 
-Полезные существующие ориентиры:
+Useful examples:
 
 - [tests/Feature/TelegramAppConnectionRoutesTest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/tests/Feature/TelegramAppConnectionRoutesTest.php)
 - [tests/Feature/CreateDefaultConfigsForActiveSubscribersCommandTest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/tests/Feature/CreateDefaultConfigsForActiveSubscribersCommandTest.php)

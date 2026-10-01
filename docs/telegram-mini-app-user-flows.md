@@ -1,850 +1,294 @@
 # Telegram Mini-App User Flows
 
-Актуально по коду на `2026-07-14`.
+This is the compact product-flow reference for the Telegram mini-app. It is intentionally shorter than the state machine doc and focuses on what users can do.
 
-Документ описывает фактически реализованные пользовательские пути в mini-app, а не только целевую state machine. Это удобно использовать как базу сценариев для AI-support бота.
+See also: [docs/telegram-mini-app-state-machine.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-state-machine.md)
 
-## 1. Что есть в mini-app сейчас
+## 1. Entry And Authentication
 
-Реализованные страницы:
+Telegram entry:
 
-- `/telegram-app/login` -> `Login`
-- `/telegram-app/register` -> `Register`
-- `/telegram-app/` -> `Home`
-- `/telegram-app/wireguard` -> `Amnezia`
-- `/telegram-app/vless` -> `VLESS`
-- `/telegram-app/vless-wl` -> `VLESS White List`
-- `/telegram-app/payments` -> `Payments`
-- `/telegram-app/help` -> `Help`
-- `/telegram-app/chats` -> `Chats`
-- `/telegram-app/giveaway` -> `Giveaway`
-- `/telegram-app/support` -> `Support`
-- `/telegram-app/support/{ticketId}` -> `SupportShow`
+1. User opens the mini-app from Telegram.
+2. Frontend sends Telegram WebApp `initData` to `POST /telegram-app/auth/telegram`.
+3. Backend validates the hash, creates or links the user, and returns a bearer token.
+4. Frontend loads `GET /telegram-app/me`.
+5. Default destination is `Home`; `start_param=payments` opens `Payments`.
 
-Общие особенности:
+Public entry:
 
-- Почти каждая страница начинает с авто-авторизации через `POST /telegram-app/auth/telegram`.
-- Затем страница загружает профиль через `GET /telegram-app/me`.
-- Публичный вход доступен через `/telegram-app/login` и авторизует пользователя логином и паролем через `POST /telegram-app/auth/login`; после входа frontend сохраняет тот же bearer token, что и Telegram mini-app.
-- Публичная регистрация доступна через `/telegram-app/register`, создаёт пользователя по имени, логину и паролю через `POST /telegram-app/auth/register`, опционально принимает реферальный код или ссылку, затем сохраняет тот же bearer token.
-- Тот же набор страниц, auth endpoints и защищённых mini-app API дополнительно смонтирован внутри Laravel под `/public/*`; на публичном поддомене reverse proxy скрывает этот префикс и отдаёт пользователю корневые URL вроде `/login`, `/register`, `/me`.
-- При открытии защищённой публичной страницы без сохранённого bearer token frontend переводит пользователя на публичный login URL, не пытаясь выполнить Telegram bootstrap.
-- На всех страницах есть нижняя навигация: `Главная`, `Конфиги`, `Подписка`, `Помощь`, `Чаты`, `Розыгрыш`.
-- Экран `Support` не вынесен в нижнюю навигацию, но доступен из `Help` и по прямой ссылке.
+1. User opens `/telegram-app/login`, `/public/login`, or public-subdomain `/login`.
+2. Login uses `POST /telegram-app/auth/login`.
+3. Registration uses `POST /telegram-app/auth/register`.
+4. Successful auth stores the mini-app bearer token and opens `Home`.
 
-## 2. Специальные входы в mini-app
+Failure behavior:
 
-### 2.1 Обычный вход
+- Invalid Telegram hash, expired session, missing Telegram id, login failure, or profile load failure should show a recoverable app error state.
+- Protected `/public/*` pages without a token should redirect to public login without Telegram bootstrap.
 
-Путь:
+## 2. Home
 
-1. Пользователь открывает mini-app.
-2. Выполняется `POST /telegram-app/auth/telegram`.
-3. Выполняется `GET /telegram-app/me`.
-4. Пользователь попадает на `Home`.
+Home is the main hub.
 
-### 2.1.1 Публичный вход по логину и паролю
+Primary actions:
 
-Путь:
+- `Amnezia`: open WireGuard/Amnezia config list.
+- `VLESS`: open VLESS menu.
+- `Subscription`: open `Payments`.
+- `Help`: open help menu.
+- `Giveaway`: open current giveaway.
+- Bottom navigation: `Home`, `Payments`, `Chats`.
 
-1. Пользователь открывает `/telegram-app/login`.
-2. Вводит `login` и `password`.
-3. Frontend вызывает `POST /telegram-app/auth/login`.
-4. Backend проверяет `users.login` и хешированный `users.password`.
-5. Frontend сохраняет mini-app bearer token и переводит пользователя на `/telegram-app/`.
+Notes:
 
-### 2.1.2 Публичная регистрация
-
-Путь:
+- `Chats` is available through bottom navigation, not as a Home card.
+- `Support` is reached through `Help`, not bottom navigation.
 
-1. Пользователь открывает `/telegram-app/register`.
-2. Вводит имя, `login`, `password`, подтверждение пароля и, при наличии, реферальный код.
-3. Frontend вызывает `POST /telegram-app/auth/register`.
-4. Backend создаёт не-админского пользователя с `join_at=today` и хешированным паролем, затем привязывает реферера через общий `ReferralService`.
-5. Frontend сохраняет mini-app bearer token и переводит пользователя на `/telegram-app/`.
+## 3. Amnezia / WireGuard
 
-### 2.4 Вход по deep link на оплату
+Config list flow:
 
-Если передан `start_param=payments`:
-
-1. Выполняется обычная авторизация.
-2. Frontend обрабатывает `redirectFromTelegramStartParam(...)`.
-3. Пользователь сразу попадает на `/telegram-app/payments`.
+1. User opens `Home -> Amnezia`.
+2. Frontend calls `GET /api/users/{telegramId}/wireguard/configs` or mini-app proxy `GET /telegram-app/wireguard/configs`.
+3. If configs exist, show the list.
+4. If none exist, show the empty state.
+5. If backend returns debt/no-access, show the access-denied state and link to `Payments`.
 
-Это используется, например, из reminder-уведомлений об окончании подписки.
+Config actions:
 
-### 2.2 Вход по тикету поддержки
+1. User selects a config.
+2. User can request QR code through `GET /api/users/{telegramId}/configs/wireguard/{configId}/qr-code`.
+3. User can request file download through `GET /api/users/{telegramId}/configs/wireguard/{configId}/download`.
+4. User can return to config list, go to `VLESS`, or return Home.
 
-Если в Telegram передан `start_param=ticket_{id}`, frontend делает редирект:
+Important:
 
-1. Пользователь открывает mini-app по deep link.
-2. Идёт авторизация.
-3. Срабатывает `redirectFromTelegramStartParam(...)`.
-4. Пользователь сразу попадает на `/telegram-app/support/{ticketId}`.
+- If a config disappears between list load and action, show `CONFIG_NOT_FOUND`.
+- AmneziaWG URI payload must be decoded back to native `.conf` for QR/download flows.
 
-Это отдельный важный путь для support-бота: пользователь может попасть не на главную, а сразу в чат обращения.
+## 4. VLESS
 
-### 2.3 Вход по реферальной ссылке
+VLESS menu flow:
 
-Если передан `start_param=ref_{id}`:
+1. User opens `Home -> VLESS`.
+2. Frontend calls `GET /api/users/{telegramId}/vless/link` or mini-app proxy `GET /telegram-app/vless`.
+3. If access is available, show VLESS actions.
+4. If no access, show debt/no-access and link to `Payments`.
 
-1. Выполняется обычная авторизация.
-2. Сессия принудительно обновляется с учётом реферального параметра.
-3. Пользователь остаётся в обычном flow и попадает на `Home`.
-4. На `Home` он может вручную привязать реферера, если это ещё разрешено.
+Actions:
 
-Здесь нет автоматического перехода на отдельный экран.
+- `Link`: show deep links and raw link from `GET /api/users/{telegramId}/vless/link`.
+- `QR Code`: show QR from `GET /api/users/{telegramId}/vless/qr-code`.
+- `Whitelist`: open `/telegram-app/vless-wl?step=links`.
+- `Home`: return to Home.
 
-## 3. Карта экранов и переходов
+Notes:
 
-```text
-BOOTSTRAP
-  -> HOME
-  -> SUPPORT_SHOW (если start_param=ticket_{id})
-
-PUBLIC_LOGIN
-  -> HOME
-  -> PUBLIC_REGISTER
-
-PUBLIC_REGISTER
-  -> HOME
-  -> PUBLIC_LOGIN
-
-HOME
-  -> WIREGUARD
-  -> VLESS
-  -> VLESS_WL (если доступно)
-  -> PAYMENTS
-  -> HELP
-  -> CHATS (через нижнюю навигацию)
-  -> GIVEAWAY
-
-WIREGUARD
-  list -> actions -> qr
-                  -> file-sent
-  actions -> VLESS
-  debt -> PAYMENTS
-  empty -> HOME
-
-VLESS
-  menu -> links
-  menu -> qr
-  menu -> VLESS_WL(links) (если доступно, переход по кнопке `Белые списки`)
-  debt -> PAYMENTS
-
-VLESS_WL
-  menu -> links
-  debt -> PAYMENTS
-
-PAYMENTS
-  overview -> packages(personal)
-  overview -> packages(gift)
-  overview -> code-activated
-  packages -> activated
-  packages -> gift-created
-  packages -> payment-link
-  packages -> overview
-
-HELP
-  menu -> Amnezia help
-  menu -> VLESS help
-  menu -> Clients
-  menu -> SUPPORT
-  wg -> Amnezia clients
-  vless -> VLESS clients
-  clients -> Amnezia clients
-  clients -> VLESS clients
-
-CHATS
-  -> external Telegram links
-
-SUPPORT
-  empty -> create ticket -> SUPPORT_SHOW
-  list -> SUPPORT_SHOW
-
-SUPPORT_SHOW
-  -> SUPPORT
-  -> send message
-```
-
-## 4. Детальные user-flow по страницам
-
-## 4.1 Home
-
-Файл: [Home.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Home.vue)
-
-Состояния:
-
-- `loading`
-- `error`
-- `ready`
-
-Доступные действия на `ready`:
-
-- `Amnezia` -> переход на `/telegram-app/wireguard?step=list`
-- `VLESS` -> переход на `/telegram-app/vless`
-- `VLESS Белые списки` -> переход на `/telegram-app/vless-wl?step=links`
-  - показывается только если `user.has_vless_wl_configs === true`
-- `Подписка` -> переход на `/telegram-app/payments`
-- `Помощь` -> переход на `/telegram-app/help`
-- `Новости` -> внешняя ссылка на Telegram-канал
-- `Общий чат` -> внешняя ссылка на общий Telegram-чат
-- `Розыгрыш` -> переход на `/telegram-app/giveaway`
-
-Реферальные действия на `Home`:
-
-- `Скопировать ссылку`
-- `Поделиться`
-- `Привязать` реферера по коду или ссылке
-
-Support-боту полезно понимать:
-
-- `Home` не только меню, но и экран статуса аккаунта.
-- Здесь пользователь видит:
-  - активна ли подписка
-  - срок подписки
-  - баланс
-  - реферальную скидку
-- Ошибки на этом экране почти всегда означают проблему авторизации mini-app или загрузки профиля.
-
-## 4.8 Giveaway
-
-Файл: [Giveaway.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Giveaway.vue)
-
-Состояния страницы:
-
-- `loading`
-- `error`
-- `no-active-giveaway`
-- `scheduled`
-- `active-not-participant`
-- `active-participant`
-- `drawing`
-- `finished`
-
-Основной flow:
-
-1. Страница вызывает `GET /telegram-app/giveaway/current`.
-2. Если есть активный giveaway и пользователь ещё не участвует, показывается кнопка `Участвовать`.
-3. После `POST /telegram-app/giveaway/participate` создаётся или переиспользуется уникальный participant.
-4. Пользователь видит:
-   - базовый голос
-   - количество подходящих рефералов
-   - итоговый вес
-5. После завершения показываются сохранённые победители.
+- If a deep link does not open, user should be able to copy the raw link or use QR.
+- Whitelist QR has backend support, but current UI does not expose a path to it.
 
-Важное правило:
+## 5. Payments And Subscription
 
-- frontend не рассчитывает eligibility и weight самостоятельно
-- правило реферала прямо объясняется на странице giveaway
-- реферальная ссылка и шэринг переиспользуют текущий referral flow, а не создают отдельную механику
-
-## 4.2 Amnezia
+Overview:
 
-Файл: [WireGuard.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/WireGuard.vue)
+1. User opens `Home -> Subscription` or bottom-nav `Payments`.
+2. Frontend loads `GET /telegram-app/me`.
+3. Screen shows balance, debt, subscription end date, warnings, gift-code entry, and available subscription actions.
 
-Состояния страницы:
+Personal subscription purchase:
 
-- `loading`
-- `error`
-- `debt`
-- `empty`
-- `ready`
+1. User chooses `Buy subscription`.
+2. Frontend loads `GET /telegram-app/subscription-packages`.
+3. User chooses a package.
+4. Frontend sends `POST /telegram-app/payments/subscriptions` with `{ month, return_url }`.
+5. If balance covers the package, backend activates immediately and frontend shows success.
+6. If external payment is needed, backend returns `confirmation_url` and frontend opens the payment page.
+7. After payment approval, backend activation follows the `TransactionApproved` listener path.
 
-Внутренние шаги при `ready`:
+Trial:
 
-- `list`
-- `actions`
-- `qr`
-- `file`
+- Trial uses the same purchase endpoint with `month=0`.
+- Trial is allowed only for users without previous subscriptions.
+- Trial must still dispatch config provisioning and access reconciliation.
 
-### Основной путь
+Gift code purchase:
 
-1. Открыть `Amnezia` с `Home` или через hub конфигов в нижней навигации.
-2. `GET /telegram-app/wireguard/configs`.
-3. Если конфиги есть -> показывается список конфигов.
-   - Xray-backed AmneziaWG конфиги показываются в этом же разделе: пользователь выбирает конфиг, получает QR или `.conf` файл.
-4. Пользователь выбирает конфиг.
-5. Попадает на экран действий по конфигу.
+1. User chooses gift purchase mode.
+2. User selects package and pays or uses balance.
+3. If paid, backend issues a gift code.
+4. User can open their gift-code list from Payments.
 
-### Ветка `debt`
+Gift code activation:
 
-1. Пользователь открывает `Amnezia`.
-2. API возвращает `403` с `type=debt`, если нет активной подписки.
-3. Показывается экран `Доступ к конфигам закрыт`.
-4. Доступны кнопки:
-   - `Подписка`
-   - `К началу`
+1. User enters a code.
+2. Frontend calls the gift activation endpoint.
+3. Backend validates the code, creates subscription period, and runs post-activation work.
+4. Frontend shows activation success or validation error.
 
-### Ветка `empty`
+Do not mix these:
 
-1. Пользователь открывает `Amnezia`.
-2. API возвращает пустой список конфигов.
-3. Показывается `Конфиги не найдены`.
-4. Доступна кнопка `К началу`.
+- Buying a gift code creates a code for someone else.
+- Activating a gift code creates access for the current user.
 
-### Ветка `actions`
+## 6. Giveaway
 
-После выбора конфига доступны:
+Flow:
 
-- `QR Code`
-  - запрашивает `GET /telegram-app/wireguard/configs/{configId}/qr-code`
-  - открывает шаг `qr`
-- `Отправить файл в бота`
-  - вызывает `POST /telegram-app/wireguard/configs/{configId}/send-file`
-  - открывает шаг `file`
+1. User opens `Home -> Giveaway`.
+2. Frontend loads `GET /telegram-app/giveaway/current`.
+3. User joins the giveaway if available.
+4. Participant weight starts at `1`.
+5. Eligible referrals add `+1`.
 
-Для AmneziaWG QR и файл содержат native AmneziaWG `.conf` с obfuscation-параметрами из 3x-ui.
-- `VLESS`
-  - переводит на `/telegram-app/vless`
-- `Конфиги`
-  - возврат к списку
+Eligibility notes:
 
-### Ветка `qr`
+- Referral relationship must belong to the participant.
+- Referral must be attached during the current giveaway window.
+- Referred user must have an active subscription at `giveaway.ends_at`.
+- Prize grants create free `user_subscriptions` with source `giveaway`.
 
-Доступны действия:
+## 7. Help And Clients
 
-- `Отправить в бота`
-  - `POST /telegram-app/wireguard/configs/{configId}/send-qr`
-- `Конфиги`
-  - возврат к списку
-- `К началу`
+Help menu actions:
 
-### Ветка `file`
+- `Amnezia`: open Amnezia setup instructions.
+- `VLESS`: open VLESS setup instructions.
+- `Clients`: open client app choices.
+- `Support`: open support tickets.
+- `Home`: return Home.
 
-Пользователь видит подтверждение, что файл уже отправлен в Telegram-бота.
+Client subflows:
 
-Доступны действия:
+- Amnezia help can open Amnezia clients.
+- VLESS help can open VLESS clients.
+- Generic clients screen can branch to either Amnezia or VLESS clients.
 
-- `Отправить ещё раз в бота`
-- `Конфиги`
-- `К началу`
+## 8. Support
 
-Support-боту важно:
+Ticket list:
 
-- В mini-app нет локальной кнопки "скачать файл в браузер", хотя backend-роут существует.
-- Базовый пользовательский сценарий для Amnezia в UI сейчас такой:
-  - выбрать конфиг
-  - показать QR
-  - или отправить файл/QR в Telegram-бота
+1. User opens `Help -> Support`.
+2. Frontend calls `GET /telegram-app/support/tickets`.
+3. Empty state offers ticket creation.
+4. Non-empty state lists tickets.
 
-## 4.3 VLESS
+Create ticket:
 
-Файл: [Vless.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Vless.vue)
+1. User opens composer.
+2. User submits subject/message.
+3. Frontend calls `POST /telegram-app/support/tickets`.
+4. On success, open `SupportShow`.
 
-Состояния страницы:
+Ticket thread:
 
-- `loading`
-- `error`
-- `debt`
-- `ready`
+1. User opens a ticket from `Support` or a `ticket_{id}` deep link.
+2. Frontend shows message history.
+3. User sends a message through `POST /telegram-app/support/tickets/{ticketId}/messages`.
+4. Frontend polls every 5 seconds.
 
-Внутренние шаги:
+Display:
 
-- `menu`
-- `links`
-- `qr`
+- Admin messages are shown as operator messages.
+- User messages are shown as own messages.
 
-### Основной путь
+## 9. Full Transition List
 
-1. Открыть `VLESS`.
-2. Выполняется `GET /telegram-app/vless/link`.
-3. Если доступ есть, показывается экран `menu`.
+Main:
 
-### Ветка `menu`
+- `BOOTSTRAP -> HOME`
+- `BOOTSTRAP(start_param=payments) -> PAYMENTS`
+- `PUBLIC_LOGIN -> HOME`
+- `PUBLIC_REGISTER -> HOME`
+- `HOME -> Amnezia -> WIREGUARD(list)`
+- `HOME -> VLESS -> VLESS(menu)`
+- `HOME -> Subscription -> PAYMENTS`
+- `HOME -> Help -> HELP`
+- `HOME -> Giveaway -> GIVEAWAY`
+- `bottom nav -> Chats -> CHATS`
 
-Доступны действия:
+WireGuard:
 
-- `Link` -> шаг `links`
-- `QR-Code` -> шаг `qr`
-- `Белые списки` -> `/telegram-app/vless-wl?step=links`
-  - только если `has_vless_wl_configs === true`
-- `К началу`
-
-### Ветка `links`
-
-Пользователь видит:
-
-- приоритетные deep links:
-  - `Happ`
-  - `V2RayTun`
-  - `Incy`
-- raw-ссылку
-- дополнительные клиенты:
-  - `V2RayN`
-  - `V2RayNG`
-  - `V2Ray Box`
-  - `Sing-box`
-  - `Hiddify`
-
-Действия:
-
-- `Открыть` deep link
-- `Скопировать raw-ссылку`
-- `Открыть` дополнительный клиент
-- `Назад`
-- `Белые списки`
-- `К началу`
-
-### Ветка `qr`
-
-Действия:
-
-- `Отправить в бота`
-  - `POST /telegram-app/vless/send-qr`
-- `Назад`
-- `К началу`
-
-### Ветка `debt`
-
-Показывается сообщение о необходимости активной подписки.
-
-Доступны:
-
-- `Подписка`
-- `К началу`
-
-Support-боту важно:
-
-- Основной сценарий VLESS в UI это не скачивание, а открытие deep link в приложение клиента.
-- Если deep link не сработал, fallback-сценарий:
-  - открыть `Link`
-  - скопировать raw-ссылку
-  - или открыть `QR-Code`
-
-## 4.4 VLESS White List
-
-Файл: [VlessWhiteList.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/VlessWhiteList.vue)
-
-Состояния страницы:
-
-- `loading`
-- `error`
-- `debt`
-- `ready`
-
-Внутренние шаги:
-
-- `menu`
-- `links`
-
-Пользовательский путь:
-
-1. Открыть `VLESS Белые списки`.
-2. Выполняется `GET /telegram-app/vless-wl/link`.
-3. Если доступ есть, показывается `menu`.
-4. Нажать `Link`.
-5. Открывается список deep links для WL-конфигов.
-
-Доступные действия на `links`:
-
-- открыть preferred deep link
-- скопировать preferred deep link
-- открыть / скопировать дополнительные deep links
-- `Назад`
-
-Важно:
-
-- В backend для WL есть QR-роуты:
-  - `GET /telegram-app/vless-wl/qr-code`
-  - `POST /telegram-app/vless-wl/send-qr`
-- Но в текущем UI на шаге `menu` нет кнопки `QR-Code`.
-- Значит это потенциально существующий backend-путь, но не пользовательский путь текущего интерфейса.
-
-Support-боту стоит считать `VLESS WL` link-only сценарием.
-
-## 4.5 Payments
-
-Файл: [Payments.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Payments.vue)
-
-Состояния страницы:
-
-- `loading`
-- `error`
-- `ready`
-
-Внутренние экраны:
-
-- `overview`
-- `packages`
-- `activated`
-- `gift-created`
-- `code-activated`
-- `payment-link`
-
-### Экран `overview`
-
-Пользователь видит:
-
-- статус подписки
-- баланс
-- долг
-- предупреждение, если денег на следующий месяц не хватает
-- учёт реферальной скидки
-- поле активации подарочного кода
-- список уже купленных подарочных кодов
-
-Действия:
-
-- `Купить подписку` -> `packages` с режимом `PERSONAL`
-- `Купить код в подарок` -> `packages` с режимом `GIFT`
-- `Активировать код`
-- `К началу`
-- `Копировать` у уже купленного подарочного кода
-
-### Экран `packages`
-
-Действия:
-
-- выбрать пакет
-- `Оплатить` или `Получить подарочный код`
-- `Отменить` -> возврат в `overview`
-
-Возможные исходы:
-
-- `status=activated` -> экран `activated`
-- `status=gift_code_created` -> экран `gift-created`
-- есть `confirmation_url` -> экран `payment-link`
-- ошибка -> остаться на `packages` с текстом ошибки
-
-### Экран `activated`
-
-Используется, когда подписка активировалась сразу, например за счёт баланса или trial.
-
-Действия:
-
-- `К началу`
-
-### Экран `gift-created`
-
-Показывает сгенерированный код.
-
-Действия:
-
-- `Скопировать код`
-- `К моим кодам` -> возврат в `overview`
-
-### Экран `code-activated`
-
-Появляется после ручной активации подарочного кода.
-
-Действия:
-
-- `К началу`
-
-### Экран `payment-link`
-
-Появляется, если нужна внешняя оплата.
-
-Действия:
-
-- `Перейти к оплате картой / СБП`
-  - открывает `confirmation_url`
-- `К началу`
-
-Support-боту важно:
-
-- В `Payments` есть три разных бизнес-сценария:
-  - продлить себе подписку
-  - купить подарочный код
-  - активировать уже полученный код
-- Если у пользователя долг, именно здесь он увидит объяснение, почему закрыт доступ к `Amnezia` и `VLESS`.
-
-## 4.6 Help
-
-Файл: [Help.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Help.vue)
-
-Состояния:
-
-- `loading`
-- `error`
-- `ready`
-
-Внутренние разделы:
-
-- `menu`
-- `wg`
-- `vless`
-- `clients`
-- `wg-clients`
-- `vless-clients`
-
-### Раздел `menu`
-
-Действия:
-
-- `Amnezia`
-- `VLESS`
-- `Клиенты`
-- `Поддержка` -> `/telegram-app/support`
-- `К началу`
-
-### Раздел `wg`
-
-Показывает текстовую инструкцию по Amnezia.
-
-Действия:
-
-- `Amnezia клиенты`
-- `Назад`
-- `К началу`
-
-### Раздел `vless`
-
-Показывает текстовую инструкцию по VLESS.
-
-Действия:
-
-- `VLESS клиенты`
-- `Назад`
-- `К началу`
-
-### Раздел `clients`
-
-Действия:
-
-- `Amnezia клиенты`
-- `VLESS клиенты`
-- `Назад`
-- `К началу`
-
-### Разделы `wg-clients` и `vless-clients`
-
-Открывают внешние ссылки на приложения:
-
-- App Store
-- Google Play
-- сайты клиентов
-
-Навигация:
-
-- `Назад`
-- `К началу`
-
-Support-боту важно:
-
-- `Help` это не просто FAQ, а реальный маршрут до `Support`.
-- Если пользователь спрашивает "какое приложение поставить", это путь через `Help -> Clients`.
-
-## 4.7 Chats
-
-Файл: [Chats.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Chats.vue)
-
-Состояния:
-
-- `loading`
-- `error`
-- `ready`
-
-Контент:
-
-- `Новости`
-- `Флуд`
-
-Действия:
-
-- `Открыть` ссылку на Telegram-канал или чат
-
-Особенность:
-
-- На `Home` прямой карточки `Chats` нет.
-- Но экран всегда доступен через нижнюю навигацию.
-
-## 4.8 Support
-
-Файл: [Support.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/Support.vue)
-
-Состояния:
-
-- `loading`
-- `error`
-- `ready`
-
-Внутренние режимы:
-
-- пустой список тикетов
-- форма создания обращения
-- список тикетов
-
-### Если тикетов нет
-
-Пользователь видит:
-
-- сообщение `У вас пока нет обращений`
-- кнопку `Создать обращение`
-
-### Создание обращения
-
-Пользователь вводит:
-
-- `Тема`
-- `Сообщение`
-
-Далее:
-
-1. `POST /telegram-app/support/tickets`
-2. Если сервер вернул `ticket.id`, происходит переход на `/telegram-app/support/{ticketId}`
-
-### Если тикеты есть
-
-Пользователь видит список карточек обращений.
-
-Действия:
-
-- `Создать обращение`
-- открыть существующее обращение
-
-Важная особенность:
-
-- Страница раз в 5 секунд переподгружает список тикетов.
-
-## 4.9 SupportShow
-
-Файл: [SupportShow.vue](/Users/alexandersustavov/projects/home/wireguard-vpn-app/resources/js/Pages/TelegramApp/SupportShow.vue)
-
-Состояния:
-
-- `loading`
-- `error`
-- `ready`
-
-Действия:
-
-- отправить сообщение в тикет
-- `К списку`
-
-Путь:
-
-1. Открыть тикет из `Support` или по deep link `ticket_{id}`.
-2. `GET /telegram-app/support/tickets/{ticketId}`
-3. Пользователь видит историю сообщений.
-4. Может отправить новое сообщение через `POST /telegram-app/support/tickets/{ticketId}/messages`
-
-Особенности:
-
-- Поллинг раз в 5 секунд.
-- Сообщения админа показываются как `Оператор`.
-- Сообщения пользователя показываются как `Вы`.
-
-## 5. Полный список пользовательских переходов
-
-Ниже список переходов в форме `откуда -> действие -> куда`.
-
-### Главные переходы
-
-- `BOOTSTRAP -> success -> HOME`
-- `BOOTSTRAP -> start_param ticket_{id} -> SUPPORT_SHOW`
-- `HOME -> Amnezia -> WIREGUARD`
-- `HOME -> VLESS -> VLESS`
-- `HOME -> VLESS Белые списки -> VLESS_WL(links)`
-- `HOME -> Подписка -> PAYMENTS`
-- `HOME -> Помощь -> HELP`
-- `любая страница с bottom nav -> Чаты -> CHATS`
-
-### Amnezia
-
-- `WIREGUARD(list) -> выбрать конфиг -> WIREGUARD(actions)`
+- `WIREGUARD(list) -> select config -> WIREGUARD(actions)`
 - `WIREGUARD(actions) -> QR Code -> WIREGUARD(qr)`
-- `WIREGUARD(actions) -> Отправить файл в бота -> WIREGUARD(file)`
-- `WIREGUARD(actions) -> VLESS -> VLESS`
-- `WIREGUARD(qr) -> Конфиги -> WIREGUARD(list)`
-- `WIREGUARD(file) -> Конфиги -> WIREGUARD(list)`
-- `WIREGUARD(debt) -> Подписка -> PAYMENTS`
-- `WIREGUARD(empty) -> К началу -> HOME`
+- `WIREGUARD(actions) -> Send file to bot -> WIREGUARD(file)`
+- `WIREGUARD(qr) -> Configs -> WIREGUARD(list)`
+- `WIREGUARD(file) -> Configs -> WIREGUARD(list)`
+- `WIREGUARD(debt) -> Subscription -> PAYMENTS`
+- `WIREGUARD(empty) -> Home -> HOME`
 
-### VLESS
+VLESS:
 
 - `VLESS(menu) -> Link -> VLESS(links)`
-- `VLESS(menu) -> QR-Code -> VLESS(qr)`
-- `VLESS(menu) -> Белые списки -> VLESS_WL(links)`
-- `VLESS(links) -> Назад -> VLESS(menu)`
-- `VLESS(qr) -> Назад -> VLESS(menu)`
-- `VLESS(debt) -> Подписка -> PAYMENTS`
+- `VLESS(menu) -> QR Code -> VLESS(qr)`
+- `VLESS(menu) -> Whitelist -> VLESS_WL(links)`
+- `VLESS(links) -> Back -> VLESS(menu)`
+- `VLESS(qr) -> Back -> VLESS(menu)`
+- `VLESS(debt) -> Subscription -> PAYMENTS`
+- `VLESS_WL(links) -> Back -> VLESS_WL(menu)`
+- `VLESS_WL(debt) -> Subscription -> PAYMENTS`
 
-### VLESS White List
+Payments:
 
-- `VLESS_WL(menu) -> Link -> VLESS_WL(links)`
-- `VLESS_WL(links) -> Назад -> VLESS_WL(menu)`
-- `VLESS_WL(debt) -> Подписка -> PAYMENTS`
+- `PAYMENTS(overview) -> Buy subscription -> PAYMENTS(packages:PERSONAL)`
+- `PAYMENTS(overview) -> Buy gift code -> PAYMENTS(packages:GIFT)`
+- `PAYMENTS(overview) -> Activate code -> PAYMENTS(code-activated)`
+- `PAYMENTS(packages) -> Cancel -> PAYMENTS(overview)`
+- `PAYMENTS(packages) -> Pay -> PAYMENTS(activated|redirect|error)`
+- `PAYMENTS(gift-created) -> My codes -> PAYMENTS(overview)`
 
-### Payments
-
-- `PAYMENTS(overview) -> Купить подписку -> PAYMENTS(packages:PERSONAL)`
-- `PAYMENTS(overview) -> Купить код в подарок -> PAYMENTS(packages:GIFT)`
-- `PAYMENTS(overview) -> Активировать код -> PAYMENTS(code-activated)` 
-- `PAYMENTS(packages) -> Отменить -> PAYMENTS(overview)`
-- `PAYMENTS(packages) -> activated -> PAYMENTS(activated)`
-- `PAYMENTS(packages) -> gift_code_created -> PAYMENTS(gift-created)`
-- `PAYMENTS(packages) -> confirmation_url -> PAYMENTS(payment-link)`
-- `PAYMENTS(gift-created) -> К моим кодам -> PAYMENTS(overview)`
-
-### Help
+Help:
 
 - `HELP(menu) -> Amnezia -> HELP(wg)`
 - `HELP(menu) -> VLESS -> HELP(vless)`
-- `HELP(menu) -> Клиенты -> HELP(clients)`
-- `HELP(menu) -> Поддержка -> SUPPORT`
-- `HELP(wg) -> Amnezia клиенты -> HELP(wg-clients)`
-- `HELP(vless) -> VLESS клиенты -> HELP(vless-clients)`
-- `HELP(clients) -> Amnezia клиенты -> HELP(wg-clients)`
-- `HELP(clients) -> VLESS клиенты -> HELP(vless-clients)`
+- `HELP(menu) -> Clients -> HELP(clients)`
+- `HELP(menu) -> Support -> SUPPORT`
+- `HELP(wg) -> Amnezia clients -> HELP(wg-clients)`
+- `HELP(vless) -> VLESS clients -> HELP(vless-clients)`
+- `HELP(clients) -> Amnezia clients -> HELP(wg-clients)`
+- `HELP(clients) -> VLESS clients -> HELP(vless-clients)`
 
-### Support
+Support:
 
-- `SUPPORT(empty) -> Создать обращение -> SUPPORT(composer)`
-- `SUPPORT(composer) -> Отправить обращение -> SUPPORT_SHOW`
-- `SUPPORT(list) -> открыть тикет -> SUPPORT_SHOW`
-- `SUPPORT_SHOW -> К списку -> SUPPORT`
-- `SUPPORT_SHOW -> Отправить сообщение -> SUPPORT_SHOW`
+- `SUPPORT(empty) -> Create ticket -> SUPPORT(composer)`
+- `SUPPORT(composer) -> Send ticket -> SUPPORT_SHOW`
+- `SUPPORT(list) -> open ticket -> SUPPORT_SHOW`
+- `SUPPORT_SHOW -> Back to list -> SUPPORT`
+- `SUPPORT_SHOW -> Send message -> SUPPORT_SHOW`
 
-## 6. Что support-боту лучше считать отдельными intents
+## 10. Support Bot Intents
 
-Рекомендуемые intents:
+Recommended intents:
 
-- `open_home`
-- `open_wireguard`
-- `wireguard_select_config`
-- `wireguard_show_qr`
-- `wireguard_send_file_to_bot`
-- `wireguard_send_qr_to_bot`
-- `open_vless`
-- `vless_open_deeplink`
-- `vless_copy_raw_link`
-- `vless_show_qr`
-- `open_vless_wl`
-- `open_payments`
-- `buy_subscription_for_self`
-- `buy_gift_code`
-- `activate_gift_code`
-- `open_help`
-- `open_clients_help`
-- `open_support`
-- `create_support_ticket`
-- `open_support_ticket`
-- `reply_support_ticket`
-- `open_chats`
-- `claim_referrer`
-- `copy_referral_link`
-- `share_referral_link`
+- subscription renewal
+- payment status
+- gift code purchase
+- gift code activation
+- Amnezia setup
+- VLESS setup
+- client app choice
+- QR/file/link troubleshooting
+- no-access or debt screen
+- giveaway participation
+- support ticket creation
+- support ticket status
 
-## 7. Важные edge cases
+## 11. Edge Cases
 
-- Если у пользователя нет активной подписки, `Amnezia` и `VLESS` уходят в состояние `debt`.
-- Отрицательный баланс сам по себе доступ к `Amnezia`, `VLESS` и `VLESS WL` не блокирует.
-- `Chats` доступны через нижнее меню, но не показаны карточкой на главной.
-- `Support` доступен из `Help`, но не через нижнюю навигацию.
-- `VLESS WL` может быть доступен только части пользователей.
-- У `VLESS WL` есть backend-поддержка QR, но в текущем UI нет пути до неё.
-- В `Payments` активация кода и покупка кода это два разных сценария, их не стоит смешивать в логике бота.
-- В `SupportShow` пользователь может попасть как из списка тикетов, так и сразу по deep link.
+- No active subscription sends Amnezia and VLESS to the no-access/debt state unless free external subscription rules apply.
+- Negative balance alone should not block Amnezia, VLESS, or VLESS whitelist according to current docs; verify `User::hasActiveAccess()` before changing this area.
+- `Chats` is bottom-nav only.
+- `Support` is reachable through Help.
+- VLESS whitelist can be available only to some users.
+- Payments gift-code purchase and activation are separate flows.
+- `SupportShow` can be opened from ticket list or deep link.
 
-## 8. Что можно использовать как быстрый FAQ для бота
+## 12. Quick FAQ Mapping
 
-- "Где продлить подписку?" -> `Home -> Подписка`
-- "Как подключить Amnezia?" -> `Home -> Amnezia -> выбрать конфиг -> QR Code` или `Отправить файл в бота`
-- "Как подключить VLESS?" -> `Home -> VLESS -> Link`
-- "Что делать, если deep link не открылся?" -> `VLESS -> Link -> Скопировать raw-ссылку` или `QR-Code`
-- "Где взять приложение?" -> `Home -> Помощь -> Клиенты`
-- "Как написать в поддержку?" -> `Home -> Помощь -> Поддержка`
-- "Где мой подарочный код?" -> `Подписка -> Мои подарочные коды`
-- "Как активировать код?" -> `Подписка -> Код активации`
+- Renew subscription: `Home -> Subscription`.
+- Connect Amnezia: `Home -> Amnezia -> select config -> QR Code` or file delivery.
+- Connect VLESS: `Home -> VLESS -> Link`.
+- Deep link did not open: `VLESS -> Link -> copy raw link` or `QR Code`.
+- Get client app: `Home -> Help -> Clients`.
+- Contact support: `Home -> Help -> Support`.
+- Find gift code: `Subscription -> My gift codes`.
+- Activate code: `Subscription -> Activation code`.

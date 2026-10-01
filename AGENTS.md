@@ -2,56 +2,57 @@
 
 ## Read First
 
-Перед изменениями в этом проекте агент должен сначала просмотреть:
+Before changing this project, read:
 
 1. [RULES.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/RULES.md)
 2. [PROJECT-DOCUMENTATION.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/PROJECT-DOCUMENTATION.md)
 3. [docs/engineering-conventions.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/engineering-conventions.md)
 
-Если задача связана с подпиской, оплатой, доступом, `/connect`, trial, renewal, gift code или mini-app `Payments`, дополнительно обязательно читать:
+For subscription, billing, access, `/connect`, trial, renewal, gift code, or mini-app `Payments` work, also read:
 
 4. [docs/subscription-flow.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/subscription-flow.md)
 5. [docs/telegram-mini-app-user-flows.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-user-flows.md)
 6. [docs/telegram-mini-app-state-machine.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-state-machine.md)
 
-## Project Rules For Agents
+## Project Rules
 
-- Используй `docker compose exec app` для PHP и Composer команд, когда нужен runtime проекта.
-- Для поиска по коду предпочитай `rg`.
-- Не меняй billing/subscription поведение без проверки всех связанных flow.
+- Use `docker compose exec app` for PHP and Composer commands that need the project runtime.
+- Prefer `rg` for code search.
+- Do not change billing or subscription behavior without checking all related flows.
+- Write commit messages in English.
+- For documentation translation commits, use one of these messages:
+  - `Translate project documentation to english`
+  - `docs: Translate project documentation to english`
 
 ## Architecture Rules
 
-- Предпочтительный backend flow: `Request -> DTO/Data -> Service -> Repository -> Resource`.
-- Для новых write-endpoints используй базовый request-класс [DataFormRequest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Http/Requests/DataFormRequest.php).
-- Из request получай typed object через `toDto()`.
-- Контроллеры должны быть тонкими, бизнес-правила выносятся в сервисы.
-- Если есть повторяемая или нетривиальная persistence-логика, выноси её в repository.
+- Preferred backend flow: `Request -> DTO/Data -> Service -> Repository -> Resource`.
+- For new write endpoints, use [DataFormRequest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Http/Requests/DataFormRequest.php).
+- Read typed request data through `toDto()`.
+- Keep controllers thin; put business rules in services.
+- Move repeated or non-trivial persistence logic into repositories.
 
 ## PHP Rules
 
-- Для нового и активно изменяемого PHP-кода используй `declare(strict_types=1);`.
-- Добавляй typed arguments и return types.
-- Предпочитай `private readonly` зависимости в конструкторах.
-- Предпочитай DTO вместо массивов, когда данные переходят между слоями.
+- Use `declare(strict_types=1);` in new and actively changed PHP files.
+- Add typed arguments and return types.
+- Prefer `private readonly` constructor dependencies.
+- Prefer DTOs over arrays when data crosses layers.
 
 ## Subscription Rules
 
-- Доступ пользователя зависит и от активной подписки, и от неотрицательного баланса.
-- Trial, paid, gift и renewal flow должны оставаться согласованными.
-- Post-activation behavior обычно включает:
-  - provisioning недостающих конфигов
-  - reconciliation enable/disable конфигов
-- При изменении `/connect` проверяй и основную подписку, и whitelist, и free external subscriptions.
+- User access depends on an active subscription and a non-negative balance.
+- Trial, paid, gift, and renewal flows must stay aligned.
+- Post-activation usually includes missing config provisioning and enable/disable reconciliation.
+- When changing `/connect`, check main subscription, whitelist, and free external subscriptions.
 
 ## Testing Rules
 
-- Любое изменение поведения должно сопровождаться тестами или обновлением существующих тестов.
-- Для billing/subscription/connect/mini-app сценариев тесты обязательны.
-- Если меняется command/job/listener flow, нужен тест на этот orchestration path.
+- Behavior changes need tests or updated tests.
+- Billing, subscription, connect, mini-app, command, job, and listener flows require coverage.
 
 ## Documentation Rules
 
-- Если меняется подписочный flow, обновляй [docs/subscription-flow.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/subscription-flow.md).
-- Если меняется mini-app сценарий, обновляй [docs/telegram-mini-app-user-flows.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-user-flows.md).
-- Если меняются инженерные стандарты, обновляй [docs/engineering-conventions.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/engineering-conventions.md) и при необходимости [RULES.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/RULES.md).
+- Update [docs/subscription-flow.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/subscription-flow.md) when subscription flow changes.
+- Update [docs/telegram-mini-app-user-flows.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-user-flows.md) when mini-app scenarios change.
+- Update [docs/engineering-conventions.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/engineering-conventions.md) and, when needed, [RULES.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/RULES.md) when engineering standards change.

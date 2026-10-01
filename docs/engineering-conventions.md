@@ -1,42 +1,37 @@
 # Engineering Conventions
 
-Актуально по коду на `2026-07-14`.
+Current for code as of `2026-07-14`.
 
-Документ фиксирует рабочие инженерные правила проекта. Это не список всех исторических исключений, а стандарт для нового и активно изменяемого кода.
+This document defines standards for new and actively changed code. It is not a catalog of every legacy exception.
 
-## 1. Основной стек и стиль
+## 1. Stack And Style
 
-- Backend: Laravel
-- Frontend admin: Inertia + Vue 3
-- Значимая доменная логика живёт в `app/Services/*`, `app/Services/Crud/*`, `app/Services/Api/*`
-- Для сложных операций используем явные DTO, сервисы, репозитории и ресурсы
+- Backend: Laravel.
+- Admin frontend: Inertia + Vue 3.
+- Important domain logic belongs in `app/Services/*`, `app/Services/Crud/*`, and `app/Services/Api/*`.
+- Use explicit DTOs, services, repositories, and resources for complex operations.
 
-## 2. Request pattern
+## 2. Request Pattern
 
-Стандарт для новых request-классов:
+Standard for new request classes:
 
-- использовать базовый request-класс [DataFormRequest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Http/Requests/DataFormRequest.php)
-- не тащить сырые массивы `validated()` дальше по цепочке, если это write/use-case endpoint
-- из request получать typed object через `toDto()`
+- Use [DataFormRequest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Http/Requests/DataFormRequest.php).
+- Do not pass raw `validated()` arrays deeper into write/use-case endpoints.
+- Convert request input to a typed object through `toDto()`.
 
-Текущее состояние кода:
+Project state:
 
-- в проекте используется метод `toDto()`
-- это и есть проектный стандарт для request -> DTO mapping
+- `toDto()` is the current request-to-DTO mapping standard.
+- Do not introduce a parallel `toData()` style without a coordinated project migration.
 
-Практическое правило:
+Exceptions:
 
-- новый код должен опираться на `DataFormRequest + toDto()`
-- не стоит вводить параллельный стиль `toData()` без отдельной согласованной миграции по проекту
-
-Исключения:
-
-- старые request-классы, которые всё ещё наследуются от `FormRequest`, считаются technical debt
-- при существенном изменении таких мест их стоит переводить на `DataFormRequest`
+- Older `FormRequest` classes are technical debt.
+- When materially changing such code, migrate it to `DataFormRequest` where practical.
 
 ## 3. DTO + Service + Repository + Resource
 
-Предпочтительная цепочка для новых бизнес-сценариев:
+Preferred chain for new business scenarios:
 
 1. `Request`
 2. `DTO`
@@ -44,48 +39,41 @@
 4. `Repository`
 5. `Resource`
 
-Роли:
+Responsibilities:
 
-- `Request`: валидация и сбор typed input
-- `DTO`: перенос данных между слоями
-- `Service`: бизнес-правила и orchestration
-- `Repository`: запись/чтение persistence-слоя, который хочется переиспользовать
-- `Resource`: публичная форма ответа для UI/API
+- `Request`: validation and typed input collection.
+- `DTO`: data transfer between layers.
+- `Service`: business rules and orchestration.
+- `Repository`: reusable persistence reads/writes.
+- `Resource`: public UI/API response shape.
 
-Как применять:
+Rules:
 
-- контроллеры должны быть тонкими
-- нетривиальная логика не должна жить в контроллерах
-- повторяющиеся записи/поиски по модели лучше выносить в репозитории
-- доменные правила не прятать в `Resource`
+- Keep controllers thin.
+- Keep non-trivial logic out of controllers.
+- Move repeated model reads/writes into repositories.
+- Do not hide domain rules in `Resource` classes.
+- Legacy admin controllers may query Eloquent directly; new and important domain code should use services.
 
-Важно:
+## 4. Strict Typing
 
-- в legacy admin-контроллерах встречаются прямые Eloquent query
-- для нового кода и для важных доменных участков ориентируемся на сервисный слой
+For new and changed PHP code:
 
-## 4. Строгая типизация
+- Add `declare(strict_types=1);`.
+- Use typed arguments and return types.
+- Use `private readonly` constructor dependencies where appropriate.
+- Prefer typed DTOs over loosely typed arrays.
+- Document structured array shapes with phpdoc.
+- Put domain constants in class constants or enums instead of repeated strings.
 
-Стандарт для нового и изменяемого PHP-кода:
+## 5. Models And Database
 
-- добавлять `declare(strict_types=1);`
-- указывать типы аргументов и return types
-- использовать `private readonly` зависимости в конструкторах там, где это уместно
-- предпочитать typed DTO вместо loosely typed arrays
+- `transactions` are the source of balance and money movement.
+- Subscription access is tied to `User::hasActiveAccess()`.
+- Wrap multi-entity writes in `DB::transaction(...)`.
+- Prefer reusable repository methods over copied queries.
 
-Дополнительно:
-
-- если метод возвращает структурированный массив, документировать shape через phpdoc
-- доменные константы выносить в class constants / enum, а не размазывать строками
-
-## 5. Работа с моделями и базой
-
-- источником баланса и денег считаются `transactions`
-- подписка и доступ завязаны на `User::hasActiveAccess()`
-- сложные изменения нескольких сущностей выполнять в `DB::transaction(...)`
-- для повторного использования prefer repository methods вместо копирования query
-
-Особо чувствительные зоны:
+Sensitive areas:
 
 - billing
 - subscriptions
@@ -93,69 +81,65 @@
 - payment approval
 - Telegram mini-app auth/session flows
 
-## 6. Ошибки и исключения
+## 6. Errors And Exceptions
 
-- пользовательские бизнес-ошибки возвращать через понятные `DomainException` / `RuntimeException` там, где так уже принято
-- низкоуровневые исключения не скрывать без нужды
-- если есть риск частичной записи, использовать транзакцию и явно продумывать rollback behavior
+- Return user-facing business errors through clear `DomainException` / `RuntimeException` patterns where the project already does so.
+- Do not hide low-level exceptions without a reason.
+- If partial writes are possible, use transactions and think through rollback behavior.
 
-## 7. Тесты обязательны
+## 7. Tests
 
-Если меняется поведение, нужно добавлять или обновлять тесты.
+Behavior changes require new or updated tests.
 
-Минимальные ожидания:
+Minimum expectations:
 
-- на новую бизнес-логику: Feature test
-- на command/job/listener flow: Feature test
-- на сериализацию ресурса или выдачу подписки: тест на конкретный output
+- New business logic: Feature test.
+- Command/job/listener flow: Feature test.
+- Resource serialization or subscription output: exact output test.
 
-Особенно обязательно покрывать тестами:
+Mandatory coverage areas:
 
-- биллинг
-- подписки
-- включение/отключение конфигов
+- billing
+- subscriptions
+- config enable/disable
 - webhook/payment approval
-- `/connect` и mini-app flows
+- `/connect` and mini-app flows
 
-Ориентиры по стилю тестов:
+Useful examples:
 
 - [tests/Feature/RenewSubscriptionsCommandTest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/tests/Feature/RenewSubscriptionsCommandTest.php)
 - [tests/Feature/CreateDefaultConfigsForActiveSubscribersCommandTest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/tests/Feature/CreateDefaultConfigsForActiveSubscribersCommandTest.php)
 - [tests/Feature/TelegramAppConnectionRoutesTest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/tests/Feature/TelegramAppConnectionRoutesTest.php)
 - [tests/Feature/VlessConnectTest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/tests/Feature/VlessConnectTest.php)
 
-## 8. Подписочные и биллинговые правила проекта
+## 8. Subscription And Billing Rules
 
-При работе с подписками всегда помнить:
+When working with subscriptions:
 
-- доступ зависит от активной подписки; отрицательный баланс сам по себе доступ не отключает
-- trial, paid, gift и renewal flow должны оставаться согласованными
-- post-activation обычно означает:
-  - создать/додиспатчить дефолтные конфиги
-  - прогнать reconciliation включения/отключения конфигов
-- start date новой подписки не должен уходить в прошлое после паузы
+- Access depends on an active subscription; negative balance alone does not disable access.
+- Trial, paid, gift, and renewal flows must stay aligned.
+- Post-activation usually means creating/dispatching default configs and running enable/disable reconciliation.
+- New subscription start dates must not move into the past after a pause.
 
-Подробности:
+Details: [docs/subscription-flow.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/subscription-flow.md)
 
-- [docs/subscription-flow.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/subscription-flow.md)
+## 9. Mini-App And Connect
 
-## 9. Работа с mini-app и connect
+- Do not reconstruct mini-app user flow from memory; check the docs.
+- Changes in `Payments`, `WireGuard`, `VLESS`, and `Support` usually require checking mini-app API and frontend state flow.
+- `/connect` and external subscription changes require checking main and whitelist output.
 
-- mini-app user flow не придумывать по памяти, а сверяться с документацией
-- изменения в `Payments`, `WireGuard`, `VLESS`, `Support` почти всегда требуют проверки mini-app API и frontend state flow
-- изменения `/connect` и external subscriptions требуют проверки основного и whitelist output
-
-См.:
+See:
 
 - [docs/telegram-mini-app-user-flows.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-user-flows.md)
 - [docs/telegram-mini-app-state-machine.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-state-machine.md)
 
-## 10. Когда обновлять документацию
+## 10. When To Update Docs
 
-Обновлять документацию нужно, если меняется:
+Update docs when these change:
 
-- подписочный flow
+- subscription flow
 - billing/access logic
 - mini-app screen flow
-- инженерный стандарт проекта
-- правила для агентов
+- engineering standards
+- agent rules

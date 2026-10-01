@@ -69,8 +69,8 @@ Important note:
 
 Seeded values:
 
-- `deposit` -> `Пополнение`
-- `subscription` -> `Подписка`
+- `deposit` -> `Top-up`
+- `subscription` -> `Subscription`
 
 ### Payment Periods
 
@@ -230,7 +230,7 @@ Giveaway campaigns are stored in:
 
 Current rules:
 
-- participation is explicit and starts only after pressing `Участвовать`
+- participation is explicit and starts only after pressing `Participate`
 - base participant weight is `1`
 - each eligible referral adds `+1`
 - a referral is eligible only when:

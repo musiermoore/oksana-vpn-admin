@@ -1,490 +1,112 @@
 # Telegram Mini-App State Machine
 
-Документ описывает целевую state machine mini-app на базе текущей логики Telegram-бота и текущей реализации mini-app в проекте.
+This document describes the target mini-app state machine based on the current Telegram bot logic and current mini-app implementation.
 
-Статус по коду на 2026-06-28:
-- Уже реализованы mini-app страницы: `Home`, `Payments`, `Support`, `SupportShow`.
-- Уже реализованы mini-app API: `auth/telegram`, `me`, `subscription-packages`, `payments/subscriptions`, `support/*`, `referrals/claim`.
-- Еще не перенесены в mini-app как отдельные экраны: `Amnezia`, `Amnezia Config Actions`, `VLESS`, `Help`, `Help Amnezia`, `Help VLESS`, `Clients`, `Amnezia Clients`, `VLESS Clients`.
-- Исходная бот-логика продолжает жить в API-маршрутах `/api/users/{telegramId}/...` и должна быть адаптирована под mini-app UI.
+Code status as of `2026-06-28`:
 
-## 1. Краткая карта экранов
+- Implemented mini-app pages: `Home`, `Payments`, `Support`, `SupportShow`.
+- Implemented mini-app API: `auth/telegram`, `me`, `subscription-packages`, `payments/subscriptions`, `support/*`, `referrals/claim`.
+- Not yet migrated as standalone screens: `Amnezia`, `Amnezia Config Actions`, `VLESS`, `Help`, `Help Amnezia`, `Help VLESS`, `Clients`, `Amnezia Clients`, `VLESS Clients`.
+- Original bot logic still lives in `/api/users/{telegramId}/...` routes and should be adapted for mini-app UI.
 
-### Bootstrap
-- `BOOTSTRAP`
-  - вход из Telegram Mini App
-  - проверка `initData`
-  - авто-регистрация / авто-привязка пользователя
-  - загрузка профиля
-  - переход в `HOME`
-  - либо переход в `SUBSCRIPTION_OVERVIEW`, если `start_param=payments`
-  - при ошибке переход в `APP_INIT_ERROR`
-- `PUBLIC_LOGIN`
-  - вход на `/telegram-app/login`, внутренний `/public/login` или внешний `/login` на публичном поддомене
-  - проверка `login` и `password`
-  - сохранение mini-app bearer token
-  - переход в `HOME`
-  - открытие защищённой `/public/*` страницы без token переводит сюда без Telegram bootstrap
-- `PUBLIC_REGISTER`
-  - вход на `/telegram-app/register`, внутренний `/public/register` или внешний `/register` на публичном поддомене
-  - создание пользователя по имени, `login` и `password`
-  - опциональная привязка реферера по коду или ссылке
-  - сохранение mini-app bearer token
-  - переход в `HOME`
+## 1. State Groups
 
-### Основные пользовательские экраны
-- `HOME`
-- `GIVEAWAY`
-- `WIREGUARD_CONFIGS`
-- `WIREGUARD_CONFIG_ACTIONS`
-- `WIREGUARD_QR_RESULT`
-- `WIREGUARD_FILE_RESULT`
-- `VLESS_HOME`
-- `VLESS_LINK_RESULT`
-- `VLESS_QR_RESULT`
-- `SUBSCRIPTION_OVERVIEW`
-- `SUBSCRIPTION_PACKAGE_SELECT`
-- `SUBSCRIPTION_ACTIVATED`
-- `SUBSCRIPTION_PAYMENT_REDIRECT`
-- `HELP_MENU`
-- `HELP_WG`
-- `HELP_VLESS`
-- `HELP_CLIENTS`
-- `HELP_WG_CLIENTS`
-- `HELP_VLESS_CLIENTS`
+### Bootstrap And Public Auth
 
-### Служебные и системные состояния
-- `APP_INIT_ERROR`
-- `ACCESS_DENIED_DEBT`
-- `EMPTY_WIREGUARD_CONFIGS`
-- `VLESS_ACCESS_ERROR`
-- `PAYMENT_CANCELLED`
-- `PAYMENT_ERROR`
+- `BOOTSTRAP`: validate Telegram WebApp `initData`, auto-register/link user, load profile, then go to `HOME`; if `start_param=payments`, go to `SUBSCRIPTION_OVERVIEW`; on failure go to `APP_INIT_ERROR`.
+- `PUBLIC_LOGIN`: `/telegram-app/login`, `/public/login`, or public-subdomain `/login`; `POST /telegram-app/auth/login`; success stores bearer token and goes to `HOME`.
+- `PUBLIC_REGISTER`: `/telegram-app/register`, `/public/register`, or public-subdomain `/register`; `POST /telegram-app/auth/register`; success stores bearer token and goes to `HOME`; optional referral code/link can be attached.
 
-### Вне пользовательского mini-app UI
-- `ADMIN_APPROVE_DEPOSIT`
-- `ADMIN_DENY_DEPOSIT`
+### Main User Screens
 
-## 2. Полная таблица переходов
+- `HOME`: main menu and bottom navigation.
+- `WIREGUARD_CONFIGS`: list Amnezia/WireGuard configs.
+- `WIREGUARD_CONFIG_ACTIONS`: selected config actions.
+- `WIREGUARD_QR_RESULT`: QR result for selected config.
+- `WIREGUARD_FILE_RESULT`: config file result.
+- `EMPTY_WIREGUARD_CONFIGS`: empty WireGuard state.
+- `VLESS_HOME`: VLESS menu.
+- `VLESS_LINK_RESULT`: VLESS deep links and raw link.
+- `VLESS_QR_RESULT`: VLESS QR result.
+- `VLESS_WL_LINK_RESULT`: whitelist VLESS links.
+- `SUBSCRIPTION_OVERVIEW`: balance, debt, subscription date, and warnings.
+- `SUBSCRIPTION_PACKAGE_SELECT`: package selection.
+- `SUBSCRIPTION_ACTIVATED`: successful immediate activation.
+- `SUBSCRIPTION_PAYMENT_REDIRECT`: external payment URL.
+- `PAYMENT_CANCELLED`: payment cancellation state.
+- `PAYMENT_ERROR`: package/payment error state.
+- `HELP_MENU`, `HELP_WG`, `HELP_VLESS`, `HELP_CLIENTS`, `HELP_WG_CLIENTS`, `HELP_VLESS_CLIENTS`: help and client screens.
+- `SUPPORT`, `SUPPORT_COMPOSER`, `SUPPORT_SHOW`: support ticket list, composer, and thread.
+- `GIVEAWAY`: current giveaway screen.
 
-| screen | element/button | action | api request | next screen | error state |
+### System States
+
+- `APP_INIT_ERROR`: bootstrap/auth/profile failure.
+- `ACCESS_DENIED_DEBT`: no access to config output.
+- `CONFIG_NOT_FOUND`: selected config no longer exists.
+- `UNEXPECTED_ERROR`: generic unrecoverable error.
+
+### Outside Mini-App UI
+
+- `YOOKASSA_PAYMENT`: external payment page.
+- Telegram bot file delivery remains available for legacy file flows.
+
+## 2. Transition Table
+
+| From | Action | Effect | API | Success | Error |
 | --- | --- | --- | --- | --- | --- |
-| `PUBLIC_LOGIN` | `Войти` | Авторизация по логину и паролю для публичной версии app | `POST /telegram-app/auth/login` | `HOME` | `APP_INIT_ERROR` при неверных учетных данных или ошибке входа |
-| `PUBLIC_LOGIN` | `Создать аккаунт` | Открыть публичную регистрацию | none | `PUBLIC_REGISTER` | none |
-| `PUBLIC_REGISTER` | `Создать аккаунт` | Создать пользователя публичной версии app | `POST /telegram-app/auth/register` | `HOME` | `APP_INIT_ERROR` при занятом логине, невалидном пароле или ошибке регистрации |
-| `PUBLIC_REGISTER` | `Уже есть аккаунт` | Вернуться ко входу | none | `PUBLIC_LOGIN` | none |
-| `BOOTSTRAP` | auto | Валидация Telegram WebApp `initData` | `POST /telegram-app/auth/telegram` | `BOOTSTRAP_PROFILE_LOAD` | `APP_INIT_ERROR` при невалидном `hash`, истекшей сессии, пустом `telegram id`, ошибке конфигурации |
-| `BOOTSTRAP_PROFILE_LOAD` | auto | Загрузка профиля после входа | `GET /telegram-app/me` | `HOME` | `APP_INIT_ERROR` при `401` или ошибке загрузки |
-| `HOME` | `Amnezia` | Открыть список Amnezia-конфигов через `/telegram-app/wireguard?step=list` | `GET /api/users/{telegramId}/wireguard/configs` или mini-app proxy `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, `EMPTY_WIREGUARD_CONFIGS`, generic error |
-| `HOME` | `VLESS` | Открыть VLESS-экран | `GET /api/users/{telegramId}/vless/link` или mini-app proxy `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
-| `HOME` | `Подписка` | Открыть обзор подписки | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
-| `BOOTSTRAP` | auto with `start_param=payments` | Открыть экран подписки по deep link | `POST /telegram-app/auth/telegram`, затем `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
-| `HOME` | `Помощь` | Открыть меню помощи | none | `HELP_MENU` | none |
-| `HOME` | `Розыгрыш` | Открыть экран giveaway | `GET /telegram-app/giveaway/current` | `GIVEAWAY` | `APP_INIT_ERROR`, generic error |
-| `HOME` | auto after guest bootstrap | В текущем mini-app отдельный guest menu не нужен, потому что вход сразу делает регистрацию | `POST /telegram-app/auth/telegram` | `HOME` | `APP_INIT_ERROR` |
-| `WIREGUARD_CONFIGS` | auto | Загрузить список конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT` при `403 { type: "debt" }`, generic error |
-| `WIREGUARD_CONFIGS` | config item | Выбрать конфиг | none, локальная установка `selectedConfig` | `WIREGUARD_CONFIG_ACTIONS` | если конфиг исчез между загрузкой и действием, ошибка проявится на следующем шаге |
-| `WIREGUARD_CONFIGS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `WIREGUARD_CONFIGS` | auto when no configs | Показ пустого состояния | response `configs: []` | `EMPTY_WIREGUARD_CONFIGS` | none |
-| `WIREGUARD_CONFIGS` | auto when debt | Показ экрана долга вместо конфигов | response `403` with `type=debt` | `ACCESS_DENIED_DEBT` | none |
-| `EMPTY_WIREGUARD_CONFIGS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `ACCESS_DENIED_DEBT` | `Подписка` | Перейти к подписке | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
-| `ACCESS_DENIED_DEBT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `WIREGUARD_CONFIG_ACTIONS` | `QR Code` | Получить QR для выбранного конфига | `GET /api/users/{telegramId}/configs/wireguard/{configId}/qr-code` | `WIREGUARD_QR_RESULT` | `CONFIG_NOT_FOUND`, `UNEXPECTED_ERROR` |
-| `WIREGUARD_CONFIG_ACTIONS` | `Файл` | Скачать конфиг-файл | `GET /api/users/{telegramId}/configs/wireguard/{configId}/download` | `WIREGUARD_FILE_RESULT` | `CONFIG_NOT_FOUND`, `UNEXPECTED_ERROR` |
-| `WIREGUARD_CONFIG_ACTIONS` | `Amnezia Конфиги` | Назад к списку Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
-| `WIREGUARD_CONFIG_ACTIONS` | `VLESS` | Перейти в VLESS | `GET /api/users/{telegramId}/vless/link` или mini-app proxy `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
-| `WIREGUARD_QR_RESULT` | `Конфиги` | Назад к списку Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
-| `WIREGUARD_QR_RESULT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `WIREGUARD_FILE_RESULT` | `Конфиги` | Назад к списку Amnezia-конфигов | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
-| `WIREGUARD_FILE_RESULT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `VLESS_HOME` | auto | Проверить доступ к VLESS и получить базовые ссылки | `GET /api/users/{telegramId}/vless/link` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
-| `VLESS_HOME` | `Link` | Показать deep links и raw link | `GET /api/users/{telegramId}/vless/link` | `VLESS_LINK_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
-| `VLESS_HOME` | `QR-Code` | Получить QR | `GET /api/users/{telegramId}/vless/qr-code` | `VLESS_QR_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT`, generic error |
-| `VLESS_HOME` | `Белые списки` | Открыть WL-страницу сразу на шаге deep links | none, переход на `/telegram-app/vless-wl?step=links` | `VLESS_WL_LINK_RESULT` | none |
-| `VLESS_HOME` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `VLESS_LINK_RESULT` | `Назад` | Вернуться на VLESS-экран | none или локальный возврат | `VLESS_HOME` | none |
-| `VLESS_LINK_RESULT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `VLESS_QR_RESULT` | `Назад` | Вернуться на VLESS-экран | none или локальный возврат | `VLESS_HOME` | none |
-| `VLESS_QR_RESULT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `SUBSCRIPTION_OVERVIEW` | auto | Показать баланс, долг, дату подписки, предупреждение | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
-| `SUBSCRIPTION_OVERVIEW` | `Купить подписку` | Загрузить доступные пакеты | `GET /telegram-app/subscription-packages` | `SUBSCRIPTION_PACKAGE_SELECT` | `PAYMENT_ERROR` при ошибке загрузки пакетов |
-| `SUBSCRIPTION_OVERVIEW` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `SUBSCRIPTION_PACKAGE_SELECT` | package button `1 месяц - N ₽` и т.д. | Выбрать срок | none, локальная установка `selectedMonth` | `SUBSCRIPTION_PACKAGE_SELECT` | none |
-| `SUBSCRIPTION_PACKAGE_SELECT` | `Оплатить` | Создать запрос на оплату | `POST /telegram-app/payments/subscriptions` body `{ month, return_url }` | `SUBSCRIPTION_ACTIVATED` или `SUBSCRIPTION_PAYMENT_REDIRECT` | `PAYMENT_ERROR` при `422/500` |
-| `SUBSCRIPTION_PACKAGE_SELECT` | `Отменить` | Отмена действия | none в целевой mini-app, локальный возврат | `SUBSCRIPTION_OVERVIEW` | в старой bot-логике есть дефект возврата |
-| `SUBSCRIPTION_ACTIVATED` | `К началу` | Вернуться в главное меню | `GET /telegram-app/me` желательно для рефреша | `HOME` | `APP_INIT_ERROR` |
-| `SUBSCRIPTION_PAYMENT_REDIRECT` | `Перейти к оплате картой / СБП` | Переход на внешний URL оплаты | none, использовать `confirmation_url` из предыдущего ответа | external YooKassa | `PAYMENT_ERROR` если `confirmation_url` отсутствует |
-| `SUBSCRIPTION_PAYMENT_REDIRECT` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `PAYMENT_CANCELLED` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `PAYMENT_ERROR` | `Повторить` | Повторно загрузить пакеты или повторить покупку | `GET /telegram-app/subscription-packages` или `POST /telegram-app/payments/subscriptions` | `SUBSCRIPTION_PACKAGE_SELECT` | повторная ошибка |
-| `PAYMENT_ERROR` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_MENU` | `Amnezia` | Открыть инструкцию Amnezia | none или локальный контент | `HELP_WG` | none |
-| `HELP_MENU` | `VLESS` | Открыть инструкцию VLESS | none или локальный контент | `HELP_VLESS` | none |
-| `HELP_MENU` | `Клиенты` | Открыть выбор клиентских приложений | none | `HELP_CLIENTS` | none |
-| `HELP_MENU` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_WG` | `Amnezia клиенты` | Открыть список Amnezia-клиентов | none | `HELP_WG_CLIENTS` | none |
-| `HELP_WG` | `Назад` | Вернуться в меню помощи | none | `HELP_MENU` | none |
-| `HELP_WG` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_VLESS` | `VLESS клиенты` | Открыть список VLESS-клиентов | none | `HELP_VLESS_CLIENTS` | none |
-| `HELP_VLESS` | `Назад` | Вернуться в меню помощи | none | `HELP_MENU` | none |
-| `HELP_VLESS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_CLIENTS` | `Amnezia клиенты` | Открыть Amnezia-клиенты | none | `HELP_WG_CLIENTS` | none |
-| `HELP_CLIENTS` | `VLESS клиенты` | Открыть VLESS-клиенты | none | `HELP_VLESS_CLIENTS` | none |
-| `HELP_CLIENTS` | `Назад` | Вернуться в меню помощи | none | `HELP_MENU` | none |
-| `HELP_CLIENTS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_WG_CLIENTS` | external links | Открыть магазин приложений или сайт | none | external link | ошибка только если Telegram/WebApp не может открыть ссылку |
-| `HELP_WG_CLIENTS` | `Назад` | Вернуться в `HELP_WG` или `HELP_CLIENTS` | none | предыдущий help screen | none |
-| `HELP_WG_CLIENTS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `HELP_VLESS_CLIENTS` | external links | Открыть магазин приложений или сайт | none | external link | ошибка только если Telegram/WebApp не может открыть ссылку |
-| `HELP_VLESS_CLIENTS` | `Назад` | Вернуться в `HELP_VLESS` или `HELP_CLIENTS` | none | предыдущий help screen | none |
-| `HELP_VLESS_CLIENTS` | `К началу` | Вернуться в главное меню | none | `HOME` | none |
-| `GIVEAWAY` | auto | Загрузить текущий giveaway и состояние участия | `GET /telegram-app/giveaway/current` | `GIVEAWAY` | generic error |
-| `GIVEAWAY` | `Участвовать` | Явно вступить в активный giveaway | `POST /telegram-app/giveaway/participate` | `GIVEAWAY_PARTICIPATED` | `422` when no active giveaway |
-| `GIVEAWAY_PARTICIPATED` | auto | Показать итоговый вес | response from participate/show | `GIVEAWAY_PARTICIPATED` | none |
-| `GIVEAWAY_FINISHED` | auto | Показать зафиксированных победителей | `GET /telegram-app/giveaway/current` | `GIVEAWAY_FINISHED` | generic error |
-| `ADMIN_APPROVE_DEPOSIT` | `approve_deposit|{transactionId}` | Одобрить платеж | `POST /api/transactions/{transaction}/approve` | admin success state | admin error state |
-| `ADMIN_DENY_DEPOSIT` | `deny_deposit|{transactionId}` | Отклонить платеж | `DELETE /api/transactions/{transaction}/decline` | admin success state | admin error state |
+| `PUBLIC_LOGIN` | Log in | Password login | `POST /telegram-app/auth/login` | `HOME` | `APP_INIT_ERROR` |
+| `PUBLIC_LOGIN` | Create account | Open registration | none | `PUBLIC_REGISTER` | none |
+| `PUBLIC_REGISTER` | Create account | Public registration | `POST /telegram-app/auth/register` | `HOME` | `APP_INIT_ERROR` |
+| `PUBLIC_REGISTER` | Already have account | Return to login | none | `PUBLIC_LOGIN` | none |
+| `BOOTSTRAP` | auto | Validate Telegram `initData` | `POST /telegram-app/auth/telegram` | `BOOTSTRAP_PROFILE_LOAD` | `APP_INIT_ERROR` |
+| `BOOTSTRAP_PROFILE_LOAD` | auto | Load profile | `GET /telegram-app/me` | `HOME` or `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
+| `HOME` | Amnezia | Open config list | `GET /api/users/{telegramId}/wireguard/configs` or `GET /telegram-app/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, empty, generic error |
+| `HOME` | VLESS | Open VLESS screen | `GET /api/users/{telegramId}/vless/link` or `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `HOME` | Subscription | Open subscription overview | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
+| `HOME` | Help | Open help menu | none | `HELP_MENU` | none |
+| `HOME` | Giveaway | Open giveaway | `GET /telegram-app/giveaway/current` | `GIVEAWAY` | `APP_INIT_ERROR` |
+| `WIREGUARD_CONFIGS` | auto | Load configs | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
+| `WIREGUARD_CONFIGS` | Config item | Select config locally | none | `WIREGUARD_CONFIG_ACTIONS` | next action may fail if config disappeared |
+| `WIREGUARD_CONFIGS` | Home | Return home | none | `HOME` | none |
+| `WIREGUARD_CONFIGS` | auto empty | Show empty state | response `configs: []` | `EMPTY_WIREGUARD_CONFIGS` | none |
+| `ACCESS_DENIED_DEBT` | Subscription | Open payments | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
+| `WIREGUARD_CONFIG_ACTIONS` | QR Code | Get selected config QR | `GET /api/users/{telegramId}/configs/wireguard/{configId}/qr-code` | `WIREGUARD_QR_RESULT` | `CONFIG_NOT_FOUND`, `UNEXPECTED_ERROR` |
+| `WIREGUARD_CONFIG_ACTIONS` | File | Download config file | `GET /api/users/{telegramId}/configs/wireguard/{configId}/download` | `WIREGUARD_FILE_RESULT` | `CONFIG_NOT_FOUND`, `UNEXPECTED_ERROR` |
+| `WIREGUARD_CONFIG_ACTIONS` | Configs | Return to config list | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
+| `WIREGUARD_CONFIG_ACTIONS` | VLESS | Open VLESS | `GET /api/users/{telegramId}/vless/link` or `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | auto | Check access and load base links | `GET /api/users/{telegramId}/vless/link` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | Link | Show deep links and raw link | `GET /api/users/{telegramId}/vless/link` | `VLESS_LINK_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | QR Code | Get QR | `GET /api/users/{telegramId}/vless/qr-code` | `VLESS_QR_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | Whitelist | Open whitelist links | local route `/telegram-app/vless-wl?step=links` | `VLESS_WL_LINK_RESULT` | none |
+| `SUBSCRIPTION_OVERVIEW` | auto | Load balance, debt, subscription date | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
+| `SUBSCRIPTION_OVERVIEW` | Buy subscription | Load packages | `GET /telegram-app/subscription-packages` | `SUBSCRIPTION_PACKAGE_SELECT` | `PAYMENT_ERROR` |
+| `SUBSCRIPTION_PACKAGE_SELECT` | Select package | Store selected month locally | none | `SUBSCRIPTION_PACKAGE_SELECT` | none |
+| `SUBSCRIPTION_PACKAGE_SELECT` | Pay | Create payment request | `POST /telegram-app/payments/subscriptions` | `SUBSCRIPTION_ACTIVATED` or `SUBSCRIPTION_PAYMENT_REDIRECT` | `PAYMENT_ERROR` |
+| `SUBSCRIPTION_PACKAGE_SELECT` | Cancel | Return to overview | none | `SUBSCRIPTION_OVERVIEW` | none |
+| `SUBSCRIPTION_ACTIVATED` | Home | Refresh profile and return | `GET /telegram-app/me` recommended | `HOME` | `APP_INIT_ERROR` |
+| `SUBSCRIPTION_PAYMENT_REDIRECT` | Pay by card/SBP | Open external URL from `confirmation_url` | none | `YOOKASSA_PAYMENT` | `PAYMENT_ERROR` |
+| `PAYMENT_CANCELLED` | Home | Return home | none | `HOME` | none |
+| `PAYMENT_ERROR` | Retry | Reload packages or retry purchase | `GET /telegram-app/subscription-packages` or `POST /telegram-app/payments/subscriptions` | `SUBSCRIPTION_PACKAGE_SELECT` | repeated error |
+| `HELP_MENU` | Amnezia | Open Amnezia help | local content | `HELP_WG` | none |
+| `HELP_MENU` | VLESS | Open VLESS help | local content | `HELP_VLESS` | none |
+| `HELP_MENU` | Clients | Open client app list | none | `HELP_CLIENTS` | none |
+| `HELP_MENU` | Support | Open support list | `GET /telegram-app/support/tickets` | `SUPPORT` | generic error |
+| `SUPPORT` | Create ticket | Open composer | none | `SUPPORT_COMPOSER` | none |
+| `SUPPORT_COMPOSER` | Send ticket | Create support ticket | `POST /telegram-app/support/tickets` | `SUPPORT_SHOW` | validation/generic error |
+| `SUPPORT` | Open ticket | Open thread | `GET /telegram-app/support/tickets/{ticketId}` | `SUPPORT_SHOW` | generic error |
+| `SUPPORT_SHOW` | Send message | Append message | `POST /telegram-app/support/tickets/{ticketId}/messages` | `SUPPORT_SHOW` | validation/generic error |
 
-## 3. Список callback / action identifiers
+## 3. Access And Debt Rules
 
-### Пользовательские bot callbacks из исходной логики
-- `/start`
-- `wireguard`
-- `vless`
-- `help`
-- `subscription`
-- `config:{id}` или эквивалент выбора конфига
-- `wireguard_qr:{id}` или эквивалент действия `QR Code`
-- `wireguard_file:{id}` или эквивалент действия `Файл`
-- `wireguard_configs`
-- `vless_link`
-- `vless_qr`
-- `vless|configs`
-- `help_wg`
-- `help_vless`
-- `help_clients`
-- `help_wg_clients`
-- `help_vless_clients`
-- `buy_subscription`
-- `submit_payment_request|{month}`
-- `choose_subscription_package|{month}`
-- `cancel`
-- `approve_deposit|{transactionId}`
-- `deny_deposit|{transactionId}`
+- Config screens should treat `403 { type: "debt" }` as `ACCESS_DENIED_DEBT`.
+- If the user has no active subscription, Amnezia, VLESS, and whitelist VLESS should not show usable configs except for flows backed by free external subscriptions.
+- Negative balance alone should not block Amnezia/VLESS according to current engineering docs, but agent rules also mention non-negative balance as part of access; check `User::hasActiveAccess()` and related tests before changing this.
 
-### Идентификаторы действий в текущем mini-app
-- page route: `/telegram-app/`
-- page route: `/telegram-app/login`
-- page route: `/telegram-app/register`
-- duplicated public page routes: internal `/public/*`, external root paths on the public subdomain
-- page route: `/telegram-app/payments`
-- page route: `/telegram-app/support`
-- page route: `/telegram-app/support/{ticketId}`
-- API action: `POST /telegram-app/auth/telegram`
-- API action: `POST /telegram-app/auth/login`
-- API action: `POST /telegram-app/auth/register`
-- API action: `GET /telegram-app/me`
-- duplicated public API actions: internal `/public/*`, external root paths on the public subdomain
-- API action: `GET /telegram-app/subscription-packages`
-- API action: `POST /telegram-app/payments/subscriptions`
-- API action: `GET /telegram-app/support/tickets`
-- API action: `POST /telegram-app/support/tickets`
-- API action: `GET /telegram-app/support/tickets/{ticketId}`
-- API action: `POST /telegram-app/support/tickets/{ticketId}/messages`
-- API action: `POST /telegram-app/referrals/claim`
-- API action: `GET /telegram-app/giveaway/current`
-- API action: `POST /telegram-app/giveaway/participate`
+## 4. Implementation Notes
 
-### Рекомендуемые mini-app action ids
-- `nav.home`
-- `nav.wireguard`
-- `nav.vless`
-- `nav.subscription`
-- `nav.help`
-- `wireguard.config.select`
-- `wireguard.config.download`
-- `wireguard.config.qr`
-- `vless.link.show`
-- `vless.qr.show`
-- `subscription.package.select`
-- `subscription.purchase.submit`
-- `subscription.purchase.cancel`
-- `help.section.open`
-- `external.open`
-
-## 4. API-сценарии
-
-### 4.1 Bootstrap и авторизация mini-app
-1. Telegram открывает mini-app и передает `initData`.
-2. Frontend вызывает `POST /telegram-app/auth/telegram`.
-3. Backend:
-   - валидирует `hash`
-   - проверяет TTL init-data
-   - достает Telegram user payload
-   - автоматически регистрирует или обновляет пользователя через `ApiUserService::register()`
-   - выдает bearer token mini-app сессии
-4. Frontend вызывает `GET /telegram-app/me`.
-5. UI строит `HOME`.
-
-### 4.1.1 Публичная авторизация mini-app
-1. Пользователь открывает `/telegram-app/login`.
-2. Frontend вызывает `POST /telegram-app/auth/login` с `login` и `password`.
-3. Backend ищет пользователя по `users.login`, проверяет `users.password` через hash check и выпускает bearer token mini-app сессии.
-4. Frontend сохраняет token в том же localStorage ключе, что и Telegram bootstrap, и открывает `HOME`.
-
-### 4.1.2 Публичная регистрация mini-app
-1. Пользователь открывает `/telegram-app/register`.
-2. Frontend вызывает `POST /telegram-app/auth/register` с `name`, `login`, `password` и `password_confirmation`.
-3. Backend проверяет уникальность `users.login`, создаёт не-админского пользователя с `join_at=today`, сохраняет хешированный пароль, опционально привязывает реферера и выпускает bearer token mini-app сессии.
-4. Frontend сохраняет token в том же localStorage ключе, что и Telegram bootstrap, и открывает `HOME`.
-
-### 4.2 Получение профиля и статуса подписки
-- `GET /telegram-app/me`
-- возвращает:
-  - `id`
-  - `name`
-  - `telegram`
-  - `telegram_id`
-  - `balance`
-  - `is_admin`
-  - `has_active_access`
-  - `subscription_expires_at`
-  - `referral`
-
-### 4.3 Amnezia configs
-- Текущее backend-ядро:
-  - `GET /api/users/{telegramId}/wireguard/configs`
-  - `GET /api/users/{telegramId}/configs/wireguard/{configId}/download`
-  - `GET /api/users/{telegramId}/configs/wireguard/{configId}/qr-code`
-- Требуемая mini-app адаптация:
-  - либо прямой вызов этих API из frontend
-  - либо новый слой `/telegram-app/wireguard/*`, который прячет `telegramId` и использует mini-app bearer auth
-- Нормальный ответ списка:
-  - `200 { configs: [{ id, name, download_url, qr_code_url }] }`
-- Xray-backed AmneziaWG configs are returned through the existing `/telegram-app/wireguard/*` mini-app routes; download/QR output is native AmneziaWG `.conf` content.
-- Долг:
-  - `403 { type: "debt", message }`
-- Пустое состояние:
-  - `200 { configs: [] }`
-
-### 4.4 VLESS
-- Текущее backend-ядро:
-  - `GET /api/users/{telegramId}/vless/link`
-  - `GET /api/users/{telegramId}/vless/qr-code`
-- Ответ `vless/link` содержит:
-  - `link`
-  - `happ_deep_link`
-  - `v2raytun_deeplink`
-  - дополнительные deep links: `v2rayn`, `v2rayng`, `v2raybox`, `sing_box`, `hiddify`
-- Для mini-app лучше нормализовать UI под:
-  - `Happ`
-  - `V2RayTun`
-  - `raw link`
-  - дополнительные клиенты можно вынести в expandable block
-
-### 4.5 Подписка и оплата
-- Обзор подписки:
-  - `GET /telegram-app/me`
-- Список пакетов:
-  - `GET /telegram-app/subscription-packages`
-- Создание оплаты:
-  - `POST /telegram-app/payments/subscriptions`
-  - body: `{ month, return_url }`
-- Варианты ответа:
-  - `status=activated`
-    - подписка активирована сразу за счет баланса
-    - есть `message`, `end_date`, `formatted_end_date`
-  - `status=deposit_required`
-    - создана транзакция
-    - есть `confirmation_url`
-    - есть `transaction_id`, `invoice_id`, `payment_id`, `deposit_amount`
-
-### 4.6 Help
-- Сейчас help-ветка не требует API.
-- Контент может храниться:
-  - как статический frontend контент
-  - как CMS/messages из backend, если планируется редактирование админкой
-
-### 4.7 Admin / backoffice payment moderation
-- `POST /api/transactions/{transaction}/approve`
-- `DELETE /api/transactions/{transaction}/decline`
-- Это не часть mini-app пользовательского интерфейса.
-- Нужно держать отдельно как служебный moderation flow.
-
-## 5. Edge cases, ошибки и нестандартные ветки
-
-### Bootstrap / auth
-- Невалидный `initData.hash` -> `APP_INIT_ERROR`
-- Истекший `auth_date` -> `APP_INIT_ERROR` с предложением открыть mini-app заново
-- Не настроен `TELEGRAM_BOT_TOKEN` -> системная ошибка и блок входа
-- Отсутствует `user.id` в Telegram payload -> блок входа
-- `401 Unauthorized` по bearer token -> silent logout и повторный bootstrap
-
-### Amnezia
-- `403 type=debt` -> не показывать список конфигов, показывать CTA в подписку
-- `configs=[]` -> пустой экран `Конфиги не найдены`
-- `404 config not found` при скачивании/QR -> конфиг удален или скрыт после загрузки списка
-- `500` генерации QR или получения Amnezia config -> экран ошибки с повтором
-- Для non-admin конфиги могут быть скрыты по `server.hide_configs_for_non_admins`
-
-### VLESS
-- Нет активной подписки -> `403 debt`, переход в подписку
-- Ошибка генерации ссылки или QR -> error state на экране VLESS
-- UI в ТЗ предполагает 2 клиента, но backend уже возвращает больше deep links
-
-### Subscription / payment
-- Ошибка загрузки пакетов -> `PAYMENT_ERROR`
-- Пустой список пакетов -> отдельное empty state `Нет доступных тарифов`
-- `422` при создании оплаты -> показать сообщение backend без потери выбора тарифа
-- `500` при создании оплаты -> generic payment error
-- `status=activated` и `confirmation_url` одновременно не ожидаются, считать это спорным состоянием
-- Возврат из YooKassa по `return_url` должен триггерить рефреш `GET /telegram-app/me`
-
-### Help
-- Ошибка открытия внешней ссылки в Telegram WebApp -> fallback `window.open`
-- Потеря навигационного контекста для кнопки `Назад` на экранах клиентов -> лучше хранить `originScreen`
-
-### Общие
-- Если mini-app продолжит использовать старые `/api/users/{telegramId}` маршруты, на frontend придется хранить `telegramId`; это менее безопасно и хуже для поддержки, чем mini-app scoped endpoints.
-
-## 6. Устаревшие, мертвые и спорные ветки
-
-### Устаревшее / legacy
-- `guest menu` (`Регистрация`, `Помощь`)
-  - практически вытеснен авто-регистрацией в `POST /telegram-app/auth/telegram`
-  - в mini-app как отдельный экран не нужен
-- `choose_subscription_package|{month}`
-  - присутствует в коде как callback
-  - текущий UI использует `submit_payment_request|{month}`
-  - считать legacy / unused
-
-### Мертвые / недостижимые из UI
-- `vless|configs`
-  - переход существует в логике
-  - из текущего UI не вызывается
-  - считать dead transition, пока не появится явная кнопка
-
-### Дефекты текущей логики
-- `Отменить` на оплате
-  - сейчас после отмены есть сообщение `Действие отменено 👍`
-  - возвратная кнопка `К началу` реализована некорректно
-  - в mini-app это нужно заменить на обычный deterministic переход `SUBSCRIPTION_PACKAGE_SELECT -> SUBSCRIPTION_OVERVIEW`
-- Долг сейчас обрабатывается как API-ошибка `403`
-  - для mini-app лучше нормализовать в осознанный бизнес-state `ACCESS_DENIED_DEBT`, а не общий error toast
-- VLESS и Amnezia пока не имеют mini-app собственных роутов
-  - логика остается размазанной между bot/API и mini-app
-
-### Спорные места
-- Что считать главным экраном mini-app:
-  - текущий `Home` больше похож на профиль/реферальную главную
-  - по bot-логике `HOME` должен быть главным меню протоколов и подписки
-- Нужно ли сохранять пост-результатные промежуточные экраны `WIREGUARD_QR_RESULT`, `WIREGUARD_FILE_RESULT`, `VLESS_LINK_RESULT`, `VLESS_QR_RESULT`
-  - для state machine да, это полезно
-  - для UI можно свернуть часть из них в modal / drawer
-
-## 7. Рекомендуемая структура экранов mini-app
-
-### Вариант структуры
-- `/telegram-app/`
-  - `HOME`
-- `/telegram-app/wireguard`
-  - `WIREGUARD_CONFIGS`
-- `/telegram-app/wireguard/:configId`
-  - `WIREGUARD_CONFIG_ACTIONS`
-- `/telegram-app/wireguard/:configId/qr`
-  - `WIREGUARD_QR_RESULT`
-- `/telegram-app/wireguard/:configId/file`
-  - `WIREGUARD_FILE_RESULT`
-- `/telegram-app/vless`
-  - `VLESS_HOME`
-- `/telegram-app/vless/link`
-  - `VLESS_LINK_RESULT`
-- `/telegram-app/vless/qr`
-  - `VLESS_QR_RESULT`
-- `/telegram-app/subscription`
-  - `SUBSCRIPTION_OVERVIEW`
-- `/telegram-app/subscription/packages`
-  - `SUBSCRIPTION_PACKAGE_SELECT`
-- `/telegram-app/help`
-  - `HELP_MENU`
-- `/telegram-app/help/wg`
-  - `HELP_WG`
-- `/telegram-app/help/vless`
-  - `HELP_VLESS`
-- `/telegram-app/help/clients`
-  - `HELP_CLIENTS`
-- `/telegram-app/help/clients/wg`
-  - `HELP_WG_CLIENTS`
-- `/telegram-app/help/clients/vless`
-  - `HELP_VLESS_CLIENTS`
-- `/telegram-app/support`
-  - оставить как отдельный блок, не часть bot state machine
-
-### Рекомендуемая backend-структура
-- Оставить текущие:
-  - `POST /telegram-app/auth/telegram`
-  - `GET /telegram-app/me`
-  - `GET /telegram-app/subscription-packages`
-  - `POST /telegram-app/payments/subscriptions`
-- Добавить mini-app scoped endpoints:
-  - `GET /telegram-app/wireguard/configs`
-  - `GET /telegram-app/wireguard/configs/{config}/download`
-  - `GET /telegram-app/wireguard/configs/{config}/qr-code`
-  - `GET /telegram-app/vless/link`
-  - `GET /telegram-app/vless/qr-code`
-  - опционально `GET /telegram-app/help-content`
-
-### Рекомендуемая frontend state model
-- `appSession`
-  - `bootState`
-  - `token`
-  - `user`
-- `navigation`
-  - `currentScreen`
-  - `historyStack`
-  - `originScreen`
-- `wireguard`
-  - `configs`
-  - `selectedConfig`
-  - `loading`
-  - `error`
-- `vless`
-  - `links`
-  - `qrUrl`
-  - `loading`
-  - `error`
-- `subscription`
-  - `profile`
-  - `packages`
-  - `selectedMonth`
-  - `paymentResult`
-  - `error`
-- `help`
-  - `currentSection`
-
-### UX-рекомендация
-- Главный экран mini-app лучше перестроить под 4 явных CTA:
-  - `Amnezia`
-  - `VLESS`
-  - `Подписка`
-  - `Помощь`
-- Текущий реферальный блок и профиль можно оставить на `HOME`, но ниже основных CTA.
-- Support лучше оставить отдельным продуктовым разделом mini-app, а не смешивать с bot help menu.
-
-## 8. Что уже соответствует текущему коду
-
-### Уже есть
-- авто-регистрация mini-app через `TelegramMiniAppAuthService`
-- профиль пользователя через `GET /telegram-app/me`
-- покупка подписки через `GET /telegram-app/subscription-packages` и `POST /telegram-app/payments/subscriptions`
-- support flow
-- referral flow
-
-### Нужно добавить для полного переноса логики бота
-- mini-app страницы для Amnezia
-- mini-app страницы для VLESS
-- mini-app страницы для Help
-- mini-app scoped endpoints для Amnezia/VLESS без `telegramId` в URL
-- явные UI state-экраны `debt`, `empty`, `payment error`, `config missing`
-- cleanup legacy callback веток
+- Keep Telegram bootstrap, public login, and public registration separate.
+- Bottom navigation can open `HOME`, `PAYMENTS`, and `CHATS`; `Support` is reached through `Help`.
+- VLESS whitelist has backend QR support, but current UI has no path to it.
+- `SupportShow` can be reached from the ticket list or a deep link such as `ticket_{id}`.
+- Poll support messages every 5 seconds.

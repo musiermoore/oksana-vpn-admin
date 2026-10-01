@@ -1,33 +1,34 @@
 # Oksana VPN
 
-## Установка
+## Setup
 
-### Composer Install
-Для начала нужно установить все пакеты:
+### Install Composer Dependencies
+
 ```shell
 docker compose run --rm app composer install
 ```
 
-### Настройка .env
+### Configure `.env`
 
-Необходимо скопировать `.env.example` и переименовать `.env`, 
-либо просто скопировать всё содержимое
+Copy `.env.example` to `.env`, or copy its contents into a new `.env` file.
 
-### Отключение Basic Auth
+### Disable Basic Auth
 
-При необходимости убрать login и password
+To remove the login and password, change:
+
 ```.dotenv
 BASIC_AUTH_LOGIN=login
 BASIC_AUTH_PASSWORD=password
 ```
 
-В результате должно получится:
+to:
+
 ```.dotenv
 BASIC_AUTH_LOGIN=
 BASIC_AUTH_PASSWORD=
 ```
 
-### Запуск проекта
+### Start Development
 
 ```shell
 docker compose up -d --build
@@ -35,11 +36,12 @@ docker compose exec app php artisan optimize
 docker compose exec app php artisan migrate
 ```
 
-`docker compose` без дополнительных флагов использует dev-окружение по умолчанию.
+Plain `docker compose` uses the development environment by default.
 
-HTTP теперь обслуживается через FrankenPHP в контейнере `app`, а не через `php artisan serve`.
+HTTP is served by FrankenPHP in the `app` container, not by `php artisan serve`.
 
-Для локальных очередей через Redis:
+For local Redis queues:
+
 ```.dotenv
 QUEUE_CONNECTION=redis
 CACHE_STORE=redis
@@ -49,28 +51,32 @@ REDIS_PORT=6379
 
 ### Frontend
 
-Для запуска билда скриптов и стилей:
+The Vite container builds scripts and styles. Watch it with:
+
 ```shell
 docker compose logs -f vite
 ```
 
-Все стили и скрипты хранятся в `resources/css` и `resources/js` 
+Styles and scripts live in `resources/css` and `resources/js`.
 
-### Production
+## Production
 
-Для production используется отдельный compose-файл:
+Production uses a separate compose file:
+
 ```shell
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-В production Vite не запускается отдельным контейнером: ассеты собираются внутри production image, а Laravel обслуживается FrankenPHP из контейнера `app`.
-Если перед приложением стоит отдельный Caddy reverse proxy, контейнер `app` доступен внутри Docker-сети на `app:8000` и не публикует порт на хост.
+In production, Vite is not a separate running container: assets are built into the production image, and Laravel is served by FrankenPHP from `app`.
 
-### Horizon и очереди в production
+If a separate Caddy reverse proxy runs in front of the app, the `app` container is available inside the Docker network at `app:8000` and does not publish a host port.
 
-Для Horizon нужен Redis и отдельный worker-процесс. В production compose уже добавлены сервисы `redis` и `horizon`.
+### Horizon And Production Queues
 
-Минимальные переменные в `.env`:
+Horizon needs Redis and a separate worker process. Production compose already includes `redis` and `horizon`.
+
+Minimum `.env` values:
+
 ```.dotenv
 QUEUE_CONNECTION=redis
 CACHE_STORE=redis
@@ -78,13 +84,15 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 ```
 
-Сначала нужно сохранить пакет в проект через обычный `app` контейнер с bind mount:
+First, save the package into the project through the regular bind-mounted `app` container:
+
 ```shell
 docker compose up -d app mysql
 docker compose exec app composer require laravel/horizon
 ```
 
-После этого можно пересобрать production image и запустить Horizon:
+Then rebuild the production image and start Horizon:
+
 ```shell
 docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec app php artisan optimize:clear
@@ -92,7 +100,8 @@ docker compose -f docker-compose.prod.yml exec app php artisan migrate
 docker compose -f docker-compose.prod.yml restart horizon
 ```
 
-Пример деплоя после checkout:
+Deployment example after checkout:
+
 ```shell
 docker compose -f docker-compose.prod.yml up -d --build mysql redis app horizon
 docker compose -f docker-compose.prod.yml exec -T app php artisan optimize:clear
@@ -101,4 +110,4 @@ docker compose -f docker-compose.prod.yml exec -T app php artisan optimize
 docker compose -f docker-compose.prod.yml restart horizon
 ```
 
-Команда `vless-configs:pull` теперь только ставит задачи в очередь, а обработка идёт через queue `vless-configs` в Horizon.
+`vless-configs:pull` only queues work now; processing runs through the `vless-configs` queue in Horizon.

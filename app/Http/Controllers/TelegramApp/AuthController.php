@@ -45,7 +45,7 @@ class AuthController extends Controller
         return response()->json([
             'token' => $result['token'],
             'expires_at' => $result['expires_at'],
-            'user' => (new TelegramAppUserResource($result['user']))->resolve(),
+            ...$this->userPayload($result['user']),
         ]);
     }
 
@@ -70,7 +70,7 @@ class AuthController extends Controller
         return response()->json([
             'token' => $result['token'],
             'expires_at' => $result['expires_at'],
-            'user' => (new TelegramAppUserResource($result['user']))->resolve(),
+            ...$this->userPayload($result['user']),
         ]);
     }
 
@@ -95,7 +95,7 @@ class AuthController extends Controller
         return response()->json([
             'token' => $result['token'],
             'expires_at' => $result['expires_at'],
-            'user' => (new TelegramAppUserResource($result['user']))->resolve(),
+            ...$this->userPayload($result['user']),
         ], 201);
     }
 
@@ -104,9 +104,7 @@ class AuthController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        return response()->json([
-            'user' => (new TelegramAppUserResource($user))->resolve(),
-        ]);
+        return response()->json($this->userPayload($user));
     }
 
     public function logout(Request $request): JsonResponse
@@ -116,5 +114,13 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Logged out.',
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function userPayload(User $user): array
+    {
+        return (new TelegramAppUserResource($user))->resolve();
     }
 }

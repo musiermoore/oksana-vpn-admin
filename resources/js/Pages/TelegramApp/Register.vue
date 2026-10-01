@@ -38,7 +38,7 @@ const submit = async () => {
         }
 
         setTelegramAppToken(token);
-        setTelegramAppTelegramUserId(response.data?.user?.telegram_id ?? '');
+        setTelegramAppTelegramUserId(response.data?.telegram_id ?? response.data?.user?.telegram_id ?? '');
         window.location.href = telegramMiniAppRoutes.home;
     } catch (requestError) {
         fieldErrors.value = requestError?.response?.data?.errors ?? {};

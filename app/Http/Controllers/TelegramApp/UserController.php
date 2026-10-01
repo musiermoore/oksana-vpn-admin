@@ -40,9 +40,7 @@ class UserController extends Controller
             $this->users->hasVisibleVlessWhiteListConfigs($user)
         );
 
-        return response()->json([
-            'user' => (new TelegramAppUserResource($user))->resolve(),
-        ]);
+        return response()->json((new TelegramAppUserResource($user))->resolve());
     }
 
     public function subscriptionPackages(Request $request): JsonResponse

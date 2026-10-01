@@ -32,8 +32,8 @@ class TelegramAppAuthTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.telegram', '@alice')
-            ->assertJsonPath('user.telegram_id', '123456789');
+            ->assertJsonPath('telegram', '@alice')
+            ->assertJsonPath('telegram_id', '123456789');
 
         $this->assertDatabaseHas('users', [
             'telegram' => '@alice',
@@ -68,7 +68,7 @@ class TelegramAppAuthTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('user.telegram', '@bob');
+            ->assertJsonPath('telegram', '@bob');
 
         $this->assertDatabaseHas('users', [
             'telegram_id' => '777888999',
@@ -110,7 +110,7 @@ class TelegramAppAuthTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('user.telegram_id', '777888999');
+            ->assertJsonPath('telegram_id', '777888999');
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
@@ -139,8 +139,8 @@ class TelegramAppAuthTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.telegram_id', '123456789')
-            ->assertJsonPath('user.telegram', '@alice');
+            ->assertJsonPath('telegram_id', '123456789')
+            ->assertJsonPath('telegram', '@alice');
     }
 
     public function test_authorized_user_can_load_public_profile_via_bearer_token(): void
@@ -163,7 +163,7 @@ class TelegramAppAuthTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.name', 'Alice Doe');
+            ->assertJsonPath('name', 'Alice Doe');
     }
 
     public function test_telegram_app_login_page_is_available(): void
@@ -172,9 +172,6 @@ class TelegramAppAuthTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Login')
-                ->where('routes.home', route('telegram-app.home'))
-                ->where('auth_url', route('telegram-app.auth.telegram'))
-                ->where('password_auth_url', route('telegram-app.auth.password'))
             );
     }
 
@@ -195,11 +192,6 @@ class TelegramAppAuthTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Login')
                 ->url('/public/login')
-                ->where('routes.home', '/public')
-                ->where('routes.register', '/public/register')
-                ->where('auth_url', '/public/auth/telegram')
-                ->where('password_auth_url', '/public/auth/login')
-                ->where('profile_url', '/public/me')
             );
     }
 
@@ -212,11 +204,6 @@ class TelegramAppAuthTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Login')
                 ->url('/login')
-                ->where('routes.home', '/')
-                ->where('routes.register', '/register')
-                ->where('auth_url', '/auth/telegram')
-                ->where('password_auth_url', '/auth/login')
-                ->where('profile_url', '/me')
             );
     }
 
@@ -226,8 +213,6 @@ class TelegramAppAuthTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Register')
-                ->where('routes.login', route('telegram-app.login'))
-                ->where('password_registration_url', route('telegram-app.auth.register'))
             );
     }
 
@@ -238,8 +223,6 @@ class TelegramAppAuthTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Register')
                 ->url('/public/register')
-                ->where('routes.login', '/public/login')
-                ->where('password_registration_url', '/public/auth/register')
             );
     }
 
@@ -252,8 +235,6 @@ class TelegramAppAuthTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('TelegramApp/Register')
                 ->url('/register')
-                ->where('routes.login', '/login')
-                ->where('password_registration_url', '/auth/register')
             );
     }
 
@@ -274,9 +255,9 @@ class TelegramAppAuthTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.telegram', '@alice')
-            ->assertJsonPath('user.telegram_id', '123456789')
-            ->assertJsonStructure(['token', 'expires_at', 'user']);
+            ->assertJsonPath('telegram', '@alice')
+            ->assertJsonPath('telegram_id', '123456789')
+            ->assertJsonStructure(['token', 'expires_at', 'id']);
 
         $this->assertDatabaseCount('telegram_app_tokens', 1);
     }
@@ -296,8 +277,8 @@ class TelegramAppAuthTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('user.name', 'Alice Doe')
-            ->assertJsonStructure(['token', 'expires_at', 'user']);
+            ->assertJsonPath('name', 'Alice Doe')
+            ->assertJsonStructure(['token', 'expires_at', 'id']);
 
         $this->assertDatabaseCount('telegram_app_tokens', 1);
     }
@@ -334,9 +315,9 @@ class TelegramAppAuthTest extends TestCase
 
         $response
             ->assertCreated()
-            ->assertJsonPath('user.name', 'Alice Doe')
-            ->assertJsonPath('user.telegram_id', null)
-            ->assertJsonStructure(['token', 'expires_at', 'user']);
+            ->assertJsonPath('name', 'Alice Doe')
+            ->assertJsonPath('telegram_id', null)
+            ->assertJsonStructure(['token', 'expires_at', 'id']);
 
         $this->assertDatabaseHas('users', [
             'name' => 'Alice Doe',

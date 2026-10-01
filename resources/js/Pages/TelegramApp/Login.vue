@@ -9,7 +9,7 @@ import {
     setTelegramAppTelegramUserId,
     setTelegramAppToken,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApi, telegramMiniAppApiEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const form = ref({
     login: '',
@@ -32,7 +32,7 @@ const submit = async () => {
         }
 
         setTelegramAppToken(token);
-        setTelegramAppTelegramUserId(response.data?.user?.telegram_id ?? '');
+        setTelegramAppTelegramUserId(response.data?.telegram_id ?? response.data?.user?.telegram_id ?? '');
         window.location.href = telegramMiniAppRoutes.home;
     } catch (requestError) {
         error.value = requestError?.response?.data?.message ?? requestError?.message ?? 'Не удалось выполнить вход.';
@@ -47,7 +47,7 @@ const submitTelegram = async () => {
 
     try {
         await loginTelegramAppAndRedirect({
-            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
+            authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
             homeUrl: telegramMiniAppRoutes.home,
         });
     } catch (requestError) {

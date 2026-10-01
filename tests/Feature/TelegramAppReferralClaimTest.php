@@ -57,8 +57,8 @@ class TelegramAppReferralClaimTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('user.referral.can_claim', false)
-            ->assertJsonPath('user.referral.accumulated_discount_percent', 0);
+            ->assertJsonPath('referral.can_claim', false)
+            ->assertJsonPath('referral.accumulated_discount_percent', 0);
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,

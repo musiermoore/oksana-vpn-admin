@@ -9,7 +9,7 @@ import {
     isTelegramDebtError,
     normalizeTelegramAppError,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApi, telegramMiniAppApiEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const step = ref('hub');
@@ -57,8 +57,8 @@ const goToConfigHub = () => {
 
 const loadConfigs = async () => {
     user.value = await ensureTelegramAppSession({
-        authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
-        profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
+        authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
+        profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
     });
 
     const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.wireguardConfigs);

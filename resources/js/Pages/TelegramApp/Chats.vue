@@ -7,7 +7,7 @@ import {
     normalizeTelegramAppError,
     openTelegramExternalLink,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppEndpoint, telegramMiniAppEndpoints } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApiEndpoint, telegramMiniAppEndpoints } from '../../lib/telegramMiniAppApi';
 import { telegramChatLinks } from '../../lib/telegramChatLinks';
 
 const state = ref('loading');
@@ -23,8 +23,8 @@ const retry = () => {
 onMounted(async () => {
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
-            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
+            authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
         });
         state.value = 'ready';
     } catch (requestError) {

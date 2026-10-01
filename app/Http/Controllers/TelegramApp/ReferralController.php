@@ -58,7 +58,7 @@ class ReferralController extends Controller
 
         return response()->json([
             'message' => 'Реферальная связь сохранена.',
-            'user' => (new TelegramAppUserResource($freshUser))->resolve(),
+            ...(new TelegramAppUserResource($freshUser))->resolve(),
         ]);
     }
 }

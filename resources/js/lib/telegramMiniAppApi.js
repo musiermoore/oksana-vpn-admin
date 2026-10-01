@@ -19,9 +19,11 @@ const resolveBasePath = () => {
 };
 
 export const telegramMiniAppBasePath = trimTrailingSlash(resolveBasePath());
+export const BASE_URL = telegramMiniAppBasePath;
+export const BASE_API_URL = trimTrailingSlash(import.meta.env.VITE_TELEGRAM_MINI_APP_API_URL || BASE_URL);
 
 export const telegramMiniAppApi = axios.create({
-    baseURL: telegramMiniAppBasePath === '' ? '/' : `${telegramMiniAppBasePath}/`,
+    baseURL: BASE_URL === '' ? '/' : `${BASE_URL}/`,
     headers: {
         Accept: 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
@@ -62,6 +64,18 @@ export const telegramMiniAppEndpoint = (path = '') => {
     return normalizedPath === '' ? telegramMiniAppUrl() : telegramMiniAppUrl(normalizedPath);
 };
 
+export const telegramMiniAppApiEndpoint = (path = '') => {
+    const normalizedPath = trimSlashes(path);
+
+    if (BASE_API_URL === '') {
+        return normalizedPath === '' ? '/' : `/${normalizedPath}`;
+    }
+
+    return normalizedPath === ''
+        ? BASE_API_URL
+        : `${BASE_API_URL}/${normalizedPath}`;
+};
+
 export const telegramMiniAppRoutes = {
     login: telegramMiniAppUrl('login'),
     register: telegramMiniAppUrl('register'),
@@ -81,7 +95,7 @@ export const telegramMiniAppEndpoints = {
     authTelegram: 'auth/telegram',
     authPassword: 'auth/login',
     authRegister: 'auth/register',
-    profile: 'me',
+    profile: 'auth/me',
     diagnosticsBootstrap: 'diagnostics/bootstrap',
     subscriptionPackages: 'subscription-packages',
     claimReferral: 'referrals/claim',

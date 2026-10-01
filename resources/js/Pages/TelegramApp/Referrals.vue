@@ -8,7 +8,7 @@ import {
     normalizeTelegramAppError,
     redirectFromTelegramStartParam,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApi, telegramMiniAppApiEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const error = ref('');
@@ -80,7 +80,7 @@ const claimReferral = async () => {
             referral: referralInput.value.trim(),
         });
 
-        user.value = response.data?.user ?? user.value;
+        user.value = response.data?.user ?? response.data ?? user.value;
         referralInput.value = '';
         referralStatus.value = 'Реферер привязан.';
     } catch (requestError) {
@@ -100,8 +100,8 @@ onMounted(async () => {
 
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
-            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
+            authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
         });
         state.value = 'ready';
     } catch (requestError) {

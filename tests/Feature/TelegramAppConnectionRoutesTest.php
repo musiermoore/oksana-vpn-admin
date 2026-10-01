@@ -324,12 +324,12 @@ class TelegramAppConnectionRoutesTest extends TestCase
         $this->withToken($adminToken)
             ->getJson('/telegram-app/me')
             ->assertOk()
-            ->assertJsonPath('user.has_vless_wl_configs', true);
+            ->assertJsonPath('has_vless_wl_configs', true);
 
         $this->withToken($userToken)
             ->getJson('/telegram-app/me')
             ->assertOk()
-            ->assertJsonPath('user.has_vless_wl_configs', false);
+            ->assertJsonPath('has_vless_wl_configs', false);
     }
 
     /**

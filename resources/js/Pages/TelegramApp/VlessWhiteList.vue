@@ -9,7 +9,7 @@ import {
     normalizeTelegramAppError,
     openTelegramExternalLink,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApi, telegramMiniAppApiEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const initialStep = 'links';
 
@@ -88,8 +88,8 @@ const retry = () => {
 
 const loadData = async () => {
     user.value = await ensureTelegramAppSession({
-        authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
-        profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
+        authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
+        profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
     });
 
     const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.vlessWhiteListLink);

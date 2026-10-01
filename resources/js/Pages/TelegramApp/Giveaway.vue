@@ -6,7 +6,7 @@ import {
     ensureTelegramAppSession,
     normalizeTelegramAppError,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApi, telegramMiniAppApiEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 import { formatDateTimeInTimeZone, getClientTimeZone } from '../../lib/timezone';
 
 const GIVEAWAY_SUMMARY_REFRESH_EVENT = 'telegram-app:refresh-giveaway-summary';
@@ -84,8 +84,8 @@ const statusDescription = computed(() => {
 onMounted(async () => {
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
-            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
+            authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
         });
         await loadGiveaway();
         state.value = 'ready';

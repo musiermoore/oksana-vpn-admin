@@ -8,7 +8,7 @@ import {
     normalizeTelegramAppError,
     telegramAppLabels,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApi, telegramMiniAppApiEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const error = ref('');
@@ -79,8 +79,8 @@ const retry = () => {
 onMounted(async () => {
     try {
         user.value = await ensureTelegramAppSession({
-            authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
-            profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
+            authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
+            profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
         });
         await loadTicket();
         pollTimer = window.setInterval(() => {

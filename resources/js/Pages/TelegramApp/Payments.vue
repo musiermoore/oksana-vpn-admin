@@ -9,7 +9,7 @@ import {
     openTelegramExternalLink,
     redirectFromTelegramStartParam,
 } from '../../lib/telegramMiniApp';
-import { telegramMiniAppApi, telegramMiniAppEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
+import { telegramMiniAppApi, telegramMiniAppApiEndpoint, telegramMiniAppEndpoints, telegramMiniAppRoutes } from '../../lib/telegramMiniAppApi';
 
 const state = ref('loading');
 const screen = ref('overview');
@@ -159,8 +159,8 @@ const retry = () => {
 
 const loadProfile = async () => {
     user.value = await ensureTelegramAppSession({
-        authUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.authTelegram),
-        profileUrl: telegramMiniAppEndpoint(telegramMiniAppEndpoints.profile),
+        authUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.authTelegram),
+        profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
     });
 };
 

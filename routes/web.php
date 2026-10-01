@@ -207,6 +207,7 @@ $telegramAppPublicRoutes = function (): void {
 
 $telegramAppAuthenticatedRoutes = function (): void {
         Route::get('me', [TelegramAppUserController::class, 'show'])->name('me');
+        Route::get('auth/me', [TelegramAppUserController::class, 'show'])->name('auth.me');
         Route::post('logout', [TelegramAppAuthController::class, 'logout'])->name('logout');
         Route::get('subscription-packages', [TelegramAppUserController::class, 'subscriptionPackages'])
             ->name('subscription-packages');

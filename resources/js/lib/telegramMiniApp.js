@@ -361,7 +361,7 @@ const resolveTelegramUserIdFromAuthData = (data) => {
         return profileId;
     }
 
-    return String(data?.user?.telegram_id ?? '').trim();
+    return String(data?.telegram_id ?? data?.user?.telegram_id ?? '').trim();
 };
 
 export const loginTelegramApp = async (authUrl, { attempts = INIT_DATA_RETRY_ATTEMPTS, delayMs = INIT_DATA_RETRY_DELAY_MS } = {}) => {
@@ -395,7 +395,7 @@ export const fetchTelegramAppProfile = async (profileUrl) => {
         headers: telegramAppHeaders(),
     });
 
-    return response.data.user;
+    return response.data?.user ?? response.data;
 };
 
 const isPublicAppPath = (profileUrl = '') => {

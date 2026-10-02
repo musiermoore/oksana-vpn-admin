@@ -8,6 +8,8 @@ services:
         build:
             context: .
             dockerfile: docker/app/Dockerfile.prod
+            args:
+                VITE_TELEGRAM_MINI_APP_API_URL: ${VITE_TELEGRAM_MINI_APP_API_URL:-}
         restart: unless-stopped
         command: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
         expose:
@@ -32,6 +34,8 @@ services:
         build:
             context: .
             dockerfile: docker/app/Dockerfile.prod
+            args:
+                VITE_TELEGRAM_MINI_APP_API_URL: ${VITE_TELEGRAM_MINI_APP_API_URL:-}
         restart: unless-stopped
         command: ["php", "artisan", "horizon"]
         volumes:

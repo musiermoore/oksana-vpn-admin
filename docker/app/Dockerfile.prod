@@ -1,5 +1,8 @@
 FROM node:20-bookworm-slim AS frontend
 
+ARG VITE_TELEGRAM_MINI_APP_API_URL
+ENV VITE_TELEGRAM_MINI_APP_API_URL=${VITE_TELEGRAM_MINI_APP_API_URL}
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./

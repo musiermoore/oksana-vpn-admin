@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->index(['xray_custom_config_id', 'sort_order']);
+            $table->index(['xray_custom_config_id', 'sort_order'], 'xray_ccog_config_order_idx');
         });
 
         Schema::create('xray_custom_config_routes', function (Blueprint $table): void {
@@ -37,7 +37,7 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->index(['xray_custom_config_id', 'sort_order']);
+            $table->index(['xray_custom_config_id', 'sort_order'], 'xray_ccr_config_order_idx');
         });
     }
 

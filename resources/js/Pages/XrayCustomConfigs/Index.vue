@@ -11,22 +11,22 @@ const props = defineProps({
 </script>
 
 <template>
-    <Head title="Xray Custom Configs" />
+    <Head title="Конфигурации Xray" />
     <section class="page-card stack">
         <div class="page-header">
-            <div><h1>Xray Custom Configs</h1><p>User-filtered JSON configuration profiles.</p></div>
+            <div><h1>Конфигурации Xray</h1><p>Профили с фильтрацией конфигураций по пользователю.</p></div>
             <AppButton :href="props.create_page_url">Создать конфигурацию</AppButton>
         </div>
         <table>
-            <thead><tr><th>Name</th><th>Slug</th><th>DNS</th><th>Geodata</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Название</th><th>Slug</th><th>DNS</th><th>Геоданные</th><th>Статус</th><th></th></tr></thead>
             <tbody>
                 <tr v-for="config in props.configs" :key="config.id">
                     <td>{{ config.name }}</td>
                     <td>{{ config.slug }}</td>
                     <td>{{ config.dns_settings?.name || '—' }}</td>
                     <td>{{ config.geodata?.name || '—' }}</td>
-                    <td>{{ config.is_active ? 'Active' : 'Disabled' }}</td>
-                    <td><AppButton variant="secondary" :href="config.links.edit">Изменить</AppButton></td>
+                    <td>{{ config.is_active ? 'Активна' : 'Отключена' }}</td>
+                    <td><AppButton variant="secondary" :href="config.links.edit">Редактировать</AppButton></td>
                 </tr>
             </tbody>
         </table>

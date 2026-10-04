@@ -124,6 +124,10 @@ Route::middleware('auth')->group(function () {
         ->name('xray-custom-configs.preview-draft');
     Route::post('xray-custom-configs/{xrayCustomConfig}/preview', [XrayCustomConfigController::class, 'preview'])
         ->name('xray-custom-configs.preview');
+    Route::post('xray-dns-settings', [XrayCustomConfigController::class, 'storeDnsSettings'])
+        ->name('xray-dns-settings.store');
+    Route::post('xray-geodata', [XrayCustomConfigController::class, 'storeGeodata'])
+        ->name('xray-geodata.store');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
     Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');

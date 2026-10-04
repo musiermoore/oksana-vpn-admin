@@ -43,6 +43,8 @@ class XrayCustomConfigController extends Controller
             'submit_url' => route('xray-custom-configs.store'),
             'method' => 'post',
             'config' => null,
+            'create_dns_url' => route('xray-dns-settings.store'),
+            'create_geodata_url' => route('xray-geodata.store'),
         ]);
     }
 
@@ -66,6 +68,8 @@ class XrayCustomConfigController extends Controller
             'submit_url' => route('xray-custom-configs.update', $xrayCustomConfig),
             'method' => 'put',
             'config' => $this->payload($xrayCustomConfig),
+            'create_dns_url' => route('xray-dns-settings.store'),
+            'create_geodata_url' => route('xray-geodata.store'),
         ]);
     }
 
@@ -150,6 +154,53 @@ class XrayCustomConfigController extends Controller
         }
 
         return $response;
+    }
+
+    public function storeDnsSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'servers' => ['required', 'array', 'min:1'],
+            'servers.*' => ['required', 'string', 'max:255'],
+            'query_strategy' => ['required', 'string', 'in:AsIs,UseIP,UseIPv4,UseIPv6'],
+            'enable_parallel_query' => ['boolean'],
+        ]);
+
+        $settings = XrayRoutingDnsSettings::query()->create([
+            ...$data,
+            'enable_parallel_query' => (bool) ($data['enable_parallel_query'] ?? false),
+            'is_active' => true,
+        ]);
+
+        return response()->json(['resource' => ['id' => $settings->id, 'name' => $settings->name]]);
+    }
+
+    public function storeGeodata(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'geoip_url' => ['nullable', 'url', 'max:2000'],
+            'geosite_url' => ['nullable', 'url', 'max:2000'],
+        ]);
+
+        if (($data['geoip_url'] ?? '') === '' && ($data['geosite_url'] ?? '') === '') {
+            return response()->json(['message' => 'Укажите хотя бы один URL geodata.'], 422);
+        }
+
+        $assets = array_values(array_filter([
+            ! empty($data['geoip_url']) ? ['url' => $data['geoip_url'], 'file' => 'geoip.dat'] : null,
+            ! empty($data['geosite_url']) ? ['url' => $data['geosite_url'], 'file' => 'geosite.dat'] : null,
+        ]));
+
+        $geodata = XrayRoutingGeodata::query()->create([
+            ...$data,
+            'assets' => $assets,
+            'is_active' => true,
+        ]);
+
+        return response()->json(['resource' => ['id' => $geodata->id, 'name' => $geodata->name]]);
     }
 
     /** @return array<string, mixed> */

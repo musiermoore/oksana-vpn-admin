@@ -490,7 +490,7 @@ class VlessConnectTest extends TestCase
         $this->assertSame('293319625-311102883', data_get($payload, '0.outbounds.0.settings.amnezia.h1'));
     }
 
-    public function test_connect_json_returns_xray_profile_array_with_hardcoded_dns_and_route_settings(): void
+    public function test_connect_json_returns_xray_profile_array_with_default_profile_settings(): void
     {
         $user = $this->createActiveUser('JSON User', '@json-user', '112233');
 
@@ -536,7 +536,7 @@ class VlessConnectTest extends TestCase
         $this->assertSame('8.8.8.8', data_get($payload, '0.dns.servers.0.address'));
         $this->assertSame(['domain:openai.com', 'domain:chatgpt.com', 'domain:codex.com', 'domain:oaistatic.com', 'domain:oaiusercontent.com'], data_get($payload, '0.dns.servers.0.domains'));
         $this->assertSame('AsIs', data_get($payload, '0.routing.domainStrategy'));
-        $this->assertSame('direct', data_get($payload, '0.routing.rules.4.outboundTag'));
+        $this->assertSame('direct', data_get($payload, '0.routing.rules.3.outboundTag'));
         $this->assertSame('socks', data_get($payload, '0.inbounds.0.tag'));
         $this->assertSame('http', data_get($payload, '0.inbounds.1.tag'));
         $this->assertSame('vless', data_get($payload, '0.outbounds.0.protocol'));

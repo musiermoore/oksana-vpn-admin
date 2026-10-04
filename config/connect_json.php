@@ -51,13 +51,6 @@ return [
                 ],
                 'skipFallback' => true,
             ],
-            [
-                'address' => '77.88.8.8',
-                'domains' => [
-                    'geosite:category-ru',
-                ],
-                'skipFallback' => true,
-            ],
             '8.8.8.8',
         ],
     ],
@@ -77,15 +70,6 @@ return [
                     'domain:dixy.ru',
                 ],
                 'outboundTag' => 'proxy',
-            ],
-            [
-                'type' => 'field',
-                'domain' => [
-                    'domain:localhost',
-                    'domain:local',
-                    'geosite:category-ru',
-                ],
-                'outboundTag' => 'direct',
             ],
             [
                 'type' => 'field',

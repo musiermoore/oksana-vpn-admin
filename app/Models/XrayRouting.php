@@ -23,6 +23,7 @@ class XrayRouting extends Model
         'subscription_types',
         'xray_inbound_ids',
         'external_subscription_config_ids',
+        'proxy_ids',
         'rules',
         'sort_order',
         'is_active',
@@ -35,6 +36,7 @@ class XrayRouting extends Model
             'subscription_types' => 'array',
             'xray_inbound_ids' => 'array',
             'external_subscription_config_ids' => 'array',
+            'proxy_ids' => 'array',
             'rules' => 'array',
             'sort_order' => 'integer',
             'is_active' => 'boolean',
@@ -92,6 +94,24 @@ class XrayRouting extends Model
     {
         return $this->appliesToInbound($xrayInboundId)
             || $this->appliesToExternalSubscriptionConfig($externalSubscriptionConfigId);
+    }
+
+    public function appliesToProxy(?int $proxyId): bool
+    {
+        $proxyIds = $this->proxy_ids;
+
+        return is_array($proxyIds)
+            && $proxyId !== null
+            && in_array($proxyId, array_map('intval', $proxyIds), true);
+    }
+
+    public function appliesToAnyTargetWithProxy(
+        ?int $xrayInboundId,
+        ?int $externalSubscriptionConfigId,
+        ?int $proxyId,
+    ): bool {
+        return $this->appliesToAnyTarget($xrayInboundId, $externalSubscriptionConfigId)
+            || $this->appliesToProxy($proxyId);
     }
 
     /**

@@ -67,14 +67,16 @@ const subscriptionsLabel = (routing) => {
 const targetLabel = (routing) => {
     const localCount = routing.xray_inbound_ids?.length ?? 0;
     const externalCount = routing.external_subscription_config_ids?.length ?? 0;
+    const proxyCount = routing.proxy_ids?.length ?? 0;
 
-    if (localCount === 0 && externalCount === 0) {
+    if (localCount === 0 && externalCount === 0 && proxyCount === 0) {
         return 'nowhere';
     }
 
     return [
         localCount > 0 ? `${localCount} inbound` : '',
         externalCount > 0 ? `${externalCount} external` : '',
+        proxyCount > 0 ? `${proxyCount} proxy` : '',
     ].filter(Boolean).join(', ');
 };
 </script>

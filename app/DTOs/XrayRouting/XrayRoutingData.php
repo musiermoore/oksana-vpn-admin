@@ -16,6 +16,7 @@ class XrayRoutingData extends Data
      * @param  array<int, string>  $subscription_types
      * @param  array<int, int>  $xray_inbound_ids
      * @param  array<int, int>  $external_subscription_config_ids
+     * @param  array<int, int>  $proxy_ids
      * @param  array<string, mixed>  $rules
      */
     public function __construct(
@@ -25,6 +26,7 @@ class XrayRoutingData extends Data
         public array $subscription_types,
         public array $xray_inbound_ids,
         public array $external_subscription_config_ids,
+        public array $proxy_ids,
         public array $rules,
         public int $sort_order,
         public bool $is_active,

@@ -25,7 +25,7 @@ const props = defineProps({
     },
     targetTree: {
         type: Object,
-        default: () => ({ servers: [], external_subscriptions: [] }),
+        default: () => ({ servers: [], external_subscriptions: [], proxies: [] }),
     },
     initialRouting: {
         type: Object,
@@ -39,6 +39,7 @@ const props = defineProps({
             subscription_types: ['connect', 'connect_wl'],
             xray_inbound_ids: [],
             external_subscription_config_ids: [],
+            proxy_ids: [],
         }),
     },
 });
@@ -56,6 +57,7 @@ const form = useForm({
     connect_wl_enabled: (props.initialRouting?.subscription_types ?? ['connect', 'connect_wl']).includes('connect_wl'),
     xray_inbound_ids: props.initialRouting?.xray_inbound_ids ?? [],
     external_subscription_config_ids: props.initialRouting?.external_subscription_config_ids ?? [],
+    proxy_ids: props.initialRouting?.proxy_ids ?? [],
 });
 
 const selectedSubscriptionTypes = () => [
@@ -97,6 +99,7 @@ const payload = (data) => ({
     subscription_types: selectedSubscriptionTypes(),
     xray_inbound_ids: data.xray_inbound_ids,
     external_subscription_config_ids: data.external_subscription_config_ids,
+    proxy_ids: data.proxy_ids,
 });
 
 const submit = () => {
@@ -208,6 +211,21 @@ const submit = () => {
             <small v-if="form.errors.external_subscription_config_ids" class="field-error">
                 {{ form.errors.external_subscription_config_ids }}
             </small>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+            <span>Прокси</span>
+            <div class="stack">
+                <label v-for="proxy in targetTree?.proxies ?? []" :key="proxy.id" class="field-row">
+                    <input
+                        type="checkbox"
+                        :checked="containsId(form.proxy_ids, proxy.id)"
+                        @change="toggleId('proxy_ids', proxy.id, $event.target.checked)"
+                    >
+                    <span>{{ proxy.server_name ? `${proxy.server_name} · ` : '' }}{{ proxy.name }}</span>
+                </label>
+            </div>
+            <small v-if="form.errors.proxy_ids" class="field-error">{{ form.errors.proxy_ids }}</small>
         </div>
 
         <label class="field" style="grid-column: 1 / -1;">

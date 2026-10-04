@@ -13,6 +13,7 @@ use App\Models\XrayJsonSetting;
 use App\Models\XrayRouting;
 use App\Models\Server;
 use App\Models\VlessExternalSubscription;
+use App\Models\Proxy;
 use App\Services\Subscriptions\RoscomVpnJsonSettingsImporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class XrayRoutingController extends Controller
                     'subscription_types' => $routing->subscription_types,
                     'xray_inbound_ids' => $routing->xray_inbound_ids,
                     'external_subscription_config_ids' => $routing->external_subscription_config_ids,
+                    'proxy_ids' => $routing->proxy_ids,
                     'rules' => $routing->rules,
                     'sort_order' => $routing->sort_order,
                     'is_active' => $routing->is_active,
@@ -92,6 +94,7 @@ class XrayRoutingController extends Controller
             'subscription_types' => $data->subscription_types,
             'xray_inbound_ids' => $data->xray_inbound_ids,
             'external_subscription_config_ids' => $data->external_subscription_config_ids,
+            'proxy_ids' => $data->proxy_ids,
             'rules' => $data->rules,
             'sort_order' => $data->sort_order,
             'is_active' => $data->is_active,
@@ -143,6 +146,7 @@ class XrayRoutingController extends Controller
             'subscription_types' => $data->subscription_types,
             'xray_inbound_ids' => $data->xray_inbound_ids,
             'external_subscription_config_ids' => $data->external_subscription_config_ids,
+            'proxy_ids' => $data->proxy_ids,
             'rules' => $data->rules,
             'sort_order' => $data->sort_order,
             'is_active' => $data->is_active,
@@ -180,6 +184,7 @@ class XrayRoutingController extends Controller
             'target_tree' => [
                 'servers' => $this->serverTargets(),
                 'external_subscriptions' => $this->externalSubscriptionTargets(),
+                'proxies' => $this->proxyTargets(),
             ],
         ];
     }
@@ -199,6 +204,7 @@ class XrayRoutingController extends Controller
             'subscription_types' => $routing->subscription_types,
             'xray_inbound_ids' => $routing->xray_inbound_ids,
             'external_subscription_config_ids' => $routing->external_subscription_config_ids,
+            'proxy_ids' => $routing->proxy_ids,
             'rules' => $routing->rules,
             'sort_order' => $routing->sort_order,
             'is_active' => $routing->is_active,
@@ -256,6 +262,27 @@ class XrayRoutingController extends Controller
                         'protocol' => $config->protocol,
                     ])
                     ->values(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{id:int,name:string,server_name:string|null,inbound_id:int|null}>
+     */
+    private function proxyTargets(): array
+    {
+        return Proxy::query()
+            ->with('server:id,name')
+            ->orderBy('server_id')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Proxy $proxy): array => [
+                'id' => (int) $proxy->id,
+                'name' => (string) $proxy->name,
+                'server_name' => $proxy->server?->name,
+                'inbound_id' => $proxy->inbound_id,
             ])
             ->values()
             ->all();

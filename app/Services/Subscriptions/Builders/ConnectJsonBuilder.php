@@ -204,8 +204,6 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         if ($geodata !== null) {
             $profile['geodata'] = $geodata;
         }
-
-dd(json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
         
         return new SubscriptionBuildResult(
             content: json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',

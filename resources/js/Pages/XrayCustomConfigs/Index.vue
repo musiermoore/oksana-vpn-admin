@@ -5,7 +5,7 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
-    createPageUrl: String,
+    create_page_url: String,
     configs: { type: Array, default: () => [] },
 });
 </script>
@@ -15,7 +15,7 @@ const props = defineProps({
     <section class="page-card stack">
         <div class="page-header">
             <div><h1>Xray Custom Configs</h1><p>User-filtered JSON configuration profiles.</p></div>
-            <AppButton :href="createPageUrl">Создать конфигурацию</AppButton>
+            <AppButton :href="props.create_page_url">Создать конфигурацию</AppButton>
         </div>
         <table>
             <thead><tr><th>Name</th><th>Slug</th><th>DNS</th><th>Geodata</th><th>Status</th><th></th></tr></thead>

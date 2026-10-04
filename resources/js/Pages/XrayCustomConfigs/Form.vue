@@ -6,10 +6,10 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
-    submitUrl: String,
+    submit_url: String,
     method: { type: String, default: 'post' },
     config: Object,
-    dnsSettings: { type: Array, default: () => [] },
+    dns_settings: { type: Array, default: () => [] },
     geodata: { type: Array, default: () => [] },
     users: { type: Array, default: () => [] },
     targets: { type: Object, default: () => ({}) },
@@ -45,11 +45,11 @@ const toggle = (field, id, checked) => {
 const checked = (field, id) => ids(field).includes(Number(id));
 const submit = () => {
     const request = form.transform((data) => ({ ...data, dns_settings_id: data.dns_settings_id || null, geodata_id: data.geodata_id || null }));
-    props.method === 'put' ? request.put(props.submitUrl) : request.post(props.submitUrl);
+    props.method === 'put' ? request.put(props.submit_url) : request.post(props.submit_url);
 };
 const preview = async () => {
     previewing.value = true;
-    const previewUrl = props.config ? `${props.submitUrl}/preview` : '/xray-custom-configs/preview';
+    const previewUrl = props.config ? `${props.submit_url}/preview` : '/xray-custom-configs/preview';
     const response = await fetch(previewUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' },
@@ -82,7 +82,7 @@ const preview = async () => {
         <form class="grid grid--two" @submit.prevent="submit">
             <label class="field"><span>Название</span><AppInput v-model="form.name" required /></label>
             <label class="field"><span>Slug</span><AppInput v-model="form.slug" required /></label>
-            <label class="field"><span>DNS settings</span><AppSelect v-model="form.dns_settings_id" :options="props.dnsSettings.map((item) => ({ value: item.id, label: item.name }))" /></label>
+            <label class="field"><span>DNS settings</span><AppSelect v-model="form.dns_settings_id" :options="props.dns_settings.map((item) => ({ value: item.id, label: item.name }))" /></label>
             <label class="field"><span>Geodata</span><AppSelect v-model="form.geodata_id" :options="props.geodata.map((item) => ({ value: item.id, label: item.name }))" /></label>
 
             <div class="field" style="grid-column: 1 / -1;"><span>Servers / inbounds</span>

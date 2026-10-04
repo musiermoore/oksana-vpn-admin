@@ -83,7 +83,9 @@ class UserSubscriptionService
 
     private function appendCustomJsonProfiles(SubscriptionBuildResult $result, User $user): SubscriptionBuildResult
     {
-        $profiles = json_decode($result->content, true);
+        // Keep JSON objects as stdClass instances. Decoding with `$associative = true`
+        // turns `{}` into an empty PHP array, which is encoded back as `[]`.
+        $profiles = json_decode($result->content);
         if (! is_array($profiles)) {
             return $result;
         }
@@ -97,7 +99,6 @@ class UserSubscriptionService
             ->get() as $customConfig) {
             $customProfiles = json_decode(
                 $this->connectJsonBuilder->buildForCustomConfig($customNodes, $customConfig)->content,
-                true,
             );
 
             if (is_array($customProfiles)) {

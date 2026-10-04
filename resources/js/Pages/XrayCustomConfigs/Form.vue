@@ -32,7 +32,7 @@ const form = useForm({
     routes_json: pretty(initial.routes || []),
     is_active: initial.is_active ?? true,
 });
-const previewMode = ref('all');
+const previewMode = ref('admin');
 const previewUserId = ref(props.users[0]?.id || '');
 const previewContent = ref(null);
 const previewing = ref(false);
@@ -67,6 +67,7 @@ const preview = async () => {
             outbound_groups_json: form.outbound_groups_json,
             routes_json: form.routes_json,
             is_active: form.is_active,
+            preview_mode: previewMode.value,
             user_id: previewMode.value === 'user' ? Number(previewUserId.value) : undefined,
         }),
     });
@@ -127,8 +128,8 @@ const preview = async () => {
 
     <section class="page-card stack">
         <h2>Preview</h2>
-        <label class="field-row"><input v-model="previewMode" type="radio" value="all"> All available nodes</label>
-        <label class="field-row"><input v-model="previewMode" type="radio" value="user"> Specific user</label>
+        <label class="field-row"><input v-model="previewMode" type="radio" value="admin"> Admin</label>
+        <label class="field-row"><input v-model="previewMode" type="radio" value="user"> User</label>
         <AppSelect v-if="previewMode === 'user'" v-model="previewUserId" :options="props.users.map((user) => ({ value: user.id, label: user.full_name || user.telegram_id }))" />
         <AppButton variant="secondary" type="button" :disabled="previewing" @click="preview">{{ previewing ? 'Загрузка…' : 'Preview JSON' }}</AppButton>
         <pre v-if="previewContent">{{ JSON.stringify(previewContent, null, 2) }}</pre>

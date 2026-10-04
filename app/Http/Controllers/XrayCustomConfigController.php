@@ -84,9 +84,7 @@ class XrayCustomConfigController extends Controller
         XrayCustomConfig $xrayCustomConfig,
         XrayCustomConfigService $service,
     ): JsonResponse {
-        $user = $request->integer('user_id') > 0
-            ? User::query()->findOrFail($request->integer('user_id'))
-            : User::query()->where('is_active', true)->orderBy('id')->firstOrFail();
+        $user = $this->previewUser($request);
 
         $result = $service->build($user, $xrayCustomConfig);
 
@@ -106,9 +104,7 @@ class XrayCustomConfigController extends Controller
         $this->setDraftGroupsAndRoutes($config, $data);
         $config->load(['dnsSettings', 'geodata']);
 
-        $user = $request->integer('user_id') > 0
-            ? User::query()->findOrFail($request->integer('user_id'))
-            : User::query()->where('is_active', true)->orderBy('id')->firstOrFail();
+        $user = $this->previewUser($request);
 
         $result = $service->build($user, $config);
 
@@ -162,7 +158,16 @@ class XrayCustomConfigController extends Controller
         return [
             'dns_settings' => XrayRoutingDnsSettings::query()->active()->latest('id')->get(['id', 'name']),
             'geodata' => XrayRoutingGeodata::query()->active()->latest('id')->get(['id', 'name']),
-            'users' => User::query()->where('is_active', true)->orderBy('id')->get(['id', 'full_name', 'telegram_id']),
+            'users' => User::query()
+                ->where('is_active', true)
+                ->orderBy('id')
+                ->get(['id', 'name', 'telegram', 'telegram_id'])
+                ->map(fn (User $user): array => [
+                    'id' => $user->id,
+                    'full_name' => $user->full_name,
+                    'telegram_id' => $user->telegram_id,
+                ])
+                ->values(),
             'targets' => [
                 'servers' => Server::query()->whereHas('xrayInbounds')->with('xrayInbounds:id,server_id,external_id')->ordered()->get(),
                 'external_subscriptions' => VlessExternalSubscription::query()->whereHas('configs')->with('configs')->ordered()->get(),
@@ -238,6 +243,21 @@ class XrayCustomConfigController extends Controller
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function previewUser(Request $request): User
+    {
+        if ($request->input('preview_mode', 'admin') === 'admin') {
+            return User::query()
+                ->where('is_admin', true)
+                ->where('is_active', true)
+                ->orderBy('id')
+                ->firstOrFail();
+        }
+
+        return User::query()
+            ->where('is_active', true)
+            ->findOrFail($request->integer('user_id'));
     }
 
     private function syncGroupsAndRoutes(XrayCustomConfig $config, XrayCustomConfigData $data): void

@@ -145,6 +145,9 @@ External VLESS subscriptions support multiple source formats:
 - The whitelist subscription route `/connect-wl-version-2` defaults to JSON output; URI/base64 output remains available through explicit URI aliases such as `format=uri`.
 - Xray JSON routing rules can be managed through the admin UI at `/xray-routings`. Imported RoscomVPN/INCY JSON profiles are stored in `xray_json_settings`, while generated Direct/Proxy/Block field rules are stored in `xray_routings`.
 - Each routing rule chooses `direct`, `proxy`, or `blocked`, stores Xray field-rule data in JSON, and uses JSON `subscription_types` to apply to `connect`, `connect_wl`, or future subscription outputs. Admins can create multiple rules and edit rule JSON, order, activity, outbound, subscription scope, local `xray_inbound_ids`, and external subscription config targets after import.
+- Routing rules can also target proxy nodes through `proxy_ids`.
+- Reusable global DNS and geodata resources are stored in `xray_routing_dns_settings` and `xray_routing_geodata`. Custom JSON definitions in `xray_custom_configs` select those resources and selected nodes/routings while still filtering local and external nodes per requesting user.
+- `xray_custom_config_outbound_groups` and `xray_custom_config_routes` extend custom configs into named, ordered balancer groups and site-specific routing. Groups support `roundRobin`, `leastPing`, `leastLoad`, and `random`; a group may fall back to another multi-node group, while unmatched traffic defaults to `direct`.
 - Empty routing target arrays mean the rule is not applied anywhere; JSON profiles receive only rules explicitly scoped to their local Xray inbound or external subscription config.
 - Imported geodata URLs are validated and cached in `storage/app/xray-geodata` by URL plus `LastUpdated`; JSON subscriptions emit Xray `geodata.assets`, so the client-side Xray Core downloads `geoip.dat`/`geosite.dat` into its own resource path.
 

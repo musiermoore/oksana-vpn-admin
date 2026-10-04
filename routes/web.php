@@ -38,6 +38,7 @@ use App\Http\Controllers\WelcomeMessageController;
 use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
 use App\Http\Controllers\XrayRoutingController;
+use App\Http\Controllers\XrayCustomConfigController;
 use App\Http\Controllers\XuiDebugController;
 use App\Http\Middleware\BasicAuth;
 use App\Http\Middleware\TrackApiRequests;
@@ -109,6 +110,20 @@ Route::middleware('auth')->group(function () {
         ->name('xray-routings.edit');
     Route::put('xray-routings/{xrayRouting}', [XrayRoutingController::class, 'update'])
         ->name('xray-routings.update');
+    Route::get('xray-custom-configs', [XrayCustomConfigController::class, 'index'])
+        ->name('xray-custom-configs.index');
+    Route::get('xray-custom-configs/create', [XrayCustomConfigController::class, 'create'])
+        ->name('xray-custom-configs.create');
+    Route::post('xray-custom-configs', [XrayCustomConfigController::class, 'store'])
+        ->name('xray-custom-configs.store');
+    Route::get('xray-custom-configs/{xrayCustomConfig}/edit', [XrayCustomConfigController::class, 'edit'])
+        ->name('xray-custom-configs.edit');
+    Route::put('xray-custom-configs/{xrayCustomConfig}', [XrayCustomConfigController::class, 'update'])
+        ->name('xray-custom-configs.update');
+    Route::post('xray-custom-configs/preview', [XrayCustomConfigController::class, 'previewDraft'])
+        ->name('xray-custom-configs.preview-draft');
+    Route::post('xray-custom-configs/{xrayCustomConfig}/preview', [XrayCustomConfigController::class, 'preview'])
+        ->name('xray-custom-configs.preview');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
     Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');
@@ -163,6 +178,9 @@ Route::get('connect', [VlessConfigController::class, 'connect'])
 Route::get('connect-json', [VlessConfigController::class, 'connectJson'])
     ->middleware(TrackApiRequests::class)
     ->name('vless.connect-json');
+Route::get('connect-custom/{xrayCustomConfig:slug}', [XrayCustomConfigController::class, 'connect'])
+    ->middleware(TrackApiRequests::class)
+    ->name('vless.custom-connect');
 Route::get('connect-wl-version-2', [VlessConfigController::class, 'connectWhiteList'])
     ->middleware(TrackApiRequests::class)
     ->name('vless.connect-wl');

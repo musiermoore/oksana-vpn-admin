@@ -6,6 +6,8 @@ namespace App\Services\Subscriptions;
 
 use App\Models\XrayJsonSetting;
 use App\Models\XrayRouting;
+use App\Models\XrayRoutingDnsSettings;
+use App\Models\XrayRoutingGeodata;
 
 class ConnectJsonProfileSettingsProvider
 {
@@ -58,10 +60,27 @@ class ConnectJsonProfileSettingsProvider
     /**
      * @return array<string, mixed>
      */
+    public function dnsFromSettings(?XrayRoutingDnsSettings $settings): array
+    {
+        if ($settings === null) {
+            return $this->dns();
+        }
+
+        return array_filter([
+            'servers' => $settings->servers,
+            'queryStrategy' => $settings->query_strategy,
+            'enableParallelQuery' => $settings->enable_parallel_query,
+        ], fn (mixed $value): bool => $value !== null && $value !== [] && $value !== false);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function routing(
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
         ?int $xrayInboundId = null,
         ?int $externalSubscriptionConfigId = null,
+        ?int $proxyId = null,
     ): array
     {
         $settings = $this->activeSettings()?->routing;
@@ -70,7 +89,7 @@ class ConnectJsonProfileSettingsProvider
             'domainStrategy' => is_array($settings) && isset($settings['domainStrategy'])
                 ? (string) $settings['domainStrategy']
                 : (string) config('connect_json.routing.domain_strategy', 'AsIs'),
-            'rules' => $this->routingRules($subscriptionType, $xrayInboundId, $externalSubscriptionConfigId),
+            'rules' => $this->routingRules($subscriptionType, $xrayInboundId, $externalSubscriptionConfigId, $proxyId),
         ];
     }
 
@@ -109,17 +128,76 @@ class ConnectJsonProfileSettingsProvider
         ], fn (mixed $value): bool => $value !== '');
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function geodataFromSettings(?XrayRoutingGeodata $geodata): ?array
+    {
+        if ($geodata === null || ! is_array($geodata->assets) || $geodata->assets === []) {
+            return null;
+        }
+
+        $assets = collect($geodata->assets)
+            ->filter(fn (mixed $asset): bool => is_array($asset)
+                && is_string($asset['url'] ?? null)
+                && is_string($asset['file'] ?? null))
+            ->map(fn (array $asset): array => [
+                'url' => $asset['url'],
+                'file' => $asset['file'],
+            ])
+            ->values()
+            ->all();
+
+        return $assets === [] ? null : [
+            'cron' => (string) config('connect_json.geodata.cron', '0 4 * * *'),
+            'outbound' => (string) config('connect_json.geodata.outbound', $this->proxyTag()),
+            'assets' => $assets,
+        ];
+    }
+
     public function hasTargetedRoutingRules(
         string $subscriptionType,
         ?int $xrayInboundId = null,
         ?int $externalSubscriptionConfigId = null,
+        ?int $proxyId = null,
     ): bool {
         return XrayRouting::query()
             ->active()
             ->ordered()
             ->get()
             ->contains(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType)
-                && $routing->appliesToAnyTarget($xrayInboundId, $externalSubscriptionConfigId));
+                && $routing->appliesToAnyTargetWithProxy($xrayInboundId, $externalSubscriptionConfigId, $proxyId));
+    }
+
+    /**
+     * @param  array<int, int>  $routingIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function customRoutingRules(
+        array $routingIds,
+        string $subscriptionType,
+        ?int $xrayInboundId = null,
+        ?int $externalSubscriptionConfigId = null,
+        ?int $proxyId = null,
+    ): array {
+        return XrayRouting::query()
+            ->active()
+            ->whereKey($routingIds)
+            ->ordered()
+            ->get()
+            ->filter(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType)
+                && $routing->appliesToAnyTargetWithProxy(
+                    $xrayInboundId,
+                    $externalSubscriptionConfigId,
+                    $proxyId,
+                ))
+            ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(
+                $this->directTag(),
+                $this->proxyTag(),
+                $this->blockTag(),
+            ))
+            ->values()
+            ->all();
     }
 
     /**
@@ -129,6 +207,7 @@ class ConnectJsonProfileSettingsProvider
         string $subscriptionType,
         ?int $xrayInboundId,
         ?int $externalSubscriptionConfigId,
+        ?int $proxyId = null,
     ): array
     {
         $routings = XrayRouting::query()
@@ -142,9 +221,10 @@ class ConnectJsonProfileSettingsProvider
         }
 
         return $routings
-            ->filter(fn (XrayRouting $routing): bool => $routing->appliesToAnyTarget(
+            ->filter(fn (XrayRouting $routing): bool => $routing->appliesToAnyTargetWithProxy(
                 $xrayInboundId,
                 $externalSubscriptionConfigId,
+                $proxyId,
             ))
             ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(
                 $this->directTag(),

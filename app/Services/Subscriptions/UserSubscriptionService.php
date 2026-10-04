@@ -144,11 +144,14 @@ class UserSubscriptionService
     /**
      * @return array<int, NormalizedNode>
      */
-    private function buildNamedNodes(User $user): array
+    public function buildNamedNodes(
+        User $user,
+        string $externalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_MAIN,
+    ): array
     {
         $nodes = [
             ...$this->normalizedNodeService->collect($user),
-            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, VlessExternalSubscriptionSyncService::PURPOSE_MAIN),
+            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, $externalPurpose),
         ];
 
         if (! $user->hasActiveAccess()) {

@@ -22,6 +22,8 @@ class VlessExternalSubscriptionSyncService
 
     public const PURPOSE_WHITELIST = 'whitelist';
 
+    public const PURPOSE_CUSTOM = 'custom';
+
     public function __construct(
         private readonly SubscriptionUriParser $parser,
         private readonly IncySourceUrlResolver $sourceUrlResolver,
@@ -123,14 +125,9 @@ class VlessExternalSubscriptionSyncService
 
     private function visibleSubscriptionsQuery(User $user, string $purpose)
     {
-        $visibilityColumn = $purpose === self::PURPOSE_MAIN
-            ? 'include_in_main_subscription'
-            : 'include_in_whitelist';
-
-        return VlessExternalSubscription::query()
+        $query = VlessExternalSubscription::query()
             ->where('is_active', true)
             ->visibleForUser($user)
-            ->where($visibilityColumn, true)
             ->where(function ($query) use ($user): void {
                 $query->where('is_free', true);
 
@@ -138,6 +135,14 @@ class VlessExternalSubscriptionSyncService
                     $query->orWhere('is_free', false);
                 }
             });
+
+        if ($purpose === self::PURPOSE_MAIN) {
+            $query->where('include_in_main_subscription', true);
+        } elseif ($purpose === self::PURPOSE_WHITELIST) {
+            $query->where('include_in_whitelist', true);
+        }
+
+        return $query;
     }
 
     /**

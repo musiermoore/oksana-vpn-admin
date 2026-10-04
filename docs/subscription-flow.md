@@ -192,6 +192,25 @@ JSON output:
 - External JSON profiles are preserved for `/connect-json` and `format=json` to keep upstream routing, balancers, and profile-level settings; `remarks` is replaced with the calculated node name.
 - Empty `tcpSettings: []` and HTTP inbound `settings: []` are normalized to objects for Xray compatibility.
 
+Custom Xray JSON configurations:
+
+- `xray_custom_configs` stores reusable JSON profile definitions and builds the final profile per user request.
+- A custom profile can select local Xray inbounds, external subscription configs, proxies, and explicit `xray_routings`.
+- Selected local and external nodes are still filtered through the requesting user's active/visible configs; the profile does not grant access to another user's configs.
+- Custom profiles may select reusable global DNS settings and geodata assets and may provide additional base Xray settings such as policy, inbounds, and balancers.
+- Custom profiles may define ordered outbound groups. Each group can select its own local inbounds, external configs, or proxies and is emitted as an Xray balancer with `roundRobin`, `leastPing`, `leastLoad`, or `random` strategy.
+- A group can fall back to another group; the fallback group may itself contain several nodes, so ordered fallback chains and multi-node fallback pools are supported through balancers and loopback outbounds.
+- Custom routes can send domains, IPs, ports, or networks to `direct`, `block`, a specific outbound, or a named group balancer. A final catch-all route sends unmatched traffic to `direct`.
+- `leastPing` and `leastLoad` require the corresponding Xray observatory configuration in the custom profile's base settings; otherwise use `roundRobin` or `random`.
+- Admin preview supports all available nodes or a selected user and uses the same user-specific builder.
+- Custom profiles are available through `connect-custom/{slug}` with the same encrypted `tg`/`i` credentials as `/connect-json`.
+
+Global Xray resources:
+
+- `xray_routing_geodata` stores reusable external `geoip.dat`/`geosite.dat` URLs and cached assets.
+- `xray_routing_dns_settings` stores reusable DNS server lists, query strategy, and parallel-query preference.
+- Routing rules can target proxies through `xray_routings.proxy_ids` in addition to local inbounds and external subscription configs.
+
 Whitelist `/connect-wl-version-2`:
 
 - Uses `VlessExternalSubscriptionAccessService`.

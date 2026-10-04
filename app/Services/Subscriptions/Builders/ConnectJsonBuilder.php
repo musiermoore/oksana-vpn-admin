@@ -123,9 +123,11 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         foreach ($groups as $group) {
             $fallback = $group->fallbackGroup;
-            $strategySettings = is_array($group->strategy_settings) && $group->strategy_settings !== []
+            // Xray expects balancer strategy settings to be a JSON object,
+            // including when the strategy has no options.
+            $strategySettings = (object) (is_array($group->strategy_settings)
                 ? $group->strategy_settings
-                : (object) [];
+                : []);
             $balancer = [
                 'tag' => (string) $group->tag,
                 'selector' => [(string) $group->tag.'-'],

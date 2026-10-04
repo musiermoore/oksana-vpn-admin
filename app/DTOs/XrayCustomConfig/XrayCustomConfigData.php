@@ -31,5 +31,6 @@ class XrayCustomConfigData extends Data
         public array $outbound_groups,
         public array $routes,
         public bool $is_active,
+        public int $sort_order,
     ) {}
 }

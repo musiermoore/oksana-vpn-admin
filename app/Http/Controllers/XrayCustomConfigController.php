@@ -42,7 +42,7 @@ class XrayCustomConfigController extends Controller
             'mode' => 'create',
             'submit_url' => route('xray-custom-configs.store'),
             'method' => 'post',
-            'config' => null,
+            'config' => ['sort_order' => (int) XrayCustomConfig::query()->max('sort_order') + 1],
             'create_dns_url' => route('xray-dns-settings.store'),
             'create_geodata_url' => route('xray-geodata.store'),
         ]);
@@ -268,6 +268,7 @@ class XrayCustomConfigController extends Controller
                 ])->values()->all()
                 : [],
             'is_active' => $config->is_active,
+            'sort_order' => $config->sort_order,
             'dns_settings' => $config->relationLoaded('dnsSettings') && $config->dnsSettings !== null
                 ? ['id' => $config->dnsSettings->id, 'name' => $config->dnsSettings->name]
                 : null,

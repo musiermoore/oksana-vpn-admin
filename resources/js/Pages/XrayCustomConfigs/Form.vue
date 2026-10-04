@@ -24,7 +24,7 @@ const form = useForm({
     name: initial.name || '', slug: initial.slug || slugify(initial.name), description: initial.description || '',
     dns_settings_id: initial.dns_settings_id || '', geodata_id: initial.geodata_id || '',
     xray_inbound_ids: initial.xray_inbound_ids || [], external_subscription_config_ids: initial.external_subscription_config_ids || [],
-    proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], is_active: initial.is_active ?? true,
+    proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], is_active: initial.is_active ?? true, sort_order: initial.sort_order ?? 0,
 });
 const slugManuallyEdited = ref(Boolean(initial.slug && initial.slug !== slugify(initial.name)));
 watch(() => form.name, (name) => {
@@ -300,6 +300,7 @@ const saveResource = async () => {
                 <div class="grid grid--two">
                     <label class="field"><span>Configuration Name</span><AppInput v-model="form.name" required /></label>
                     <label class="field"><span>Slug</span><AppInput v-model="form.slug" required @input="slugManuallyEdited = true" /><small>Generated automatically from the configuration name.</small></label>
+                    <label class="field"><span>Order in /connect JSON</span><AppInput v-model="form.sort_order" type="number" min="0" /></label>
                     <label class="field basic-description"><span>Description</span><AppTextarea v-model="form.description" rows="3" /></label>
                     <label class="field basic-status"><span>Status</span><AppCheckbox v-model="form.is_active" /> <small>{{ form.is_active ? 'Enabled' : 'Disabled' }}</small></label>
                 </div>

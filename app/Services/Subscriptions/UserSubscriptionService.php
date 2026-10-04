@@ -5,6 +5,7 @@ namespace App\Services\Subscriptions;
 use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Models\XrayRouting;
+use App\Models\XrayCustomConfig;
 use App\Models\User;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
@@ -43,7 +44,7 @@ class UserSubscriptionService
             )),
         ]);
 
-        return $this->buildFromNodes($namedNodes, $format, $subscriptionType);
+        return $this->buildFromNodes($namedNodes, $format, $subscriptionType, $user);
     }
 
     /**
@@ -52,13 +53,20 @@ class UserSubscriptionService
     public function buildFromNodes(
         array $nodes,
         ?string $format = null,
-        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT
+        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
+        ?User $user = null,
     ): SubscriptionBuildResult
     {
         $builder = $this->builderFactory->make((string) $format);
 
         if ($builder instanceof ConnectJsonBuilder) {
-            return $builder->buildForSubscriptionType($nodes, $subscriptionType);
+            $result = $builder->buildForSubscriptionType($nodes, $subscriptionType);
+
+            if ($user !== null && $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT) {
+                return $this->appendCustomJsonProfiles($result, $user);
+            }
+
+            return $result;
         }
 
         if ($nodes === []) {
@@ -70,7 +78,38 @@ class UserSubscriptionService
 
     public function buildJsonProfile(User $user): SubscriptionBuildResult
     {
-        return $this->connectJsonBuilder->build($this->buildNamedNodes($user));
+        return $this->build($user, 'json');
+    }
+
+    private function appendCustomJsonProfiles(SubscriptionBuildResult $result, User $user): SubscriptionBuildResult
+    {
+        $profiles = json_decode($result->content, true);
+        if (! is_array($profiles)) {
+            return $result;
+        }
+
+        $customNodes = $this->buildNamedNodes($user, VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM);
+
+        foreach (XrayCustomConfig::query()
+            ->active()
+            ->ordered()
+            ->with(['dnsSettings', 'geodata', 'outboundGroups.fallbackGroup', 'routes'])
+            ->get() as $customConfig) {
+            $customProfiles = json_decode(
+                $this->connectJsonBuilder->buildForCustomConfig($customNodes, $customConfig)->content,
+                true,
+            );
+
+            if (is_array($customProfiles)) {
+                $profiles = [...$profiles, ...$customProfiles];
+            }
+        }
+
+        return new SubscriptionBuildResult(
+            content: json_encode($profiles, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
+            contentType: $result->contentType,
+            fileExtension: $result->fileExtension,
+        );
     }
 
     /**

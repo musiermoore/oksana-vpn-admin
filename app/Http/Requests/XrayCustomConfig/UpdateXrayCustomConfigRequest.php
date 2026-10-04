@@ -39,6 +39,7 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'outbound_groups_json' => ['required', 'string', 'json'],
             'routes_json' => ['required', 'string', 'json'],
             'is_active' => ['required', 'boolean'],
+            'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
         ];
     }
 
@@ -92,6 +93,7 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'outbound_groups' => json_decode((string) $validated['outbound_groups_json'], true, 512, JSON_THROW_ON_ERROR),
             'routes' => json_decode((string) $validated['routes_json'], true, 512, JSON_THROW_ON_ERROR),
             'is_active' => (bool) $validated['is_active'],
+            'sort_order' => (int) $validated['sort_order'],
         ];
     }
 

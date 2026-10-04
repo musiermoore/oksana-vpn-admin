@@ -14,7 +14,7 @@ class XrayCustomConfig extends Model
     protected $fillable = [
         'name', 'slug', 'description', 'dns_settings_id', 'geodata_id',
         'xray_inbound_ids', 'external_subscription_config_ids', 'proxy_ids',
-        'xray_routing_ids', 'base_settings', 'is_active',
+        'xray_routing_ids', 'base_settings', 'is_active', 'sort_order',
     ];
 
     protected function casts(): array
@@ -26,6 +26,7 @@ class XrayCustomConfig extends Model
             'xray_routing_ids' => 'array',
             'base_settings' => 'array',
             'is_active' => 'boolean',
+            'sort_order' => 'integer',
         ];
     }
 
@@ -52,5 +53,10 @@ class XrayCustomConfig extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query->orderBy('sort_order')->orderBy('id');
     }
 }

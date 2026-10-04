@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -19,14 +19,30 @@ const props = defineProps({
 
 const initial = props.config || {};
 const initialBase = initial.base_settings || {};
+const slugify = (value) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const form = useForm({
-    name: initial.name || '', slug: initial.slug || '', description: initial.description || '',
+    name: initial.name || '', slug: initial.slug || slugify(initial.name), description: initial.description || '',
     dns_settings_id: initial.dns_settings_id || '', geodata_id: initial.geodata_id || '',
     xray_inbound_ids: initial.xray_inbound_ids || [], external_subscription_config_ids: initial.external_subscription_config_ids || [],
     proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], is_active: initial.is_active ?? true,
 });
+const slugManuallyEdited = ref(Boolean(initial.slug && initial.slug !== slugify(initial.name)));
+watch(() => form.name, (name) => {
+    if (!slugManuallyEdited.value) {
+        form.slug = slugify(name);
+    }
+});
 const settings = ref({ domainStrategy: initialBase.routing?.domainStrategy || 'AsIs', loglevel: initialBase.log?.loglevel || 'warning', extra: initialBase });
-const groups = ref((initial.outbound_groups || []).map((group) => ({ ...group, xray_inbound_ids: group.xray_inbound_ids || [], external_subscription_config_ids: group.external_subscription_config_ids || [], proxy_ids: group.proxy_ids || [] })));
+const groupSlug = (value) => `group-${slugify(value) || 'new-group'}`;
+const groups = ref((initial.outbound_groups || []).map((group) => ({ ...group, xray_inbound_ids: group.xray_inbound_ids || [], external_subscription_config_ids: group.external_subscription_config_ids || [], proxy_ids: group.proxy_ids || [], _tagManuallyEdited: Boolean(group.tag && group.tag !== groupSlug(group.name)) })));
+const expandedGroups = ref(new Set(groups.value.length ? [0] : []));
+const groupMemberPickerIndex = ref(null);
+const groupMemberSearch = ref('');
+const groupMemberType = ref('all');
+const groupMemberCountry = ref('');
+const groupMemberExpandedServers = ref(new Set());
+const groupMemberExpandedSubscriptions = ref(new Set());
+const groupMemberSnapshot = ref(null);
 const routes = ref((initial.routes || []).map((route) => {
     const rules = route.rules || {};
     const matchType = Object.keys(rules).find((key) => ['domain', 'ip', 'port', 'network'].includes(key)) || 'domain';
@@ -41,30 +57,193 @@ const previewing = ref(false);
 const modal = ref(null);
 const modalForm = ref({});
 const modalError = ref('');
+const localSearch = ref('');
+const localCountry = ref('');
+const proxySearch = ref('');
+const proxyCountry = ref('');
+const proxyStatus = ref('');
+const subscriptionSearch = ref('');
+const expandedServers = ref(new Set());
+const expandedSubscriptions = ref(new Set());
 
 const strategyOptions = [
-    { value: 'roundRobin', label: 'По очереди (roundRobin)' }, { value: 'leastPing', label: 'Минимальный пинг (leastPing)' },
-    { value: 'leastLoad', label: 'Минимальная нагрузка (leastLoad)' }, { value: 'random', label: 'Случайный (random)' },
+    { value: 'roundRobin', label: 'Round robin' }, { value: 'leastPing', label: 'Least ping' },
+    { value: 'leastLoad', label: 'Least load' }, { value: 'random', label: 'Random' },
+];
+const domainStrategyOptions = [
+    { value: 'AsIs', label: 'AsIs — use domains as provided' },
+    { value: 'IPIfNonMatch', label: 'IPIfNonMatch — resolve when no routing rule matches' },
+    { value: 'IPOnDemand', label: 'IPOnDemand — resolve when required' },
+];
+const logLevelOptions = [
+    { value: 'debug', label: 'Debug' },
+    { value: 'info', label: 'Info' },
+    { value: 'warning', label: 'Warning' },
+    { value: 'error', label: 'Error' },
+    { value: 'none', label: 'None' },
 ];
 const targetTypeOptions = [{ value: 'balancer', label: 'Балансировщик' }, { value: 'direct', label: 'Напрямую' }, { value: 'block', label: 'Заблокировать' }];
 const matchTypeOptions = [{ value: 'domain', label: 'Домены' }, { value: 'ip', label: 'IP-адреса' }, { value: 'port', label: 'Порты' }, { value: 'network', label: 'Сеть' }];
 const groupOptions = computed(() => groups.value.map((group) => ({ value: group.tag, label: group.name || group.tag })));
+const strategyLabel = (value) => strategyOptions.find((option) => option.value === value)?.label || value;
 
 const ids = (field) => (form[field] || []).map(Number);
 const checked = (field, id) => ids(field).includes(Number(id));
 const toggle = (field, id, value) => { const current = ids(field); form[field] = value ? [...new Set([...current, Number(id)])] : current.filter((item) => item !== Number(id)); };
+const normalized = (value) => String(value || '').toLocaleLowerCase();
+const countryFlag = (value) => ({ Finland: '🇫🇮', Germany: '🇩🇪', Netherlands: '🇳🇱', Sweden: '🇸🇪', France: '🇫🇷', Poland: '🇵🇱', UnitedKingdom: '🇬🇧', 'United Kingdom': '🇬🇧' }[String(value)] || '');
+const serverMatches = (server) => {
+    const query = normalized(localSearch.value).trim();
+    const countryMatches = !localCountry.value || server.name === localCountry.value;
+    if (!countryMatches) return false;
+    if (!query) return true;
+    return normalized(server.name).includes(query) || (server.xray_inbounds || []).some((inbound) => normalized(`inbound #${inbound.external_id}`).includes(query));
+};
+const visibleServers = computed(() => (props.targets.servers || []).filter(serverMatches));
+const visibleInbounds = (server) => {
+    const query = normalized(localSearch.value).trim();
+    if (!query || normalized(server.name).includes(query)) return server.xray_inbounds || [];
+    return (server.xray_inbounds || []).filter((inbound) => normalized(`inbound #${inbound.external_id}`).includes(query));
+};
+const countries = computed(() => [...new Set((props.targets.servers || []).map((server) => server.name).filter(Boolean))]);
+const serverSelectedCount = (server) => (server.xray_inbounds || []).filter((inbound) => checked('xray_inbound_ids', inbound.id)).length;
+const serverState = (server) => {
+    const total = (server.xray_inbounds || []).length;
+    const selected = serverSelectedCount(server);
+    return { total, selected, checked: total > 0 && selected === total, indeterminate: selected > 0 && selected < total };
+};
+const toggleServer = (server, value) => (server.xray_inbounds || []).forEach((inbound) => toggle('xray_inbound_ids', inbound.id, value));
+const selectVisibleInbounds = (value) => visibleServers.value.flatMap((server) => visibleInbounds(server)).forEach((inbound) => toggle('xray_inbound_ids', inbound.id, value));
+const isServerExpanded = (id) => expandedServers.value.has(Number(id));
+const toggleServerExpanded = (id) => {
+    const next = new Set(expandedServers.value);
+    next.has(Number(id)) ? next.delete(Number(id)) : next.add(Number(id));
+    expandedServers.value = next;
+};
+const subscriptionMatches = (subscription) => {
+    const query = normalized(subscriptionSearch.value).trim();
+    if (!query) return true;
+    return normalized(subscription.name).includes(query) || (subscription.configs || []).some((config) => normalized(config.name).includes(query));
+};
+const visibleSubscriptions = computed(() => (props.targets.external_subscriptions || []).filter(subscriptionMatches));
+const visibleConfigs = (subscription) => {
+    const query = normalized(subscriptionSearch.value).trim();
+    if (!query || normalized(subscription.name).includes(query)) return subscription.configs || [];
+    return (subscription.configs || []).filter((config) => normalized(config.name).includes(query));
+};
+const subscriptionSelectedCount = (subscription) => externalIds(subscription).filter((id) => checked('external_subscription_config_ids', id)).length;
+const subscriptionState = (subscription) => {
+    const total = (subscription.configs || []).length;
+    const selected = subscriptionSelectedCount(subscription);
+    return { total, selected, checked: total > 0 && selected === total, indeterminate: selected > 0 && selected < total };
+};
+const selectVisibleConfigs = (value) => visibleSubscriptions.value.flatMap((subscription) => visibleConfigs(subscription)).forEach((config) => toggle('external_subscription_config_ids', config.id, value));
+const isSubscriptionExpanded = (id) => expandedSubscriptions.value.has(Number(id));
+const toggleSubscriptionExpanded = (id) => {
+    const next = new Set(expandedSubscriptions.value);
+    next.has(Number(id)) ? next.delete(Number(id)) : next.add(Number(id));
+    expandedSubscriptions.value = next;
+};
+const proxyMatches = (proxy) => {
+    const query = normalized(proxySearch.value).trim();
+    const countryMatches = !proxyCountry.value || proxy.server?.name === proxyCountry.value;
+    const statusMatches = !proxyStatus.value || (proxyStatus.value === 'available' ? proxy.is_ready : !proxy.is_ready);
+    if (!countryMatches || !statusMatches) return false;
+    return !query || normalized(`${proxy.server?.name || ''} ${proxy.name}`).includes(query);
+};
+const visibleProxies = computed(() => (props.targets.proxies || []).filter(proxyMatches));
+const proxyCountries = computed(() => [...new Set((props.targets.proxies || []).map((proxy) => proxy.server?.name).filter(Boolean))]);
+const selectVisibleProxies = (value) => visibleProxies.value.forEach((proxy) => toggle('proxy_ids', proxy.id, value));
+const totalSourcesSelected = computed(() => ids('xray_inbound_ids').length + ids('external_subscription_config_ids').length + ids('proxy_ids').length);
+const localSelectedCount = computed(() => ids('xray_inbound_ids').length);
+const externalSelectedCount = computed(() => ids('external_subscription_config_ids').length);
+const proxySelectedCount = computed(() => ids('proxy_ids').length);
 const groupChecked = (group, field, id) => (group[field] || []).map(Number).includes(Number(id));
 const toggleGroup = (group, field, id, value) => { const current = (group[field] || []).map(Number); group[field] = value ? [...new Set([...current, Number(id)])] : current.filter((item) => item !== Number(id)); };
 const externalIds = (subscription) => (subscription.configs || []).map((item) => Number(item.id));
 const subscriptionChecked = (subscription) => externalIds(subscription).length > 0 && externalIds(subscription).every((id) => checked('external_subscription_config_ids', id));
 const toggleSubscription = (subscription, value) => externalIds(subscription).forEach((id) => toggle('external_subscription_config_ids', id, value));
-const addGroup = () => groups.value.push({ name: `Группа ${groups.value.length + 1}`, tag: `group-${groups.value.length + 1}`, strategy: 'roundRobin', fallback_group_tag: '', xray_inbound_ids: [], external_subscription_config_ids: [], proxy_ids: [], is_active: true });
-const removeGroup = (index) => groups.value.splice(index, 1);
+const availableServers = computed(() => (props.targets.servers || []).map((server) => ({ ...server, xray_inbounds: (server.xray_inbounds || []).filter((inbound) => checked('xray_inbound_ids', inbound.id)) })).filter((server) => server.xray_inbounds.length));
+const availableSubscriptions = computed(() => (props.targets.external_subscriptions || []).map((subscription) => ({ ...subscription, configs: (subscription.configs || []).filter((config) => checked('external_subscription_config_ids', config.id)) })).filter((subscription) => subscription.configs.length));
+const availableProxies = computed(() => (props.targets.proxies || []).filter((proxy) => checked('proxy_ids', proxy.id)));
+const groupMemberCount = (group) => idsForGroup(group).length;
+const idsForGroup = (group) => [...(group.xray_inbound_ids || []), ...(group.external_subscription_config_ids || []), ...(group.proxy_ids || [])].map(Number);
+const groupSelectedInbounds = (group, server) => (server.xray_inbounds || []).filter((inbound) => groupChecked(group, 'xray_inbound_ids', inbound.id));
+const groupSelectedConfigs = (group, subscription) => (subscription.configs || []).filter((config) => groupChecked(group, 'external_subscription_config_ids', config.id));
+const groupSelectedProxies = (group) => availableProxies.value.filter((proxy) => groupChecked(group, 'proxy_ids', proxy.id));
+const groupInvalidMemberCount = (group) => idsForGroup(group).filter((id) => ![
+    ...availableServers.value.flatMap((server) => server.xray_inbounds.map((inbound) => Number(inbound.id))),
+    ...availableSubscriptions.value.flatMap((subscription) => subscription.configs.map((config) => Number(config.id))),
+    ...availableProxies.value.map((proxy) => Number(proxy.id)),
+].includes(id)).length;
+const isGroupExpanded = (index) => expandedGroups.value.has(index);
+const toggleGroupExpanded = (index) => {
+    const next = new Set(expandedGroups.value);
+    next.has(index) ? next.delete(index) : next.add(index);
+    expandedGroups.value = next;
+};
+const onGroupNameInput = (group) => { if (!group._tagManuallyEdited) group.tag = groupSlug(group.name); };
+const fallbackCreatesCycle = (group, candidateTag) => {
+    let tag = candidateTag;
+    const visited = new Set();
+    while (tag) {
+        if (tag === group.tag) return true;
+        if (visited.has(tag)) return true;
+        visited.add(tag);
+        tag = groups.value.find((item) => item.tag === tag)?.fallback_group_tag || '';
+    }
+    return false;
+};
+const fallbackOptions = (group) => [{ value: '', label: 'No fallback' }, ...groupOptions.value.filter((item) => item.value !== group.tag && !fallbackCreatesCycle(group, item.value))];
+const fallbackChain = (group) => {
+    const chain = [group.name || group.tag];
+    let nextTag = group.fallback_group_tag;
+    const visited = new Set();
+    while (nextTag && !visited.has(nextTag)) {
+        visited.add(nextTag);
+        const next = groups.value.find((item) => item.tag === nextTag);
+        if (!next) break;
+        chain.push(next.name || next.tag);
+        nextTag = next.fallback_group_tag;
+    }
+    return chain;
+};
+const addGroup = () => { groups.value.push({ name: `Group ${groups.value.length + 1}`, tag: groupSlug(`Group ${groups.value.length + 1}`), strategy: 'roundRobin', fallback_group_tag: '', xray_inbound_ids: [], external_subscription_config_ids: [], proxy_ids: [], is_active: true, _tagManuallyEdited: false }); expandedGroups.value = new Set([...expandedGroups.value, groups.value.length - 1]); };
+const duplicateGroup = (group, index) => { const copy = JSON.parse(JSON.stringify(group)); copy.name = `${group.name || 'Group'} copy`; copy.tag = groupSlug(copy.name); copy._tagManuallyEdited = false; copy.fallback_group_tag = ''; groups.value.splice(index + 1, 0, copy); expandedGroups.value = new Set([...expandedGroups.value, index + 1]); };
+const removeGroup = (group, index) => {
+    const dependentRoutes = routes.value.some((route) => route.target_tag === group.tag);
+    const dependentGroups = groups.value.some((item, itemIndex) => itemIndex !== index && item.fallback_group_tag === group.tag);
+    const dependencyMessage = dependentRoutes || dependentGroups ? ' This group is referenced by another group or route; those references will be cleared.' : '';
+    if (!window.confirm(`Delete outbound group “${group.name || group.tag}”?${dependencyMessage}`)) return;
+    routes.value.forEach((route) => { if (route.target_tag === group.tag) route.target_tag = ''; });
+    groups.value.forEach((item) => { if (item.fallback_group_tag === group.tag) item.fallback_group_tag = ''; });
+    groups.value.splice(index, 1);
+};
+const openGroupMemberPicker = (index) => { groupMemberPickerIndex.value = index; groupMemberSnapshot.value = JSON.parse(JSON.stringify({ xray_inbound_ids: groups.value[index].xray_inbound_ids, external_subscription_config_ids: groups.value[index].external_subscription_config_ids, proxy_ids: groups.value[index].proxy_ids })); groupMemberSearch.value = ''; groupMemberType.value = 'all'; groupMemberCountry.value = ''; };
+const closeGroupMemberPicker = (save = false) => { if (!save && activeGroup.value && groupMemberSnapshot.value) Object.assign(activeGroup.value, groupMemberSnapshot.value); groupMemberSnapshot.value = null; groupMemberPickerIndex.value = null; };
+const activeGroup = computed(() => groupMemberPickerIndex.value === null ? null : groups.value[groupMemberPickerIndex.value]);
+const memberMatches = (value) => normalized(value).includes(normalized(groupMemberSearch.value).trim());
+const memberServerMatches = (server) => (!groupMemberCountry.value || server.name === groupMemberCountry.value) && (memberMatches(server.name) || server.xray_inbounds.some((inbound) => memberMatches(`inbound #${inbound.external_id}`)));
+const memberVisibleServers = computed(() => !['subscription', 'proxy'].includes(groupMemberType.value) && availableServers.value.filter(memberServerMatches));
+const memberVisibleSubscriptions = computed(() => groupMemberType.value !== 'local' && groupMemberType.value !== 'proxy' && availableSubscriptions.value.filter((subscription) => memberMatches(subscription.name) || subscription.configs.some((config) => memberMatches(config.name))));
+const memberVisibleProxies = computed(() => groupMemberType.value !== 'local' && groupMemberType.value !== 'subscription' && availableProxies.value.filter((proxy) => (!groupMemberCountry.value || proxy.server?.name === groupMemberCountry.value) && memberMatches(`${proxy.server?.name || ''} ${proxy.name}`)));
+const memberVisibleInbounds = (server) => memberMatches(server.name) ? server.xray_inbounds : server.xray_inbounds.filter((inbound) => memberMatches(`inbound #${inbound.external_id}`));
+const memberVisibleConfigs = (subscription) => memberMatches(subscription.name) ? subscription.configs : subscription.configs.filter((config) => memberMatches(config.name));
+const memberServerState = (server) => { const items = server.xray_inbounds; const selected = items.filter((inbound) => activeGroup.value && groupChecked(activeGroup.value, 'xray_inbound_ids', inbound.id)).length; return { total: items.length, selected, checked: items.length > 0 && selected === items.length, indeterminate: selected > 0 && selected < items.length }; };
+const memberSubscriptionState = (subscription) => { const items = subscription.configs; const selected = items.filter((config) => activeGroup.value && groupChecked(activeGroup.value, 'external_subscription_config_ids', config.id)).length; return { total: items.length, selected, checked: items.length > 0 && selected === items.length, indeterminate: selected > 0 && selected < items.length }; };
+const memberCountries = computed(() => [...new Set([...availableServers.value.map((server) => server.name), ...availableProxies.value.map((proxy) => proxy.server?.name)].filter(Boolean))]);
+const isMemberServerExpanded = (id) => groupMemberExpandedServers.value.has(Number(id));
+const toggleMemberServerExpanded = (id) => { const next = new Set(groupMemberExpandedServers.value); next.has(Number(id)) ? next.delete(Number(id)) : next.add(Number(id)); groupMemberExpandedServers.value = next; };
+const isMemberSubscriptionExpanded = (id) => groupMemberExpandedSubscriptions.value.has(Number(id));
+const toggleMemberSubscriptionExpanded = (id) => { const next = new Set(groupMemberExpandedSubscriptions.value); next.has(Number(id)) ? next.delete(Number(id)) : next.add(Number(id)); groupMemberExpandedSubscriptions.value = next; };
+const toggleAllGroupMembers = (field, members, value) => members.forEach((member) => activeGroup.value && toggleGroup(activeGroup.value, field, member.id, value));
+const toggleMemberServer = (server, value) => server.xray_inbounds.forEach((inbound) => activeGroup.value && toggleGroup(activeGroup.value, 'xray_inbound_ids', inbound.id, value));
+const toggleMemberSubscription = (subscription, value) => subscription.configs.forEach((config) => activeGroup.value && toggleGroup(activeGroup.value, 'external_subscription_config_ids', config.id, value));
+const buildGroups = () => groups.value.map(({ _tagManuallyEdited, _menuOpen, ...group }, index) => ({ ...group, xray_inbound_ids: group.xray_inbound_ids.filter((id) => checked('xray_inbound_ids', id)), external_subscription_config_ids: group.external_subscription_config_ids.filter((id) => checked('external_subscription_config_ids', id)), proxy_ids: group.proxy_ids.filter((id) => checked('proxy_ids', id)), sort_order: index }));
 const addRoute = () => routes.value.push({ name: `Маршрут ${routes.value.length + 1}`, match_type: 'domain', match_values: '', target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true });
 const removeRoute = (index) => routes.value.splice(index, 1);
 
 const buildBaseSettings = () => ({ ...settings.value.extra, log: { ...(settings.value.extra.log || {}), loglevel: settings.value.loglevel }, routing: { ...(settings.value.extra.routing || {}), domainStrategy: settings.value.domainStrategy } });
-const buildGroups = () => groups.value.map((group, index) => ({ ...group, sort_order: index }));
 const buildRoutes = () => routes.value.map((route, index) => {
     const values = String(route.match_values || '').split(',').map((value) => value.trim()).filter(Boolean);
     const rules = route.match_type === 'domain' ? { domain: values.map((value) => value.includes(':') ? value : `domain:${value}`) } : { [route.match_type]: values };
@@ -91,28 +270,627 @@ const saveResource = async () => {
 </script>
 
 <template>
-    <Head title="Пользовательская конфигурация Xray" />
-    <section class="page-card stack">
-        <div class="page-header"><div><h1>{{ props.config ? 'Редактирование' : 'Создание' }} конфигурации Xray</h1></div></div>
+    <Head :title="props.config ? 'Edit Xray Configuration' : 'Create Xray Configuration'" />
+    <section class="page-card stack xray-config-form">
+        <div class="page-header"><div><h1>{{ props.config ? 'Edit Xray Configuration' : 'Create Xray Configuration' }}</h1></div></div>
         <form class="grid grid--two" @submit.prevent="submit">
-            <label class="field"><span>Название</span><AppInput v-model="form.name" required /></label><label class="field"><span>Slug</span><AppInput v-model="form.slug" required /></label>
-            <div class="field"><span>Настройки DNS</span><div class="field-row"><AppSelect v-model="form.dns_settings_id" :options="dnsOptions.map((item) => ({ value: item.id, label: item.name }))" /><AppButton variant="secondary" type="button" @click="openResourceModal('dns')">Добавить</AppButton></div></div>
-            <div class="field"><span>Геоданные</span><div class="field-row"><AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" /><AppButton variant="secondary" type="button" @click="openResourceModal('geodata')">Добавить</AppButton></div></div>
-            <div class="field" style="grid-column: 1 / -1;"><span>Базовые настройки Xray</span><div class="grid grid--two"><label class="field"><span>Стратегия доменов</span><AppSelect v-model="settings.domainStrategy" :options="[{ value: 'AsIs', label: 'Как указано' }, { value: 'IPIfNonMatch', label: 'IP, если домен не найден' }, { value: 'IPOnDemand', label: 'Всегда определять IP' }]" /></label><label class="field"><span>Уровень логирования</span><AppSelect v-model="settings.loglevel" :options="[{ value: 'none', label: 'Нет' }, { value: 'error', label: 'Ошибки' }, { value: 'warning', label: 'Предупреждения' }, { value: 'info', label: 'Информация' }, { value: 'debug', label: 'Отладка' }]" /></label></div></div>
-            <div class="field" style="grid-column: 1 / -1;"><span>Серверы и входящие подключения</span><div v-for="server in props.targets.servers || []" :key="server.id" class="stack"><strong>{{ server.name }}</strong><label v-for="inbound in server.xray_inbounds || []" :key="inbound.id" class="field-row field-row--child"><input type="checkbox" :checked="checked('xray_inbound_ids', inbound.id)" @change="toggle('xray_inbound_ids', inbound.id, $event.target.checked)"><span>Inbound #{{ inbound.external_id }}</span></label></div></div>
-            <div class="field" style="grid-column: 1 / -1;"><span>Внешние подписки</span><div v-for="subscription in props.targets.external_subscriptions || []" :key="subscription.id" class="stack"><label class="field-row"><input type="checkbox" :checked="subscriptionChecked(subscription)" @change="toggleSubscription(subscription, $event.target.checked)"><strong>{{ subscription.name }}</strong></label><label v-for="config in subscription.configs || []" :key="config.id" class="field-row field-row--child"><input type="checkbox" :checked="checked('external_subscription_config_ids', config.id)" @change="toggle('external_subscription_config_ids', config.id, $event.target.checked)"><span>{{ config.name }}</span></label></div></div>
-            <div class="field" style="grid-column: 1 / -1;"><span>Прокси</span><label v-for="proxy in props.targets.proxies || []" :key="proxy.id" class="field-row"><input type="checkbox" :checked="checked('proxy_ids', proxy.id)" @change="toggle('proxy_ids', proxy.id, $event.target.checked)"><span>{{ proxy.server?.name || '' }} · {{ proxy.name }}</span></label></div>
-            <div class="field" style="grid-column: 1 / -1;"><span>Готовые правила маршрутизации</span><label v-for="routing in props.targets.routings || []" :key="routing.id" class="field-row"><input type="checkbox" :checked="checked('xray_routing_ids', routing.id)" @change="toggle('xray_routing_ids', routing.id, $event.target.checked)"><span>{{ routing.name }}{{ routing.is_active ? '' : ' (отключено)' }}</span></label></div>
-            <div class="field" style="grid-column: 1 / -1;"><div class="page-header"><span>Группы исходящих подключений</span><AppButton variant="secondary" type="button" @click="addGroup">Добавить группу</AppButton></div><div v-for="(group, index) in groups" :key="index" class="page-card stack"><div class="grid grid--two"><label class="field"><span>Название группы</span><AppInput v-model="group.name" /></label><label class="field"><span>Тег</span><AppInput v-model="group.tag" /></label><label class="field"><span>Балансировка</span><AppSelect v-model="group.strategy" :options="strategyOptions" /></label><label class="field"><span>Резервная группа</span><AppSelect v-model="group.fallback_group_tag" :options="[{ value: '', label: 'Нет' }, ...groupOptions.filter((item) => item.value !== group.tag)]" /></label></div><strong>Серверы и подключения</strong><div v-for="server in props.targets.servers || []" :key="`g${index}s${server.id}`"><span>{{ server.name }}</span><label v-for="inbound in server.xray_inbounds || []" :key="`g${index}i${inbound.id}`" class="field-row field-row--child"><input type="checkbox" :checked="groupChecked(group, 'xray_inbound_ids', inbound.id)" @change="toggleGroup(group, 'xray_inbound_ids', inbound.id, $event.target.checked)"><span>Inbound #{{ inbound.external_id }}</span></label></div><strong>Внешние подписки</strong><div v-for="subscription in props.targets.external_subscriptions || []" :key="`g${index}e${subscription.id}`"><span>{{ subscription.name }}</span><label v-for="config in subscription.configs || []" :key="`g${index}c${config.id}`" class="field-row field-row--child"><input type="checkbox" :checked="groupChecked(group, 'external_subscription_config_ids', config.id)" @change="toggleGroup(group, 'external_subscription_config_ids', config.id, $event.target.checked)"><span>{{ config.name }}</span></label></div><strong>Прокси</strong><label v-for="proxy in props.targets.proxies || []" :key="`g${index}p${proxy.id}`" class="field-row"><input type="checkbox" :checked="groupChecked(group, 'proxy_ids', proxy.id)" @change="toggleGroup(group, 'proxy_ids', proxy.id, $event.target.checked)"><span>{{ proxy.server?.name || '' }} · {{ proxy.name }}</span></label><AppButton variant="secondary" type="button" @click="removeGroup(index)">Удалить группу</AppButton></div></div>
+            <div class="form-section">
+                <h2>Basic information</h2>
+                <div class="grid grid--two">
+                    <label class="field"><span>Configuration Name</span><AppInput v-model="form.name" required /></label>
+                    <label class="field"><span>Slug</span><AppInput v-model="form.slug" required @input="slugManuallyEdited = true" /><small>Generated automatically from the configuration name.</small></label>
+                </div>
+            </div>
+            <div class="form-section">
+                <h2>Resources</h2>
+                <div class="grid grid--two">
+                    <div class="field resource-field"><span>DNS Configuration</span><AppSelect v-model="form.dns_settings_id" :options="dnsOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select DNS configuration" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns')">+ Create DNS configuration</AppButton></div>
+                    <div class="field resource-field"><span>Geodata</span><AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select geodata source" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('geodata')">+ Create geodata source</AppButton></div>
+                </div>
+            </div>
+            <div class="form-section">
+                <h2>Base settings</h2>
+                <div class="grid grid--two">
+                    <label class="field"><span>Domain Strategy</span><AppSelect v-model="settings.domainStrategy" :options="domainStrategyOptions" /></label>
+                    <label class="field"><span>Log Level</span><AppSelect v-model="settings.loglevel" :options="logLevelOptions" /></label>
+                </div>
+            </div>
+            <div class="source-section">
+                <div class="source-section__header"><div><h2>Sources</h2><p>Choose which outbound sources may be used by this configuration.</p></div><strong>{{ totalSourcesSelected }} sources selected</strong></div>
+                <div class="source-picker">
+                    <div class="source-picker__header"><h3>Local servers &amp; inbounds</h3><strong>{{ localSelectedCount }} selected</strong></div>
+                    <div class="source-toolbar"><AppInput v-model="localSearch" placeholder="Search servers or inbounds..." /><AppSelect v-model="localCountry" :options="countries.map((country) => ({ value: country, label: country }))" placeholder="Country" /></div>
+                    <div class="source-actions"><label class="field-row"><input type="checkbox" :checked="visibleServers.length > 0 && visibleServers.every((server) => visibleInbounds(server).length > 0 && visibleInbounds(server).every((inbound) => checked('xray_inbound_ids', inbound.id)))" @change="selectVisibleInbounds($event.target.checked)"> Select all visible</label><button type="button" class="picker-text-button" @click="selectVisibleInbounds(false)">Clear selection</button></div>
+                    <div class="source-list">
+                        <div v-for="server in visibleServers" :key="server.id" class="source-group">
+                            <div class="source-parent-row">
+                                <input type="checkbox" :checked="serverState(server).checked" :indeterminate="serverState(server).indeterminate" @change="toggleServer(server, $event.target.checked)">
+                                <button type="button" class="source-expand" :aria-expanded="isServerExpanded(server.id)" @click="toggleServerExpanded(server.id)"><span>{{ countryFlag(server.name) }} {{ server.name }}</span><span class="source-count">{{ serverState(server).selected }} / {{ serverState(server).total }} selected</span><span class="source-chevron">{{ isServerExpanded(server.id) ? '⌄' : '›' }}</span></button>
+                            </div>
+                            <div v-if="isServerExpanded(server.id)" class="source-children"><label v-for="inbound in visibleInbounds(server)" :key="inbound.id" class="source-child-row"><input type="checkbox" :checked="checked('xray_inbound_ids', inbound.id)" @change="toggle('xray_inbound_ids', inbound.id, $event.target.checked)"><span>Inbound #{{ inbound.external_id }}</span></label></div>
+                        </div>
+                        <p v-if="visibleServers.length === 0" class="source-empty">No matching servers or inbounds.</p>
+                    </div>
+                </div>
+                <div class="source-picker">
+                    <div class="source-picker__header"><h3>External subscriptions</h3><strong>{{ externalSelectedCount }} selected</strong></div>
+                    <div class="source-toolbar source-toolbar--single"><AppInput v-model="subscriptionSearch" placeholder="Search subscriptions..." /></div>
+                    <div class="source-actions"><label class="field-row"><input type="checkbox" :checked="visibleSubscriptions.length > 0 && visibleSubscriptions.every((subscription) => visibleConfigs(subscription).length > 0 && visibleConfigs(subscription).every((config) => checked('external_subscription_config_ids', config.id)))" @change="selectVisibleConfigs($event.target.checked)"> Select all visible</label><button type="button" class="picker-text-button" @click="selectVisibleConfigs(false)">Clear selection</button></div>
+                    <div class="source-list">
+                        <div v-for="subscription in visibleSubscriptions" :key="subscription.id" class="source-group">
+                            <div class="source-parent-row">
+                                <input type="checkbox" :checked="subscriptionState(subscription).checked" :indeterminate="subscriptionState(subscription).indeterminate" @change="toggleSubscription(subscription, $event.target.checked)">
+                                <button type="button" class="source-expand" :aria-expanded="isSubscriptionExpanded(subscription.id)" @click="toggleSubscriptionExpanded(subscription.id)"><span>{{ subscription.name }}</span><span class="source-count">{{ subscriptionState(subscription).selected }} / {{ subscriptionState(subscription).total }} configs selected</span><span class="source-chevron">{{ isSubscriptionExpanded(subscription.id) ? '⌄' : '›' }}</span></button>
+                            </div>
+                            <div v-if="isSubscriptionExpanded(subscription.id)" class="source-children"><label v-for="config in visibleConfigs(subscription)" :key="config.id" class="source-child-row"><input type="checkbox" :checked="checked('external_subscription_config_ids', config.id)" @change="toggle('external_subscription_config_ids', config.id, $event.target.checked)"><span>{{ config.name }}</span></label></div>
+                        </div>
+                        <p v-if="visibleSubscriptions.length === 0" class="source-empty">No matching subscriptions.</p>
+                    </div>
+                </div>
+                <div class="source-picker">
+                    <div class="source-picker__header"><h3>Proxy nodes</h3><strong>{{ proxySelectedCount }} selected</strong></div>
+                    <div class="source-toolbar source-toolbar--triple"><AppInput v-model="proxySearch" placeholder="Search proxy nodes..." /><AppSelect v-model="proxyCountry" :options="proxyCountries.map((country) => ({ value: country, label: country }))" placeholder="Country" /><AppSelect v-model="proxyStatus" :options="[{ value: 'available', label: 'Available' }, { value: 'unavailable', label: 'Unavailable' }]" placeholder="Status" /></div>
+                    <div class="source-actions"><label class="field-row"><input type="checkbox" :checked="visibleProxies.length > 0 && visibleProxies.every((proxy) => checked('proxy_ids', proxy.id))" @change="selectVisibleProxies($event.target.checked)"> Select all visible</label><button type="button" class="picker-text-button" @click="selectVisibleProxies(false)">Clear selection</button></div>
+                    <div class="source-list source-list--flat"><label v-for="proxy in visibleProxies" :key="proxy.id" class="source-child-row"><input type="checkbox" :checked="checked('proxy_ids', proxy.id)" @change="toggle('proxy_ids', proxy.id, $event.target.checked)"><span>{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}<small>{{ proxy.is_ready ? 'Available' : 'Unavailable' }}</small></span></label><p v-if="visibleProxies.length === 0" class="source-empty">No matching proxy nodes.</p></div>
+                </div>
+            </div>
+            <div class="source-section routing-templates">
+                <div class="source-section__header"><div><h2>Routing rule templates</h2><p>Optional reusable rules that will be included in this configuration.</p></div></div>
+                <div class="routing-list"><label v-for="routing in props.targets.routings || []" :key="routing.id" class="routing-row"><input type="checkbox" :checked="checked('xray_routing_ids', routing.id)" @change="toggle('xray_routing_ids', routing.id, $event.target.checked)"><span><strong>{{ routing.name }}</strong><small>{{ routing.description || 'Reusable routing rule template.' }}{{ routing.is_active ? '' : ' · Inactive' }}</small></span></label><p v-if="!(props.targets.routings || []).length" class="source-empty">No routing rule templates available.</p></div>
+            </div>
+            <div class="groups-section">
+                <div class="groups-section__header"><div><h2>Outbound groups</h2><p>Combine servers, subscription configs, and proxy nodes into reusable outbound groups. Groups can use balancing and fallback.</p></div><AppButton variant="secondary" type="button" @click="addGroup">+ Add group</AppButton></div>
+                <div v-if="groups.length === 0" class="groups-empty">No outbound groups yet. Add a group to create reusable balancing and fallback pools.</div>
+                <article v-for="(group, index) in groups" :key="index" class="group-card" :class="{ 'group-card--collapsed': !isGroupExpanded(index) }">
+                    <div class="group-card__header"><button type="button" class="group-card__toggle" :aria-expanded="isGroupExpanded(index)" @click="toggleGroupExpanded(index)"><span><strong>{{ group.name || 'New outbound group' }}</strong><small>{{ group.tag }}</small></span><span class="group-card__summary"><b>{{ groupMemberCount(group) }} members</b><span>{{ strategyLabel(group.strategy) }}</span><span>{{ group.fallback_group_tag ? `Fallback → ${groups.find((item) => item.tag === group.fallback_group_tag)?.name || group.fallback_group_tag}` : 'No fallback' }}</span></span><span class="source-chevron">{{ isGroupExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Group actions" @click.stop="group._menuOpen = !group._menuOpen">⋯</button><div v-if="group._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateGroup(group, index)">Duplicate group</button><button type="button" class="is-danger" @click="removeGroup(group, index)">Delete group</button></div></div></div>
+                    <div v-if="isGroupExpanded(index)" class="group-card__body">
+                        <div class="grid grid--two"><label class="field"><span>Group name</span><AppInput v-model="group.name" @input="onGroupNameInput(group)" /></label><label class="field"><span>Group tag</span><AppInput v-model="group.tag" @input="group._tagManuallyEdited = true" /><small>Generated automatically from the group name.</small></label><label class="field"><span>Balancing strategy</span><AppSelect v-model="group.strategy" :options="strategyOptions" /></label><label class="field"><span>Fallback group</span><AppSelect v-model="group.fallback_group_tag" :options="fallbackOptions(group)" /></label></div>
+                        <p v-if="groupInvalidMemberCount(group)" class="group-warning">{{ groupInvalidMemberCount(group) }} member(s) are no longer enabled in Sources and will be removed when saved.</p>
+                        <div class="group-members"><h3>Members</h3><div class="group-member-type"><div class="group-member-type__header"><strong>Local servers &amp; inbounds</strong><span>{{ availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length }} selected</span></div><div v-if="availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length" class="group-member-list"><span v-for="inbound in availableServers.flatMap((server) => groupSelectedInbounds(group, server))" :key="`gm-i-${inbound.id}`">{{ countryFlag(availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name) }} {{ availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name }} · Inbound #{{ inbound.external_id }}</span></div><small v-else class="group-member-empty">No local servers or inbounds added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>External subscriptions</strong><span>{{ group.external_subscription_config_ids.filter((id) => availableSubscriptions.some((subscription) => subscription.configs.some((config) => config.id === id))).length }} selected</span></div><div v-if="availableSubscriptions.flatMap((subscription) => groupSelectedConfigs(group, subscription)).length" class="group-member-list"><span v-for="config in availableSubscriptions.flatMap((subscription) => groupSelectedConfigs(group, subscription))" :key="`gm-c-${config.id}`">{{ availableSubscriptions.find((subscription) => subscription.configs.some((item) => item.id === config.id))?.name }} · {{ config.name }}</span></div><small v-else class="group-member-empty">No subscription configs added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>Proxy nodes</strong><span>{{ groupSelectedProxies(group).length }} selected</span></div><div v-if="groupSelectedProxies(group).length" class="group-member-list"><span v-for="proxy in groupSelectedProxies(group)" :key="`gm-p-${proxy.id}`">{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}</span></div><small v-else class="group-member-empty">No proxy nodes added.</small></div></div>
+                        <div class="group-card__actions"><AppButton variant="secondary" type="button" @click="openGroupMemberPicker(index)">+ Add members</AppButton><button type="button" class="picker-text-button" @click="openGroupMemberPicker(index)">Manage members</button></div><div v-if="group.fallback_group_tag" class="fallback-chain"><strong>Fallback chain</strong><span>{{ fallbackChain(group).join(' → ') }}</span></div>
+                    </div>
+                </article>
+            </div>
             <div class="field" style="grid-column: 1 / -1;"><div class="page-header"><span>Маршруты сайтов</span><AppButton variant="secondary" type="button" @click="addRoute">Добавить маршрут</AppButton></div><div v-for="(route, index) in routes" :key="index" class="page-card"><div class="grid grid--two"><label class="field"><span>Название</span><AppInput v-model="route.name" /></label><label class="field"><span>Тип совпадения</span><AppSelect v-model="route.match_type" :options="matchTypeOptions" /></label><label class="field"><span>Значения через запятую</span><AppInput v-model="route.match_values" placeholder="youtube.com, chatgpt.com" /></label><label class="field"><span>Назначение</span><AppSelect v-model="route.target_type" :options="targetTypeOptions" /></label><label v-if="route.target_type === 'balancer'" class="field"><span>Группа</span><AppSelect v-model="route.target_tag" :options="groupOptions" /></label></div><AppButton variant="secondary" type="button" @click="removeRoute(index)">Удалить маршрут</AppButton></div></div>
             <label class="field" style="grid-column: 1 / -1;"><span>Описание</span><AppTextarea v-model="form.description" rows="3" /></label><label class="field" style="grid-column: 1 / -1;"><span>Активна</span><AppCheckbox v-model="form.is_active" /></label><div class="actions" style="grid-column: 1 / -1;"><AppButton type="submit" :disabled="form.processing">Сохранить</AppButton><AppButton variant="secondary" href="/xray-custom-configs">Назад</AppButton></div>
         </form>
+        <div v-if="activeGroup" class="group-member-modal" @click.self="closeGroupMemberPicker">
+            <section class="group-member-modal__card page-card stack">
+                <div class="group-member-modal__header"><div><h2>Add members to “{{ activeGroup.name || activeGroup.tag }}”</h2><p>Only sources enabled in this configuration can be added to a group.</p></div><button type="button" class="group-member-modal__close" aria-label="Close" @click="closeGroupMemberPicker">×</button></div>
+                <div class="source-toolbar source-toolbar--triple"><AppInput v-model="groupMemberSearch" placeholder="Search sources..." /><AppSelect v-model="groupMemberType" :options="[{ value: 'local', label: 'Local servers & inbounds' }, { value: 'subscription', label: 'External subscriptions' }, { value: 'proxy', label: 'Proxy nodes' }]" placeholder="Type" /><AppSelect v-model="groupMemberCountry" :options="memberCountries.map((country) => ({ value: country, label: country }))" placeholder="Country" /></div>
+                <div class="source-actions"><span>{{ activeGroup ? groupMemberCount(activeGroup) : 0 }} members selected</span><button type="button" class="picker-text-button" @click="toggleAllGroupMembers('xray_inbound_ids', memberVisibleServers.flatMap((server) => memberVisibleInbounds(server)), true); toggleAllGroupMembers('external_subscription_config_ids', memberVisibleSubscriptions.flatMap((subscription) => memberVisibleConfigs(subscription)), true); toggleAllGroupMembers('proxy_ids', memberVisibleProxies, true)">Select all visible</button><button type="button" class="picker-text-button" @click="toggleAllGroupMembers('xray_inbound_ids', memberVisibleServers.flatMap((server) => memberVisibleInbounds(server)), false); toggleAllGroupMembers('external_subscription_config_ids', memberVisibleSubscriptions.flatMap((subscription) => memberVisibleConfigs(subscription)), false); toggleAllGroupMembers('proxy_ids', memberVisibleProxies, false)">Clear selection</button></div>
+                <div class="group-member-modal__list">
+                    <div v-if="memberVisibleServers.length" class="member-picker-section"><div class="member-picker-section__header"><strong>Local servers &amp; inbounds</strong><span>{{ memberVisibleServers.flatMap((server) => server.xray_inbounds).filter((inbound) => groupChecked(activeGroup, 'xray_inbound_ids', inbound.id)).length }} selected</span></div><div v-for="server in memberVisibleServers" :key="`mp-s-${server.id}`" class="source-group"><div class="source-parent-row"><input type="checkbox" :checked="memberServerState(server).checked" :indeterminate="memberServerState(server).indeterminate" @change="toggleMemberServer(server, $event.target.checked)"><button type="button" class="source-expand" :aria-expanded="isMemberServerExpanded(server.id)" @click="toggleMemberServerExpanded(server.id)"><span>{{ countryFlag(server.name) }} {{ server.name }}</span><span class="source-count">{{ memberServerState(server).selected }} / {{ memberServerState(server).total }} selected</span><span class="source-chevron">{{ isMemberServerExpanded(server.id) ? '⌄' : '›' }}</span></button></div><div v-if="isMemberServerExpanded(server.id)" class="source-children"><label v-for="inbound in memberVisibleInbounds(server)" :key="`mp-i-${inbound.id}`" class="source-child-row"><input type="checkbox" :checked="groupChecked(activeGroup, 'xray_inbound_ids', inbound.id)" @change="toggleGroup(activeGroup, 'xray_inbound_ids', inbound.id, $event.target.checked)"><span>Inbound #{{ inbound.external_id }}</span></label></div></div></div>
+                    <div v-if="memberVisibleSubscriptions.length" class="member-picker-section"><div class="member-picker-section__header"><strong>External subscriptions</strong><span>{{ memberVisibleSubscriptions.flatMap((subscription) => subscription.configs).filter((config) => groupChecked(activeGroup, 'external_subscription_config_ids', config.id)).length }} selected</span></div><div v-for="subscription in memberVisibleSubscriptions" :key="`mp-e-${subscription.id}`" class="source-group"><div class="source-parent-row"><input type="checkbox" :checked="memberSubscriptionState(subscription).checked" :indeterminate="memberSubscriptionState(subscription).indeterminate" @change="toggleMemberSubscription(subscription, $event.target.checked)"><button type="button" class="source-expand" :aria-expanded="isMemberSubscriptionExpanded(subscription.id)" @click="toggleMemberSubscriptionExpanded(subscription.id)"><span>{{ subscription.name }}</span><span class="source-count">{{ memberSubscriptionState(subscription).selected }} / {{ memberSubscriptionState(subscription).total }} selected</span><span class="source-chevron">{{ isMemberSubscriptionExpanded(subscription.id) ? '⌄' : '›' }}</span></button></div><div v-if="isMemberSubscriptionExpanded(subscription.id)" class="source-children"><label v-for="config in memberVisibleConfigs(subscription)" :key="`mp-c-${config.id}`" class="source-child-row"><input type="checkbox" :checked="groupChecked(activeGroup, 'external_subscription_config_ids', config.id)" @change="toggleGroup(activeGroup, 'external_subscription_config_ids', config.id, $event.target.checked)"><span>{{ config.name }}</span></label></div></div></div>
+                    <div v-if="memberVisibleProxies.length" class="member-picker-section"><div class="member-picker-section__header"><strong>Proxy nodes</strong><span>{{ memberVisibleProxies.filter((proxy) => groupChecked(activeGroup, 'proxy_ids', proxy.id)).length }} selected</span></div><label v-for="proxy in memberVisibleProxies" :key="`mp-p-${proxy.id}`" class="source-child-row"><input type="checkbox" :checked="groupChecked(activeGroup, 'proxy_ids', proxy.id)" @change="toggleGroup(activeGroup, 'proxy_ids', proxy.id, $event.target.checked)"><span>{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}<small>{{ proxy.is_ready ? 'Available' : 'Unavailable' }}</small></span></label></div>
+                    <p v-if="!memberVisibleServers.length && !memberVisibleSubscriptions.length && !memberVisibleProxies.length" class="source-empty">No enabled sources match your filters.</p>
+                </div>
+                <div class="actions"><AppButton variant="secondary" type="button" @click="closeGroupMemberPicker">Cancel</AppButton><AppButton type="button" @click="closeGroupMemberPicker(true)">Add {{ activeGroup ? groupMemberCount(activeGroup) : 0 }} members</AppButton></div>
+            </section>
+        </div>
     </section>
     <section class="page-card stack"><h2>Предпросмотр</h2><label class="field-row"><input v-model="previewMode" type="radio" value="admin"> От имени администратора</label><label class="field-row"><input v-model="previewMode" type="radio" value="user"> От имени пользователя</label><AppSelect v-if="previewMode === 'user'" v-model="previewUserId" :options="props.users.map((user) => ({ value: user.id, label: user.full_name || user.telegram_id }))" /><AppButton variant="secondary" type="button" :disabled="previewing" @click="preview">{{ previewing ? 'Загрузка…' : 'Предпросмотр JSON' }}</AppButton><pre v-if="previewContent">{{ JSON.stringify(previewContent, null, 2) }}</pre></section>
     <div v-if="modal" class="resource-modal" @click.self="closeResourceModal"><section class="page-card stack resource-modal__card"><h2>{{ modal === 'dns' ? 'Новые настройки DNS' : 'Новые геоданные' }}</h2><label class="field"><span>Название</span><AppInput v-model="modalForm.name" /></label><label class="field"><span>Описание</span><AppTextarea v-model="modalForm.description" rows="2" /></label><template v-if="modal === 'dns'"><label class="field"><span>DNS-серверы через запятую</span><AppInput v-model="modalForm.servers" placeholder="8.8.8.8, 1.1.1.1" /></label><label class="field"><span>Стратегия запросов</span><AppSelect v-model="modalForm.query_strategy" :options="[{ value: 'UseIPv4', label: 'Только IPv4' }, { value: 'UseIPv6', label: 'Только IPv6' }, { value: 'UseIP', label: 'IPv4 и IPv6' }, { value: 'AsIs', label: 'Без изменения' }]" /></label><label class="field-row"><input v-model="modalForm.enable_parallel_query" type="checkbox"> Параллельные DNS-запросы</label></template><template v-else><label class="field"><span>URL geoip.dat</span><AppInput v-model="modalForm.geoip_url" /></label><label class="field"><span>URL geosite.dat</span><AppInput v-model="modalForm.geosite_url" /></label></template><p v-if="modalError" class="form-error">{{ modalError }}</p><div class="actions"><AppButton type="button" @click="saveResource">Сохранить</AppButton><AppButton variant="secondary" type="button" @click="closeResourceModal">Отмена</AppButton></div></section></div>
 </template>
 
 <style scoped>
+.xray-config-form > form {
+    gap: 0;
+}
+
+.form-section {
+    grid-column: 1 / -1;
+    padding: 1.25rem 0 1.5rem;
+    border-bottom: 1px solid var(--border, rgba(184, 199, 219, 0.55));
+}
+
+.form-section:first-child {
+    padding-top: 0;
+}
+
+.form-section h2 {
+    margin: 0 0 1rem;
+    font-size: 1.05rem;
+}
+
+.form-section .grid {
+    gap: 1rem;
+}
+
+.xray-config-form :deep(.p-inputtext),
+.xray-config-form :deep(.p-select) {
+    min-height: 42px;
+}
+
+.resource-field {
+    align-content: start;
+}
+
+.resource-action {
+    justify-self: start;
+    margin-top: 0.1rem;
+}
+
+.field small {
+    margin-top: -0.25rem;
+}
+
+@media (max-width: 700px) {
+    .form-section .grid--two {
+        grid-template-columns: 1fr;
+    }
+}
+
+.source-section {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 1rem;
+    padding-top: 1.5rem;
+}
+
+.source-section__header,
+.source-picker__header,
+.source-actions,
+.source-parent-row,
+.routing-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.source-section__header {
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.source-section__header h2,
+.source-picker__header h3 {
+    margin: 0;
+}
+
+.source-section__header p {
+    margin: 0.3rem 0 0;
+    color: var(--muted);
+}
+
+.source-section__header > strong,
+.source-picker__header > strong {
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.source-picker {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--border, rgba(184, 199, 219, 0.72));
+    border-radius: 14px;
+    background: rgba(248, 250, 252, 0.56);
+}
+
+.source-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.35fr);
+    gap: 0.65rem;
+}
+
+.source-toolbar--triple {
+    grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.35fr) minmax(10rem, 0.35fr);
+}
+
+.source-toolbar--single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.source-actions {
+    justify-content: space-between;
+    min-height: 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.source-actions .field-row {
+    gap: 0.5rem;
+}
+
+.picker-text-button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--primary);
+    font: inherit;
+    cursor: pointer;
+}
+
+.source-list {
+    max-height: 24rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.source-group + .source-group {
+    border-top: 1px solid rgba(184, 199, 219, 0.45);
+}
+
+.source-parent-row {
+    min-height: 2.75rem;
+}
+
+.source-parent-row > input,
+.source-child-row > input,
+.routing-row > input {
+    flex: 0 0 auto;
+}
+
+.source-expand {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    padding: 0.55rem 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.source-expand > span:first-child {
+    overflow-wrap: anywhere;
+    font-weight: 650;
+}
+
+.source-count,
+.source-chevron {
+    color: var(--muted);
+    font-size: 0.86rem;
+    white-space: nowrap;
+}
+
+.source-chevron {
+    width: 1rem;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.source-children {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0 0 0.5rem 2rem;
+}
+
+.source-child-row,
+.routing-row {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+    color: var(--text);
+}
+
+.source-child-row:hover,
+.routing-row:hover {
+    background: rgba(226, 232, 240, 0.55);
+}
+
+.source-child-row > span,
+.routing-row > span {
+    min-width: 0;
+}
+
+.source-child-row small,
+.routing-row small {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.source-empty {
+    margin: 0;
+    padding: 0.75rem 0.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.routing-templates {
+    padding-bottom: 0;
+}
+
+.routing-list {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border, rgba(184, 199, 219, 0.72));
+    border-radius: 14px;
+}
+
+@media (max-width: 700px) {
+    .source-section__header,
+    .source-picker__header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .source-toolbar {
+        grid-template-columns: 1fr;
+    }
+}
+
+.groups-section {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 1rem;
+    padding-top: 1.5rem;
+}
+
+.groups-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.groups-section__header h2,
+.group-members h3 {
+    margin: 0;
+}
+
+.groups-section__header p,
+.group-member-modal__header p {
+    max-width: 48rem;
+    margin: 0.3rem 0 0;
+    color: var(--muted);
+}
+
+.groups-empty,
+.group-member-empty {
+    color: var(--muted);
+}
+
+.group-card {
+    position: relative;
+    display: grid;
+    overflow: visible;
+    border: 1px solid var(--border, rgba(184, 199, 219, 0.72));
+    border-radius: 14px;
+    background: #fff;
+}
+
+.group-card__header {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+}
+
+.group-card__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    padding: 1rem 0 1rem 1rem;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.group-card__toggle > span:first-child {
+    display: grid;
+    min-width: 0;
+}
+
+.group-card__toggle strong {
+    overflow-wrap: anywhere;
+    font-size: 1.05rem;
+}
+
+.group-card__toggle small {
+    margin-top: 0.2rem;
+    color: var(--muted);
+}
+
+.group-card__summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.group-card__summary b {
+    color: var(--text);
+}
+
+.group-card__menu {
+    position: relative;
+    padding: 0.75rem 0.75rem 0 0;
+}
+
+.group-card__menu > button,
+.group-member-modal__close {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+}
+
+.group-card__menu > button {
+    padding: 0.25rem 0.5rem;
+    font-size: 1.25rem;
+}
+
+.group-card__menu-popover {
+    position: absolute;
+    top: 2.5rem;
+    right: 0.5rem;
+    z-index: 5;
+    display: grid;
+    min-width: 10rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border, rgba(184, 199, 219, 0.72));
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+}
+
+.group-card__menu-popover button {
+    border: 0;
+    padding: 0.55rem 0.65rem;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.group-card__menu-popover button:hover {
+    background: #f1f5f9;
+}
+
+.group-card__menu-popover .is-danger {
+    color: var(--danger);
+}
+
+.group-card__body {
+    display: grid;
+    gap: 1rem;
+    padding: 0 1rem 1rem;
+}
+
+.group-members {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.group-member-type {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.group-member-type__header,
+.member-picker-section__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.group-member-type__header strong,
+.member-picker-section__header strong {
+    color: var(--text);
+}
+
+.group-member-list {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid rgba(184, 199, 219, 0.55);
+    border-radius: 9px;
+    background: #f8fafc;
+}
+
+.group-member-list span {
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
+}
+
+.group-card__actions,
+.fallback-chain {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.fallback-chain {
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(184, 199, 219, 0.45);
+    color: var(--muted);
+}
+
+.fallback-chain span {
+    color: var(--text);
+}
+
+.group-warning {
+    margin: 0;
+    color: var(--danger);
+    font-size: 0.88rem;
+}
+
+.group-member-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgb(15 23 42 / 45%);
+}
+
+.group-member-modal__card {
+    width: min(52rem, 100%);
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.group-member-modal__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.group-member-modal__header h2 {
+    margin: 0;
+}
+
+.group-member-modal__close {
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.group-member-modal__list {
+    max-height: 28rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.member-picker-section {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.75rem 0;
+}
+
+.member-picker-section + .member-picker-section {
+    border-top: 1px solid rgba(184, 199, 219, 0.55);
+}
+
+@media (max-width: 700px) {
+    .groups-section__header,
+    .group-card__toggle,
+    .group-card__summary,
+    .fallback-chain {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .group-card__toggle {
+        gap: 0.5rem;
+    }
+}
+
 .resource-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 45%); }
 .resource-modal__card { width: min(36rem, 100%); max-height: 90vh; overflow: auto; }
 </style>

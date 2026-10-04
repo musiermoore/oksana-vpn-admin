@@ -12,7 +12,7 @@ class XrayJsonProfileNormalizer
      */
     public function normalizeProfile(array $profile): array
     {
-        return $this->normalizeOutbounds($this->normalizeInbounds($profile));
+        return $this->normalizeRouting($this->normalizeOutbounds($this->normalizeInbounds($profile)));
     }
 
     /**
@@ -30,9 +30,7 @@ class XrayJsonProfileNormalizer
                 return $inbound;
             }
 
-            if (mb_strtolower((string) ($inbound['protocol'] ?? '')) === 'http'
-                && ($inbound['settings'] ?? null) === []
-            ) {
+            if (($inbound['settings'] ?? null) === []) {
                 $inbound['settings'] = (object) [];
             }
 
@@ -65,6 +63,36 @@ class XrayJsonProfileNormalizer
 
             return $outbound;
         }, $profile['outbounds']);
+
+        return $profile;
+    }
+
+    /**
+     * Xray expects balancer strategy settings to be an object, even when the
+     * strategy has no options. Database JSON casts and imported profiles may
+     * represent an empty object as an empty PHP array, which would otherwise
+     * be encoded as `[]` and rejected by Xray.
+     *
+     * @param  array<string, mixed>  $profile
+     * @return array<string, mixed>
+     */
+    private function normalizeRouting(array $profile): array
+    {
+        if (! is_array($profile['routing']['balancers'] ?? null)) {
+            return $profile;
+        }
+
+        $profile['routing']['balancers'] = array_map(function (mixed $balancer): mixed {
+            if (! is_array($balancer) || ! is_array($balancer['strategy'] ?? null)) {
+                return $balancer;
+            }
+
+            if (($balancer['strategy']['settings'] ?? null) === []) {
+                $balancer['strategy']['settings'] = (object) [];
+            }
+
+            return $balancer;
+        }, $profile['routing']['balancers']);
 
         return $profile;
     }

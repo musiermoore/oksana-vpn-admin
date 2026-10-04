@@ -126,14 +126,14 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             // Xray expects balancer strategy settings to be a JSON object,
             // including when the strategy has no options.
             $strategySettings = (object) (is_array($group->strategy_settings)
-                ? $group->strategy_settings
+                ? $group->strategy_settings ?: []
                 : []);
             $balancer = [
                 'tag' => (string) $group->tag,
                 'selector' => [(string) $group->tag.'-'],
                 'strategy' => [
                     'type' => $group->strategy?->value ?? (string) $group->strategy,
-                    'settings' => $strategySettings,
+                    'settings' => $strategySettings ?: (object) [],
                 ],
             ];
 
@@ -205,6 +205,8 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             $profile['geodata'] = $geodata;
         }
 
+dd(json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT))
+        
         return new SubscriptionBuildResult(
             content: json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
             contentType: 'application/json; charset=UTF-8',

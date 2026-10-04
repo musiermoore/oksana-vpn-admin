@@ -43,10 +43,12 @@ const groupMemberCountry = ref('');
 const groupMemberExpandedServers = ref(new Set());
 const groupMemberExpandedSubscriptions = ref(new Set());
 const groupMemberSnapshot = ref(null);
+const splitRouteValues = (value) => String(value || '').split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
 const routes = ref((initial.routes || []).map((route) => {
     const rules = route.rules || {};
-    const matchType = Object.keys(rules).find((key) => ['domain', 'ip', 'port', 'network'].includes(key)) || 'domain';
-    return { ...route, match_type: matchType, match_values: Array.isArray(rules[matchType]) ? rules[matchType].join(', ').replaceAll('domain:', '') : String(rules[matchType] || ''), target_type: route.target_type || 'balancer', target_tag: route.target_tag || '' };
+    const matchType = Object.keys(rules).find((key) => ['domain', 'ip', 'port', 'network', 'protocol'].includes(key)) || 'domain';
+    const values = Array.isArray(rules[matchType]) ? rules[matchType].map((value) => String(value).replace(/^domain:/, '')) : splitRouteValues(rules[matchType]);
+    return { ...route, match_type: matchType, match_values: values.join(', '), match_values_list: values, value_input: '', target_type: route.target_type || 'balancer', target_tag: route.target_tag || '', _menuOpen: false };
 }));
 const dnsOptions = ref([...props.dns_settings]);
 const geodataOptions = ref([...props.geodata]);
@@ -57,6 +59,9 @@ const previewing = ref(false);
 const modal = ref(null);
 const modalForm = ref({});
 const modalError = ref('');
+const hasUnsavedChanges = ref(false);
+const expandedRoutes = ref(new Set(routes.value.length ? [0] : []));
+const draggedRouteIndex = ref(null);
 const localSearch = ref('');
 const localCountry = ref('');
 const proxySearch = ref('');
@@ -82,8 +87,9 @@ const logLevelOptions = [
     { value: 'error', label: 'Error' },
     { value: 'none', label: 'None' },
 ];
-const targetTypeOptions = [{ value: 'balancer', label: 'Балансировщик' }, { value: 'direct', label: 'Напрямую' }, { value: 'block', label: 'Заблокировать' }];
-const matchTypeOptions = [{ value: 'domain', label: 'Домены' }, { value: 'ip', label: 'IP-адреса' }, { value: 'port', label: 'Порты' }, { value: 'network', label: 'Сеть' }];
+const targetTypeOptions = [{ value: 'balancer', label: 'Outbound group / Balancer' }, { value: 'direct', label: 'Direct' }, { value: 'block', label: 'Block' }];
+const matchTypeOptions = [{ value: 'domain', label: 'Domains' }, { value: 'ip', label: 'IP addresses / CIDRs' }, { value: 'port', label: 'Ports' }, { value: 'network', label: 'Networks' }, { value: 'protocol', label: 'Protocols' }];
+const routeMatchLabels = { domain: 'Domains', ip: 'IP addresses / CIDRs', port: 'Ports', network: 'Networks', protocol: 'Protocols' };
 const groupOptions = computed(() => groups.value.map((group) => ({ value: group.tag, label: group.name || group.tag })));
 const strategyLabel = (value) => strategyOptions.find((option) => option.value === value)?.label || value;
 
@@ -240,12 +246,27 @@ const toggleAllGroupMembers = (field, members, value) => members.forEach((member
 const toggleMemberServer = (server, value) => server.xray_inbounds.forEach((inbound) => activeGroup.value && toggleGroup(activeGroup.value, 'xray_inbound_ids', inbound.id, value));
 const toggleMemberSubscription = (subscription, value) => subscription.configs.forEach((config) => activeGroup.value && toggleGroup(activeGroup.value, 'external_subscription_config_ids', config.id, value));
 const buildGroups = () => groups.value.map(({ _tagManuallyEdited, _menuOpen, ...group }, index) => ({ ...group, xray_inbound_ids: group.xray_inbound_ids.filter((id) => checked('xray_inbound_ids', id)), external_subscription_config_ids: group.external_subscription_config_ids.filter((id) => checked('external_subscription_config_ids', id)), proxy_ids: group.proxy_ids.filter((id) => checked('proxy_ids', id)), sort_order: index }));
-const addRoute = () => routes.value.push({ name: `Маршрут ${routes.value.length + 1}`, match_type: 'domain', match_values: '', target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true });
-const removeRoute = (index) => routes.value.splice(index, 1);
+const routePlaceholder = (route) => ({ domain: 'Add domain...', ip: 'Add IP or CIDR...', port: 'Add port or range...', network: 'Add network...', protocol: 'Add protocol...' }[route.match_type] || 'Add value...');
+const routeValues = (route) => route.match_values_list || splitRouteValues(route.match_values);
+const syncRouteValues = (route) => { route.match_values_list = [...new Set(routeValues(route).map((value) => value.trim()).filter(Boolean))]; route.match_values = route.match_values_list.join(', '); };
+const commitRouteInput = (route) => { const values = splitRouteValues(route.value_input); route.match_values_list = [...new Set([...routeValues(route), ...values])]; route.value_input = ''; syncRouteValues(route); };
+const pasteRouteValues = (route, event) => { const values = splitRouteValues(event.clipboardData?.getData('text') || ''); if (values.length > 1) { event.preventDefault(); route.match_values_list = [...new Set([...routeValues(route), ...values])]; syncRouteValues(route); } };
+const removeRouteValue = (route, index) => { route.match_values_list = routeValues(route).filter((_, valueIndex) => valueIndex !== index); syncRouteValues(route); };
+const routeDestinationLabel = (route) => route.target_type === 'balancer' ? (groups.value.find((group) => group.tag === route.target_tag)?.name || 'Outbound group') : targetTypeOptions.find((option) => option.value === route.target_type)?.label || route.target_type;
+const routeSummary = (route) => `${routeValues(route).length || 0} ${routeMatchLabels[route.match_type] || 'values'} → ${routeDestinationLabel(route)}`;
+const isRouteExpanded = (index) => expandedRoutes.value.has(index);
+const toggleRouteExpanded = (index) => { const next = new Set(expandedRoutes.value); next.has(index) ? next.delete(index) : next.add(index); expandedRoutes.value = next; };
+const dragStartRoute = (index) => { draggedRouteIndex.value = index; };
+const dropRoute = (index) => { if (draggedRouteIndex.value === null || draggedRouteIndex.value === index) return; const [route] = routes.value.splice(draggedRouteIndex.value, 1); routes.value.splice(index, 0, route); draggedRouteIndex.value = null; expandedRoutes.value = new Set(routes.value.map((_, routeIndex) => routeIndex).filter((routeIndex) => routeIndex === index)); };
+const addRoute = () => { routes.value.push({ name: `Route ${routes.value.length + 1}`, match_type: 'domain', match_values: '', match_values_list: [], value_input: '', target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true, _menuOpen: false }); expandedRoutes.value = new Set([...expandedRoutes.value, routes.value.length - 1]); };
+const duplicateRoute = (route, index) => { const copy = JSON.parse(JSON.stringify(route)); copy.name = `${route.name || 'Route'} copy`; copy.value_input = ''; copy._menuOpen = false; routes.value.splice(index + 1, 0, copy); expandedRoutes.value = new Set([...expandedRoutes.value, index + 1]); };
+const removeRoute = (route, index) => { if (!window.confirm(`Delete route “${route.name || `Route ${index + 1}`}”?`)) return; routes.value.splice(index, 1); };
+watch([form, settings, groups, routes], () => { hasUnsavedChanges.value = true; }, { deep: true });
+const cancelEditing = () => { if (!hasUnsavedChanges.value || window.confirm('Discard unsaved changes?')) window.location.href = '/xray-custom-configs'; };
 
 const buildBaseSettings = () => ({ ...settings.value.extra, log: { ...(settings.value.extra.log || {}), loglevel: settings.value.loglevel }, routing: { ...(settings.value.extra.routing || {}), domainStrategy: settings.value.domainStrategy } });
-const buildRoutes = () => routes.value.map((route, index) => {
-    const values = String(route.match_values || '').split(',').map((value) => value.trim()).filter(Boolean);
+const buildRoutes = () => routes.value.map(({ match_values_list, value_input, _menuOpen, ...route }, index) => {
+    const values = routeValues({ ...route, match_values_list });
     const rules = route.match_type === 'domain' ? { domain: values.map((value) => value.includes(':') ? value : `domain:${value}`) } : { [route.match_type]: values };
     return { ...route, rules, sort_order: index };
 });
@@ -279,6 +300,8 @@ const saveResource = async () => {
                 <div class="grid grid--two">
                     <label class="field"><span>Configuration Name</span><AppInput v-model="form.name" required /></label>
                     <label class="field"><span>Slug</span><AppInput v-model="form.slug" required @input="slugManuallyEdited = true" /><small>Generated automatically from the configuration name.</small></label>
+                    <label class="field basic-description"><span>Description</span><AppTextarea v-model="form.description" rows="3" /></label>
+                    <label class="field basic-status"><span>Status</span><AppCheckbox v-model="form.is_active" /> <small>{{ form.is_active ? 'Enabled' : 'Disabled' }}</small></label>
                 </div>
             </div>
             <div class="form-section">
@@ -351,8 +374,20 @@ const saveResource = async () => {
                     </div>
                 </article>
             </div>
-            <div class="field" style="grid-column: 1 / -1;"><div class="page-header"><span>Маршруты сайтов</span><AppButton variant="secondary" type="button" @click="addRoute">Добавить маршрут</AppButton></div><div v-for="(route, index) in routes" :key="index" class="page-card"><div class="grid grid--two"><label class="field"><span>Название</span><AppInput v-model="route.name" /></label><label class="field"><span>Тип совпадения</span><AppSelect v-model="route.match_type" :options="matchTypeOptions" /></label><label class="field"><span>Значения через запятую</span><AppInput v-model="route.match_values" placeholder="youtube.com, chatgpt.com" /></label><label class="field"><span>Назначение</span><AppSelect v-model="route.target_type" :options="targetTypeOptions" /></label><label v-if="route.target_type === 'balancer'" class="field"><span>Группа</span><AppSelect v-model="route.target_tag" :options="groupOptions" /></label></div><AppButton variant="secondary" type="button" @click="removeRoute(index)">Удалить маршрут</AppButton></div></div>
-            <label class="field" style="grid-column: 1 / -1;"><span>Описание</span><AppTextarea v-model="form.description" rows="3" /></label><label class="field" style="grid-column: 1 / -1;"><span>Активна</span><AppCheckbox v-model="form.is_active" /></label><div class="actions" style="grid-column: 1 / -1;"><AppButton type="submit" :disabled="form.processing">Сохранить</AppButton><AppButton variant="secondary" href="/xray-custom-configs">Назад</AppButton></div>
+            <div class="routes-section">
+                <div class="routes-section__header"><div><h2>Site routes</h2><p>Route traffic for specific domains, IPs, ports, or networks.<br>Rules are evaluated from top to bottom.</p></div><AppButton variant="secondary" type="button" @click="addRoute">+ Add route</AppButton></div>
+                <div v-if="routes.length === 0" class="routes-empty">No site routes yet. Add a route to define traffic behavior.</div>
+                <article v-for="(route, index) in routes" :key="route" class="route-card" :class="{ 'route-card--collapsed': !isRouteExpanded(index) }" draggable="true" @dragstart="dragStartRoute(index)" @dragover.prevent @drop="dropRoute(index)">
+                    <div class="route-card__header"><span class="route-drag-handle" title="Drag to reorder">⠿</span><button type="button" class="route-card__toggle" :aria-expanded="isRouteExpanded(index)" @click="toggleRouteExpanded(index)"><span class="route-card__title"><b>{{ index + 1 }}</b><strong>{{ route.name || `Route ${index + 1}` }}</strong><small>{{ routeSummary(route) }}</small></span><span class="route-card__status" :class="{ 'is-disabled': !route.is_active }">{{ route.is_active ? 'Enabled' : 'Disabled' }}</span><span class="source-chevron">{{ isRouteExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Route actions" @click.stop="route._menuOpen = !route._menuOpen">⋯</button><div v-if="route._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateRoute(route, index)">Duplicate route</button><button type="button" class="is-danger" @click="removeRoute(route, index)">Delete route</button></div></div></div>
+                    <div v-if="isRouteExpanded(index)" class="route-card__body">
+                        <div class="grid grid--two"><label class="field"><span>Route name</span><AppInput v-model="route.name" /></label><label class="field route-enabled"><span>Enabled</span><AppCheckbox v-model="route.is_active" /></label></div>
+                        <label class="field"><span>Match type</span><AppSelect v-model="route.match_type" :options="matchTypeOptions" /></label>
+                        <div class="field"><span>{{ routeMatchLabels[route.match_type] || 'Values' }}</span><div class="route-token-input"><span v-for="(value, valueIndex) in routeValues(route)" :key="`${value}-${valueIndex}`" class="route-token">{{ value }}<button type="button" aria-label="Remove value" @click="removeRouteValue(route, valueIndex)">×</button></span><input v-model="route.value_input" :placeholder="routePlaceholder(route)" @keydown.enter.prevent="commitRouteInput(route)" @keydown="$event.key === ',' ? ( $event.preventDefault(), commitRouteInput(route) ) : null" @paste="pasteRouteValues(route, $event)" @blur="commitRouteInput(route)"></div><small>Press Enter, type a comma, or paste multiple newline/comma-separated values.</small></div>
+                        <div class="grid grid--two"><label class="field"><span>Route via</span><AppSelect v-model="route.target_type" :options="targetTypeOptions" /></label><label v-if="route.target_type === 'balancer'" class="field"><span>Target group</span><AppSelect v-model="route.target_tag" :options="groupOptions" /><small>{{ groups.find((group) => group.tag === route.target_tag)?.tag || 'Select an outbound group.' }}</small></label></div>
+                    </div>
+                </article>
+            </div>
+            <div class="config-form-footer"><span :class="{ 'is-dirty': hasUnsavedChanges }">{{ hasUnsavedChanges ? 'Unsaved changes' : 'No unsaved changes' }}</span><div class="actions"><button type="button" class="footer-cancel" @click="cancelEditing">Cancel</button><AppButton type="submit" :disabled="form.processing">Save configuration</AppButton></div></div>
         </form>
         <div v-if="activeGroup" class="group-member-modal" @click.self="closeGroupMemberPicker">
             <section class="group-member-modal__card page-card stack">
@@ -893,4 +928,213 @@ const saveResource = async () => {
 
 .resource-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 45%); }
 .resource-modal__card { width: min(36rem, 100%); max-height: 90vh; overflow: auto; }
+
+.basic-description {
+    grid-column: 1 / -1;
+}
+
+.basic-status {
+    align-content: start;
+}
+
+.routes-section {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 1rem;
+    padding-top: 1.5rem;
+}
+
+.routes-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.routes-section__header h2 {
+    margin: 0;
+}
+
+.routes-section__header p {
+    margin: 0.3rem 0 0;
+    color: var(--muted);
+}
+
+.routes-empty {
+    color: var(--muted);
+}
+
+.route-card {
+    display: grid;
+    border: 1px solid var(--border, rgba(184, 199, 219, 0.72));
+    border-radius: 14px;
+    background: #fff;
+}
+
+.route-card__header {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.route-drag-handle {
+    padding: 0 0.4rem 0 1rem;
+    color: var(--muted);
+    cursor: grab;
+    user-select: none;
+}
+
+.route-card__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    padding: 0.9rem 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.route-card__title {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(8rem, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.route-card__title b {
+    color: var(--muted);
+}
+
+.route-card__title strong,
+.route-card__title small {
+    overflow-wrap: anywhere;
+}
+
+.route-card__title small {
+    color: var(--muted);
+}
+
+.route-card__status {
+    color: var(--success, #15803d);
+    font-size: 0.86rem;
+    white-space: nowrap;
+}
+
+.route-card__status.is-disabled {
+    color: var(--muted);
+}
+
+.route-card__body {
+    display: grid;
+    gap: 1rem;
+    padding: 0 1rem 1rem 3rem;
+}
+
+.route-enabled {
+    align-content: start;
+}
+
+.route-token-input {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 44px;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.route-token-input:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 65%, white);
+    box-shadow: 0 0 0 0.2rem rgba(31, 79, 209, 0.14);
+}
+
+.route-token {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 100%;
+    padding: 0.25rem 0.45rem;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: var(--text);
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+}
+
+.route-token button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.route-token-input input {
+    flex: 1 1 12rem;
+    min-width: 8rem;
+    min-height: 30px !important;
+    padding: 0.25rem !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.config-form-footer {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border, rgba(184, 199, 219, 0.72));
+}
+
+.config-form-footer > span {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.config-form-footer > span.is-dirty {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.footer-cancel {
+    border: 0;
+    padding: 0.65rem 0.8rem;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+}
+
+@media (max-width: 700px) {
+    .routes-section__header,
+    .config-form-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .route-card__title {
+        grid-template-columns: 1.5rem minmax(0, 1fr);
+    }
+
+    .route-card__title small {
+        grid-column: 2;
+    }
+
+    .route-card__body {
+        padding-left: 1rem;
+    }
+}
 </style>

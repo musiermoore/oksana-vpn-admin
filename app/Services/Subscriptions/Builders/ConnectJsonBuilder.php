@@ -243,8 +243,6 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             'vless' => $this->buildVlessOutbound($parsed),
             'trojan' => $this->buildTrojanOutbound($parsed),
             'shadowsocks' => $this->buildShadowsocksOutbound($parsed),
-            'hysteria2' => $this->buildHysteria2Outbound($parsed),
-            'hysteria' => $this->buildHysteriaOutbound($parsed),
             'wireguard', 'amneziawg' => $this->buildWireGuardOutbound($parsed),
             default => null,
         };
@@ -306,8 +304,6 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             'vless' => $this->buildVlessOutbound($parsed),
             'trojan' => $this->buildTrojanOutbound($parsed),
             'shadowsocks' => $this->buildShadowsocksOutbound($parsed),
-            'hysteria2' => $this->buildHysteria2Outbound($parsed),
-            'hysteria' => $this->buildHysteriaOutbound($parsed),
             'wireguard', 'amneziawg' => $this->buildWireGuardOutbound($parsed),
             default => null,
         };

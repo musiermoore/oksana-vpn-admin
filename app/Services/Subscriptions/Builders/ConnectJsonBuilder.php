@@ -244,6 +244,15 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         $geodata = $this->settingsProvider->geodataFromSettings($customConfig->geodata);
         if ($geodata !== null) {
+            $availableOutboundTags = collect($profile['outbounds'])
+                ->filter(fn (mixed $outbound): bool => is_array($outbound) && isset($outbound['tag']))
+                ->map(fn (array $outbound): string => (string) $outbound['tag'])
+                ->all();
+
+            if (! in_array((string) ($geodata['outbound'] ?? ''), $availableOutboundTags, true)) {
+                $geodata['outbound'] = $this->settingsProvider->directTag();
+            }
+
             $profile['geodata'] = $geodata;
         }
         

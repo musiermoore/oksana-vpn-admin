@@ -9,6 +9,7 @@ use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayCustomConfigRoute;
 use App\Models\XrayRoutingDnsSettings;
+use App\Models\XrayRoutingGeodata;
 use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
 use Illuminate\Support\Collection;
 use Tests\TestCase;
@@ -44,7 +45,11 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
             'query_strategy' => 'UseIPv4',
             'enable_parallel_query' => true,
         ]));
-        $config->setRelation('geodata', null);
+        $config->setRelation('geodata', new XrayRoutingGeodata([
+            'assets' => [
+                ['file' => 'geosite.dat', 'url' => 'https://example.test/geosite.dat'],
+            ],
+        ]));
         $config->setRelation('outboundGroups', new Collection([$primary, $fallback]));
         $config->setRelation('routes', new Collection([
             new XrayCustomConfigRoute([
@@ -80,6 +85,7 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
         $profile = $payload[0];
 
         $this->assertSame(['8.8.8.8', '1.1.1.1'], data_get($profile, 'dns.servers'));
+        $this->assertSame('direct', data_get($profile, 'geodata.outbound'));
         $this->assertSame(['germany-', 'finland-'], data_get($profile, 'observatory.subjectSelector'));
         $this->assertSame('roundRobin', data_get($profile, 'routing.balancers.0.strategy.type'));
         $this->assertStringContainsString('"settings": {}', (string) app(ConnectJsonBuilder::class)->buildForCustomConfig([$node], $config)->content);

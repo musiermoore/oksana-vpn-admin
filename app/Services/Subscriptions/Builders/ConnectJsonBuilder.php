@@ -8,6 +8,7 @@ use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Models\XrayRouting;
 use App\Models\XrayCustomConfig;
+use App\Models\XrayCustomConfigOutboundGroup;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use App\Services\Subscriptions\SubscriptionUriParser;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
@@ -98,6 +99,13 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     private function buildGroupedCustomConfig(array $nodes, XrayCustomConfig $customConfig): SubscriptionBuildResult
     {
         $groups = $customConfig->outboundGroups->where('is_active', true)->values();
+        $requiresObservatory = $groups->contains(
+            fn (XrayCustomConfigOutboundGroup $group): bool => in_array(
+                $group->strategy?->value ?? (string) $group->strategy,
+                ['leastPing', 'leastLoad'],
+                true,
+            )
+        );
         $outbounds = [];
         $groupTags = [];
 
@@ -185,6 +193,20 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         ];
 
         $base = $customConfig->base_settings ?? [];
+        $observatory = null;
+
+        if ($requiresObservatory) {
+            $observatory = [
+                'subjectSelector' => $groups
+                    ->map(fn (XrayCustomConfigOutboundGroup $group): string => (string) $group->tag.'-')
+                    ->all(),
+                'probeUrl' => 'https://www.google.com/generate_204',
+                'probeInterval' => '1m',
+                'enableConcurrency' => true,
+                ...(is_array($base['observatory'] ?? null) ? $base['observatory'] : []),
+            ];
+        }
+
         $profile = [
             ...$base,
             'remarks' => (string) $customConfig->name,
@@ -199,6 +221,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->settingsProvider->blockOutbound(),
             ],
         ];
+
+        if ($observatory !== null) {
+            $profile['observatory'] = $observatory;
+        }
 
         $geodata = $this->settingsProvider->geodataFromSettings($customConfig->geodata);
         if ($geodata !== null) {

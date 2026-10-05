@@ -165,9 +165,23 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         }
 
         $routingRules = $fallbackLoopRules;
+        $hasCatchAllNetworkRoute = false;
 
         foreach ($customConfig->routes->where('is_active', true) as $route) {
             $rule = is_array($route->rules) ? $route->rules : [];
+
+            if (is_array($rule['network'] ?? null)) {
+                $networks = array_values(array_unique(array_map('strval', $rule['network'])));
+                sort($networks);
+                $rule['network'] = implode(',', $networks);
+
+                if ($networks === ['tcp', 'udp']) {
+                    $hasCatchAllNetworkRoute = true;
+                }
+            } elseif (($rule['network'] ?? null) === 'tcp,udp') {
+                $hasCatchAllNetworkRoute = true;
+            }
+
             $target = match ((string) $route->target_type) {
                 'direct' => ['outboundTag' => $this->settingsProvider->directTag()],
                 'block', 'blocked' => ['outboundTag' => $this->settingsProvider->blockTag()],
@@ -179,11 +193,13 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         // A custom route table is intentionally open-ended, but traffic not
         // matched by one of its rules must remain usable without the VPN.
-        $routingRules[] = [
-            'type' => 'field',
-            'network' => 'tcp,udp',
-            'outboundTag' => $this->settingsProvider->directTag(),
-        ];
+        if (! $hasCatchAllNetworkRoute) {
+            $routingRules[] = [
+                'type' => 'field',
+                'network' => 'tcp,udp',
+                'outboundTag' => $this->settingsProvider->directTag(),
+            ];
+        }
 
         $routing = [
             ...(is_array($customConfig->base_settings['routing'] ?? null) ? $customConfig->base_settings['routing'] : []),

@@ -53,6 +53,12 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
                 'target_tag' => 'germany',
                 'is_active' => true,
             ]),
+            new XrayCustomConfigRoute([
+                'rules' => ['network' => ['tcp', 'udp']],
+                'target_type' => 'balancer',
+                'target_tag' => 'germany',
+                'is_active' => true,
+            ]),
         ]));
 
         $node = new NormalizedNode(
@@ -80,7 +86,9 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
         $this->assertSame('leastPing', data_get($profile, 'routing.balancers.1.strategy.type'));
         $this->assertSame('germany-fallback-loop', data_get($profile, 'routing.balancers.0.fallbackTag'));
         $this->assertSame('germany', data_get($profile, 'routing.rules.1.balancerTag'));
-        $this->assertSame('direct', data_get($profile, 'routing.rules.2.outboundTag'));
+        $this->assertSame('tcp,udp', data_get($profile, 'routing.rules.2.network'));
+        $this->assertSame('germany', data_get($profile, 'routing.rules.2.balancerTag'));
+        $this->assertCount(3, $profile['routing']['rules']);
         $this->assertSame('loopback', data_get($profile, 'outbounds.1.protocol'));
     }
 }

@@ -1,0 +1,465 @@
+{
+    "schema": 1,
+    "tool": "sloppy",
+    "generated_at": "2026-10-05T14:58:18+00:00",
+    "score": 84,
+    "total": 57,
+    "entries": [
+        {
+            "id": "9a517e969f2c0392",
+            "rule": "SL101",
+            "file": "app/Http/Controllers/ApiRequestLogController.php",
+            "fingerprint": "ApiRequestLogController::index",
+            "count": 1,
+            "message": "ApiRequestLogController::index() spans 119 lines with 12 statements, cyclomatic complexity 2, nesting depth 0 and 85 calls to 54 distinct collaborators."
+        },
+        {
+            "id": "0afa62d37486d864",
+            "rule": "SL101",
+            "file": "app/Http/Middleware/HandleInertiaRequests.php",
+            "fingerprint": "HandleInertiaRequests::share",
+            "count": 1,
+            "message": "HandleInertiaRequests::share() spans 136 lines with 22 statements, cyclomatic complexity 14, nesting depth 3 and 41 calls to 4 distinct collaborators."
+        },
+        {
+            "id": "9f6dcdb319825637",
+            "rule": "SL101",
+            "file": "app/Services/AdminDashboardService.php",
+            "fingerprint": "AdminDashboardService::build",
+            "count": 1,
+            "message": "AdminDashboardService::build() spans 175 lines with 10 statements, cyclomatic complexity 8, nesting depth 0 and 90 calls to 36 distinct collaborators."
+        },
+        {
+            "id": "38e5ffd40f65de60",
+            "rule": "SL101",
+            "file": "app/Services/Api/ApiTransactionService.php",
+            "fingerprint": "ApiTransactionService::purchaseSubscription",
+            "count": 1,
+            "message": "ApiTransactionService::purchaseSubscription() spans 123 lines with 21 statements, cyclomatic complexity 5, nesting depth 2 and 28 calls to 15 distinct collaborators."
+        },
+        {
+            "id": "1788843221b012cc",
+            "rule": "SL101",
+            "file": "app/Services/DeviceLimitService.php",
+            "fingerprint": "DeviceLimitService::enforceForUser",
+            "count": 1,
+            "message": "DeviceLimitService::enforceForUser() spans 87 lines with 20 statements, cyclomatic complexity 6, nesting depth 1 and 32 calls to 23 distinct collaborators."
+        },
+        {
+            "id": "7c1338c499ae0469",
+            "rule": "SL101",
+            "file": "app/Services/Reports/ReportsService.php",
+            "fingerprint": "ReportsService::build",
+            "count": 1,
+            "message": "ReportsService::build() spans 82 lines with 16 statements, cyclomatic complexity 3, nesting depth 0 and 73 calls to 33 distinct collaborators."
+        },
+        {
+            "id": "d9c4b74b5a9b7863",
+            "rule": "SL101",
+            "file": "app/Services/SubscriptionService.php",
+            "fingerprint": "SubscriptionService::activatePurchasedMonthsForTransaction",
+            "count": 1,
+            "message": "SubscriptionService::activatePurchasedMonthsForTransaction() spans 85 lines with 27 statements, cyclomatic complexity 7, nesting depth 2 and 30 calls to 18 distinct collaborators."
+        },
+        {
+            "id": "c91bb734ecd1ad03",
+            "rule": "SL101",
+            "file": "app/Services/Subscriptions/Builders/ConnectJsonBuilder.php",
+            "fingerprint": "ConnectJsonBuilder::buildGroupedCustomConfig",
+            "count": 1,
+            "message": "ConnectJsonBuilder::buildGroupedCustomConfig() spans 166 lines with 58 statements, cyclomatic complexity 28, nesting depth 3 and 38 calls to 11 distinct collaborators."
+        },
+        {
+            "id": "d6d50e0ef2231edf",
+            "rule": "SL101",
+            "file": "app/Services/Subscriptions/Builders/ConnectJsonBuilder.php",
+            "fingerprint": "ConnectJsonBuilder::buildProfile",
+            "count": 1,
+            "message": "ConnectJsonBuilder::buildProfile() spans 85 lines with 21 statements, cyclomatic complexity 18, nesting depth 2 and 23 calls to 3 distinct collaborators."
+        },
+        {
+            "id": "da6452a5ae7966d8",
+            "rule": "SL101",
+            "file": "app/Services/Tax/InvoiceTaxService.php",
+            "fingerprint": "InvoiceTaxService::handleSend",
+            "count": 1,
+            "message": "InvoiceTaxService::handleSend() spans 97 lines with 25 statements, cyclomatic complexity 8, nesting depth 2 and 35 calls to 6 distinct collaborators."
+        },
+        {
+            "id": "7b1d7cec4dcd33e6",
+            "rule": "SL101",
+            "file": "app/Services/TelegramApp/TelegramMiniAppBootstrapDiagnosticService.php",
+            "fingerprint": "TelegramMiniAppBootstrapDiagnosticService::buildMessage",
+            "count": 1,
+            "message": "TelegramMiniAppBootstrapDiagnosticService::buildMessage() spans 37 lines with 2 statements, cyclomatic complexity 21, nesting depth 0 and 30 calls to 3 distinct collaborators."
+        },
+        {
+            "id": "1d6eb6270f5c6304",
+            "rule": "SL101",
+            "file": "app/Services/WireGuardService.php",
+            "fingerprint": "WireGuardService::getClientPeers",
+            "count": 1,
+            "message": "WireGuardService::getClientPeers() spans 93 lines with 39 statements, cyclomatic complexity 14, nesting depth 3 and 29 calls to 12 distinct collaborators."
+        },
+        {
+            "id": "57edbd81b68ab4ca",
+            "rule": "SL101",
+            "file": "app/Services/WireGuardSubscriptionLinkService.php",
+            "fingerprint": "WireGuardSubscriptionLinkService::buildAmneziaWireGuardUriFromXui",
+            "count": 1,
+            "message": "WireGuardSubscriptionLinkService::buildAmneziaWireGuardUriFromXui() spans 83 lines with 29 statements, cyclomatic complexity 17, nesting depth 2 and 28 calls to 2 distinct collaborators."
+        },
+        {
+            "id": "0f1379746ce92a21",
+            "rule": "SL101",
+            "file": "app/Services/WireGuardSubscriptionLinkService.php",
+            "fingerprint": "WireGuardSubscriptionLinkService::fromXui",
+            "count": 1,
+            "message": "WireGuardSubscriptionLinkService::fromXui() spans 114 lines with 14 statements, cyclomatic complexity 9, nesting depth 2 and 54 calls to 2 distinct collaborators."
+        },
+        {
+            "id": "4b775d67510d03ef",
+            "rule": "SL101",
+            "file": "app/Services/XuiUserTrafficSyncService.php",
+            "fingerprint": "XuiUserTrafficSyncService::syncServer",
+            "count": 1,
+            "message": "XuiUserTrafficSyncService::syncServer() spans 85 lines with 31 statements, cyclomatic complexity 8, nesting depth 3 and 24 calls to 14 distinct collaborators."
+        },
+        {
+            "id": "4ae940aba5df9d56",
+            "rule": "SL102",
+            "file": "app/Http/Controllers/TelegramApp/ConnectionController.php",
+            "fingerprint": "ConnectionController",
+            "count": 1,
+            "message": "ConnectionController spans 549 lines with 21 methods (12 public), 182 statements, 2 injected dependencies and talks to 30 distinct collaborators."
+        },
+        {
+            "id": "3392a6b01eb869d6",
+            "rule": "SL102",
+            "file": "app/Http/Controllers/VlessConfigController.php",
+            "fingerprint": "VlessConfigController",
+            "count": 1,
+            "message": "VlessConfigController spans 444 lines with 21 methods (18 public), 130 statements, 2 injected dependencies and talks to 54 distinct collaborators."
+        },
+        {
+            "id": "faacd4e2846e279f",
+            "rule": "SL102",
+            "file": "app/Http/Controllers/XrayCustomConfigController.php",
+            "fingerprint": "XrayCustomConfigController",
+            "count": 1,
+            "message": "XrayCustomConfigController spans 377 lines with 16 methods (10 public), 85 statements and talks to 69 distinct collaborators."
+        },
+        {
+            "id": "7d7f94992cd78473",
+            "rule": "SL102",
+            "file": "app/Models/Server.php",
+            "fingerprint": "Server",
+            "count": 1,
+            "message": "Server spans 298 lines with 32 methods (29 public), 72 statements and talks to 17 distinct collaborators."
+        },
+        {
+            "id": "eca62996a545364f",
+            "rule": "SL102",
+            "file": "app/Models/User.php",
+            "fingerprint": "User",
+            "count": 1,
+            "message": "User spans 372 lines with 41 methods (40 public), 82 statements and talks to 38 distinct collaborators."
+        },
+        {
+            "id": "41e8df125a3289dd",
+            "rule": "SL102",
+            "file": "app/Services/Api/ApiUserService.php",
+            "fingerprint": "ApiUserService",
+            "count": 1,
+            "message": "ApiUserService spans 349 lines with 25 methods (17 public), 97 statements, 7 injected dependencies and talks to 28 distinct collaborators."
+        },
+        {
+            "id": "395984cc3267efef",
+            "rule": "SL102",
+            "file": "app/Services/ExternalSubscriptions/VlessExternalSubscriptionSyncService.php",
+            "fingerprint": "VlessExternalSubscriptionSyncService",
+            "count": 1,
+            "message": "VlessExternalSubscriptionSyncService spans 529 lines with 22 methods (6 public), 136 statements, 2 injected dependencies and talks to 54 distinct collaborators."
+        },
+        {
+            "id": "2265655a1e1d04e8",
+            "rule": "SL102",
+            "file": "app/Services/ReferralRewardService.php",
+            "fingerprint": "ReferralRewardService",
+            "count": 1,
+            "message": "ReferralRewardService spans 353 lines with 11 methods (6 public), 110 statements, 2 injected dependencies and talks to 25 distinct collaborators."
+        },
+        {
+            "id": "aa0932dec51e4eb0",
+            "rule": "SL102",
+            "file": "app/Services/SubscriptionService.php",
+            "fingerprint": "SubscriptionService",
+            "count": 1,
+            "message": "SubscriptionService spans 555 lines with 21 methods (13 public), 145 statements, 1 injected dependencies and talks to 43 distinct collaborators."
+        },
+        {
+            "id": "6a37079c16a0f4b6",
+            "rule": "SL102",
+            "file": "app/Services/Subscriptions/Builders/ConnectJsonBuilder.php",
+            "fingerprint": "ConnectJsonBuilder",
+            "count": 1,
+            "message": "ConnectJsonBuilder spans 617 lines with 17 methods (5 public), 138 statements, 3 injected dependencies and talks to 29 distinct collaborators."
+        },
+        {
+            "id": "ab73dba0d0e4ceea",
+            "rule": "SL102",
+            "file": "app/Services/Subscriptions/NormalizedNodeService.php",
+            "fingerprint": "NormalizedNodeService",
+            "count": 1,
+            "message": "NormalizedNodeService spans 303 lines with 11 methods (2 public), 54 statements, 2 injected dependencies and talks to 50 distinct collaborators."
+        },
+        {
+            "id": "a9c118c83bfd8734",
+            "rule": "SL102",
+            "file": "app/Services/Subscriptions/RoscomVpnJsonSettingsImporter.php",
+            "fingerprint": "RoscomVpnJsonSettingsImporter",
+            "count": 1,
+            "message": "RoscomVpnJsonSettingsImporter spans 379 lines with 14 methods (2 public), 83 statements, 1 injected dependencies and talks to 19 distinct collaborators."
+        },
+        {
+            "id": "9c8ffbc8ad7466ec",
+            "rule": "SL102",
+            "file": "app/Services/WireGuardSubscriptionLinkService.php",
+            "fingerprint": "WireGuardSubscriptionLinkService",
+            "count": 1,
+            "message": "WireGuardSubscriptionLinkService spans 793 lines with 28 methods (4 public), 222 statements and talks to 14 distinct collaborators."
+        },
+        {
+            "id": "52d117532fae8eeb",
+            "rule": "SL102",
+            "file": "app/Services/XuiConfigService.php",
+            "fingerprint": "XuiConfigService",
+            "count": 1,
+            "message": "XuiConfigService spans 1799 lines with 83 methods (22 public, not counting 1 accessors), 454 statements, 1 injected dependencies and talks to 89 distinct collaborators."
+        },
+        {
+            "id": "ad33735c6fec6e61",
+            "rule": "SL104",
+            "file": "app/Services/Subscriptions/SubscriptionUriParser.php",
+            "fingerprint": "SubscriptionUriParser::parseConfigSections",
+            "count": 1,
+            "message": "SubscriptionUriParser::parseConfigSections() is structurally identical to WireGuardSubscriptionLinkService::parseConfigSections() at app/Services/WireGuardSubscriptionLinkService.php:265."
+        },
+        {
+            "id": "a929015855194b1e",
+            "rule": "SL104",
+            "file": "app/Services/Subscriptions/SubscriptionUriParser.php",
+            "fingerprint": "SubscriptionUriParser::parseQueryString",
+            "count": 1,
+            "message": "SubscriptionUriParser::parseQueryString() is structurally identical to WireGuardSubscriptionLinkService::parseQueryString() at app/Services/WireGuardSubscriptionLinkService.php:659."
+        },
+        {
+            "id": "bc213d58ed6b1f69",
+            "rule": "SL104",
+            "file": "app/Services/WireGuardSubscriptionLinkService.php",
+            "fingerprint": "WireGuardSubscriptionLinkService::parseConfigSections",
+            "count": 1,
+            "message": "WireGuardSubscriptionLinkService::parseConfigSections() is structurally identical to SubscriptionUriParser::parseConfigSections() at app/Services/Subscriptions/SubscriptionUriParser.php:137."
+        },
+        {
+            "id": "494416f64eafcba9",
+            "rule": "SL104",
+            "file": "app/Services/WireGuardSubscriptionLinkService.php",
+            "fingerprint": "WireGuardSubscriptionLinkService::parseQueryString",
+            "count": 1,
+            "message": "WireGuardSubscriptionLinkService::parseQueryString() is structurally identical to SubscriptionUriParser::parseQueryString() at app/Services/Subscriptions/SubscriptionUriParser.php:197."
+        },
+        {
+            "id": "bef9f5863676e8e0",
+            "rule": "SL111",
+            "file": "app/Http/Controllers/Api/UserController.php",
+            "fingerprint": "UserController::getVlessQrCode~ConnectionController::vlessQrCode",
+            "count": 1,
+            "message": "UserController::getVlessQrCode() differs from ConnectionController::vlessQrCode() at app/Http/Controllers/TelegramApp/ConnectionController.php:349 by 18 token(s) out of 228 -- 7.9% of the body."
+        },
+        {
+            "id": "09c07df680e11580",
+            "rule": "SL111",
+            "file": "app/Http/Controllers/TelegramApp/AuthController.php",
+            "fingerprint": "AuthController::authenticateWithPassword~AuthController::registerWithPassword",
+            "count": 1,
+            "message": "AuthController::authenticateWithPassword() differs from AuthController::registerWithPassword() at app/Http/Controllers/TelegramApp/AuthController.php:77 by 7 token(s) out of 279 -- 2.5% of the body."
+        },
+        {
+            "id": "8fac59ad959fbb1d",
+            "rule": "SL111",
+            "file": "app/Http/Controllers/TelegramApp/AuthController.php",
+            "fingerprint": "AuthController::authenticate~AuthController::authenticateWithPassword",
+            "count": 1,
+            "message": "AuthController::authenticate() differs from AuthController::authenticateWithPassword() at app/Http/Controllers/TelegramApp/AuthController.php:52 by 1 token(s) out of 279 -- 0.4% of the body."
+        },
+        {
+            "id": "c99e291d1d25023c",
+            "rule": "SL111",
+            "file": "app/Http/Controllers/TelegramApp/AuthController.php",
+            "fingerprint": "AuthController::authenticate~AuthController::registerWithPassword",
+            "count": 1,
+            "message": "AuthController::authenticate() differs from AuthController::registerWithPassword() at app/Http/Controllers/TelegramApp/AuthController.php:77 by 7 token(s) out of 279 -- 2.5% of the body."
+        },
+        {
+            "id": "689412d28c110b0c",
+            "rule": "SL111",
+            "file": "app/Http/Controllers/TelegramApp/ConnectionController.php",
+            "fingerprint": "ConnectionController::vlessLinks~ConnectionController::vlessWhiteListLinks",
+            "count": 1,
+            "message": "ConnectionController::vlessLinks() differs from ConnectionController::vlessWhiteListLinks() at app/Http/Controllers/TelegramApp/ConnectionController.php:423 by 1 token(s) out of 167 -- 0.6% of the body."
+        },
+        {
+            "id": "69b2ae88b64fb9f7",
+            "rule": "SL111",
+            "file": "app/Http/Controllers/TelegramApp/ConnectionController.php",
+            "fingerprint": "ConnectionController::vlessQrCode~ConnectionController::vlessWhiteListQrCode",
+            "count": 1,
+            "message": "ConnectionController::vlessQrCode() differs from ConnectionController::vlessWhiteListQrCode() at app/Http/Controllers/TelegramApp/ConnectionController.php:445 by 1 token(s) out of 242 -- 0.4% of the body."
+        },
+        {
+            "id": "cd7149065e0dca85",
+            "rule": "SL111",
+            "file": "app/Http/Controllers/TelegramApp/ConnectionController.php",
+            "fingerprint": "ConnectionController::vlessSendQr~ConnectionController::vlessWhiteListSendQr",
+            "count": 1,
+            "message": "ConnectionController::vlessSendQr() differs from ConnectionController::vlessWhiteListSendQr() at app/Http/Controllers/TelegramApp/ConnectionController.php:472 by 1 token(s) out of 424 -- 0.2% of the body."
+        },
+        {
+            "id": "9e5584ce2ec990dc",
+            "rule": "SL202",
+            "file": "app/Http/Controllers/XrayCustomConfigController.php",
+            "fingerprint": "XrayCustomConfigController::storeDnsSettings",
+            "count": 1,
+            "message": "XrayCustomConfigController::storeDnsSettings() validates 6 fields inline via validate(), 5 of them with multiple constraints."
+        },
+        {
+            "id": "f4c53642bebebd2d",
+            "rule": "SL202",
+            "file": "app/Http/Controllers/XuiDebugController.php",
+            "fingerprint": "XuiDebugController::execute",
+            "count": 1,
+            "message": "XuiDebugController::execute() validates 6 fields inline via validate(), 6 of them with multiple constraints."
+        },
+        {
+            "id": "23a8666da76354d5",
+            "rule": "SL204",
+            "file": "app/Console/Commands/DisableConfigsOfOverdueDebtorsCommand.php",
+            "fingerprint": "DisableConfigsOfOverdueDebtorsCommand::syncStoredBalances:User.query.whereKey.update",
+            "count": 1,
+            "message": "DisableConfigsOfOverdueDebtorsCommand::syncStoredBalances() writes to User inside a loop (query()->whereKey()->update())."
+        },
+        {
+            "id": "c25cefc53735347e",
+            "rule": "SL204",
+            "file": "app/Console/Commands/SyncXrayInboundsCommand.php",
+            "fingerprint": "SyncXrayInboundsCommand::syncPanelInbounds:XrayInbound.query.firstOrNew",
+            "count": 1,
+            "message": "SyncXrayInboundsCommand::syncPanelInbounds() writes to XrayInbound inside a loop (query()->firstOrNew())."
+        },
+        {
+            "id": "93a580b023337755",
+            "rule": "SL204",
+            "file": "app/Jobs/PersistPulledVlessInboundJob.php",
+            "fingerprint": "PersistPulledVlessInboundJob::handle:VlessConfig.query.whereKey.where.update",
+            "count": 1,
+            "message": "PersistPulledVlessInboundJob::handle() writes to VlessConfig inside a loop (query()->whereKey()->where()->update())."
+        },
+        {
+            "id": "f7ecd5b70fe3c43f",
+            "rule": "SL204",
+            "file": "app/Repositories/GiveawayPrizeRepository.php",
+            "fingerprint": "GiveawayPrizeRepository::replaceForGiveaway:GiveawayPrize.query.create",
+            "count": 1,
+            "message": "GiveawayPrizeRepository::replaceForGiveaway() writes to GiveawayPrize inside a loop (query()->create())."
+        },
+        {
+            "id": "3a914b72eed4922f",
+            "rule": "SL204",
+            "file": "app/Services/SubscriptionCodeService.php",
+            "fingerprint": "SubscriptionCodeService::generateUniqueCode:SubscriptionCode.query.where.exists",
+            "count": 1,
+            "message": "SubscriptionCodeService::generateUniqueCode() queries SubscriptionCode inside a loop (query()->where()->exists())."
+        },
+        {
+            "id": "a6db97f359a04a7e",
+            "rule": "SL204",
+            "file": "app/Services/Subscriptions/RoscomVpnJsonSettingsImporter.php",
+            "fingerprint": "RoscomVpnJsonSettingsImporter::import:XrayRouting.query.updateOrCreate",
+            "count": 1,
+            "message": "RoscomVpnJsonSettingsImporter::import() writes to XrayRouting inside a loop (query()->updateOrCreate())."
+        },
+        {
+            "id": "742c01fc25861bbb",
+            "rule": "SL204",
+            "file": "app/Services/XuiUserTrafficSyncService.php",
+            "fingerprint": "XuiUserTrafficSyncService::syncServer:UserServerStat.query.updateOrCreate",
+            "count": 1,
+            "message": "XuiUserTrafficSyncService::syncServer() writes to UserServerStat inside a loop (query()->updateOrCreate())."
+        },
+        {
+            "id": "ec8c089162e49d3d",
+            "rule": "SL204",
+            "file": "app/Services/XuiUserTrafficSyncService.php",
+            "fingerprint": "XuiUserTrafficSyncService::syncServer:UserServerStatHistory.query.create",
+            "count": 1,
+            "message": "XuiUserTrafficSyncService::syncServer() writes to UserServerStatHistory inside a loop (query()->create())."
+        },
+        {
+            "id": "20cf57a16bf473fb",
+            "rule": "SL205",
+            "file": "app/Services/Subscriptions/ConnectJsonProfileSettingsProvider.php",
+            "fingerprint": "ConnectJsonProfileSettingsProvider::customRoutingRules:XrayRouting::query->active->whereKey->ordered->get->filter",
+            "count": 1,
+            "message": "ConnectJsonProfileSettingsProvider::customRoutingRules() loads all the matching XrayRouting rows with XrayRouting::query()->active()->whereKey()->ordered()->get() and then filters them in PHP with ->filter()."
+        },
+        {
+            "id": "fe91fd66ab46ccb1",
+            "rule": "SL205",
+            "file": "app/Services/Subscriptions/ConnectJsonProfileSettingsProvider.php",
+            "fingerprint": "ConnectJsonProfileSettingsProvider::hasTargetedRoutingRules:XrayRouting::query->active->ordered->get->contains",
+            "count": 1,
+            "message": "ConnectJsonProfileSettingsProvider::hasTargetedRoutingRules() loads all the matching XrayRouting rows with XrayRouting::query()->active()->ordered()->get() and then filters them in PHP with ->contains()."
+        },
+        {
+            "id": "688dd415f7c0db64",
+            "rule": "SL205",
+            "file": "app/Services/Subscriptions/ConnectJsonProfileSettingsProvider.php",
+            "fingerprint": "ConnectJsonProfileSettingsProvider::routingRules:XrayRouting::query->active->ordered->get->filter",
+            "count": 1,
+            "message": "ConnectJsonProfileSettingsProvider::routingRules() loads all the matching XrayRouting rows with XrayRouting::query()->active()->ordered()->get() and then filters them in PHP with ->filter()."
+        },
+        {
+            "id": "5a071fa2842e6cc9",
+            "rule": "SL209",
+            "file": "app/Models/Config.php",
+            "fingerprint": "Config",
+            "count": 1,
+            "message": "Model Config does more than persist a row: 1 method(s) longer than 40 lines (getLastTraffic())."
+        },
+        {
+            "id": "dff960750ecf35c5",
+            "rule": "SL209",
+            "file": "app/Models/VlessConfig.php",
+            "fingerprint": "VlessConfig",
+            "count": 1,
+            "message": "Model VlessConfig does more than persist a row: 1 method(s) longer than 40 lines (getVlessStaticLink())."
+        },
+        {
+            "id": "aa1d75813dea8485",
+            "rule": "SL301",
+            "file": "app/Services/Subscriptions/SubscriptionBuilderFactory.php",
+            "fingerprint": "SubscriptionBuilderFactory",
+            "count": 1,
+            "message": "SubscriptionBuilderFactory is one of 3 layers around \"Subscription\" (SubscriptionBuilder, SubscriptionBuilderFactory, SubscriptionService), and it holds only 2 statements across 3 methods; exactly one file references it."
+        },
+        {
+            "id": "005082e80fc7df3a",
+            "rule": "SL301",
+            "file": "app/Services/WireGuardConfigServiceFactory.php",
+            "fingerprint": "WireGuardConfigServiceFactory",
+            "count": 1,
+            "message": "WireGuardConfigServiceFactory is one of 3 layers around \"WireGuardConfig\" (WireGuardConfigService, WireGuardConfigServiceContract, WireGuardConfigServiceFactory), and it holds only 4 statements across 1 methods; exactly one file references it."
+        }
+    ]
+}

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -56,6 +56,10 @@ const previewMode = ref('admin');
 const previewUserId = ref(props.users[0]?.id || '');
 const previewContent = ref(null);
 const previewing = ref(false);
+const previewExpanded = ref(true);
+const previewCopied = ref(false);
+const previewRefreshScheduled = ref(false);
+let previewRefreshTimer = null;
 const modal = ref(null);
 const modalForm = ref({});
 const modalError = ref('');
@@ -261,7 +265,23 @@ const dropRoute = (index) => { if (draggedRouteIndex.value === null || draggedRo
 const addRoute = () => { routes.value.push({ name: `Route ${routes.value.length + 1}`, match_type: 'domain', match_values: '', match_values_list: [], value_input: '', target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true, _menuOpen: false }); expandedRoutes.value = new Set([...expandedRoutes.value, routes.value.length - 1]); };
 const duplicateRoute = (route, index) => { const copy = JSON.parse(JSON.stringify(route)); copy.name = `${route.name || 'Route'} copy`; copy.value_input = ''; copy._menuOpen = false; routes.value.splice(index + 1, 0, copy); expandedRoutes.value = new Set([...expandedRoutes.value, index + 1]); };
 const removeRoute = (route, index) => { if (!window.confirm(`Delete route “${route.name || `Route ${index + 1}`}”?`)) return; routes.value.splice(index, 1); };
-watch([form, settings, groups, routes], () => { hasUnsavedChanges.value = true; }, { deep: true });
+watch([form, settings, groups, routes], () => {
+    hasUnsavedChanges.value = true;
+
+    if (!previewContent.value) {
+        return;
+    }
+
+    if (previewRefreshTimer) {
+        window.clearTimeout(previewRefreshTimer);
+    }
+
+    previewRefreshScheduled.value = true;
+    previewRefreshTimer = window.setTimeout(async () => {
+        previewRefreshScheduled.value = false;
+        await preview();
+    }, 10000);
+}, { deep: true });
 const cancelEditing = () => { if (!hasUnsavedChanges.value || window.confirm('Discard unsaved changes?')) window.location.href = '/xray-custom-configs'; };
 
 const buildBaseSettings = () => ({ ...settings.value.extra, log: { ...(settings.value.extra.log || {}), loglevel: settings.value.loglevel }, routing: { ...(settings.value.extra.routing || {}), domainStrategy: settings.value.domainStrategy } });
@@ -274,10 +294,26 @@ const requestPayload = () => ({ base_settings_json: JSON.stringify(buildBaseSett
 const submit = () => { const request = form.transform((data) => ({ ...data, ...requestPayload(), dns_settings_id: data.dns_settings_id || null, geodata_id: data.geodata_id || null })); props.method === 'put' ? request.put(props.submit_url) : request.post(props.submit_url); };
 const preview = async () => {
     previewing.value = true;
-    const url = props.config ? `${props.submit_url}/preview` : '/xray-custom-configs/preview';
-    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify({ ...form.data(), ...requestPayload(), preview_mode: previewMode.value, user_id: previewMode.value === 'user' ? Number(previewUserId.value) : undefined }) });
-    previewContent.value = await response.json(); previewing.value = false;
+    try {
+        const url = props.config ? `${props.submit_url}/preview` : '/xray-custom-configs/preview';
+        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify({ ...form.data(), ...requestPayload(), preview_mode: previewMode.value, user_id: previewMode.value === 'user' ? Number(previewUserId.value) : undefined }) });
+        previewContent.value = await response.json();
+    } finally {
+        previewing.value = false;
+    }
 };
+const previewJson = computed(() => previewContent.value ? JSON.stringify(previewContent.value, null, 2) : '');
+const copyPreview = async () => {
+    if (!previewJson.value) return;
+    await navigator.clipboard.writeText(previewJson.value);
+    previewCopied.value = true;
+    window.setTimeout(() => { previewCopied.value = false; }, 1800);
+};
+onBeforeUnmount(() => {
+    if (previewRefreshTimer) {
+        window.clearTimeout(previewRefreshTimer);
+    }
+});
 const openResourceModal = (type) => { modal.value = type; modalError.value = ''; modalForm.value = type === 'dns' ? { name: '', description: '', servers: '', query_strategy: 'UseIPv4', enable_parallel_query: false } : { name: '', description: '', geoip_url: '', geosite_url: '' }; };
 const closeResourceModal = () => { modal.value = null; };
 const saveResource = async () => {
@@ -405,7 +441,25 @@ const saveResource = async () => {
             </section>
         </div>
     </section>
-    <section class="page-card stack"><h2>Предпросмотр</h2><label class="field-row"><input v-model="previewMode" type="radio" value="admin"> От имени администратора</label><label class="field-row"><input v-model="previewMode" type="radio" value="user"> От имени пользователя</label><AppSelect v-if="previewMode === 'user'" v-model="previewUserId" :options="props.users.map((user) => ({ value: user.id, label: user.full_name || user.telegram_id }))" /><AppButton variant="secondary" type="button" :disabled="previewing" @click="preview">{{ previewing ? 'Загрузка…' : 'Предпросмотр JSON' }}</AppButton><pre v-if="previewContent">{{ JSON.stringify(previewContent, null, 2) }}</pre></section>
+    <section class="page-card stack preview-section">
+        <div class="preview-section__header">
+            <button type="button" class="preview-section__toggle" :aria-expanded="previewExpanded" @click="previewExpanded = !previewExpanded">
+                <span><strong>Предпросмотр JSON</strong><small>Проверка итоговой конфигурации до сохранения</small></span>
+                <span class="source-chevron">{{ previewExpanded ? '⌄' : '›' }}</span>
+            </button>
+            <span v-if="previewRefreshScheduled" class="preview-section__status">Обновится через 10 секунд</span>
+        </div>
+        <div v-if="previewExpanded" class="preview-section__body">
+            <label class="field-row"><input v-model="previewMode" type="radio" value="admin"> От имени администратора</label>
+            <label class="field-row"><input v-model="previewMode" type="radio" value="user"> От имени пользователя</label>
+            <AppSelect v-if="previewMode === 'user'" v-model="previewUserId" :options="props.users.map((user) => ({ value: user.id, label: user.full_name || user.telegram_id }))" />
+            <div class="preview-section__actions">
+                <AppButton variant="secondary" type="button" :disabled="previewing" @click="preview">{{ previewing ? 'Загрузка…' : 'Предпросмотр JSON' }}</AppButton>
+                <AppButton v-if="previewContent" variant="secondary" type="button" @click="copyPreview">{{ previewCopied ? 'Скопировано' : 'Копировать JSON' }}</AppButton>
+            </div>
+            <pre v-if="previewContent" class="preview-json">{{ previewJson }}</pre>
+        </div>
+    </section>
     <div v-if="modal" class="resource-modal" @click.self="closeResourceModal"><section class="page-card stack resource-modal__card"><h2>{{ modal === 'dns' ? 'Новые настройки DNS' : 'Новые геоданные' }}</h2><label class="field"><span>Название</span><AppInput v-model="modalForm.name" /></label><label class="field"><span>Описание</span><AppTextarea v-model="modalForm.description" rows="2" /></label><template v-if="modal === 'dns'"><label class="field"><span>DNS-серверы через запятую</span><AppInput v-model="modalForm.servers" placeholder="8.8.8.8, 1.1.1.1" /></label><label class="field"><span>Стратегия запросов</span><AppSelect v-model="modalForm.query_strategy" :options="[{ value: 'UseIPv4', label: 'Только IPv4' }, { value: 'UseIPv6', label: 'Только IPv6' }, { value: 'UseIP', label: 'IPv4 и IPv6' }, { value: 'AsIs', label: 'Без изменения' }]" /></label><label class="field-row"><input v-model="modalForm.enable_parallel_query" type="checkbox"> Параллельные DNS-запросы</label></template><template v-else><label class="field"><span>URL geoip.dat</span><AppInput v-model="modalForm.geoip_url" /></label><label class="field"><span>URL geosite.dat</span><AppInput v-model="modalForm.geosite_url" /></label></template><p v-if="modalError" class="form-error">{{ modalError }}</p><div class="actions"><AppButton type="button" @click="saveResource">Сохранить</AppButton><AppButton variant="secondary" type="button" @click="closeResourceModal">Отмена</AppButton></div></section></div>
 </template>
 
@@ -1117,6 +1171,71 @@ const saveResource = async () => {
     color: var(--muted);
     font: inherit;
     cursor: pointer;
+}
+
+.preview-section {
+    margin-top: 1.5rem;
+}
+
+.preview-section__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.preview-section__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+    gap: 1rem;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.preview-section__toggle > span:first-child {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.preview-section__toggle small,
+.preview-section__status {
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.preview-section__status {
+    white-space: nowrap;
+}
+
+.preview-section__body {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.preview-section__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.preview-json {
+    max-height: 36rem;
+    overflow: auto;
+    margin: 0;
+    padding: 1rem;
+    border-radius: 10px;
+    background: #111827;
+    color: #e5e7eb;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: pre;
 }
 
 @media (max-width: 700px) {

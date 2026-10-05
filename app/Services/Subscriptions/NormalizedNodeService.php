@@ -209,15 +209,6 @@ class NormalizedNodeService
         return [$config->getStaticLink()];
     }
 
-    private function isSupportedSubscriptionLink(string $line): bool
-    {
-        return in_array(
-            $this->parser->detectProtocol($line),
-            ['vless', 'trojan', 'hysteria', 'hysteria2'],
-            true
-        );
-    }
-
     private function getTypeSortOrder(string $type): int
     {
         return match ($type) {

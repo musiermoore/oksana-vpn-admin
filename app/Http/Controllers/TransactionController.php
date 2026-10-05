@@ -31,10 +31,7 @@ class TransactionController extends Controller
             ->latest()
             ->get();
 
-        $balance = User::query()
-            ->select('users.id', 'users.balance')
-            ->get()
-            ->sum('balance');
+        $balance = User::query()->sum('balance');
 
         return $this->inertia('Transactions/Index', [
             'balance' => (float) $balance,

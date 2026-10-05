@@ -34,7 +34,9 @@ class IncyKeyMaterialProvider
         if ((bool) config('incy.keymat.remote_enabled', true)) {
             try {
                 return $this->fetchRemote();
-            } catch (\Throwable) {
+            } catch (\Throwable $exception) {
+                report($exception);
+
                 // Fall back to the bundled local key material when GitHub is unavailable.
             }
         }

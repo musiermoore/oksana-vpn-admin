@@ -6,9 +6,9 @@ namespace App\Services\Subscriptions\Builders;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
-use App\Models\XrayRouting;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigOutboundGroup;
+use App\Models\XrayRouting;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use App\Services\Subscriptions\SubscriptionUriParser;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
@@ -255,7 +255,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
             $profile['geodata'] = $geodata;
         }
-        
+
         return new SubscriptionBuildResult(
             content: json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
             contentType: 'application/json; charset=UTF-8',
@@ -308,8 +308,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         NormalizedNode $node,
         string $subscriptionType,
         ?XrayCustomConfig $customConfig = null,
-    ): ?array
-    {
+    ): ?array {
         $xrayInboundId = isset($node->meta['xray_inbound_id']) ? (int) $node->meta['xray_inbound_id'] : null;
         $externalSubscriptionConfigId = isset($node->meta['external_subscription_config_id'])
             ? (int) $node->meta['external_subscription_config_id']
@@ -530,50 +529,6 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                     'method' => $parsed['method'],
                     'password' => $parsed['password'],
                     'level' => 8,
-                ]],
-            ],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $parsed
-     * @return array<string, mixed>
-     */
-    private function buildHysteria2Outbound(array $parsed): array
-    {
-        return [
-            'protocol' => 'hysteria2',
-            'settings' => [
-                'servers' => [[
-                    'address' => $parsed['server'],
-                    'port' => $parsed['port'],
-                    'password' => $parsed['password'],
-                    'alpn' => $parsed['alpn'],
-                    'sni' => $parsed['sni'],
-                    'fingerprint' => $parsed['fp'],
-                    'obfs' => $parsed['obfs'],
-                    'obfs-password' => $parsed['obfs_password'],
-                    'insecure' => $parsed['insecure'],
-                ]],
-            ],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $parsed
-     * @return array<string, mixed>
-     */
-    private function buildHysteriaOutbound(array $parsed): array
-    {
-        return [
-            'protocol' => 'hysteria',
-            'settings' => [
-                'servers' => [[
-                    'address' => $parsed['server'],
-                    'port' => $parsed['port'],
-                    'auth_str' => $parsed['auth'],
-                    'peer' => $parsed['peer'],
-                    'insecure' => $parsed['insecure'],
                 ]],
             ],
         ];

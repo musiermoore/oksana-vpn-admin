@@ -85,6 +85,8 @@ class Config extends Model
 
             return 'Файл не найден.';
         } catch (\Exception $exception) {
+            report($exception);
+
             return 'Ошибка при загрузке файла.';
         }
     }

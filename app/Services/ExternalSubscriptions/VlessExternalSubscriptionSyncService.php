@@ -280,7 +280,9 @@ class VlessExternalSubscriptionSyncService
     {
         try {
             $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
+        } catch (\JsonException $exception) {
+            report($exception);
+
             return [];
         }
 

@@ -6,6 +6,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.5",
+        "heyosseus/sloppy": "^1.6",
         "inertiajs/inertia-laravel": "^3.0",
         "irazasyed/telegram-bot-sdk": "^3.14",
         "laravel/framework": "^13.0",
@@ -21,7 +22,8 @@
         "laravel/pint": "^1.13",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
-        "phpunit/phpunit": "^12.0"
+        "phpunit/phpunit": "^12.0",
+        "rector/rector": "^2.6"
     },
     "autoload": {
         "psr-4": {

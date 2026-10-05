@@ -399,7 +399,9 @@ class VlessConfigController extends Controller
                 $telegramId = (string) Crypt::decrypt($request->tg);
                 $userId = (int) Crypt::decrypt($request->i);
             }
-        } catch (Exception) {
+        } catch (Exception $exception) {
+            report($exception);
+
             return null;
         }
 

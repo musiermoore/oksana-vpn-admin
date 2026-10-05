@@ -766,7 +766,9 @@ class WireGuardSubscriptionLinkService
 
         try {
             return base64_encode(sodium_crypto_scalarmult_base($decoded));
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            report($exception);
+
             return null;
         }
     }

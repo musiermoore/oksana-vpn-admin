@@ -165,7 +165,9 @@ class WireGuardService
         foreach ($files as $file) {
             try {
                 $fileContent = File::get($configPath . '/' . $file);
-            } catch (\Exception $e) {
+            } catch (\Exception $exception) {
+                report($exception);
+
                 continue;
             }
 

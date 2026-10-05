@@ -272,7 +272,9 @@ class ApiRequestLogPayloadFactory
             } else {
                 return null;
             }
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return null;
         }
 

@@ -33,9 +33,13 @@ class CalculatePeersTraffic extends Command
             ->legacyWireGuard()
             ->get();
 
-        foreach ($servers as $server) {
-            $traffics = WireGuardTrafficService::getTraffic($server->id);
+        $traffics = [];
 
+        foreach ($servers as $server) {
+            $traffics = array_merge($traffics, WireGuardTrafficService::getTraffic($server->id));
+        }
+
+        if ($traffics !== []) {
             Traffic::insert($traffics);
         }
     }

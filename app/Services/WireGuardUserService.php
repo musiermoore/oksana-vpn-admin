@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Support\BotApiMessages;
 
 class WireGuardUserService
 {
@@ -19,25 +18,5 @@ class WireGuardUserService
         $this->user = UserApiService::instance($telegram)->getUser();
 
         return $this;
-    }
-
-    private function validateUser()
-    {
-        if (empty($this->user)) {
-            return response()->json([
-                'status' => false,
-                'user' => null,
-                'message' => BotApiMessages::userNotFound(),
-            ], 404);
-        }
-
-        if (! $this->user->hasActiveSubscription()) {
-            return response()->json([
-                'status' => false,
-                'user' => $this->user,
-                'type' => 'debt',
-                'message' => BotApiMessages::accessRequiresPayment(),
-            ], 403);
-        }
     }
 }

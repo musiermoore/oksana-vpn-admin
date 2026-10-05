@@ -33,6 +33,8 @@ class WireGuardTrafficService
         try {
             $this->parseData();
         } catch (Exception $exception) {
+            report($exception);
+
             return [];
         }
 
@@ -55,6 +57,8 @@ class WireGuardTrafficService
 
                 $this->traffic[$type] = $this->calculateAmount($amount, $unit);
             } catch (Exception $exception) {
+                report($exception);
+
                 continue;
             }
         }

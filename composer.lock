@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "39f9aaa6a119fdf157d19bac0108ec5d",
+    "content-hash": "5c2a6406ba92d75e99fe11ff782b34c9",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -1209,6 +1209,112 @@
                 }
             ],
             "time": "2026-05-23T22:00:21+00:00"
+        },
+        {
+            "name": "heyosseus/sloppy",
+            "version": "v1.6.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Heyosseus/sloppy.git",
+                "reference": "3b8252e65ff9c652ffe5bc42c365200b09fdc426"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Heyosseus/sloppy/zipball/3b8252e65ff9c652ffe5bc42c365200b09fdc426",
+                "reference": "3b8252e65ff9c652ffe5bc42c365200b09fdc426",
+                "shasum": ""
+            },
+            "require": {
+                "nikic/php-parser": "^5.3",
+                "php": "^8.3",
+                "symfony/console": "^7.0 || ^8.0",
+                "symfony/finder": "^7.0 || ^8.0",
+                "symfony/polyfill-ctype": "^1.27",
+                "symfony/polyfill-mbstring": "^1.27",
+                "symfony/process": "^7.0 || ^8.0",
+                "symfony/yaml": "^7.0 || ^8.0"
+            },
+            "require-dev": {
+                "illuminate/console": "^12.0 || ^13.0",
+                "illuminate/contracts": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "pestphp/pest": "^3.7 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^3.1 || ^4.0",
+                "pestphp/pest-plugin-type-coverage": "^3.2 || ^4.0",
+                "rector/rector": "^2.0"
+            },
+            "suggest": {
+                "ext-xmlreader": "Used to read clover and cobertura coverage reports, which raise untested changed files in the review order. Without it coverage is skipped and nothing else changes.",
+                "filament/filament": "Required for the Filament panel plugin and health widget.",
+                "heyosseus/phpstan-sloppy": "The PHPStan extension: reports Sloppy findings as PHPStan errors, inside your existing PHPStan run and baseline.",
+                "illuminate/console": "Required for the php artisan sloppy commands. Not needed for the standalone bin/sloppy binary.",
+                "laravel/pint": "Used by sloppy fix to format the files Rector rewrote.",
+                "pestphp/pest": "Required for the expectCleanSloppyDiff() test expectation.",
+                "rector/rector": "Required by sloppy fix, which hands the fixable findings to Rector."
+            },
+            "bin": [
+                "bin/sloppy",
+                "bin/sloppy-mcp"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Heyosseus\\Sloppy\\SloppyServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "pest/Expectations.php"
+                ],
+                "psr-4": {
+                    "Heyosseus\\Sloppy\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "heyosseus",
+                    "email": "ratiruxadzee@gmail.com"
+                }
+            ],
+            "description": "Static analysis for the debt AI coding agents leave behind, on any PHP project: 26 rules, architecture policies and module boundaries you describe, git-diff review, coverage-aware reading order, PHPStan baseline-growth detection, a Rector and Pint fix pass, Pest expectations, CI annotations, agent rulesets, Claude Code hooks and an MCP server. Runs inside PHPStan through the separate heyosseus/phpstan-sloppy extension. Extra rules and dashboards for Laravel. Deterministic, local, no LLM.",
+            "homepage": "https://github.com/heyosseus/sloppy",
+            "keywords": [
+                "Pint",
+                "ai",
+                "ai-agents",
+                "ci",
+                "code-quality",
+                "code-review",
+                "filament",
+                "laravel",
+                "mcp",
+                "pest",
+                "php",
+                "rector",
+                "slop",
+                "static-analysis",
+                "technical-debt"
+            ],
+            "support": {
+                "issues": "https://github.com/heyosseus/sloppy/issues",
+                "source": "https://github.com/heyosseus/sloppy"
+            },
+            "funding": [
+                {
+                    "url": "https://ko-fi.com/ratirukhadze",
+                    "type": "ko_fi"
+                }
+            ],
+            "time": "2026-10-05T13:17:33+00:00"
         },
         {
             "name": "inertiajs/inertia-laravel",
@@ -7079,6 +7185,82 @@
             "time": "2026-05-29T05:06:50+00:00"
         },
         {
+            "name": "symfony/yaml",
+            "version": "v8.1.8",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/yaml.git",
+                "reference": "030e96eed0303223bfca3af9109e9e64830b6ec3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/yaml/zipball/030e96eed0303223bfca3af9109e9e64830b6ec3",
+                "reference": "030e96eed0303223bfca3af9109e9e64830b6ec3",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.4.1",
+                "symfony/polyfill-ctype": "^1.8"
+            },
+            "conflict": {
+                "symfony/console": "<7.4"
+            },
+            "require-dev": {
+                "symfony/console": "^7.4|^8.0",
+                "yaml/yaml-test-suite": "*"
+            },
+            "bin": [
+                "Resources/bin/yaml-lint"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Yaml\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Loads and dumps YAML files",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/yaml/tree/v8.1.8"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-09-26T06:33:49+00:00"
+        },
+        {
             "name": "tijsverkoyen/css-to-inline-styles",
             "version": "v2.4.0",
             "source": {
@@ -8069,6 +8251,70 @@
             "time": "2022-02-21T01:04:05+00:00"
         },
         {
+            "name": "phpstan/phpstan",
+            "version": "2.2.17",
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/e676a49fa70cee9f5bf6ff4796186b928a08673f",
+                "reference": "e676a49fa70cee9f5bf6ff4796186b928a08673f",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0"
+            },
+            "conflict": {
+                "phpstan/phpstan-shim": "*"
+            },
+            "bin": [
+                "phpstan",
+                "phpstan.phar"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ondřej Mirtes"
+                },
+                {
+                    "name": "Markus Staab"
+                },
+                {
+                    "name": "Vincent Langlet"
+                }
+            ],
+            "description": "PHPStan - PHP Static Analysis Tool",
+            "keywords": [
+                "dev",
+                "static analysis"
+            ],
+            "support": {
+                "docs": "https://phpstan.org/user-guide/getting-started",
+                "forum": "https://github.com/phpstan/phpstan/discussions",
+                "issues": "https://github.com/phpstan/phpstan/issues",
+                "security": "https://github.com/phpstan/phpstan/security/policy",
+                "source": "https://github.com/phpstan/phpstan-src"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/ondrejmirtes",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/phpstan",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-10-04T19:40:09+00:00"
+        },
+        {
             "name": "phpunit/php-code-coverage",
             "version": "12.5.7",
             "source": {
@@ -8502,6 +8748,63 @@
                 }
             ],
             "time": "2026-06-04T06:14:42+00:00"
+        },
+        {
+            "name": "rector/rector",
+            "version": "2.6.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rectorphp/rector.git",
+                "reference": "f4aa224edb9b0630fb43826d4cb6a49b62e48d4c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rectorphp/rector/zipball/f4aa224edb9b0630fb43826d4cb6a49b62e48d4c",
+                "reference": "f4aa224edb9b0630fb43826d4cb6a49b62e48d4c",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0",
+                "phpstan/phpstan": "^2.2.14"
+            },
+            "conflict": {
+                "rector/rector-doctrine": "*",
+                "rector/rector-downgrade-php": "*",
+                "rector/rector-phpunit": "*",
+                "rector/rector-symfony": "*"
+            },
+            "bin": [
+                "bin/rector"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Instant Upgrade and Automated Refactoring of any PHP code",
+            "homepage": "https://getrector.com/",
+            "keywords": [
+                "automation",
+                "dev",
+                "migration",
+                "refactoring"
+            ],
+            "support": {
+                "issues": "https://github.com/rectorphp/rector/issues",
+                "source": "https://github.com/rectorphp/rector/tree/2.6.7"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/tomasvotruba",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-09-13T20:17:44+00:00"
         },
         {
             "name": "sebastian/cli-parser",

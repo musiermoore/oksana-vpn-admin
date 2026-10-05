@@ -292,7 +292,9 @@ class XrayCustomConfigController extends Controller
 
         try {
             return ['tg' => (string) Crypt::decryptString($tg), 'id' => (int) Crypt::decryptString($id)];
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            report($exception);
+
             return null;
         }
     }

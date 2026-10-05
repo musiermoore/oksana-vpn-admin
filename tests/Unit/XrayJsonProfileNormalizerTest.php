@@ -57,4 +57,27 @@ class XrayJsonProfileNormalizerTest extends TestCase
         $this->assertSame($httpNonEmptySettings, $normalized['inbounds'][2]['settings']);
         $this->assertSame($socksSettings, $normalized['inbounds'][3]['settings']);
     }
+
+    public function test_it_decodes_string_xhttp_extra_as_an_object(): void
+    {
+        $profile = [
+            'outbounds' => [[
+                'protocol' => 'vless',
+                'streamSettings' => [
+                    'network' => 'xhttp',
+                    'xhttpSettings' => [
+                        'extra' => '{"noGRPCHeader":false,"xmux":{"maxConnections":1}}',
+                    ],
+                ],
+            ]],
+        ];
+
+        $normalized = (new XrayJsonProfileNormalizer())->normalizeProfile($profile);
+
+        $extra = $normalized['outbounds'][0]['streamSettings']['xhttpSettings']['extra'];
+
+        $this->assertInstanceOf(stdClass::class, $extra);
+        $this->assertFalse($extra->noGRPCHeader);
+        $this->assertSame(1, $extra->xmux->maxConnections);
+    }
 }

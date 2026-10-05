@@ -61,6 +61,16 @@ class XrayJsonProfileNormalizer
                 $outbound['streamSettings']['tcpSettings'] = (object) [];
             }
 
+            if (($outbound['streamSettings']['network'] ?? null) === 'xhttp'
+                && is_string($outbound['streamSettings']['xhttpSettings']['extra'] ?? null)
+            ) {
+                $extra = json_decode($outbound['streamSettings']['xhttpSettings']['extra']);
+
+                if (json_last_error() === JSON_ERROR_NONE && is_object($extra)) {
+                    $outbound['streamSettings']['xhttpSettings']['extra'] = $extra;
+                }
+            }
+
             return $outbound;
         }, $profile['outbounds']);
 

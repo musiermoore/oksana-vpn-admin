@@ -166,6 +166,15 @@ Main `/connect`:
 - Ordering is explicit: `servers.sort_order`, `vless_external_subscriptions.sort_order`, `xray_inbounds.sort_order`, and `proxies.sort_order`.
 - `proxies.server_id` makes proxy variants part of one server. `hide_main_node_name` makes the proxy display name stand alone.
 - Soft-deleted servers are excluded.
+- INCY requests receive Telegram links through `Support-Url`, `Profile-Web-Page-Url`, and `Announce-Url`: bot, news channel, and community chat.
+
+`/connect-v2`:
+
+- Resolves the user from the plain `users.uuid` query token.
+- Lowercases `User-Agent` and redirects Incy, Happ, and V2RayTun clients to their matching deep-link scheme.
+- Allows Postman only for admin users and redirects it to the normal `/connect` subscription URL.
+- Returns `403` for unsupported clients or non-admin Postman requests.
+- Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 
 WireGuard/AmneziaWG output:
 

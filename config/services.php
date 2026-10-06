@@ -39,6 +39,11 @@ return [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'bot_username' => env('TELEGRAM_BOT_USERNAME'),
         'dev_chat_id' => env('TELEGRAM_DEV_CHAT_ID'),
+        'incy_links' => [
+            'bot' => env('TELEGRAM_INCY_BOT_URL', 'https://t.me/OksanaVpnBot'),
+            'news' => env('TELEGRAM_INCY_NEWS_URL', 'https://t.me/+DfexxpJzKiFkNzQ6'),
+            'chat' => env('TELEGRAM_INCY_CHAT_URL', 'https://t.me/+jG8T4yBk0tg4MWNi'),
+        ],
         'mini_app_token_ttl_minutes' => env('TELEGRAM_MINI_APP_TOKEN_TTL_MINUTES', 43200),
         'mini_app_init_data_ttl_seconds' => env('TELEGRAM_MINI_APP_INIT_DATA_TTL_SECONDS', 3600),
     ],

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Carbon\Carbon;
@@ -29,6 +31,7 @@ class User extends Authenticatable
         'name',
         'login',
         'password',
+        'uuid',
         'telegram',
         'telegram_id',
         'referrer_id',

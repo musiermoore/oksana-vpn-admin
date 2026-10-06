@@ -1,0 +1,141 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Jobs\StoreApiRequestLogJob;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+use Tests\TestCase;
+
+class ConnectV2Test extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_incy_user_agent_redirects_to_incy_deep_link(): void
+    {
+        $user = $this->createUser();
+
+        $response = $this
+            ->withHeader('User-Agent', 'INCY/2.4.5')
+            ->get(route('vless.connect-v2', ['token' => $user->uuid]));
+
+        $response->assertRedirect();
+        $this->assertStringStartsWith('incy://import/', (string) $response->headers->get('Location'));
+    }
+
+    public function test_happ_user_agent_redirects_to_happ_deep_link(): void
+    {
+        Http::fake([
+            'https://crypto.happ.su/api-v2.php' => Http::response([
+                'encrypted_link' => 'happ://encrypted-subscription',
+            ]),
+        ]);
+
+        $user = $this->createUser();
+
+        $response = $this
+            ->withHeader('User-Agent', 'Happ/1.0')
+            ->get(route('vless.connect-v2', ['token' => $user->uuid]));
+
+        $response->assertRedirect('happ://encrypted-subscription');
+    }
+
+    public function test_v2raytun_user_agent_redirects_to_v2raytun_deep_link(): void
+    {
+        $user = $this->createUser();
+
+        $response = $this
+            ->withHeader('User-Agent', 'V2RayTun/6.0')
+            ->get(route('vless.connect-v2', ['token' => $user->uuid]));
+
+        $response->assertRedirect();
+        $this->assertStringStartsWith('v2raytun://import/', (string) $response->headers->get('Location'));
+    }
+
+    public function test_postman_is_available_only_for_admins(): void
+    {
+        $admin = $this->createUser(['is_admin' => true]);
+        $regularUser = $this->createUser();
+
+        $this
+            ->withHeader('User-Agent', 'PostmanRuntime/7.0')
+            ->get(route('vless.connect-v2', ['token' => $admin->uuid]))
+            ->assertRedirect();
+
+        $this
+            ->withHeader('User-Agent', 'PostmanRuntime/7.0')
+            ->get(route('vless.connect-v2', ['token' => $regularUser->uuid]))
+            ->assertForbidden();
+    }
+
+    public function test_unknown_user_agent_is_forbidden(): void
+    {
+        $user = $this->createUser();
+
+        $this
+            ->withHeader('User-Agent', 'UnknownClient/1.0')
+            ->get(route('vless.connect-v2', ['token' => $user->uuid]))
+            ->assertForbidden();
+    }
+
+    public function test_incy_subscription_includes_telegram_links_in_metadata_headers(): void
+    {
+        config()->set('services.telegram.incy_links', [
+            'bot' => 'https://t.me/test_bot',
+            'news' => 'https://t.me/test_news',
+            'chat' => 'https://t.me/test_chat',
+        ]);
+
+        $user = $this->createUser();
+
+        $response = $this
+            ->withHeader('User-Agent', 'INCY/2.4.5')
+            ->get(route('vless.connect', [
+                'tg' => Crypt::encrypt($user->telegram_id),
+                'i' => Crypt::encrypt((string) $user->id),
+            ]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('Support-Url', 'https://t.me/test_bot')
+            ->assertHeader('Profile-Web-Page-Url', 'https://t.me/test_news')
+            ->assertHeader('Announce-Url', 'https://t.me/test_chat');
+    }
+
+    public function test_connect_v2_request_log_contains_user_and_query_parameters(): void
+    {
+        Queue::fake();
+        $user = $this->createUser();
+
+        $this
+            ->withHeader('User-Agent', 'INCY/2.4.5')
+            ->get(route('vless.connect-v2', [
+                'token' => $user->uuid,
+                'source' => 'qr',
+            ]));
+
+        Queue::assertPushed(StoreApiRequestLogJob::class, function (StoreApiRequestLogJob $job) use ($user): bool {
+            return $job->payload['user_id'] === $user->id
+                && $job->payload['action'] === 'vless.connect-v2'
+                && $job->payload['params']['query']['token'] === $user->uuid
+                && $job->payload['params']['query']['source'] === 'qr';
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createUser(array $attributes = []): User
+    {
+        return User::query()->create([
+            'name' => 'Connect V2 User',
+            'uuid' => fake()->uuid(),
+            'telegram' => '@connect-v2-user',
+            'telegram_id' => (string) fake()->unique()->numberBetween(100000, 999999),
+            ...$attributes,
+        ]);
+    }
+}

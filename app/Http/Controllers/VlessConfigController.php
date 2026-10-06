@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\VlessConfig\StoreVlessConfigRequest;
@@ -19,6 +21,7 @@ use App\Services\UserConnectedDeviceService;
 use App\Services\VlessDeepLinkService;
 use App\Services\XuiConfigServiceFactory;
 use Exception;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
@@ -219,7 +222,52 @@ class VlessConfigController extends Controller
             $response->header($name, $value);
         }
 
+        if (str_contains(mb_strtolower((string) $request->userAgent()), 'incy')) {
+            foreach ([
+                'Support-Url' => config('services.telegram.incy_links.bot'),
+                'Profile-Web-Page-Url' => config('services.telegram.incy_links.news'),
+                'Announce-Url' => config('services.telegram.incy_links.chat'),
+            ] as $name => $value) {
+                $response->header($name, (string) $value);
+            }
+        }
+
         return $response;
+    }
+
+    public function connectV2(Request $request, VlessDeepLinkService $deepLinkService): RedirectResponse
+    {
+        $user = User::query()
+            ->where('uuid', $request->string('token')->toString())
+            ->first();
+
+        if (! $user) {
+            abort(404);
+        }
+
+        $request->setUserResolver(static fn (): User => $user);
+        $userAgent = mb_strtolower((string) $request->userAgent());
+        $subscriptionLink = $deepLinkService->getConnectUrl($user);
+
+        Log::info('connect-v2.request', [
+            'user_id' => (int) $user->id,
+            'query' => $request->query(),
+            'user_agent' => (string) $request->userAgent(),
+        ]);
+
+        $redirectUrl = match (true) {
+            str_contains($userAgent, 'incy') => $deepLinkService->resolveRedirectUrl('incy', $subscriptionLink),
+            str_contains($userAgent, 'happ') => $deepLinkService->resolveRedirectUrl('happ', $subscriptionLink),
+            str_contains($userAgent, 'v2raytun') => $deepLinkService->resolveRedirectUrl('v2raytun', $subscriptionLink),
+            str_contains($userAgent, 'postman') && (bool) $user->is_admin => $subscriptionLink,
+            default => abort(403),
+        };
+
+        if ($redirectUrl === null) {
+            abort(403);
+        }
+
+        return redirect()->away($redirectUrl);
     }
 
     public function connectJson(

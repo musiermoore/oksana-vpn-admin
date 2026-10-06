@@ -271,7 +271,7 @@ class ApiUserService
             'raw_link' => $this->vlessDeepLinks->getConnectV2Url($user),
             'legacy_link' => $this->vlessDeepLinks->getConnectUrl($user),
             'show_raw_link' => true,
-            ...$this->vlessDeepLinks->getConnectV2RouteLinks($user),
+            ...$this->vlessDeepLinks->getConnectV2DeepLinks($user),
         ];
     }
 

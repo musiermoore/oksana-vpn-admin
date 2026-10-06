@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Services\ExternalSubscriptions\Incy\IncyCryptLinkEncoder;
+use App\Services\ExternalSubscriptions\V2RayTun\V2RayTunCryptLinkEncoder;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -12,6 +13,7 @@ class VlessDeepLinkService
 {
     public function __construct(
         private readonly IncyCryptLinkEncoder $incyLinkEncoder,
+        private readonly V2RayTunCryptLinkEncoder $v2rayTunLinkEncoder,
     ) {}
 
     private const CLIENT_RESPONSE_KEYS = [
@@ -21,7 +23,7 @@ class VlessDeepLinkService
         'v2box' => 'v2raybox_deeplink',
         'sing-box' => 'sing_box_deeplink',
         'hiddify' => 'hiddify_deeplink',
-        'v2raytun' => 'v2raytun_deeplink',
+            'v2raytun' => 'v2raytun_deeplink',
         'incy' => 'incy_deeplink',
     ];
 
@@ -72,6 +74,18 @@ class VlessDeepLinkService
         ]);
     }
 
+    public function getConnectV2DeepLinks(User $user): array
+    {
+        $subscriptionLink = $this->getConnectV2Url($user);
+        $links = [];
+
+        foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
+            $links[$responseKey] = $this->resolveRedirectUrl($client, $subscriptionLink);
+        }
+
+        return $links;
+    }
+
     public function getConnectUrlForRoute(User $user, string $routeName, ?string $client = null): string
     {
         $parameters = $this->getConnectRouteParameters($user);
@@ -117,7 +131,7 @@ class VlessDeepLinkService
             'v2box' => $this->buildInstallSubLink('v2box', $subscriptionLink),
             'sing-box' => 'sing-box://import-remote-profile?url='.urlencode($subscriptionLink),
             'hiddify' => 'hiddify://import/'.$subscriptionLink,
-            'v2raytun' => 'v2raytun://import/'.$subscriptionLink,
+            'v2raytun' => $this->v2rayTunLinkEncoder->encode($subscriptionLink),
             'incy' => $this->incyLinkEncoder->encode($subscriptionLink),
             default => null,
         };

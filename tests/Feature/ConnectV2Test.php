@@ -20,11 +20,17 @@ class ConnectV2Test extends TestCase
 
         $response = $this
             ->withHeader('User-Agent', 'INCY/2.4.5')
-            ->get(route('vless.connect-v2', ['token' => $user->uuid]));
+            ->get(route('vless.connect-v2', [
+                'token' => $user->uuid,
+                'format' => 'txt',
+            ]));
+
+        $this->assertIsArray($response->json());
 
         $response
             ->assertOk()
-            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertHeader('Profile-Title', 'Oksana VPN v2')
             ->assertHeader('Support-Url', 'https://t.me/OksanaVpnBot');
     }
 
@@ -55,7 +61,8 @@ class ConnectV2Test extends TestCase
 
         $response
             ->assertOk()
-            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertHeader('Profile-Title', 'Oksana VPN v2');
     }
 
     public function test_postman_is_available_only_for_admins(): void

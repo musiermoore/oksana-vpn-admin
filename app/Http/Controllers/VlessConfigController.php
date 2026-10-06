@@ -243,7 +243,7 @@ class VlessConfigController extends Controller
         };
 
         $this->connectedDevices->recordConnection($user, $request);
-        $subscription = $subscriptionService->build($user, $request->query('format'));
+        $subscription = $subscriptionService->build($user, 'json');
 
         Log::info('connect-v2.res', [
             'user_id' => (int) $user->id,
@@ -251,7 +251,7 @@ class VlessConfigController extends Controller
             'ext' => $subscription->fileExtension,
         ]);
 
-        return $this->subscriptionResponse($request, $user, $subscription, $metadataService);
+        return $this->subscriptionResponse($request, $user, $subscription, $metadataService, 'Oksana VPN v2');
     }
 
     private function subscriptionResponse(
@@ -259,6 +259,7 @@ class VlessConfigController extends Controller
         User $user,
         SubscriptionBuildResult $subscription,
         SubscriptionMetadataService $metadataService,
+        string $profileTitle = 'Oksana VPN',
     ): Response {
         $response = response($subscription->content);
 
@@ -266,7 +267,7 @@ class VlessConfigController extends Controller
             $user,
             $subscription->fileExtension,
             $subscription->contentType,
-            'Oksana VPN',
+            $profileTitle,
             true,
             false,
             true,

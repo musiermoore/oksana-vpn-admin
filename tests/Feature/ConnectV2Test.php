@@ -6,6 +6,7 @@ use App\Jobs\StoreApiRequestLogJob;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -47,6 +48,23 @@ class ConnectV2Test extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
             ->assertHeader('Hide-Settings', '1');
+    }
+
+    public function test_happ_deep_link_redirects_even_when_requested_by_happ_android(): void
+    {
+        Http::fake([
+            'https://crypto.happ.su/api-v2.php' => Http::response('happ://crypt5/encrypted-value'),
+        ]);
+
+        $user = $this->createUser();
+
+        $this
+            ->withHeader('User-Agent', 'Happ/3.26.1 Android')
+            ->get(route('vless.connect-v2-deep-link', [
+                'client' => 'happ',
+                'token' => $user->uuid,
+            ]))
+            ->assertRedirect('happ://crypt5/encrypted-value');
     }
 
     public function test_v2raytun_user_agent_redirects_to_v2raytun_deep_link(): void

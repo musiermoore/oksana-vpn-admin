@@ -437,7 +437,7 @@ class VlessConfigController extends Controller
         }
 
         $userAgent = mb_strtolower((string) $request->userAgent());
-        if (str_contains($userAgent, $client)) {
+        if ($client !== 'happ' && str_contains($userAgent, $client)) {
             $request->merge(['deep_link' => true]);
 
             return $this->connectV2($request, $metadataService, $subscriptionService);

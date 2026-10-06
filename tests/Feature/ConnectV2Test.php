@@ -87,6 +87,24 @@ class ConnectV2Test extends TestCase
             ->assertHeader('Hide-Settings', '1');
     }
 
+    public function test_happ_app_parameter_returns_one_diagnostic_profile(): void
+    {
+        $user = $this->createUser();
+
+        $response = $this
+            ->withHeader('User-Agent', 'Mozilla/5.0')
+            ->getJson(route('vless.connect-v2', [
+                'token' => $user->uuid,
+                'app' => 'happ',
+            ]));
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.remarks', 'Happ test')
+            ->assertJsonPath('0.routing.rules', []);
+    }
+
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void
     {
         Http::fake([

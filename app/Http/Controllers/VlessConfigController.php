@@ -245,7 +245,7 @@ class VlessConfigController extends Controller
         };
 
         $this->connectedDevices->recordConnection($user, $request);
-        $subscription = $subscriptionService->buildConnectV2($user);
+        $subscription = $subscriptionService->buildConnectV2($user, $app);
 
         Log::info('connect-v2.res', [
             'user_id' => (int) $user->id,

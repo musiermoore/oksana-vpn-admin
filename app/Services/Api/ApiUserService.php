@@ -269,9 +269,26 @@ class ApiUserService
         return [
             'link' => $this->vlessDeepLinks->getConnectV2Url($user),
             'raw_link' => $this->vlessDeepLinks->getConnectV2Url($user),
+            'legacy_link' => $this->vlessDeepLinks->getConnectUrl($user),
             'show_raw_link' => true,
             ...$this->vlessDeepLinks->getConnectV2RouteLinks($user),
         ];
+    }
+
+    public function getVlessConnectV2QrLink(User $user, string $target): string
+    {
+        if ($target === 'legacy') {
+            return $this->vlessDeepLinks->getConnectUrl($user);
+        }
+
+        $keys = [
+            'happ' => 'happ_deep_link',
+            'v2raytun' => 'v2raytun_deeplink',
+            'incy' => 'incy_deeplink',
+        ];
+
+        return $this->getVlessConnectV2Links($user)[$keys[$target] ?? '']
+            ?? $this->vlessDeepLinks->getConnectV2Url($user);
     }
 
     /**

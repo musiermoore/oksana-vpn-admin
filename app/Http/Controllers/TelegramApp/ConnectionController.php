@@ -341,7 +341,10 @@ class ConnectionController extends Controller
         }
 
         return $this->vlessQrCodes->download(
-            $this->users->getVlessLink($user),
+            $this->users->getVlessConnectV2QrLink(
+                $user,
+                (string) $request->query('target', 'legacy'),
+            ),
             'vless-qrcode.png',
         );
     }

@@ -423,6 +423,18 @@ class VlessConfigController extends Controller
         return redirect()->away($redirectUrl);
     }
 
+    private function isAndroidChrome(string $userAgent): bool
+    {
+        return str_contains($userAgent, 'android')
+            && str_contains($userAgent, 'chrome');
+    }
+
+    private function buildAndroidIntentUrl(string $redirectUrl): string
+    {
+        return 'intent://'.mb_substr($redirectUrl, mb_strlen('happ://'))
+            .'#Intent;scheme=happ;package=com.happproxy;end';
+    }
+
     public function deepLinkV2(
         Request $request,
         string $client,
@@ -450,6 +462,13 @@ class VlessConfigController extends Controller
 
         if ($redirectUrl === null) {
             abort(404);
+        }
+
+        if ($client === 'happ' && $this->isAndroidChrome($userAgent)) {
+            return response()->view('deep-link', [
+                'intentUrl' => $this->buildAndroidIntentUrl($redirectUrl),
+                'redirectUrl' => $redirectUrl,
+            ]);
         }
 
         return redirect()->away($redirectUrl);

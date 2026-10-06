@@ -67,6 +67,29 @@ class ConnectV2Test extends TestCase
             ->assertRedirect('happ://crypt5/encrypted-value');
     }
 
+    public function test_happ_deep_link_uses_android_intent_in_chrome(): void
+    {
+        Http::fake([
+            'https://crypto.happ.su/api-v2.php' => Http::response('happ://crypt5/encrypted-value'),
+        ]);
+
+        $user = $this->createUser();
+
+        $this
+            ->withoutMiddleware(\App\Http\Middleware\TrackApiRequests::class)
+            ->withHeader(
+                'User-Agent',
+                'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36'
+            )
+            ->get(route('vless.connect-v2-deep-link', [
+                'client' => 'happ',
+                'token' => $user->uuid,
+            ]))
+            ->assertOk()
+            ->assertSee('intent://crypt5/encrypted-value', false)
+            ->assertSee('package=com.happproxy', false);
+    }
+
     public function test_v2raytun_user_agent_redirects_to_v2raytun_deep_link(): void
     {
         $user = $this->createUser();

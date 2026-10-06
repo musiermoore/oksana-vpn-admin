@@ -109,6 +109,23 @@ class ConnectV2Test extends TestCase
         $this->assertStringNotContainsString('Happ test', $response->getContent());
     }
 
+    public function test_v2raytun_app_parameter_returns_standard_and_custom_profiles(): void
+    {
+        $user = $this->createUser();
+
+        $response = $this
+            ->withHeader('User-Agent', 'Mozilla/5.0')
+            ->getJson(route('vless.connect-v2', [
+                'token' => $user->uuid,
+                'app' => 'v2raytun',
+            ]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertJsonStructure();
+    }
+
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void
     {
         Http::fake([

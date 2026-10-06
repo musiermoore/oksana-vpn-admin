@@ -83,7 +83,7 @@ class UserSubscriptionService
 
     public function buildConnectV2(User $user, ?string $app = null): SubscriptionBuildResult
     {
-        if ($app === 'happ') {
+        if (in_array($app, ['happ', 'v2raytun'], true)) {
             return $this->buildFromNodes(
                 $this->buildNamedNodes($user),
                 'json',

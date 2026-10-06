@@ -65,6 +65,26 @@ class ConnectV2Test extends TestCase
                 'token' => $user->uuid,
             ]))
             ->assertRedirect('happ://crypt5/encrypted-value');
+
+        Http::assertSent(static fn ($request): bool => str_contains(
+            (string) $request->data()['url'],
+            '/start?token='.$user->uuid.'&app=happ',
+        ));
+    }
+
+    public function test_app_parameter_allows_happ_subscription_without_happ_user_agent(): void
+    {
+        $user = $this->createUser();
+
+        $this
+            ->withHeader('User-Agent', 'Mozilla/5.0')
+            ->get(route('vless.connect-v2', [
+                'token' => $user->uuid,
+                'app' => 'happ',
+            ]))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertHeader('Hide-Settings', '1');
     }
 
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void

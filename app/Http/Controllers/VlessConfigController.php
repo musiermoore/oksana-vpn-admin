@@ -227,6 +227,7 @@ class VlessConfigController extends Controller
 
         $request->setUserResolver(static fn (): User => $user);
         $userAgent = mb_strtolower((string) $request->userAgent());
+        $app = mb_strtolower($request->string('app')->toString());
 
         Log::info('connect-v2.request', [
             'user_id' => (int) $user->id,
@@ -235,6 +236,7 @@ class VlessConfigController extends Controller
         ]);
 
         match (true) {
+            in_array($app, ['incy', 'happ', 'v2raytun'], true),
             str_contains($userAgent, 'incy'),
             str_contains($userAgent, 'happ'),
             str_contains($userAgent, 'v2raytun'),
@@ -285,12 +287,14 @@ class VlessConfigController extends Controller
         }
 
         $userAgent = mb_strtolower((string) $request->userAgent());
-        if (str_contains($userAgent, 'incy')) {
+        $app = mb_strtolower($request->string('app')->toString());
+        $effectiveClient = $app !== '' ? $app : $userAgent;
+        if (str_contains($effectiveClient, 'incy')) {
             $response->header('Hide-Url', 'true');
             $response->header('Hide-Proxy', 'true');
         }
 
-        if (str_contains(mb_strtolower((string) $request->userAgent()), 'happ')) {
+        if (str_contains($effectiveClient, 'happ')) {
             $response->header('Hide-Settings', '1');
         }
 
@@ -457,7 +461,7 @@ class VlessConfigController extends Controller
 
         $redirectUrl = $deepLinkService->resolveRedirectUrl(
             $client,
-            $deepLinkService->getConnectV2Url($user),
+            $deepLinkService->getConnectV2Url($user, $client),
         );
 
         if ($redirectUrl === null) {

@@ -61,8 +61,14 @@ class VlessDeepLinkService
 
     public function getConnectV2Url(User $user, ?string $client = null): string
     {
-        return rtrim((string) config('vless.public_domain'), '/')
+        $url = rtrim((string) config('vless.public_domain'), '/')
             .'/start?token='.urlencode((string) $user->uuid);
+
+        if ($client !== null) {
+            $url .= '&app='.urlencode($client);
+        }
+
+        return $url;
     }
 
     public function getConnectV2RouteLinks(User $user): array

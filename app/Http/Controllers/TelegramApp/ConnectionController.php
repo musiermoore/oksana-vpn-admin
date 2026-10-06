@@ -388,7 +388,7 @@ class ConnectionController extends Controller
         try {
             $links = $whitelist
                 ? $this->users->getVlessWhiteListLinks($user)
-                : $this->users->getVlessLinks($user);
+                : $this->users->getVlessConnectV2Links($user);
 
             return response()->json((new ApiVlessDeepLinksResource($links))->resolve());
         } catch (Exception $exception) {
@@ -416,7 +416,7 @@ class ConnectionController extends Controller
         try {
             $link = $whitelist
                 ? $this->users->getVlessWhiteListLink($user)
-                : $this->users->getVlessLink($user);
+                : $this->users->getVlessConnectV2Link($user);
             $png = QrCode::format('png')
                 ->margin(5)
                 ->size(512)

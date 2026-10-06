@@ -44,14 +44,6 @@ const preferredLinks = computed(() => ([
     },
 ]).filter((item) => item.url));
 
-const extraLinks = computed(() => ([
-    { key: 'v2rayn_deeplink', title: 'V2RayN', url: links.value?.v2rayn_deeplink ?? '' },
-    { key: 'v2rayng_deeplink', title: 'V2RayNG', url: links.value?.v2rayng_deeplink ?? '' },
-    { key: 'v2raybox_deeplink', title: 'V2Ray Box', url: links.value?.v2raybox_deeplink ?? '' },
-    { key: 'sing_box_deeplink', title: 'Sing-box', url: links.value?.sing_box_deeplink ?? '' },
-    { key: 'hiddify_deeplink', title: 'Hiddify', url: links.value?.hiddify_deeplink ?? '' },
-]).filter((item) => item.url));
-
 const showCopyToast = (message) => {
     copyToast.value = message;
 
@@ -189,34 +181,6 @@ onBeforeUnmount(() => {
                         </button>
                     </div>
                 </button>
-
-                <div v-if="extraLinks.length > 0" class="tg-surface-card tg-stack">
-                    <div class="tg-section__title">Другие приложения</div>
-                    <button
-                        v-for="item in extraLinks"
-                        :key="item.key"
-                        class="tg-list-card tg-list-card--button tg-list-card--soft"
-                        type="button"
-                        @click="openTelegramExternalLink(item.url)"
-                    >
-                        <div class="tg-list-card__body">
-                            <div class="tg-list-card__title">{{ item.title }}</div>
-                            <div class="tg-list-card__description">Открыть БС-ссылку в приложении.</div>
-                        </div>
-                        <div class="tg-inline-actions">
-                            <button
-                                class="tg-icon-button tg-icon-button--soft tg-copy-button"
-                                :class="{ 'is-copied': copiedUrl === item.url }"
-                                type="button"
-                                :aria-label="copiedUrl === item.url ? 'Успешно скопировано' : 'Скопировать ссылку'"
-                                :title="copiedUrl === item.url ? 'Успешно скопировано' : 'Скопировать ссылку'"
-                                @click.stop="copyText(item.url)"
-                            >
-                                <AppIcon :name="copiedUrl === item.url ? 'circleCheck' : 'copy'" />
-                            </button>
-                        </div>
-                    </button>
-                </div>
 
                 <p v-if="copyToast" class="tg-success-text">{{ copyToast }}</p>
             </section>

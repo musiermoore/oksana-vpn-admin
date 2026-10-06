@@ -81,6 +81,19 @@ class UserSubscriptionService
         return $this->build($user, 'json');
     }
 
+    public function buildConnectV2(User $user): SubscriptionBuildResult
+    {
+        $nodes = [
+            ...$this->buildNamedNodes($user),
+            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose(
+                $user,
+                VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
+            ),
+        ];
+
+        return $this->buildFromNodes($nodes, 'json', XrayRouting::SUBSCRIPTION_CONNECT, $user);
+    }
+
     private function appendCustomJsonProfiles(SubscriptionBuildResult $result, User $user): SubscriptionBuildResult
     {
         // Keep JSON objects as stdClass instances. Decoding with `$associative = true`

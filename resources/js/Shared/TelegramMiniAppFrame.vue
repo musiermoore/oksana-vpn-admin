@@ -25,7 +25,7 @@ const giveawaySummary = ref({
 
 const navItems = computed(() => ([
     { href: telegramMiniAppRoutes.home, label: 'Главная', icon: 'home', keys: ['/telegram-app', '/public'], exact: true },
-    { href: telegramMiniAppRoutes.wireguard, label: 'Конфиги', icon: 'shield', keys: ['/telegram-app/wireguard', '/telegram-app/vless', '/telegram-app/vless-wl', '/public/wireguard', '/public/vless', '/public/vless-wl'] },
+    { href: telegramMiniAppRoutes.wireguard, label: 'Конфиги', icon: 'shield', keys: ['/telegram-app/wireguard', '/telegram-app/vless', '/public/wireguard', '/public/vless'] },
     { href: telegramMiniAppRoutes.payments, label: 'Подписка', icon: 'receipt', keys: ['/telegram-app/payments', '/public/payments'] },
     { href: telegramMiniAppRoutes.help, label: 'Помощь', icon: 'circleQuestion', keys: ['/telegram-app/help', '/telegram-app/support', '/telegram-app/chats', '/public/help', '/public/support', '/public/chats'] },
     {

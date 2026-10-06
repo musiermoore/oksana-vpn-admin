@@ -57,6 +57,21 @@ class VlessDeepLinkService
         return $this->getConnectUrlForRoute($user, 'vless.connect', $client);
     }
 
+    public function getConnectV2Url(User $user): string
+    {
+        return $this->buildUrl('vless.connect-v2', [
+            'token' => $user->uuid,
+            'format' => 'json',
+        ]);
+    }
+
+    public function getConnectV2RouteLinks(User $user): array
+    {
+        return $this->getRouteLinksForRoute('vless.connect-v2-deep-link', [
+            'token' => $user->uuid,
+        ]);
+    }
+
     public function getConnectUrlForRoute(User $user, string $routeName, ?string $client = null): string
     {
         $parameters = $this->getConnectRouteParameters($user);

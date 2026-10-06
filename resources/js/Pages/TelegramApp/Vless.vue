@@ -49,14 +49,6 @@ const preferredLinks = computed(() => ([
     },
 ]).filter((item) => item.url));
 
-const extraLinks = computed(() => ([
-    { key: 'v2rayn_deeplink', title: 'V2RayN', url: links.value?.v2rayn_deeplink ?? '' },
-    { key: 'v2rayng_deeplink', title: 'V2RayNG', url: links.value?.v2rayng_deeplink ?? '' },
-    { key: 'v2raybox_deeplink', title: 'V2Ray Box', url: links.value?.v2raybox_deeplink ?? '' },
-    { key: 'sing_box_deeplink', title: 'Sing-box', url: links.value?.sing_box_deeplink ?? '' },
-    { key: 'hiddify_deeplink', title: 'Hiddify', url: links.value?.hiddify_deeplink ?? '' },
-]).filter((item) => item.url));
-
 const rawLink = computed(() => links.value?.raw_link || links.value?.link || '');
 
 const revokeQrUrl = () => {
@@ -258,7 +250,15 @@ onBeforeUnmount(() => {
                         <div class="tg-list-card__title">{{ item.title }}</div>
                         <div class="tg-list-card__description">{{ item.description }}</div>
                     </div>
-                    <div class="tg-list-card__aside">
+                    <div class="tg-list-card__aside tg-inline-actions">
+                        <button
+                            class="tg-icon-button tg-icon-button--soft tg-copy-button"
+                            type="button"
+                            aria-label="Скопировать ссылку"
+                            @click.stop="copyText(item.url, 'Откройте ссылку в браузере, а не внутри приложения.')"
+                        >
+                            <AppIcon name="copy" />
+                        </button>
                         <AppIcon name="arrowUpRight" />
                     </div>
                 </button>
@@ -267,7 +267,7 @@ onBeforeUnmount(() => {
                     <div class="tg-section__title">Ваша ссылка</div>
                     <div class="tg-code-block">{{ rawLink || 'Ссылка недоступна' }}</div>
                     <div class="tg-inline-actions">
-                        <button class="tg-button tg-button--secondary" type="button" @click="copyText(rawLink)">
+                        <button class="tg-button tg-button--secondary" type="button" @click="copyText(rawLink, 'Откройте ссылку в браузере, а не внутри приложения.')">
                             <AppIcon name="copy" />
                             <span>Скопировать</span>
                         </button>
@@ -276,25 +276,6 @@ onBeforeUnmount(() => {
                             <span>Показать QR</span>
                         </button>
                     </div>
-                </div>
-
-                <div v-if="extraLinks.length > 0" class="tg-surface-card tg-stack">
-                    <div class="tg-section__title">Другие приложения</div>
-                    <button
-                        v-for="item in extraLinks"
-                        :key="item.key"
-                        class="tg-list-card tg-list-card--button tg-list-card--soft"
-                        type="button"
-                        @click="openTelegramExternalLink(item.url)"
-                    >
-                        <div class="tg-list-card__body">
-                            <div class="tg-list-card__title">{{ item.title }}</div>
-                            <div class="tg-list-card__description">Открыть подписку в этом приложении.</div>
-                        </div>
-                        <div class="tg-list-card__aside">
-                            <AppIcon name="arrowUpRight" />
-                        </div>
-                    </button>
                 </div>
 
                 <p v-if="copyToast" class="tg-success-text">{{ copyToast }}</p>
@@ -320,7 +301,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="send" />
                         <span>{{ sendingQrToBot ? 'Отправляем...' : 'Отправить QR в Telegram' }}</span>
                     </button>
-                    <button class="tg-button tg-button--soft" type="button" @click="copyText(rawLink, 'Ссылка скопирована.')">
+                    <button class="tg-button tg-button--soft" type="button" @click="copyText(rawLink, 'Откройте ссылку в браузере, а не внутри приложения.')">
                         <AppIcon name="copy" />
                         <span>Скопировать ссылку</span>
                     </button>

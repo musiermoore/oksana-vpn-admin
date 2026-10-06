@@ -202,6 +202,9 @@ Route::get('connects-wl-raw', [VlessConfigController::class, 'connectWhiteListRa
 Route::get('connect/deep-link/{client}', [VlessConfigController::class, 'deepLink'])
     ->middleware(TrackApiRequests::class)
     ->name('vless.deep-link');
+Route::get('connect-v2/deep-link/{client}', [VlessConfigController::class, 'deepLinkV2'])
+    ->middleware(TrackApiRequests::class)
+    ->name('vless.connect-v2-deep-link');
 Route::get('connect-wl/deep-link/{client}', [VlessConfigController::class, 'deepLinkWhiteList'])
     ->middleware(TrackApiRequests::class)
     ->name('vless.deep-link-wl');

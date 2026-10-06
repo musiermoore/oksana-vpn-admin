@@ -259,6 +259,21 @@ class ApiUserService
         return $this->vlessDeepLinks->getConnectUrl($user);
     }
 
+    public function getVlessConnectV2Link(User $user): string
+    {
+        return $this->vlessDeepLinks->getConnectV2Url($user);
+    }
+
+    public function getVlessConnectV2Links(User $user): array
+    {
+        return [
+            'link' => $this->vlessDeepLinks->getConnectV2Url($user),
+            'raw_link' => $this->vlessDeepLinks->getConnectV2Url($user),
+            'show_raw_link' => true,
+            ...$this->vlessDeepLinks->getConnectV2RouteLinks($user),
+        ];
+    }
+
     /**
      * @return array<string, string>
      */

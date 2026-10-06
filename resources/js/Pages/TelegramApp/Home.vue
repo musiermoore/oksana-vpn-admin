@@ -18,10 +18,6 @@ const user = ref(null);
 const referralStatus = ref('');
 const packages = ref([]);
 
-const whiteListRoute = computed(() => {
-    return `${telegramMiniAppRoutes.vless_wl}?step=links`;
-});
-
 const amneziaRoute = computed(() => {
     return `${telegramMiniAppRoutes.wireguard}?step=list`;
 });
@@ -96,16 +92,6 @@ const quickLinks = computed(() => {
             iconClass: 'tg-list-card__icon',
         },
     ];
-
-    if (user.value?.has_vless_wl_configs && whiteListRoute.value) {
-        configItems.push({
-            title: 'Белые списки',
-            description: 'Отдельные БС-ссылки для поддерживаемых клиентов.',
-            href: whiteListRoute.value,
-            icon: 'shield',
-            iconClass: 'tg-list-card__icon--blue',
-        });
-    }
 
     return [
         ...configItems,

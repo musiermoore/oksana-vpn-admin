@@ -243,7 +243,7 @@ class VlessConfigController extends Controller
         };
 
         $this->connectedDevices->recordConnection($user, $request);
-        $subscription = $subscriptionService->build($user, 'json');
+        $subscription = $subscriptionService->buildConnectV2($user);
 
         Log::info('connect-v2.res', [
             'user_id' => (int) $user->id,
@@ -276,20 +276,26 @@ class VlessConfigController extends Controller
             $response->header($name, $value);
         }
 
-        if (str_contains(mb_strtolower((string) $request->userAgent()), 'incy')) {
-            foreach ([
-                'Support-Url' => config('services.telegram.incy_links.bot'),
-                'Profile-Web-Page-Url' => config('services.telegram.incy_links.news'),
-                'Announce-Url' => config('services.telegram.incy_links.chat'),
-                'Hide-Url' => 'true',
-                'Hide-Proxy' => 'true',
-            ] as $name => $value) {
-                $response->header($name, (string) $value);
-            }
+        foreach ([
+            'Support-Url' => config('services.telegram.incy_links.bot'),
+            'Profile-Web-Page-Url' => config('services.telegram.incy_links.news'),
+            'Announce-Url' => config('services.telegram.incy_links.chat'),
+        ] as $name => $value) {
+            $response->header($name, (string) $value);
+        }
+
+        $userAgent = mb_strtolower((string) $request->userAgent());
+        if (str_contains($userAgent, 'incy')) {
+            $response->header('Hide-Url', 'true');
+            $response->header('Hide-Proxy', 'true');
         }
 
         if (str_contains(mb_strtolower((string) $request->userAgent()), 'happ')) {
             $response->header('Hide-Settings', '1');
+        }
+
+        if ($request->boolean('deep_link')) {
+            $response->header('Announce', 'Откройте ссылку в браузере, а не внутри приложения.');
         }
 
         return $response;
@@ -409,6 +415,38 @@ class VlessConfigController extends Controller
         }
 
         $redirectUrl = $deepLinkService->resolveRedirectUrl($client, $deepLinkService->getConnectUrl($user, $client));
+
+        if ($redirectUrl === null) {
+            abort(404);
+        }
+
+        return redirect()->away($redirectUrl);
+    }
+
+    public function deepLinkV2(
+        Request $request,
+        string $client,
+        VlessDeepLinkService $deepLinkService,
+        SubscriptionMetadataService $metadataService,
+        UserSubscriptionService $subscriptionService,
+    ): Response {
+        $user = User::query()->where('uuid', $request->string('token')->toString())->first();
+
+        if (! $user) {
+            abort(404);
+        }
+
+        $userAgent = mb_strtolower((string) $request->userAgent());
+        if (str_contains($userAgent, $client)) {
+            $request->merge(['deep_link' => true]);
+
+            return $this->connectV2($request, $metadataService, $subscriptionService);
+        }
+
+        $redirectUrl = $deepLinkService->resolveRedirectUrl(
+            $client,
+            $deepLinkService->getConnectV2Url($user),
+        );
 
         if ($redirectUrl === null) {
             abort(404);

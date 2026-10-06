@@ -59,12 +59,15 @@ class VlessDeepLinkService
         return $this->getConnectUrlForRoute($user, 'vless.connect', $client);
     }
 
-    public function getConnectV2Url(User $user): string
+    public function getConnectV2Url(User $user, ?string $client = null): string
     {
-        return $this->buildUrl('vless.connect-v2', [
-            'token' => $user->uuid,
-            'format' => 'json',
-        ]);
+        $parameters = ['token' => $user->uuid];
+
+        if ($client !== 'happ') {
+            $parameters['format'] = 'json';
+        }
+
+        return $this->buildUrl('vless.connect-v2', $parameters);
     }
 
     public function getConnectV2RouteLinks(User $user): array
@@ -76,11 +79,13 @@ class VlessDeepLinkService
 
     public function getConnectV2DeepLinks(User $user): array
     {
-        $subscriptionLink = $this->getConnectV2Url($user);
         $links = [];
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $this->resolveRedirectUrl($client, $subscriptionLink);
+            $links[$responseKey] = $this->resolveRedirectUrl(
+                $client,
+                $this->getConnectV2Url($user, $client),
+            );
         }
 
         return $links;

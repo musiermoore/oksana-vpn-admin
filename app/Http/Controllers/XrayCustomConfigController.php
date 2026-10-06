@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\DTOs\XrayCustomConfig\XrayCustomConfigData;
+use App\Http\Requests\XrayCustomConfig\StoreXrayDnsSettingsRequest;
 use App\Http\Requests\XrayCustomConfig\UpdateXrayCustomConfigRequest;
 use App\Models\Proxy;
 use App\Models\Server;
@@ -156,20 +157,12 @@ class XrayCustomConfigController extends Controller
         return $response;
     }
 
-    public function storeDnsSettings(Request $request): JsonResponse
+    public function storeDnsSettings(StoreXrayDnsSettingsRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'servers' => ['required', 'array', 'min:1'],
-            'servers.*' => ['required', 'string', 'max:255'],
-            'query_strategy' => ['required', 'string', 'in:AsIs,UseIP,UseIPv4,UseIPv6'],
-            'enable_parallel_query' => ['boolean'],
-        ]);
+        $data = $request->toDto();
 
         $settings = XrayRoutingDnsSettings::query()->create([
-            ...$data,
-            'enable_parallel_query' => (bool) ($data['enable_parallel_query'] ?? false),
+            ...$data->toModelAttributes(),
             'is_active' => true,
         ]);
 

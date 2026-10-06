@@ -137,7 +137,7 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
 
         $this->assertCount(1, $result->configs);
         $this->assertSame('JSON Germany', $result->configs[0]->name);
-        $this->assertSame($profile, $result->configs[0]->json);
+        $this->assertEquals($profile, $result->configs[0]->json);
         $this->assertSame('vless://json-uuid@json-de.example.com:443?type=tcp&encryption=none&security=reality&sni=www.example.com#JSON%20Germany', $result->configs[0]->url);
     }
 

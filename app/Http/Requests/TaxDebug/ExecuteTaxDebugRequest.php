@@ -35,7 +35,7 @@ class ExecuteTaxDebugRequest extends DataFormRequest
         });
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return TaxDebugRequestData::class;
     }

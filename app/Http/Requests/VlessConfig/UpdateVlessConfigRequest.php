@@ -21,7 +21,7 @@ class UpdateVlessConfigRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return VlessConfigUpdateData::class;
     }

@@ -8,12 +8,13 @@ use App\Models\Config;
 use App\Models\User;
 use App\Models\VlessConfig;
 use App\Services\Api\ApiUserService;
-use App\Services\WireGuardClientConfigBuilder;
+use App\Services\VlessQrCodeResponseService;
 use App\Services\WireGuardAgentConfigService;
+use App\Services\WireGuardClientConfigBuilder;
+use App\Support\BotApiMessages;
 use App\Support\PublicAppUrl;
 use App\Support\TelegramDeliveryException;
 use App\Support\WireGuardConfigPublicId;
-use App\Support\BotApiMessages;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class ConnectionController extends Controller
     public function __construct(
         private readonly ApiUserService $users,
         private readonly WireGuardClientConfigBuilder $wireGuardClientConfigBuilder,
+        private readonly VlessQrCodeResponseService $vlessQrCodes,
     ) {}
 
     public function wireGuardConfigs(Request $request): JsonResponse
@@ -326,24 +328,7 @@ class ConnectionController extends Controller
 
     public function vlessLinks(Request $request): JsonResponse
     {
-        /** @var User $user */
-        $user = $request->user();
-
-        if ($response = $this->ensureActiveAccess($user)) {
-            return $response;
-        }
-
-        try {
-            return response()->json(
-                (new ApiVlessDeepLinksResource($this->users->getVlessLinks($user)))->resolve()
-            );
-        } catch (Exception $exception) {
-            report($exception);
-
-            return response()->json([
-                'message' => BotApiMessages::unexpectedError(),
-            ], 500);
-        }
+        return $this->vlessLinksResponse($request, whitelist: false);
     }
 
     public function vlessQrCode(Request $request): Response
@@ -355,91 +340,20 @@ class ConnectionController extends Controller
             return $response;
         }
 
-        try {
-            $png = QrCode::format('png')
-                ->margin(5)
-                ->size(512)
-                ->generate($this->users->getVlessLink($user));
-
-            return response($png)
-                ->header('Content-Type', 'image/png')
-                ->header('Content-Disposition', 'attachment; filename="vless-qrcode.png"');
-        } catch (Exception $exception) {
-            report($exception);
-
-            return response()->json([
-                'message' => BotApiMessages::unexpectedError(),
-            ], 500);
-        }
+        return $this->vlessQrCodes->download(
+            $this->users->getVlessLink($user),
+            'vless-qrcode.png',
+        );
     }
 
     public function vlessSendQr(Request $request): JsonResponse
     {
-        /** @var User $user */
-        $user = $request->user();
-
-        if ($response = $this->ensureActiveAccess($user)) {
-            return $response;
-        }
-
-        $temporaryPath = null;
-
-        try {
-            $png = QrCode::format('png')
-                ->margin(5)
-                ->size(512)
-                ->generate($this->users->getVlessLink($user));
-
-            $temporaryPath = $this->storeTemporaryTelegramFile($png, 'vless-qrcode.png');
-
-            Telegram::sendPhoto([
-                'chat_id' => (string) $user->telegram_id,
-                'photo' => InputFile::create($temporaryPath, 'vless-qrcode.png'),
-                'caption' => 'VLESS QR-код',
-            ]);
-
-            return response()->json([
-                'message' => 'QR-код отправлен в бот.',
-            ]);
-        } catch (Exception $exception) {
-            if (TelegramDeliveryException::shouldSkip($exception)) {
-                return response()->json([
-                    'message' => 'Не удалось отправить QR-код в бота. Откройте диалог с ботом и попробуйте ещё раз.',
-                ], 422);
-            }
-
-            report($exception);
-
-            return response()->json([
-                'message' => 'Не удалось отправить QR-код в бота. Откройте диалог с ботом и попробуйте ещё раз.',
-            ], 422);
-        } finally {
-            if ($temporaryPath && is_file($temporaryPath)) {
-                @unlink($temporaryPath);
-            }
-        }
+        return $this->sendVlessQrResponse($request, whitelist: false);
     }
 
     public function vlessWhiteListLinks(Request $request): JsonResponse
     {
-        /** @var User $user */
-        $user = $request->user();
-
-        if ($response = $this->ensureActiveAccess($user)) {
-            return $response;
-        }
-
-        try {
-            return response()->json(
-                (new ApiVlessDeepLinksResource($this->users->getVlessWhiteListLinks($user)))->resolve()
-            );
-        } catch (Exception $exception) {
-            report($exception);
-
-            return response()->json([
-                'message' => BotApiMessages::unexpectedError(),
-            ], 500);
-        }
+        return $this->vlessLinksResponse($request, whitelist: true);
     }
 
     public function vlessWhiteListQrCode(Request $request): Response
@@ -451,15 +365,32 @@ class ConnectionController extends Controller
             return $response;
         }
 
-        try {
-            $png = QrCode::format('png')
-                ->margin(5)
-                ->size(512)
-                ->generate($this->users->getVlessWhiteListLink($user));
+        return $this->vlessQrCodes->download(
+            $this->users->getVlessWhiteListLink($user),
+            'vless-wl-qrcode.png',
+        );
+    }
 
-            return response($png)
-                ->header('Content-Type', 'image/png')
-                ->header('Content-Disposition', 'attachment; filename="vless-wl-qrcode.png"');
+    public function vlessWhiteListSendQr(Request $request): JsonResponse
+    {
+        return $this->sendVlessQrResponse($request, whitelist: true);
+    }
+
+    private function vlessLinksResponse(Request $request, bool $whitelist): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($response = $this->ensureActiveAccess($user)) {
+            return $response;
+        }
+
+        try {
+            $links = $whitelist
+                ? $this->users->getVlessWhiteListLinks($user)
+                : $this->users->getVlessLinks($user);
+
+            return response()->json((new ApiVlessDeepLinksResource($links))->resolve());
         } catch (Exception $exception) {
             report($exception);
 
@@ -469,7 +400,7 @@ class ConnectionController extends Controller
         }
     }
 
-    public function vlessWhiteListSendQr(Request $request): JsonResponse
+    private function sendVlessQrResponse(Request $request, bool $whitelist): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -478,20 +409,25 @@ class ConnectionController extends Controller
             return $response;
         }
 
+        $filename = $whitelist ? 'vless-wl-qrcode.png' : 'vless-qrcode.png';
+        $caption = $whitelist ? 'VLESS БС QR-код' : 'VLESS QR-код';
         $temporaryPath = null;
 
         try {
+            $link = $whitelist
+                ? $this->users->getVlessWhiteListLink($user)
+                : $this->users->getVlessLink($user);
             $png = QrCode::format('png')
                 ->margin(5)
                 ->size(512)
-                ->generate($this->users->getVlessWhiteListLink($user));
+                ->generate($link);
 
-            $temporaryPath = $this->storeTemporaryTelegramFile($png, 'vless-wl-qrcode.png');
+            $temporaryPath = $this->storeTemporaryTelegramFile($png, $filename);
 
             Telegram::sendPhoto([
                 'chat_id' => (string) $user->telegram_id,
-                'photo' => InputFile::create($temporaryPath, 'vless-wl-qrcode.png'),
-                'caption' => 'VLESS БС QR-код',
+                'photo' => InputFile::create($temporaryPath, $filename),
+                'caption' => $caption,
             ]);
 
             return response()->json([

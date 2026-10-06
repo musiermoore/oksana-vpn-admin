@@ -33,71 +33,113 @@ class RoscomVpnJsonSettingsImporter
         $geodata = $this->buildGeodataSettings($payload, $previousSetting);
         $dns = $this->buildDnsSettings($payload);
 
-        DB::transaction(function () use ($payload, $geodata, $dns): void {
-            XrayJsonSetting::query()
-                ->where('source', self::SOURCE)
-                ->update(['is_active' => false]);
+        DB::transaction(fn () => $this->persistImport($payload, $geodata, $dns));
+    }
 
-            XrayRouting::query()
-                ->where('source', self::SOURCE)
-                ->update(['is_active' => false]);
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $geodata
+     * @param  array<string, mixed>  $dns
+     */
+    private function persistImport(array $payload, array $geodata, array $dns): void
+    {
+        XrayJsonSetting::query()->where('source', self::SOURCE)->update(['is_active' => false]);
+        XrayRouting::query()->where('source', self::SOURCE)->update(['is_active' => false]);
 
-            XrayJsonSetting::query()->create([
-                'name' => $this->stringValue($payload, 'Name', 'Imported Xray JSON settings'),
-                'description' => 'Imported from RoscomVPN-style JSON settings.',
+        $this->createJsonSetting($payload, $geodata, $dns);
+        $this->createDnsSettings($payload, $dns);
+        $this->createGeodataSettings($payload, $geodata);
+        $this->upsertRoutingRules($payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $geodata
+     * @param  array<string, mixed>  $dns
+     */
+    private function createJsonSetting(array $payload, array $geodata, array $dns): void
+    {
+        XrayJsonSetting::query()->create([
+            'name' => $this->stringValue($payload, 'Name', 'Imported Xray JSON settings'),
+            'description' => 'Imported from RoscomVPN-style JSON settings.',
+            'source' => self::SOURCE,
+            'dns' => $dns,
+            'routing' => $this->buildRoutingSettings($payload),
+            'geodata' => $geodata,
+            'raw' => $payload,
+            'is_active' => true,
+            'imported_at' => $this->resolveImportedAt($payload),
+        ]);
+    }
+
+    /** @param array<string, mixed> $payload @param array<string, mixed> $dns */
+    private function createDnsSettings(array $payload, array $dns): void
+    {
+        XrayRoutingDnsSettings::query()->create([
+            'name' => $this->stringValue($payload, 'Name', 'Imported DNS settings'),
+            'description' => 'Imported from RoscomVPN-style JSON settings.',
+            'servers' => $dns['servers'] ?? [],
+            'query_strategy' => $dns['queryStrategy'] ?? 'UseIPv4',
+            'enable_parallel_query' => (bool) ($dns['enableParallelQuery'] ?? false),
+            'is_active' => true,
+        ]);
+    }
+
+    /** @param array<string, mixed> $payload @param array<string, mixed> $geodata */
+    private function createGeodataSettings(array $payload, array $geodata): void
+    {
+        if ($geodata === []) {
+            return;
+        }
+
+        XrayRoutingGeodata::query()->create([
+            'name' => $this->stringValue($payload, 'Name', 'Imported geodata'),
+            'description' => 'Imported from RoscomVPN-style JSON settings.',
+            'geoip_url' => $geodata['geoip_url'] ?? null,
+            'geosite_url' => $geodata['geosite_url'] ?? null,
+            'assets' => $geodata['assets'] ?? [],
+            'last_updated' => $geodata['last_updated'] ?? null,
+            'is_active' => true,
+        ]);
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function upsertRoutingRules(array $payload): void
+    {
+        $timestamp = now();
+        $routingRows = collect($this->buildRoutingRules($payload))
+            ->map(fn (array $rule): array => [
                 'source' => self::SOURCE,
-                'dns' => $dns,
-                'routing' => $this->buildRoutingSettings($payload),
-                'geodata' => $geodata,
-                'raw' => $payload,
-                'is_active' => true,
-                'imported_at' => $this->resolveImportedAt($payload),
-            ]);
-
-            XrayRoutingDnsSettings::query()->create([
-                'name' => $this->stringValue($payload, 'Name', 'Imported DNS settings'),
+                'source_key' => $rule['source_key'],
+                'name' => $rule['name'],
                 'description' => 'Imported from RoscomVPN-style JSON settings.',
-                'servers' => $dns['servers'] ?? [],
-                'query_strategy' => $dns['queryStrategy'] ?? 'UseIPv4',
-                'enable_parallel_query' => (bool) ($dns['enableParallelQuery'] ?? false),
+                'outbound' => $rule['outbound']->value,
+                'subscription_types' => json_encode([
+                    XrayRouting::SUBSCRIPTION_CONNECT,
+                    XrayRouting::SUBSCRIPTION_CONNECT_WL,
+                ], JSON_THROW_ON_ERROR),
+                'xray_inbound_ids' => '[]',
+                'external_subscription_config_ids' => '[]',
+                'proxy_ids' => '[]',
+                'rules' => json_encode($rule['rules'], JSON_THROW_ON_ERROR),
+                'sort_order' => $rule['sort_order'],
                 'is_active' => true,
-            ]);
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ])
+            ->all();
 
-            if ($geodata !== []) {
-                XrayRoutingGeodata::query()->create([
-                    'name' => $this->stringValue($payload, 'Name', 'Imported geodata'),
-                    'description' => 'Imported from RoscomVPN-style JSON settings.',
-                    'geoip_url' => $geodata['geoip_url'] ?? null,
-                    'geosite_url' => $geodata['geosite_url'] ?? null,
-                    'assets' => $geodata['assets'] ?? [],
-                    'last_updated' => $geodata['last_updated'] ?? null,
-                    'is_active' => true,
-                ]);
-            }
-
-            foreach ($this->buildRoutingRules($payload) as $rule) {
-                XrayRouting::query()->updateOrCreate(
-                    [
-                        'source' => self::SOURCE,
-                        'source_key' => $rule['source_key'],
-                    ],
-                    [
-                        'name' => $rule['name'],
-                        'description' => 'Imported from RoscomVPN-style JSON settings.',
-                        'outbound' => $rule['outbound'],
-                        'subscription_types' => [
-                            XrayRouting::SUBSCRIPTION_CONNECT,
-                            XrayRouting::SUBSCRIPTION_CONNECT_WL,
-                        ],
-                        'xray_inbound_ids' => [],
-                        'external_subscription_config_ids' => [],
-                        'rules' => $rule['rules'],
-                        'sort_order' => $rule['sort_order'],
-                        'is_active' => true,
-                    ],
-                );
-            }
-        });
+        if ($routingRows !== []) {
+            XrayRouting::query()->upsert(
+                $routingRows,
+                ['source', 'source_key'],
+                [
+                    'name', 'description', 'outbound', 'subscription_types',
+                    'xray_inbound_ids', 'external_subscription_config_ids', 'proxy_ids',
+                    'rules', 'sort_order', 'is_active', 'updated_at',
+                ],
+            );
+        }
     }
 
     /**
@@ -304,7 +346,6 @@ class RoscomVpnJsonSettingsImporter
     }
 
     /**
-     * @param  mixed  $value
      * @return array<int, string>
      */
     private function stringList(mixed $value): array
@@ -321,7 +362,6 @@ class RoscomVpnJsonSettingsImporter
     }
 
     /**
-     * @param  mixed  $value
      * @return array<string, string>
      */
     private function associativeStringMap(mixed $value): array

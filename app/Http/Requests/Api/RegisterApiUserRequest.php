@@ -33,7 +33,7 @@ class RegisterApiUserRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ApiUserRegistrationData::class;
     }

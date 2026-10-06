@@ -23,7 +23,7 @@ class StoreVlessConfigRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return VlessConfigStoreData::class;
     }

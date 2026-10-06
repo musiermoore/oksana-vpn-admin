@@ -17,12 +17,42 @@ Standard for new request classes:
 
 - Use [DataFormRequest.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Http/Requests/DataFormRequest.php).
 - Do not pass raw `validated()` arrays deeper into write/use-case endpoints.
-- Convert request input to a typed object through `toDto()`.
+- Convert request input to a typed object through the established request API: preserve `toDto()` in existing callers and use `toData()` for new or migrated code.
+- Expose the DTO class through the request's `laravelData()` hook. The shared `DataFormRequest` base performs the validated-payload mapping and calls the Laravel Data class.
 
 Project state:
 
-- `toDto()` is the current request-to-DTO mapping standard.
-- Do not introduce a parallel `toData()` style without a coordinated project migration.
+- Both `toDto()` and `toData()` map validated request input to the configured Laravel Data object.
+- Preserve the established method in existing controllers; use `toData()` for new or migrated code.
+- Legacy `FormRequest` classes should be moved to `DataFormRequest` and assigned a typed Laravel Data DTO when they are changed.
+
+Example:
+
+```php
+final class StoreExampleRequest extends DataFormRequest
+{
+    protected function laravelData(): string
+    {
+        return ExampleData::class;
+    }
+}
+
+$data = $request->toData();
+```
+
+`laravelData()` is the protected DTO-class hook used by the base request.
+
+## 2.1 Laravel Data naming
+
+Application DTOs extend [app/DTOs/Data.php](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/DTOs/Data.php).
+The shared Laravel Data configuration uses `SnakeCaseMapper` for both input and output:
+
+- Request fields such as `server_id` are mapped automatically to DTO properties such as `$serverId`.
+- DTO serialization maps camelCase properties back to snake_case keys.
+- Do not add per-property name mapping attributes for ordinary snake_case fields.
+- Keep explicit conversion methods such as `toModelAttributes()` only when a persistence-specific shape is required.
+
+Small domain value objects that do not extend `App\DTOs\Data` are not request DTOs and do not need this mapper.
 
 Exceptions:
 

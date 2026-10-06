@@ -33,7 +33,7 @@ class StoreXrayConfigRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return XrayConfigStoreData::class;
     }

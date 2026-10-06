@@ -23,7 +23,8 @@ This file captures project-specific working rules so future development stays co
 - When changing billing logic, verify how `User::syncStoredBalance()` and approved transactions interact.
 - Prefer the flow `Request -> DTO/Data -> Service -> Repository -> Resource` for new business endpoints.
 - Prefer `DataFormRequest` as the base request for write endpoints.
-- Prefer typed request payload mapping via `toDto()`.
+- Prefer typed request payload mapping through the established request API: preserve `toDto()` in existing callers and use `toData()` for new or migrated code.
+- Every form request should extend `DataFormRequest` and expose its DTO through `laravelData()`; both `toDto()` and `toData()` remain supported during migration.
 - For new and actively changed PHP files, use `declare(strict_types=1);`, typed arguments, and explicit return types.
 - Keep controllers thin and move orchestration to services.
 

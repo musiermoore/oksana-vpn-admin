@@ -22,7 +22,7 @@ class UpdateConfigRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ConfigUpdateData::class;
     }

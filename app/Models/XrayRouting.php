@@ -55,6 +55,45 @@ class XrayRouting extends Model
             ->orderBy('id');
     }
 
+    public function scopeForSubscriptionType(Builder $query, string $subscriptionType): Builder
+    {
+        return $query->where(function (Builder $query) use ($subscriptionType): void {
+            $query
+                ->whereNull('subscription_types')
+                ->orWhereJsonLength('subscription_types', 0)
+                ->orWhereJsonContains('subscription_types', $subscriptionType);
+        });
+    }
+
+    public function scopeForAnyTarget(
+        Builder $query,
+        ?int $xrayInboundId,
+        ?int $externalSubscriptionConfigId,
+        ?int $proxyId = null,
+    ): Builder {
+        if ($xrayInboundId === null && $externalSubscriptionConfigId === null && $proxyId === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $query) use (
+            $xrayInboundId,
+            $externalSubscriptionConfigId,
+            $proxyId,
+        ): void {
+            if ($xrayInboundId !== null) {
+                $query->orWhereJsonContains('xray_inbound_ids', $xrayInboundId);
+            }
+
+            if ($externalSubscriptionConfigId !== null) {
+                $query->orWhereJsonContains('external_subscription_config_ids', $externalSubscriptionConfigId);
+            }
+
+            if ($proxyId !== null) {
+                $query->orWhereJsonContains('proxy_ids', $proxyId);
+            }
+        });
+    }
+
     public function appliesTo(string $subscriptionType): bool
     {
         $subscriptionTypes = $this->subscription_types;

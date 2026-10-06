@@ -58,7 +58,7 @@ class StoreNotificationRequest extends DataFormRequest
         ]);
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return NotificationBroadcastData::class;
     }

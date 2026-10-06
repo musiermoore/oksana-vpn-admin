@@ -17,9 +17,10 @@ use App\Models\Config;
 use App\Models\User;
 use App\Models\VlessConfig;
 use App\Services\Api\ApiUserService;
+use App\Services\VlessQrCodeResponseService;
 use App\Services\WelcomeMessageService;
-use App\Services\WireGuardClientConfigBuilder;
 use App\Services\WireGuardAgentConfigService;
+use App\Services\WireGuardClientConfigBuilder;
 use App\Support\BotApiMessages;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,7 @@ class UserController extends Controller
         private readonly ApiUserService $userService,
         private readonly WelcomeMessageService $welcomeMessages,
         private readonly WireGuardClientConfigBuilder $wireGuardClientConfigBuilder,
+        private readonly VlessQrCodeResponseService $vlessQrCodes,
     ) {}
 
     public function registrationStatus(string $telegramId)
@@ -237,22 +239,10 @@ class UserController extends Controller
             return $user;
         }
 
-        try {
-            $png = QrCode::format('png')
-                ->margin(5)
-                ->size(512)
-                ->generate($this->userService->getVlessLink($user));
-
-            return response($png)
-                ->header('Content-Type', 'image/png')
-                ->header('Content-Disposition', 'attachment; filename="vless-qrcode.png"');
-        } catch (Exception $exception) {
-            report($exception);
-
-            return response()->json([
-                'message' => BotApiMessages::unexpectedError(),
-            ], 500);
-        }
+        return $this->vlessQrCodes->download(
+            $this->userService->getVlessLink($user),
+            'vless-qrcode.png',
+        );
     }
 
     private function registrationResponse(ApiUserRegistrationData $data)

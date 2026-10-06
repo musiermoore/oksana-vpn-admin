@@ -13,7 +13,7 @@ use Illuminate\Validation\Validator;
 
 class UpdateXrayRoutingRequest extends DataFormRequest
 {
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return XrayRoutingData::class;
     }

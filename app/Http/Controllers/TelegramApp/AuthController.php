@@ -12,6 +12,7 @@ use App\Http\Resources\TelegramApp\TelegramAppUserResource;
 use App\Models\User;
 use App\Services\ReferralService;
 use App\Services\TelegramApp\TelegramMiniAppAuthService;
+use Closure;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,77 +27,27 @@ class AuthController extends Controller
 
     public function authenticate(AuthenticateTelegramAppRequest $request): JsonResponse
     {
-        try {
-            $result = $this->authService->authenticate($request->toDto());
-        } catch (DomainException $exception) {
-            return response()->json([
-                'message' => $exception->getMessage(),
-            ], 422);
-        } catch (Throwable $throwable) {
-            report($throwable);
-
-            return response()->json([
-                'message' => 'Authentication failed.',
-            ], 500);
-        }
-
-        $result['user']->setAttribute('referral_summary', $this->referrals->getSummary($result['user']));
-
-        return response()->json([
-            'token' => $result['token'],
-            'expires_at' => $result['expires_at'],
-            ...$this->userPayload($result['user']),
-        ]);
+        return $this->authenticationResponse(
+            fn (): array => $this->authService->authenticate($request->toDto()),
+            'Authentication failed.',
+        );
     }
 
     public function authenticateWithPassword(AuthenticateTelegramAppPasswordRequest $request): JsonResponse
     {
-        try {
-            $result = $this->authService->authenticateWithPassword($request->toDto());
-        } catch (DomainException $exception) {
-            return response()->json([
-                'message' => $exception->getMessage(),
-            ], 422);
-        } catch (Throwable $throwable) {
-            report($throwable);
-
-            return response()->json([
-                'message' => 'Authentication failed.',
-            ], 500);
-        }
-
-        $result['user']->setAttribute('referral_summary', $this->referrals->getSummary($result['user']));
-
-        return response()->json([
-            'token' => $result['token'],
-            'expires_at' => $result['expires_at'],
-            ...$this->userPayload($result['user']),
-        ]);
+        return $this->authenticationResponse(
+            fn (): array => $this->authService->authenticateWithPassword($request->toDto()),
+            'Authentication failed.',
+        );
     }
 
     public function registerWithPassword(RegisterTelegramAppPasswordRequest $request): JsonResponse
     {
-        try {
-            $result = $this->authService->registerWithPassword($request->toDto());
-        } catch (DomainException $exception) {
-            return response()->json([
-                'message' => $exception->getMessage(),
-            ], 422);
-        } catch (Throwable $throwable) {
-            report($throwable);
-
-            return response()->json([
-                'message' => 'Registration failed.',
-            ], 500);
-        }
-
-        $result['user']->setAttribute('referral_summary', $this->referrals->getSummary($result['user']));
-
-        return response()->json([
-            'token' => $result['token'],
-            'expires_at' => $result['expires_at'],
-            ...$this->userPayload($result['user']),
-        ], 201);
+        return $this->authenticationResponse(
+            fn (): array => $this->authService->registerWithPassword($request->toDto()),
+            'Registration failed.',
+            201,
+        );
     }
 
     public function me(Request $request): JsonResponse
@@ -122,5 +73,36 @@ class AuthController extends Controller
     private function userPayload(User $user): array
     {
         return (new TelegramAppUserResource($user))->resolve();
+    }
+
+    /**
+     * @param  Closure(): array{user: User, token: string, expires_at: mixed}  $authenticate
+     */
+    private function authenticationResponse(
+        Closure $authenticate,
+        string $failureMessage,
+        int $successStatus = 200,
+    ): JsonResponse {
+        try {
+            $result = $authenticate();
+        } catch (DomainException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            return response()->json([
+                'message' => $failureMessage,
+            ], 500);
+        }
+
+        $result['user']->setAttribute('referral_summary', $this->referrals->getSummary($result['user']));
+
+        return response()->json([
+            'token' => $result['token'],
+            'expires_at' => $result['expires_at'],
+            ...$this->userPayload($result['user']),
+        ], $successStatus);
     }
 }

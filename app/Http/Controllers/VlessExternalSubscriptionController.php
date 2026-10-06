@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Http\Requests\VlessExternalSubscription\StoreVlessExternalSubscriptionRequest;
 use App\Http\Requests\VlessExternalSubscription\UpdateVlessExternalSubscriptionRequest;
 use App\Http\Resources\VlessExternalSubscriptionResource;
 use App\Jobs\SyncVlessExternalSubscriptionJob;
-use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Models\VlessExternalSubscription;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Bus;
 use RuntimeException;
 
@@ -50,8 +50,9 @@ class VlessExternalSubscriptionController extends Controller
 
     public function store(StoreVlessExternalSubscriptionRequest $request): RedirectResponse
     {
+        $data = $request->toDto();
         $subscription = VlessExternalSubscription::query()->create([
-            ...$request->validated(),
+            ...$data->toModelAttributes(),
             'sort_order' => (($maxSortOrder = VlessExternalSubscription::query()->max('sort_order')) !== null)
                 ? ((int) $maxSortOrder + 1)
                 : 0,
@@ -86,7 +87,7 @@ class VlessExternalSubscriptionController extends Controller
         UpdateVlessExternalSubscriptionRequest $request,
         VlessExternalSubscription $vlessExternalSubscription
     ): RedirectResponse {
-        $vlessExternalSubscription->update($request->validated());
+        $vlessExternalSubscription->update($request->toDto()->toModelAttributes());
 
         try {
             $this->syncService->sync($vlessExternalSubscription);
@@ -107,7 +108,7 @@ class VlessExternalSubscriptionController extends Controller
 
     public function preview(StoreVlessExternalSubscriptionRequest $request): JsonResponse
     {
-        return response()->json($this->syncService->preview($request->validated()));
+        return response()->json($this->syncService->preview($request->toDto()->toModelAttributes()));
     }
 
     public function sync(VlessExternalSubscription $vlessExternalSubscription): RedirectResponse

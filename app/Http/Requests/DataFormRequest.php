@@ -14,7 +14,7 @@ abstract class DataFormRequest extends FormRequest
     /**
      * @return class-string<Data>
      */
-    abstract protected function dtoClass(): string;
+    abstract protected function laravelData(): string;
 
     /**
      * @return array<string, mixed>
@@ -67,10 +67,18 @@ abstract class DataFormRequest extends FormRequest
         }
     }
 
+    public function toData(): Data
+    {
+        $dataClass = $this->laravelData();
+
+        return $dataClass::from($this->dtoPayload());
+    }
+
+    /**
+     * @deprecated Use toData() in new code.
+     */
     public function toDto(): Data
     {
-        $dtoClass = $this->dtoClass();
-
-        return $dtoClass::from($this->dtoPayload());
+        return $this->toData();
     }
 }

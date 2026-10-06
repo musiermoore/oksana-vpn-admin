@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\XuiDebug\ExecuteXuiDebugRequest;
 use App\Models\Server;
 use App\Services\XuiConfigServiceFactory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Response;
 use Throwable;
 
@@ -22,31 +22,20 @@ class XuiDebugController extends Controller
         ]);
     }
 
-    public function execute(Request $request): RedirectResponse
+    public function execute(ExecuteXuiDebugRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'server_id' => [
-                'required',
-                'integer',
-                Rule::exists('servers', 'id')->where('is_active', true),
-            ],
-            'preset' => ['required', 'string'],
-            'method' => ['required', 'string', 'in:GET,POST,PUT,PATCH,DELETE'],
-            'endpoint' => ['required', 'string', 'max:1000'],
-            'encoding' => ['required', 'string', 'in:form,json'],
-            'payload' => ['nullable', 'string'],
-        ]);
+        $data = $request->toDto();
 
-        $server = Server::query()->findOrFail($validated['server_id']);
-        $payload = $this->decodePayload((string) ($validated['payload'] ?? ''), $validated['encoding']);
+        $server = Server::query()->findOrFail($data->serverId);
+        $payload = $this->decodePayload((string) ($data->payload ?? ''), $data->encoding);
 
         try {
             $service = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
             $result = $service->sendDiagnosticRequest(
-                method: $validated['method'],
-                path: $validated['endpoint'],
+                method: $data->method,
+                path: $data->endpoint,
                 payload: $payload,
-                encoding: $validated['encoding'],
+                encoding: $data->encoding,
             );
 
             return redirect()
@@ -82,9 +71,9 @@ class XuiDebugController extends Controller
                     'body' => null,
                     'json' => null,
                     'request' => [
-                        'method' => $validated['method'],
-                        'path' => $validated['endpoint'],
-                        'encoding' => $validated['encoding'],
+                        'method' => $data->method,
+                        'path' => $data->endpoint,
+                        'encoding' => $data->encoding,
                         'payload' => $payload,
                     ],
                     'exception' => [

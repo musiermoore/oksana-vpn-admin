@@ -6,11 +6,16 @@ namespace App\Services;
 
 use App\Models\Config;
 use App\Models\Server;
+use App\Services\Subscriptions\SubscriptionUriParser;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 class WireGuardSubscriptionLinkService
 {
+    public function __construct(
+        private readonly SubscriptionUriParser $uriParser,
+    ) {}
+
     public function fromConfig(Config $config): ?string
     {
         $content = $config->server?->isModernWireGuardType()
@@ -32,7 +37,7 @@ class WireGuardSubscriptionLinkService
             return $this->normalizeExistingUri($content, $name);
         }
 
-        $sections = $this->parseConfigSections($content);
+        $sections = $this->uriParser->parseConfigSections($content);
         $interface = $sections['interface'] ?? [];
         $peer = $sections['peer'] ?? [];
 
@@ -92,90 +97,24 @@ class WireGuardSubscriptionLinkService
             $client['name'] ?? null,
         ]);
 
-        foreach ([
-            $client['link'] ?? null,
-            $client['uri'] ?? null,
-            $client['url'] ?? null,
-            $client['config'] ?? null,
-            $client['clientConfig'] ?? null,
-            $client['client_config'] ?? null,
-            $client['subscription'] ?? null,
-            $client['subscriptionUrl'] ?? null,
-            $client['subscription_url'] ?? null,
-            Arr::get($client, 'wireguard.link'),
-            Arr::get($client, 'wireguard.url'),
-            Arr::get($client, 'wireguard.uri'),
-            Arr::get($client, 'wireguard.config'),
-            Arr::get($client, 'wireguard.clientConfig'),
-            Arr::get($client, 'wireguard.client_config'),
-        ] as $candidate) {
-            if (! is_string($candidate) || trim($candidate) === '') {
-                continue;
-            }
+        $candidateUri = $this->uriFromXuiCandidates($server, $client, $name);
 
-            $candidate = trim($candidate);
-
-            if ($this->isWireGuardUri($candidate) || $this->isAmneziaWireGuardUri($candidate)) {
-                return $this->normalizeExistingUri($candidate, $name);
-            }
-
-            $uri = $this->fromConfigContent($candidate, $server, $name);
-
-            if ($uri !== null) {
-                return $uri;
-            }
+        if ($candidateUri !== null) {
+            return $candidateUri;
         }
 
         if ($this->isAmneziaWireGuardProtocol($inbound['protocol'] ?? null)) {
             return $this->buildAmneziaWireGuardUriFromXui($server, $inbound, $client, $name);
         }
 
-        [$host, $port] = $this->parseEndpoint($this->firstNonEmptyString([
-            $client['endpoint'] ?? null,
-            Arr::get($client, 'peer.endpoint'),
-            Arr::get($inbound, 'endpoint'),
-            Arr::get($inbound, 'settings.endpoint'),
-        ]), $server, isset($inbound['port']) ? (int) $inbound['port'] : null);
+        [$host, $port] = $this->xuiEndpoint($server, $inbound, $client);
 
         return $this->buildUri(
-            privateKey: $this->firstNonEmptyString([
-                $client['privateKey'] ?? null,
-                $client['private_key'] ?? null,
-                $client['secretKey'] ?? null,
-                $client['secret_key'] ?? null,
-                $client['password'] ?? null,
-                Arr::get($client, 'wireguard.privateKey'),
-                Arr::get($client, 'wireguard.private_key'),
-                Arr::get($client, 'wireguard.password'),
-            ]),
+            privateKey: $this->xuiPrivateKey($client),
             host: $host,
             port: $port,
-            address: $this->normalizeCsvValue($this->firstNonEmptyValue([
-                $client['address'] ?? null,
-                $client['addresses'] ?? null,
-                $client['allowedIp'] ?? null,
-                $client['allowedIPs'] ?? null,
-                $client['allowed_ips'] ?? null,
-                $client['addressCIDR'] ?? null,
-                $client['address_cidr'] ?? null,
-                Arr::get($client, 'wireguard.address'),
-                Arr::get($client, 'wireguard.addresses'),
-                Arr::get($client, 'wireguard.allowedIp'),
-                Arr::get($client, 'wireguard.allowedIPs'),
-                Arr::get($client, 'wireguard.allowed_ips'),
-            ])),
-            publicKey: $this->firstNonEmptyString([
-                $inbound['public_key'] ?? null,
-                $inbound['publicKey'] ?? null,
-                Arr::get($inbound, 'settings.publicKey'),
-                Arr::get($inbound, 'settings.public_key'),
-                $this->derivePublicKeyFromPrivateKey(Arr::get($inbound, 'settings.secretKey')),
-                $this->derivePublicKeyFromPrivateKey(Arr::get($inbound, 'settings.secret_key')),
-                Arr::get($inbound, 'stream_settings.publicKey'),
-                Arr::get($inbound, 'stream_settings.public_key'),
-                Arr::get($client, 'peerPublicKey'),
-                Arr::get($client, 'peer_public_key'),
-            ]),
+            address: $this->xuiAddress($client),
+            publicKey: $this->xuiPublicKey($inbound, $client),
             name: $name,
             mtu: $this->nullableInt(
                 $client['mtu'] ?? $inbound['mtu'] ?? Arr::get($inbound, 'settings.mtu') ?? null
@@ -198,6 +137,108 @@ class WireGuardSubscriptionLinkService
                 Arr::get($client, 'wireguard.reserved'),
             ])),
         );
+    }
+
+    private function uriFromXuiCandidates(Server $server, array $client, ?string $name): ?string
+    {
+        foreach ($this->xuiLinkCandidates($client) as $candidate) {
+            if (! is_string($candidate) || trim($candidate) === '') {
+                continue;
+            }
+
+            $candidate = trim($candidate);
+
+            if ($this->isWireGuardUri($candidate) || $this->isAmneziaWireGuardUri($candidate)) {
+                return $this->normalizeExistingUri($candidate, $name);
+            }
+
+            $uri = $this->fromConfigContent($candidate, $server, $name);
+
+            if ($uri !== null) {
+                return $uri;
+            }
+        }
+
+        return null;
+    }
+
+    private function xuiLinkCandidates(array $client): array
+    {
+        return [
+            $client['link'] ?? null,
+            $client['uri'] ?? null,
+            $client['url'] ?? null,
+            $client['config'] ?? null,
+            $client['clientConfig'] ?? null,
+            $client['client_config'] ?? null,
+            $client['subscription'] ?? null,
+            $client['subscriptionUrl'] ?? null,
+            $client['subscription_url'] ?? null,
+            Arr::get($client, 'wireguard.link'),
+            Arr::get($client, 'wireguard.url'),
+            Arr::get($client, 'wireguard.uri'),
+            Arr::get($client, 'wireguard.config'),
+            Arr::get($client, 'wireguard.clientConfig'),
+            Arr::get($client, 'wireguard.client_config'),
+        ];
+    }
+
+    private function xuiEndpoint(Server $server, array $inbound, array $client): array
+    {
+        return $this->parseEndpoint($this->firstNonEmptyString([
+            $client['endpoint'] ?? null,
+            Arr::get($client, 'peer.endpoint'),
+            Arr::get($inbound, 'endpoint'),
+            Arr::get($inbound, 'settings.endpoint'),
+        ]), $server, isset($inbound['port']) ? (int) $inbound['port'] : null);
+    }
+
+    private function xuiPrivateKey(array $client): ?string
+    {
+        return $this->firstNonEmptyString([
+            $client['privateKey'] ?? null,
+            $client['private_key'] ?? null,
+            $client['secretKey'] ?? null,
+            $client['secret_key'] ?? null,
+            $client['password'] ?? null,
+            Arr::get($client, 'wireguard.privateKey'),
+            Arr::get($client, 'wireguard.private_key'),
+            Arr::get($client, 'wireguard.password'),
+        ]);
+    }
+
+    private function xuiAddress(array $client): ?string
+    {
+        return $this->normalizeCsvValue($this->firstNonEmptyValue([
+            $client['address'] ?? null,
+            $client['addresses'] ?? null,
+            $client['allowedIp'] ?? null,
+            $client['allowedIPs'] ?? null,
+            $client['allowed_ips'] ?? null,
+            $client['addressCIDR'] ?? null,
+            $client['address_cidr'] ?? null,
+            Arr::get($client, 'wireguard.address'),
+            Arr::get($client, 'wireguard.addresses'),
+            Arr::get($client, 'wireguard.allowedIp'),
+            Arr::get($client, 'wireguard.allowedIPs'),
+            Arr::get($client, 'wireguard.allowed_ips'),
+        ]));
+    }
+
+    private function xuiPublicKey(array $inbound, array $client): ?string
+    {
+        return $this->firstNonEmptyString([
+            $inbound['public_key'] ?? null,
+            $inbound['publicKey'] ?? null,
+            Arr::get($inbound, 'settings.publicKey'),
+            Arr::get($inbound, 'settings.public_key'),
+            $this->derivePublicKeyFromPrivateKey(Arr::get($inbound, 'settings.secretKey')),
+            $this->derivePublicKeyFromPrivateKey(Arr::get($inbound, 'settings.secret_key')),
+            Arr::get($inbound, 'stream_settings.publicKey'),
+            Arr::get($inbound, 'stream_settings.public_key'),
+            Arr::get($client, 'peerPublicKey'),
+            Arr::get($client, 'peer_public_key'),
+        ]);
     }
 
     private function withName(string $uri, ?string $name): string
@@ -259,44 +300,6 @@ class WireGuardSubscriptionLinkService
         return trim($decoded).PHP_EOL;
     }
 
-    /**
-     * @return array<string, array<string, string>>
-     */
-    private function parseConfigSections(string $content): array
-    {
-        $sections = [];
-        $currentSection = null;
-
-        foreach (preg_split('/\r\n|\r|\n/', $content) ?: [] as $line) {
-            $line = trim($line);
-
-            if ($line === '' || str_starts_with($line, '#') || str_starts_with($line, ';')) {
-                continue;
-            }
-
-            if (preg_match('/^\[(.+)\]$/', $line, $matches) === 1) {
-                $currentSection = mb_strtolower(trim($matches[1]));
-                $sections[$currentSection] ??= [];
-
-                continue;
-            }
-
-            if ($currentSection === null || ! str_contains($line, '=')) {
-                continue;
-            }
-
-            [$key, $value] = array_map('trim', explode('=', $line, 2));
-
-            if ($key === '') {
-                continue;
-            }
-
-            $sections[$currentSection][mb_strtolower($key)] = $value;
-        }
-
-        return $sections;
-    }
-
     private function buildUri(
         ?string $privateKey,
         ?string $host,
@@ -351,19 +354,8 @@ class WireGuardSubscriptionLinkService
      */
     private function buildAmneziaWireGuardUriFromXui(Server $server, array $inbound, array $client, ?string $name): ?string
     {
-        $serverSettings = $inbound['settings']['server'] ?? $inbound['settings'] ?? [];
-
-        if (! is_array($serverSettings)) {
-            $serverSettings = [];
-        }
-
-        [$host, $port] = $this->parseEndpoint($this->firstNonEmptyString([
-            $client['endpoint'] ?? null,
-            Arr::get($client, 'peer.endpoint'),
-            Arr::get($inbound, 'endpoint'),
-            Arr::get($inbound, 'settings.endpoint'),
-        ]), $server, isset($inbound['port']) ? (int) $inbound['port'] : null);
-
+        $serverSettings = $this->amneziaServerSettings($inbound);
+        [$host, $port] = $this->xuiEndpoint($server, $inbound, $client);
         $privateKey = $this->firstNonEmptyString([
             $client['privateKey'] ?? null,
             $client['private_key'] ?? null,
@@ -388,6 +380,25 @@ class WireGuardSubscriptionLinkService
             return null;
         }
 
+        $lines = $this->amneziaInterfaceLines($privateKey, $address, $client, $serverSettings);
+        $this->appendAmneziaPeerLines($lines, $publicKey, $host, $port, $client);
+
+        return $this->buildAmneziaWireGuardUri(implode(PHP_EOL, $lines).PHP_EOL, $name);
+    }
+
+    private function amneziaServerSettings(array $inbound): array
+    {
+        $settings = $inbound['settings']['server'] ?? $inbound['settings'] ?? [];
+
+        return is_array($settings) ? $settings : [];
+    }
+
+    private function amneziaInterfaceLines(
+        string $privateKey,
+        string $address,
+        array $client,
+        array $serverSettings,
+    ): array {
         $lines = [
             '[Interface]',
             'PrivateKey = '.$privateKey,
@@ -418,6 +429,16 @@ class WireGuardSubscriptionLinkService
             }
         }
 
+        return $lines;
+    }
+
+    private function appendAmneziaPeerLines(
+        array &$lines,
+        string $publicKey,
+        string $host,
+        int $port,
+        array $client,
+    ): void {
         $lines[] = '';
         $lines[] = '[Peer]';
         $lines[] = 'PublicKey = '.$publicKey;
@@ -429,8 +450,6 @@ class WireGuardSubscriptionLinkService
         if ($keepalive !== null && $keepalive > 0) {
             $lines[] = 'PersistentKeepalive = '.$keepalive;
         }
-
-        return $this->buildAmneziaWireGuardUri(implode(PHP_EOL, $lines).PHP_EOL, $name);
     }
 
     private function buildAmneziaWireGuardUri(string $content, ?string $name = null): string
@@ -636,7 +655,7 @@ class WireGuardSubscriptionLinkService
             return null;
         }
 
-        $query = $this->parseQueryString($queryPart);
+        $query = $this->uriParser->parseQueryString($queryPart);
 
         return [
             'private_key' => $this->decodeUriComponent($privateKey),
@@ -651,38 +670,6 @@ class WireGuardSubscriptionLinkService
             'reserved' => $this->decodeUriComponent((string) Arr::get($query, 'reserved', '')) ?: null,
             'fragment' => $this->decodeUriComponent($fragment),
         ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function parseQueryString(string $query): array
-    {
-        $query = trim($query);
-
-        if ($query === '') {
-            return [];
-        }
-
-        $pairs = explode('&', $query);
-        $result = [];
-
-        foreach ($pairs as $pair) {
-            if ($pair === '') {
-                continue;
-            }
-
-            [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
-            $key = rawurldecode($key);
-
-            if ($key === '') {
-                continue;
-            }
-
-            $result[$key] = $value;
-        }
-
-        return $result;
     }
 
     private function formatHost(string $host): string

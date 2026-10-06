@@ -46,19 +46,6 @@ class ReportsService
         $estimatedTaxes = round($revenue * self::TAX_RATE, 2);
         $netProfit = round($revenue - $totalServerCosts - $estimatedTaxes, 2);
 
-        $paidTaxInvoices = $paidInvoices->where('tax_status', '!=', '');
-        $invoiceTaxStatusSegments = [
-            ['label' => 'Отправлено', 'value' => $paidTaxInvoices->where('tax_status', Invoice::TAX_STATUS_SENT)->count(), 'color' => '#0f766e'],
-            ['label' => 'В очереди', 'value' => $paidTaxInvoices->whereIn('tax_status', [Invoice::TAX_STATUS_QUEUED, Invoice::TAX_STATUS_SENDING])->count(), 'color' => '#f59e0b'],
-            ['label' => 'Не отправлено', 'value' => $paidTaxInvoices->where('tax_status', Invoice::TAX_STATUS_NOT_SENT)->count(), 'color' => '#64748b'],
-            ['label' => 'Ошибка', 'value' => $paidTaxInvoices->where('tax_status', Invoice::TAX_STATUS_FAILED)->count(), 'color' => '#dc2626'],
-        ];
-
-        $invoiceStateSegments = [
-            ['label' => 'Оплаченные', 'value' => $invoicesCreatedInRange->where('paid', true)->count(), 'color' => '#0f766e'],
-            ['label' => 'Неоплаченные', 'value' => $invoicesCreatedInRange->where('paid', false)->count(), 'color' => '#94a3b8'],
-        ];
-
         $activeSubscribers = User::query()
             ->whereHas('activeSubscription', fn ($query) => $query
                 ->whereDate('start_date', '<=', $to->toDateString())
@@ -74,37 +61,94 @@ class ReportsService
             ->get();
 
         return [
-            'filters' => [
-                'date_from' => $from->toDateString(),
-                'date_to' => $to->toDateString(),
-                'range_label' => sprintf('%s - %s', $from->format('d.m.Y'), $to->format('d.m.Y')),
-            ],
-            'summary' => [
-                'revenue' => $revenue,
-                'total_server_costs' => $totalServerCosts,
-                'estimated_taxes' => $estimatedTaxes,
-                'net_profit' => $netProfit,
-                'margin_percent' => $revenue > 0 ? round(($netProfit / $revenue) * 100, 1) : 0.0,
-                'paid_invoices_count' => $paidInvoices->count(),
-                'active_subscribers' => $activeSubscribers,
-                'new_users' => $newUsers,
-                'subscriptions_started' => $subscriptionsStarted->count(),
-                'subscriptions_revenue' => round((float) $subscriptionsStarted->sum('price'), 2),
-                'average_invoice' => $paidInvoices->count() > 0
-                    ? round($revenue / $paidInvoices->count(), 2)
-                    : 0.0,
-            ],
-            'financial_segments' => [
-                ['label' => 'Серверы', 'value' => $totalServerCosts, 'color' => '#1d4ed8'],
-                ['label' => 'Налоги 4%', 'value' => $estimatedTaxes, 'color' => '#f97316'],
-                ['label' => 'Чистая прибыль', 'value' => max(0, $netProfit), 'color' => '#16a34a'],
-                ['label' => 'Убыток', 'value' => max(0, -$netProfit), 'color' => '#b91c1c'],
-            ],
-            'invoice_tax_status_segments' => $invoiceTaxStatusSegments,
-            'invoice_state_segments' => $invoiceStateSegments,
+            'filters' => $this->filterPayload($from, $to),
+            'summary' => $this->summaryPayload(
+                $revenue,
+                $totalServerCosts,
+                $estimatedTaxes,
+                $netProfit,
+                $paidInvoices,
+                $activeSubscribers,
+                $newUsers,
+                $subscriptionsStarted,
+            ),
+            'financial_segments' => $this->financialSegments($totalServerCosts, $estimatedTaxes, $netProfit),
+            'invoice_tax_status_segments' => $this->invoiceTaxStatusSegments($paidInvoices),
+            'invoice_state_segments' => $this->invoiceStateSegments($invoicesCreatedInRange),
             'server_costs' => $serverCosts->values()->all(),
             'top_servers' => $serverCosts->sortByDesc('total_cost')->take(6)->values()->all(),
             'monthly_trend' => $this->buildMonthlyTrend($servers, $to),
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function filterPayload(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        return [
+            'date_from' => $from->toDateString(),
+            'date_to' => $to->toDateString(),
+            'range_label' => sprintf('%s - %s', $from->format('d.m.Y'), $to->format('d.m.Y')),
+        ];
+    }
+
+    /** @return array<string, int|float> */
+    private function summaryPayload(
+        float $revenue,
+        float $totalServerCosts,
+        float $estimatedTaxes,
+        float $netProfit,
+        Collection $paidInvoices,
+        int $activeSubscribers,
+        int $newUsers,
+        Collection $subscriptionsStarted,
+    ): array {
+        return [
+            'revenue' => $revenue,
+            'total_server_costs' => $totalServerCosts,
+            'estimated_taxes' => $estimatedTaxes,
+            'net_profit' => $netProfit,
+            'margin_percent' => $revenue > 0 ? round(($netProfit / $revenue) * 100, 1) : 0.0,
+            'paid_invoices_count' => $paidInvoices->count(),
+            'active_subscribers' => $activeSubscribers,
+            'new_users' => $newUsers,
+            'subscriptions_started' => $subscriptionsStarted->count(),
+            'subscriptions_revenue' => round((float) $subscriptionsStarted->sum('price'), 2),
+            'average_invoice' => $paidInvoices->isNotEmpty()
+                ? round($revenue / $paidInvoices->count(), 2)
+                : 0.0,
+        ];
+    }
+
+    /** @return array<int, array<string, int|float|string>> */
+    private function financialSegments(float $serverCosts, float $taxes, float $netProfit): array
+    {
+        return [
+            ['label' => 'Серверы', 'value' => $serverCosts, 'color' => '#1d4ed8'],
+            ['label' => 'Налоги 4%', 'value' => $taxes, 'color' => '#f97316'],
+            ['label' => 'Чистая прибыль', 'value' => max(0, $netProfit), 'color' => '#16a34a'],
+            ['label' => 'Убыток', 'value' => max(0, -$netProfit), 'color' => '#b91c1c'],
+        ];
+    }
+
+    /** @return array<int, array<string, int|string>> */
+    private function invoiceTaxStatusSegments(Collection $paidInvoices): array
+    {
+        $taxInvoices = $paidInvoices->where('tax_status', '!=', '');
+
+        return [
+            ['label' => 'Отправлено', 'value' => $taxInvoices->where('tax_status', Invoice::TAX_STATUS_SENT)->count(), 'color' => '#0f766e'],
+            ['label' => 'В очереди', 'value' => $taxInvoices->whereIn('tax_status', [Invoice::TAX_STATUS_QUEUED, Invoice::TAX_STATUS_SENDING])->count(), 'color' => '#f59e0b'],
+            ['label' => 'Не отправлено', 'value' => $taxInvoices->where('tax_status', Invoice::TAX_STATUS_NOT_SENT)->count(), 'color' => '#64748b'],
+            ['label' => 'Ошибка', 'value' => $taxInvoices->where('tax_status', Invoice::TAX_STATUS_FAILED)->count(), 'color' => '#dc2626'],
+        ];
+    }
+
+    /** @return array<int, array<string, int|string>> */
+    private function invoiceStateSegments(Collection $invoices): array
+    {
+        return [
+            ['label' => 'Оплаченные', 'value' => $invoices->where('paid', true)->count(), 'color' => '#0f766e'],
+            ['label' => 'Неоплаченные', 'value' => $invoices->where('paid', false)->count(), 'color' => '#94a3b8'],
         ];
     }
 

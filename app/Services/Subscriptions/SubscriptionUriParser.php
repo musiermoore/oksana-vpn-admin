@@ -134,7 +134,7 @@ class SubscriptionUriParser
     /**
      * @return array<string, array<string, string>>
      */
-    private function parseConfigSections(string $content): array
+    public function parseConfigSections(string $content): array
     {
         $sections = [];
         $currentSection = null;
@@ -194,7 +194,7 @@ class SubscriptionUriParser
     /**
      * @return array<string, string>
      */
-    private function parseQueryString(string $query): array
+    public function parseQueryString(string $query): array
     {
         $query = trim($query);
 

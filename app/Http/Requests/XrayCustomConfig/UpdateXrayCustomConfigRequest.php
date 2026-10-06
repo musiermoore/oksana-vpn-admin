@@ -12,7 +12,7 @@ use Illuminate\Validation\Validator;
 
 class UpdateXrayCustomConfigRequest extends DataFormRequest
 {
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return XrayCustomConfigData::class;
     }

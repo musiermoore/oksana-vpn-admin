@@ -24,7 +24,7 @@ class SortServerConnectItemsRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ServerConnectItemSortData::class;
     }

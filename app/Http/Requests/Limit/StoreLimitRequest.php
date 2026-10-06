@@ -22,7 +22,7 @@ class StoreLimitRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return LimitData::class;
     }

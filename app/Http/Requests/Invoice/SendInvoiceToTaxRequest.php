@@ -22,7 +22,7 @@ class SendInvoiceToTaxRequest extends DataFormRequest
         return [];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return SendInvoiceToTaxData::class;
     }

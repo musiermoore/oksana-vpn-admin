@@ -25,7 +25,7 @@ class StoreApiTransactionRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ApiDepositTransactionData::class;
     }

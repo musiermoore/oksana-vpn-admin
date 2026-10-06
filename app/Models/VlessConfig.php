@@ -182,38 +182,65 @@ class VlessConfig extends Model
             return '';
         }
 
+        $params = implode('&', $this->vlessParameters());
+        $label = str($server->code.'_'.$this->name)->slug();
+
+        return "vless://{$this->uuid}@{$server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+    }
+
+    private function vlessParameters(): array
+    {
         $paramList = [
             "type={$this->type}",
             "encryption={$this->encryption}",
             "security={$this->security}",
         ];
 
+        $this->appendVlessSecurityParameters($paramList);
+
+        if ($this->security !== 'reality') {
+            $this->appendVlessTransportParameters($paramList);
+        }
+
+        $this->appendVlessHttpParameters($paramList);
+
+        if ($this->flow) {
+            $paramList[] = "flow={$this->flow}";
+        }
+
+        return $paramList;
+    }
+
+    private function appendVlessSecurityParameters(array &$paramList): void
+    {
         if ($this->security === 'reality') {
             $paramList[] = "pbk={$this->pbk}";
             $paramList[] = "fp={$this->fp}";
             $paramList[] = "sni={$this->sni}";
             $paramList[] = "sid={$this->sid}";
             $paramList[] = 'spx='.urlencode($this->spx ?: '/');
-        } else {
-            if ($this->security && $this->sni) {
-                $paramList[] = "sni={$this->sni}";
-            }
 
-            if ($this->type === 'ws') {
-                if ($this->host) {
-                    $paramList[] = 'host='.urlencode($this->host);
-                }
-
-                if ($this->path) {
-                    $paramList[] = 'path='.urlencode($this->path);
-                }
-            }
-
-            if ($this->type === 'grpc' && $this->service_name) {
-                $paramList[] = 'serviceName='.urlencode($this->service_name);
-            }
+            return;
         }
 
+        if ($this->security && $this->sni) {
+            $paramList[] = "sni={$this->sni}";
+        }
+    }
+
+    private function appendVlessTransportParameters(array &$paramList): void
+    {
+        if ($this->type === 'ws') {
+            $this->appendVlessHostAndPath($paramList);
+        }
+
+        if ($this->type === 'grpc' && $this->service_name) {
+            $paramList[] = 'serviceName='.urlencode($this->service_name);
+        }
+    }
+
+    private function appendVlessHttpParameters(array &$paramList): void
+    {
         if (in_array($this->type, ['http', 'h2', 'xhttp'], true)) {
             if ($this->type === 'xhttp' || $this->host) {
                 $paramList[] = 'host='.urlencode((string) $this->host);
@@ -237,16 +264,17 @@ class VlessConfig extends Model
                 $paramList[] = 'x_padding_bytes='.urlencode((string) $this->x_padding_bytes);
             }
         }
+    }
 
-        if ($this->flow) {
-            $paramList[] = "flow={$this->flow}";
+    private function appendVlessHostAndPath(array &$paramList): void
+    {
+        if ($this->host) {
+            $paramList[] = 'host='.urlencode($this->host);
         }
 
-        $params = implode('&', $paramList);
-
-        $label = str($server->code.'_'.$this->name)->slug();
-
-        return "vless://{$this->uuid}@{$server->getLinkAddressHost()}:{$this->port}?{$params}#{$label}";
+        if ($this->path) {
+            $paramList[] = 'path='.urlencode($this->path);
+        }
     }
 
     private function getWireGuardStaticLink(): string

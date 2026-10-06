@@ -21,7 +21,7 @@ class ClaimReferralRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ClaimReferralData::class;
     }

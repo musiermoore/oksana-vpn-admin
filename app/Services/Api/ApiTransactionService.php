@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Api;
 
 use App\DTOs\Transaction\ApiDepositTransactionData;
 use App\Enums\SubscriptionPurchaseType;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Jobs\ReconcileUserAccessStateJob;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
@@ -34,58 +37,101 @@ class ApiTransactionService
         }
 
         if ($data->month === 0) {
-            $subscription = $this->subscriptionService->activateTrialForUser($user);
-            $user->load('activeSubscription');
-
-            if ($user->hasActiveSubscription()) {
-                DispatchDefaultConfigsForUserJob::dispatch($user->id)->afterCommit();
-                ReconcileUserAccessStateJob::dispatch($user->id)->afterCommit();
-            }
-
-            $formattedEndDate = Carbon::parse($subscription->end_date)->format('d.m.Y');
-
-            return [
-                'status' => 'activated',
-                'message' => "Пробная подписка активирована до $formattedEndDate.",
-                'end_date' => $subscription->end_date,
-                'formatted_end_date' => $formattedEndDate,
-            ];
+            return $this->activateTrial($user);
         }
 
         $quote = $this->subscriptionService->buildPurchaseQuote($user, $data->month);
 
         if ($quote['deposit_amount'] <= 0) {
-            $subscription = $this->subscriptionService->activatePackageForUser(
-                user: $user,
-                months: $data->month,
-                packagePrice: (float) $quote['package_price'],
-                purchaseMeta: [
-                    'subscription_months' => $data->month,
-                    'referral_accumulated_discount_percent' => $quote['referral_accumulated_discount_percent'],
-                    'referral_permanent_discount_percent' => $quote['referral_permanent_discount_percent'],
-                    'referral_total_discount_percent' => $quote['referral_total_discount_percent'],
-                    'referral_discount_amount' => $quote['referral_discount_amount'],
-                ],
-            );
-
-            $formattedEndDate = Carbon::parse($subscription->end_date)->format('d.m.Y');
-
-            return [
-                'status' => 'activated',
-                'message' => "Подписка активирована до $formattedEndDate.",
-                'end_date' => $subscription->end_date,
-                'formatted_end_date' => $formattedEndDate,
-            ];
+            return $this->activateFromBalance($user, $data->month, $quote);
         }
 
+        return $this->createSubscriptionPayment($user, $data, $quote);
+    }
+
+    private function activateTrial(User $user): array
+    {
+        $subscription = $this->subscriptionService->activateTrialForUser($user);
+        $user->load('activeSubscription');
+
+        if ($user->hasActiveSubscription()) {
+            DispatchDefaultConfigsForUserJob::dispatch($user->id)->afterCommit();
+            ReconcileUserAccessStateJob::dispatch($user->id)->afterCommit();
+        }
+
+        return $this->activationResponse($subscription->end_date, true);
+    }
+
+    private function activateFromBalance(User $user, int $months, array $quote): array
+    {
+        $subscription = $this->subscriptionService->activatePackageForUser(
+            user: $user,
+            months: $months,
+            packagePrice: (float) $quote['package_price'],
+            purchaseMeta: [
+                'subscription_months' => $months,
+                'referral_accumulated_discount_percent' => $quote['referral_accumulated_discount_percent'],
+                'referral_permanent_discount_percent' => $quote['referral_permanent_discount_percent'],
+                'referral_total_discount_percent' => $quote['referral_total_discount_percent'],
+                'referral_discount_amount' => $quote['referral_discount_amount'],
+            ],
+        );
+
+        return $this->activationResponse($subscription->end_date, false);
+    }
+
+    private function activationResponse(mixed $endDate, bool $trial): array
+    {
+        $formattedEndDate = Carbon::parse($endDate)->format('d.m.Y');
+        $prefix = $trial ? 'Пробная подписка активирована' : 'Подписка активирована';
+
+        return [
+            'status' => 'activated',
+            'message' => "$prefix до $formattedEndDate.",
+            'end_date' => $endDate,
+            'formatted_end_date' => $formattedEndDate,
+        ];
+    }
+
+    private function createSubscriptionPayment(User $user, ApiDepositTransactionData $data, array $quote): array
+    {
         $description = $this->buildPaymentDescription($user, $data->month);
-        $transaction = $this->transactions->createForUser($user, [
+        $transaction = $this->createSubscriptionTransaction($user, $data->month, $quote);
+        $payment = $this->yooKassaPaymentService->createPayment(
+            amount: (float) $transaction->amount,
+            description: $description,
+            metadata: [
+                'user_id' => (string) $user->id,
+                'transaction_id' => (string) $transaction->id,
+                'subscription_months' => (string) $data->month,
+            ],
+            returnUrl: $data->returnUrl,
+        );
+        $invoice = $this->createSubscriptionInvoice($user, $payment, $description);
+
+        $this->transactions->update($transaction, ['invoice_id' => $invoice->id]);
+
+        return [
+            'status' => 'deposit_required',
+            'message' => "Для активации подписки необходимо оплатить {$transaction->amount} ₽. Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».",
+            'deposit_amount' => (float) $transaction->amount,
+            'transaction_id' => $transaction->id,
+            'invoice_id' => $invoice->id,
+            'payment_id' => $invoice->provider_payment_id,
+            'payment_status' => $invoice->status,
+            'confirmation_url' => $invoice->confirmation_url,
+        ];
+    }
+
+    private function createSubscriptionTransaction(User $user, int $months, array $quote): Transaction
+    {
+        return $this->transactions->createForUser($user, [
             'type_id' => TransactionType::idBySlug(TransactionType::SLUG_DEPOSIT),
             'amount' => $quote['deposit_amount'],
             'is_approved' => false,
             'description' => 'YooKassa',
             'extra_data' => [
-                'subscription_months' => $data->month,
+                'subscription_months' => $months,
                 'base_month_price' => $quote['base_month_price'],
                 'discount_percent' => $quote['discount_percent'],
                 'package_full_price' => $quote['package_full_price'],
@@ -99,19 +145,11 @@ class ApiTransactionService
                 'referral_discount_amount' => $quote['referral_discount_amount'],
             ],
         ]);
+    }
 
-        $payment = $this->yooKassaPaymentService->createPayment(
-            amount: (float) $transaction->amount,
-            description: $description,
-            metadata: [
-                'user_id' => (string) $user->id,
-                'transaction_id' => (string) $transaction->id,
-                'subscription_months' => (string) $data->month,
-            ],
-            returnUrl: $data->returnUrl,
-        );
-
-        $invoice = $this->invoices->create([
+    private function createSubscriptionInvoice(User $user, array $payment, string $description): Invoice
+    {
+        return $this->invoices->create([
             'user_id' => $user->id,
             'provider' => 'yookassa',
             'provider_payment_id' => (string) $payment['id'],
@@ -134,21 +172,6 @@ class ApiTransactionService
                 'payload' => $payment['raw'] ?? $payment,
             ]],
         ]);
-
-        $this->transactions->update($transaction, [
-            'invoice_id' => $invoice->id,
-        ]);
-
-        return [
-            'status' => 'deposit_required',
-            'message' => "Для активации подписки необходимо оплатить {$transaction->amount} ₽. Чтобы перейти к оплате нажмите на кнопку «Перейти к оплате картой / СБП».",
-            'deposit_amount' => (float) $transaction->amount,
-            'transaction_id' => $transaction->id,
-            'invoice_id' => $invoice->id,
-            'payment_id' => $invoice->provider_payment_id,
-            'payment_status' => $invoice->status,
-            'confirmation_url' => $invoice->confirmation_url,
-        ];
     }
 
     public function updateTelegramMessageMetadata(

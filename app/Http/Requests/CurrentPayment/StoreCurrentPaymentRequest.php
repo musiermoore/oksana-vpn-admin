@@ -23,7 +23,7 @@ class StoreCurrentPaymentRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return CurrentPaymentData::class;
     }

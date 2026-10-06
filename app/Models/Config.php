@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Services\WireGuardConfigServiceFactory;
@@ -7,7 +9,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Config extends Model
@@ -19,7 +20,7 @@ class Config extends Model
         'user_id',
         'name',
         'description',
-        'is_active'
+        'is_active',
     ];
 
     public function user(): BelongsTo
@@ -103,34 +104,27 @@ class Config extends Model
         $sent = $endIntervalTraffic->sent - $startIntervalTraffic->sent;
         $received = $endIntervalTraffic->received - $startIntervalTraffic->received;
 
-        $units = [
-            'bytes',
-            'KB',
-            'MB',
-            'GB',
-            'TB'
-        ];
-
-        $sentUnit = 0;
-        while ($sent > 1024 && $formatted) {
-            $sent /= 1024;
-            $sentUnit++;
-        }
-
-        $receivedUnit = 0;
-        while ($received > 1024 && $formatted) {
-            $received /= 1024;
-            $receivedUnit++;
-        }
-
         if (empty($sent) && empty($received)) {
             return [];
         }
 
         return [
-            'sent' => round($sent, 2) . ($formatted ? ' ' . $units[$sentUnit] : ''),
-            'received' => round($received, 2) . ($formatted ? ' ' . $units[$receivedUnit] : '')
+            'sent' => $this->formatTrafficValue($sent, $formatted),
+            'received' => $this->formatTrafficValue($received, $formatted),
         ];
+    }
+
+    private function formatTrafficValue(int|float $value, bool $formatted): string
+    {
+        $units = ['bytes', 'KB', 'MB', 'GB', 'TB'];
+        $unit = 0;
+
+        while ($value > 1024 && $formatted) {
+            $value /= 1024;
+            $unit++;
+        }
+
+        return round($value, 2).($formatted ? ' '.$units[$unit] : '');
     }
 
     public function createWgConfig(): bool

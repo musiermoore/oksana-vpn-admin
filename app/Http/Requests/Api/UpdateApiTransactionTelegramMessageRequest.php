@@ -22,7 +22,7 @@ class UpdateApiTransactionTelegramMessageRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ApiTransactionTelegramMessageData::class;
     }

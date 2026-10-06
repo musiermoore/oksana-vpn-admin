@@ -23,7 +23,7 @@ class StoreExtraPaymentRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ExtraPaymentData::class;
     }

@@ -26,7 +26,7 @@ class UpdateInvoiceTaxStatusRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return UpdateInvoiceTaxStatusData::class;
     }

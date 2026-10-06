@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use App\Support\PublicAppUrl;
@@ -29,16 +31,56 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $navigation = $this->navigation($user !== null);
+        $currentPath = '/'.ltrim($request->path(), '/');
+        [$currentSection, $currentItem] = $this->currentNavigation($navigation, $currentPath);
 
-        $navigation = $user ? [
+        return array_merge(parent::share($request), [
+            'app' => [
+                'name' => config('app.name', 'VPN Admin'),
+                'isAuthorized' => (bool) $request->attributes->get('isAuthorized'),
+                'currentPath' => $request->path(),
+                'navigation' => $navigation,
+                'currentSection' => $currentSection,
+                'currentItem' => $currentItem,
+                'breadcrumbs' => $this->breadcrumbs($currentSection, $currentItem, $currentPath),
+            ],
+            'auth' => [
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'telegram' => $user->telegram,
+                    'is_admin' => (bool) $user->is_admin,
+                ] : null,
+            ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
+            'routes' => [
+                'giveaway' => route('telegram-app.pages.giveaway'),
+                'help' => route('telegram-app.pages.help'),
+                'chats' => route('telegram-app.pages.chats'),
+            ],
+        ]);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function navigation(bool $authenticated): array
+    {
+        if (! $authenticated) {
+            return [];
+        }
+
+        return [
             [
-                    'section' => 'Обзор',
-                    'icon' => 'dashboard',
-                    'items' => [
-                        ['label' => 'Панель', 'href' => route('dashboard.index'), 'badge' => 'PN', 'icon' => 'dashboard'],
-                        ['label' => 'Отчеты', 'href' => route('reports.index'), 'badge' => 'RP', 'icon' => 'chart'],
-                    ],
+                'section' => 'Обзор',
+                'icon' => 'dashboard',
+                'items' => [
+                    ['label' => 'Панель', 'href' => route('dashboard.index'), 'badge' => 'PN', 'icon' => 'dashboard'],
+                    ['label' => 'Отчеты', 'href' => route('reports.index'), 'badge' => 'RP', 'icon' => 'chart'],
                 ],
+            ],
             [
                 'section' => 'Сеть',
                 'icon' => 'server',
@@ -90,11 +132,17 @@ class HandleInertiaRequests extends Middleware
                     ['label' => 'Tax Debug', 'href' => route('tax-debug.index'), 'badge' => 'TD', 'icon' => 'bug'],
                 ],
             ],
-        ] : [];
+        ];
+    }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $navigation
+     * @return array{0: array<string, mixed>|null, 1: array<string, mixed>|null}
+     */
+    private function currentNavigation(array $navigation, string $currentPath): array
+    {
         $currentSection = null;
         $currentItem = null;
-        $currentPath = '/'.ltrim($request->path(), '/');
 
         foreach ($navigation as $section) {
             foreach ($section['items'] as $item) {
@@ -111,8 +159,17 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
-        $breadcrumbs = [];
+        return [$currentSection, $currentItem];
+    }
 
+    /**
+     * @param  array<string, mixed>|null  $currentSection
+     * @param  array<string, mixed>|null  $currentItem
+     * @return array<int, array<string, mixed>>
+     */
+    private function breadcrumbs(?array $currentSection, ?array $currentItem, string $currentPath): array
+    {
+        $breadcrumbs = [];
         $dashboardPath = parse_url(route('dashboard.index'), PHP_URL_PATH) ?: '/';
 
         if ($currentPath === $dashboardPath) {
@@ -138,28 +195,6 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        return array_merge(parent::share($request), [
-            'app' => [
-                'name' => config('app.name', 'VPN Admin'),
-                'isAuthorized' => (bool) $request->attributes->get('isAuthorized'),
-                'currentPath' => $request->path(),
-                'navigation' => $navigation,
-                'currentSection' => $currentSection,
-                'currentItem' => $currentItem,
-                'breadcrumbs' => $breadcrumbs,
-            ],
-            'auth' => [
-                'user' => $user ? [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'telegram' => $user->telegram,
-                    'is_admin' => (bool) $user->is_admin,
-                ] : null,
-            ],
-            'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
-            ],
-        ]);
+        return $breadcrumbs;
     }
 }

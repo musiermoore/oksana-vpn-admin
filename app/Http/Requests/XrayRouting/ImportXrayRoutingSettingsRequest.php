@@ -34,7 +34,7 @@ class ImportXrayRoutingSettingsRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return XrayRoutingImportData::class;
     }

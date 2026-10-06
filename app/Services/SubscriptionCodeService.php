@@ -12,7 +12,6 @@ use App\Models\SubscriptionCode;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
-use Carbon\Carbon;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -196,13 +195,28 @@ class SubscriptionCodeService
 
     private function generateUniqueCode(): string
     {
-        do {
-            $raw = collect(range(1, 12))
-                ->map(fn () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[random_int(0, 31)])
-                ->implode('');
-        } while (SubscriptionCode::query()->where('code', $raw)->exists());
+        $candidates = collect(range(1, 10))
+            ->map(fn (): string => $this->generateCodeCandidate())
+            ->unique()
+            ->values();
 
-        return $raw;
+        $existingCodes = SubscriptionCode::query()
+            ->whereIn('code', $candidates->all())
+            ->pluck('code')
+            ->all();
+
+        $availableCode = $candidates->first(
+            fn (string $candidate): bool => ! in_array($candidate, $existingCodes, true)
+        );
+
+        return is_string($availableCode) ? $availableCode : $this->generateUniqueCode();
+    }
+
+    private function generateCodeCandidate(): string
+    {
+        return collect(range(1, 12))
+            ->map(fn (): string => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[random_int(0, 31)])
+            ->implode('');
     }
 
     private function buildGiftTransactionDescription(int $months): string

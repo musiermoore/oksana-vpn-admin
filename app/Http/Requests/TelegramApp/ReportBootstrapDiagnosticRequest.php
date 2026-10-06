@@ -48,7 +48,7 @@ class ReportBootstrapDiagnosticRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ReportBootstrapDiagnosticData::class;
     }

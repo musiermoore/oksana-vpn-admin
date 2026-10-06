@@ -12,6 +12,7 @@ use App\Models\XrayRouting;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use App\Services\Subscriptions\SubscriptionUriParser;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
+use Illuminate\Support\Collection;
 
 class ConnectJsonBuilder implements SubscriptionBuilder
 {
@@ -99,18 +100,34 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     private function buildGroupedCustomConfig(array $nodes, XrayCustomConfig $customConfig): SubscriptionBuildResult
     {
         $groups = $customConfig->outboundGroups->where('is_active', true)->values();
-        $requiresObservatory = $groups->contains(
-            fn (XrayCustomConfigOutboundGroup $group): bool => in_array(
-                $group->strategy?->value ?? (string) $group->strategy,
-                ['leastPing', 'leastLoad'],
-                true,
-            )
+        $outbounds = $this->groupedOutbounds($nodes, $groups);
+        [$balancers, $fallbackLoopRules, $loopbackOutbounds] = $this->groupedBalancers($groups);
+        $routingRules = $this->groupedRoutingRules($customConfig, $fallbackLoopRules);
+        $base = $customConfig->base_settings ?? [];
+        $profile = $this->groupedProfile(
+            $customConfig,
+            $base,
+            $routingRules,
+            $balancers,
+            $outbounds,
+            $loopbackOutbounds,
         );
+
+        $this->appendGroupedObservatory($profile, $groups, $base);
+        $this->appendGroupedGeodata($profile, $customConfig);
+
+        return new SubscriptionBuildResult(
+            content: json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
+            contentType: 'application/json; charset=UTF-8',
+            fileExtension: 'json',
+        );
+    }
+
+    private function groupedOutbounds(array $nodes, Collection $groups): array
+    {
         $outbounds = [];
-        $groupTags = [];
 
         foreach ($groups as $group) {
-            $groupTags[(int) $group->id] = (string) $group->tag;
             $groupNodes = $this->filterNodesForTargets($nodes, $group->xray_inbound_ids, $group->external_subscription_config_ids, $group->proxy_ids);
 
             foreach ($groupNodes as $index => $node) {
@@ -125,6 +142,11 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             }
         }
 
+        return $outbounds;
+    }
+
+    private function groupedBalancers(Collection $groups): array
+    {
         $balancers = [];
         $fallbackLoopRules = [];
         $loopbackOutbounds = [];
@@ -164,6 +186,11 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             $balancers[] = $balancer;
         }
 
+        return [$balancers, $fallbackLoopRules, $loopbackOutbounds];
+    }
+
+    private function groupedRoutingRules(XrayCustomConfig $customConfig, array $fallbackLoopRules): array
+    {
         $routingRules = $fallbackLoopRules;
         $hasCatchAllNetworkRoute = false;
 
@@ -201,34 +228,28 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             ];
         }
 
-        $routing = [
-            ...(is_array($customConfig->base_settings['routing'] ?? null) ? $customConfig->base_settings['routing'] : []),
-            'domainStrategy' => (string) data_get($customConfig->base_settings, 'routing.domainStrategy', 'AsIs'),
-            'rules' => $routingRules,
-            'balancers' => $balancers,
-        ];
+        return $routingRules;
+    }
 
-        $base = $customConfig->base_settings ?? [];
-        $observatory = null;
-
-        if ($requiresObservatory) {
-            $observatory = [
-                'subjectSelector' => $groups
-                    ->map(fn (XrayCustomConfigOutboundGroup $group): string => (string) $group->tag.'-')
-                    ->all(),
-                'probeUrl' => 'https://www.google.com/generate_204',
-                'probeInterval' => '1m',
-                'enableConcurrency' => true,
-                ...(is_array($base['observatory'] ?? null) ? $base['observatory'] : []),
-            ];
-        }
-
-        $profile = [
+    private function groupedProfile(
+        XrayCustomConfig $customConfig,
+        array $base,
+        array $routingRules,
+        array $balancers,
+        array $outbounds,
+        array $loopbackOutbounds,
+    ): array {
+        return [
             ...$base,
             'remarks' => (string) $customConfig->name,
             'log' => $this->settingsProvider->log(),
             'dns' => $this->settingsProvider->dnsFromSettings($customConfig->dnsSettings),
-            'routing' => $routing,
+            'routing' => [
+                ...(is_array($base['routing'] ?? null) ? $base['routing'] : []),
+                'domainStrategy' => (string) data_get($base, 'routing.domainStrategy', 'AsIs'),
+                'rules' => $routingRules,
+                'balancers' => $balancers,
+            ],
             'inbounds' => $base['inbounds'] ?? $this->settingsProvider->inbounds(),
             'outbounds' => [
                 ...$outbounds,
@@ -237,30 +258,51 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->settingsProvider->blockOutbound(),
             ],
         ];
+    }
 
-        if ($observatory !== null) {
-            $profile['observatory'] = $observatory;
-        }
-
-        $geodata = $this->settingsProvider->geodataFromSettings($customConfig->geodata);
-        if ($geodata !== null) {
-            $availableOutboundTags = collect($profile['outbounds'])
-                ->filter(fn (mixed $outbound): bool => is_array($outbound) && isset($outbound['tag']))
-                ->map(fn (array $outbound): string => (string) $outbound['tag'])
-                ->all();
-
-            if (! in_array((string) ($geodata['outbound'] ?? ''), $availableOutboundTags, true)) {
-                $geodata['outbound'] = $this->settingsProvider->directTag();
-            }
-
-            $profile['geodata'] = $geodata;
-        }
-
-        return new SubscriptionBuildResult(
-            content: json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
-            contentType: 'application/json; charset=UTF-8',
-            fileExtension: 'json',
+    private function appendGroupedObservatory(array &$profile, Collection $groups, array $base): void
+    {
+        $requiresObservatory = $groups->contains(
+            fn (XrayCustomConfigOutboundGroup $group): bool => in_array(
+                $group->strategy?->value ?? (string) $group->strategy,
+                ['leastPing', 'leastLoad'],
+                true,
+            )
         );
+
+        if (! $requiresObservatory) {
+            return;
+        }
+
+        $profile['observatory'] = [
+            'subjectSelector' => $groups
+                ->map(fn (XrayCustomConfigOutboundGroup $group): string => (string) $group->tag.'-')
+                ->all(),
+            'probeUrl' => 'https://www.google.com/generate_204',
+            'probeInterval' => '1m',
+            'enableConcurrency' => true,
+            ...(is_array($base['observatory'] ?? null) ? $base['observatory'] : []),
+        ];
+    }
+
+    private function appendGroupedGeodata(array &$profile, XrayCustomConfig $customConfig): void
+    {
+        $geodata = $this->settingsProvider->geodataFromSettings($customConfig->geodata);
+
+        if ($geodata === null) {
+            return;
+        }
+
+        $availableOutboundTags = collect($profile['outbounds'])
+            ->filter(fn (mixed $outbound): bool => is_array($outbound) && isset($outbound['tag']))
+            ->map(fn (array $outbound): string => (string) $outbound['tag'])
+            ->all();
+
+        if (! in_array((string) ($geodata['outbound'] ?? ''), $availableOutboundTags, true)) {
+            $geodata['outbound'] = $this->settingsProvider->directTag();
+        }
+
+        $profile['geodata'] = $geodata;
     }
 
     /** @return array<int, NormalizedNode> */
@@ -309,39 +351,17 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         string $subscriptionType,
         ?XrayCustomConfig $customConfig = null,
     ): ?array {
-        $xrayInboundId = isset($node->meta['xray_inbound_id']) ? (int) $node->meta['xray_inbound_id'] : null;
-        $externalSubscriptionConfigId = isset($node->meta['external_subscription_config_id'])
-            ? (int) $node->meta['external_subscription_config_id']
-            : null;
-        $proxyId = isset($node->meta['proxy_id']) ? (int) $node->meta['proxy_id'] : null;
+        [$xrayInboundId, $externalSubscriptionConfigId, $proxyId] = $this->nodeTargetIds($node);
 
         if (is_array($node->meta['json_profile'] ?? null)) {
-            $profile = [
-                ...$node->meta['json_profile'],
-                'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
-            ];
-
-            if ($customConfig === null && $this->settingsProvider->hasTargetedRoutingRules(
+            return $this->buildStoredJsonProfile(
+                $node,
                 $subscriptionType,
+                $customConfig,
                 $xrayInboundId,
                 $externalSubscriptionConfigId,
                 $proxyId,
-            )) {
-                $profile['routing'] = $this->settingsProvider->routing(
-                    $subscriptionType,
-                    $xrayInboundId,
-                    $externalSubscriptionConfigId,
-                    $proxyId,
-                );
-            }
-
-            if ($customConfig !== null) {
-                $profile['dns'] = $this->settingsProvider->dnsFromSettings($customConfig->dnsSettings);
-                $profile['routing'] = $this->customRouting($customConfig, $subscriptionType, $node);
-                $profile = [...($customConfig->base_settings ?? []), ...$profile];
-            }
-
-            return $profile;
+            );
         }
 
         $parsed = $this->parser->parse($node->uri);
@@ -364,7 +384,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         $proxyOutbound['tag'] = $this->settingsProvider->proxyTag();
 
-        $profile = [
+        return [
             ...($customConfig?->base_settings ?? []),
             'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
             'log' => $this->settingsProvider->log(),
@@ -386,6 +406,51 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->settingsProvider->blockOutbound(),
             ],
         ];
+    }
+
+    private function nodeTargetIds(NormalizedNode $node): array
+    {
+        return [
+            isset($node->meta['xray_inbound_id']) ? (int) $node->meta['xray_inbound_id'] : null,
+            isset($node->meta['external_subscription_config_id'])
+                ? (int) $node->meta['external_subscription_config_id']
+                : null,
+            isset($node->meta['proxy_id']) ? (int) $node->meta['proxy_id'] : null,
+        ];
+    }
+
+    private function buildStoredJsonProfile(
+        NormalizedNode $node,
+        string $subscriptionType,
+        ?XrayCustomConfig $customConfig,
+        ?int $xrayInboundId,
+        ?int $externalSubscriptionConfigId,
+        ?int $proxyId,
+    ): array {
+        $profile = [
+            ...$node->meta['json_profile'],
+            'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
+        ];
+
+        if ($customConfig === null && $this->settingsProvider->hasTargetedRoutingRules(
+            $subscriptionType,
+            $xrayInboundId,
+            $externalSubscriptionConfigId,
+            $proxyId,
+        )) {
+            $profile['routing'] = $this->settingsProvider->routing(
+                $subscriptionType,
+                $xrayInboundId,
+                $externalSubscriptionConfigId,
+                $proxyId,
+            );
+        }
+
+        if ($customConfig !== null) {
+            $profile['dns'] = $this->settingsProvider->dnsFromSettings($customConfig->dnsSettings);
+            $profile['routing'] = $this->customRouting($customConfig, $subscriptionType, $node);
+            $profile = [...($customConfig->base_settings ?? []), ...$profile];
+        }
 
         return $profile;
     }

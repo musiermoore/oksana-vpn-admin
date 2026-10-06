@@ -28,7 +28,7 @@ class UpdateUserRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return UserData::class;
     }

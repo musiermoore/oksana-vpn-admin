@@ -25,7 +25,7 @@ class StoreTransactionRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return TransactionData::class;
     }

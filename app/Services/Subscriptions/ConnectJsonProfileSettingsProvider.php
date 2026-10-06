@@ -81,8 +81,7 @@ class ConnectJsonProfileSettingsProvider
         ?int $xrayInboundId = null,
         ?int $externalSubscriptionConfigId = null,
         ?int $proxyId = null,
-    ): array
-    {
+    ): array {
         $settings = $this->activeSettings()?->routing;
 
         return [
@@ -163,10 +162,9 @@ class ConnectJsonProfileSettingsProvider
     ): bool {
         return XrayRouting::query()
             ->active()
-            ->ordered()
-            ->get()
-            ->contains(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType)
-                && $routing->appliesToAnyTargetWithProxy($xrayInboundId, $externalSubscriptionConfigId, $proxyId));
+            ->forSubscriptionType($subscriptionType)
+            ->forAnyTarget($xrayInboundId, $externalSubscriptionConfigId, $proxyId)
+            ->exists();
     }
 
     /**
@@ -183,14 +181,10 @@ class ConnectJsonProfileSettingsProvider
         return XrayRouting::query()
             ->active()
             ->whereKey($routingIds)
+            ->forSubscriptionType($subscriptionType)
+            ->forAnyTarget($xrayInboundId, $externalSubscriptionConfigId, $proxyId)
             ->ordered()
             ->get()
-            ->filter(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType)
-                && $routing->appliesToAnyTargetWithProxy(
-                    $xrayInboundId,
-                    $externalSubscriptionConfigId,
-                    $proxyId,
-                ))
             ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(
                 $this->directTag(),
                 $this->proxyTag(),
@@ -208,24 +202,19 @@ class ConnectJsonProfileSettingsProvider
         ?int $xrayInboundId,
         ?int $externalSubscriptionConfigId,
         ?int $proxyId = null,
-    ): array
-    {
-        $routings = XrayRouting::query()
+    ): array {
+        $query = XrayRouting::query()
             ->active()
-            ->ordered()
-            ->get()
-            ->filter(fn (XrayRouting $routing): bool => $routing->appliesTo($subscriptionType));
+            ->forSubscriptionType($subscriptionType);
 
-        if ($routings->isEmpty()) {
+        if (! (clone $query)->exists()) {
             return config('connect_json.routing.rules', []);
         }
 
-        return $routings
-            ->filter(fn (XrayRouting $routing): bool => $routing->appliesToAnyTargetWithProxy(
-                $xrayInboundId,
-                $externalSubscriptionConfigId,
-                $proxyId,
-            ))
+        return $query
+            ->forAnyTarget($xrayInboundId, $externalSubscriptionConfigId, $proxyId)
+            ->ordered()
+            ->get()
             ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(
                 $this->directTag(),
                 $this->proxyTag(),

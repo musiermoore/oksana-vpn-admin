@@ -25,7 +25,7 @@ class AuthenticateTelegramAppPasswordRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return TelegramAppPasswordAuthData::class;
     }

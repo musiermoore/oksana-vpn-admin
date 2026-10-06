@@ -24,7 +24,7 @@ class SortConnectGroupsRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ConnectGroupSortData::class;
     }

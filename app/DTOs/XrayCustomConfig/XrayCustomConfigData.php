@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DTOs\XrayCustomConfig;
 
-use Spatie\LaravelData\Data;
+use App\DTOs\Data;
 
 class XrayCustomConfigData extends Data
 {

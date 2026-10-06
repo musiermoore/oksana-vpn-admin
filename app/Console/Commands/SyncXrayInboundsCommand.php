@@ -51,9 +51,15 @@ class SyncXrayInboundsCommand extends Command
         }
 
         $syncedExternalIds = collect();
+        $existingExternalIds = XrayInbound::query()
+            ->where('server_id', $server->id)
+            ->pluck('external_id')
+            ->mapWithKeys(fn (mixed $externalId): array => [(int) $externalId => true]);
         $nextSortOrder = (int) (XrayInbound::query()
             ->where('server_id', $server->id)
             ->max('sort_order') ?? -1) + 1;
+        $timestamp = now();
+        $rows = [];
 
         foreach ($inbounds as $inbound) {
             if (! is_array($inbound)) {
@@ -67,18 +73,22 @@ class SyncXrayInboundsCommand extends Command
             }
 
             $syncedExternalIds->push($externalId);
-
-            $record = XrayInbound::query()->firstOrNew([
+            $rows[] = [
                 'server_id' => $server->id,
                 'external_id' => $externalId,
-            ]);
+                'sort_order' => $existingExternalIds->has($externalId) ? 0 : $nextSortOrder++,
+                'params' => json_encode($inbound, JSON_THROW_ON_ERROR),
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+        }
 
-            if (! $record->exists) {
-                $record->sort_order = $nextSortOrder++;
-            }
-
-            $record->params = $inbound;
-            $record->save();
+        if ($rows !== []) {
+            XrayInbound::query()->upsert(
+                $rows,
+                ['server_id', 'external_id'],
+                ['params', 'updated_at'],
+            );
         }
 
         $this->markMissingInboundsAsInactive($server, $syncedExternalIds);

@@ -53,7 +53,7 @@ class StoreServerRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ServerData::class;
     }

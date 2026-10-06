@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\VlessExternalSubscription;
 
+use App\DTOs\VlessExternalSubscription\VlessExternalSubscriptionData;
 use App\Enums\ExternalSubscriptionSourceFormat;
+use App\Http\Requests\DataFormRequest;
 use App\Models\VlessExternalSubscription;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreVlessExternalSubscriptionRequest extends FormRequest
+class StoreVlessExternalSubscriptionRequest extends DataFormRequest
 {
     public function authorize(): bool
     {
@@ -42,5 +43,10 @@ class StoreVlessExternalSubscriptionRequest extends FormRequest
         $this->merge([
             'source_format' => $this->input('source_format', ExternalSubscriptionSourceFormat::Direct->value),
         ]);
+    }
+
+    protected function laravelData(): string
+    {
+        return VlessExternalSubscriptionData::class;
     }
 }

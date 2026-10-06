@@ -30,7 +30,7 @@ class ShowReportsRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ReportsFilterData::class;
     }

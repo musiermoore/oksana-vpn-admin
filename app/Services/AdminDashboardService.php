@@ -53,147 +53,126 @@ class AdminDashboardService
             ->all();
 
         return [
-            'status_strip' => [
-                [
-                    'label' => 'Сеть',
-                    'value' => $serverWarnings > 0 ? 'Есть предупреждения' : 'Работает',
-                    'meta' => sprintf('%d активных серверов', $activeServers),
-                    'tone' => $serverWarnings > 0 ? 'warning' : 'success',
-                ],
-                [
-                    'label' => 'Биллинг',
-                    'value' => $pendingTransactions > 0 ? 'Ожидаются решения' : 'Работает',
-                    'meta' => sprintf('%d транзакций на рассмотрении', $pendingTransactions),
-                    'tone' => $pendingTransactions > 0 ? 'warning' : 'success',
-                ],
-                [
-                    'label' => 'Поддержка',
-                    'value' => (string) $openSupportTickets,
-                    'meta' => 'Открытых тикетов',
-                    'tone' => $openSupportTickets > 0 ? 'warning' : 'muted',
-                ],
-                [
-                    'label' => 'Интеграции',
-                    'value' => (string) $integrationErrors,
-                    'meta' => 'Ошибок API за 24 часа',
-                    'tone' => $integrationErrors > 0 ? 'danger' : 'success',
-                ],
-                [
-                    'label' => 'Фоновые задачи',
-                    'value' => (string) $tasksInProgress,
-                    'meta' => 'Задач в работе',
-                    'tone' => $tasksInProgress > 0 ? 'muted' : 'success',
-                ],
-            ],
-            'quick_actions' => [
-                [
-                    'label' => 'Добавить сервер',
-                    'href' => route('servers.create'),
-                    'variant' => 'primary',
-                ],
-                [
-                    'label' => 'Найти пользователя',
-                    'href' => route('users.index', ['telegram' => '']),
-                    'variant' => 'secondary',
-                ],
-                [
-                    'label' => 'Создать транзакцию',
-                    'href' => route('transactions.create'),
-                    'variant' => 'secondary',
-                ],
-                [
-                    'label' => 'Открыть диагностику',
-                    'href' => route('api-request-logs.index'),
-                    'variant' => 'ghost',
-                ],
-            ],
-            'create_actions' => [
-                ['label' => 'Сервер', 'href' => route('servers.create')],
-                ['label' => 'Прокси', 'href' => route('proxies.create')],
-                ['label' => 'Пользователь', 'href' => route('users.create')],
-                ['label' => 'Транзакция', 'href' => route('transactions.create')],
-                ['label' => 'Инвойс', 'href' => route('invoices.index')],
-                ['label' => 'Задача', 'href' => route('tasks.create')],
-            ],
-            'sections' => [
-                [
-                    'label' => 'Сеть',
-                    'icon' => 'server',
-                    'description' => 'Серверы, Xray-конфигурации, прокси и внешние подписки.',
-                    'links' => [
-                        ['label' => 'Серверы', 'href' => route('servers.index')],
-                        ['label' => 'Xray Configs', 'href' => route('xray-configs.index')],
-                        ['label' => 'Прокси', 'href' => route('proxies.index')],
-                        ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index')],
-                    ],
-                    'highlights' => [
-                        sprintf('%d активных серверов', $activeServers),
-                        sprintf('%d серверов с предупреждениями', $serverWarnings),
-                        sprintf('%d активных внешних подписок', VlessExternalSubscription::query()->where('is_active', true)->count()),
-                    ],
-                ],
-                [
-                    'label' => 'Пользователи',
-                    'icon' => 'users',
-                    'description' => 'Участники сервиса, реферальные связи и обращения в поддержку.',
-                    'links' => [
-                        ['label' => 'Участники', 'href' => route('users.index')],
-                        ['label' => 'Рефералка', 'href' => route('referrals.index')],
-                        ['label' => 'Розыгрыши', 'href' => route('giveaways.index')],
-                        ['label' => 'Поддержка', 'href' => route('support-tickets.index')],
-                    ],
-                    'highlights' => [
-                        sprintf('%d активных пользователей', User::query()->where('is_active', true)->count()),
-                        sprintf('%d открытых тикетов', $openSupportTickets),
-                    ],
-                ],
-                [
-                    'label' => 'Биллинг',
-                    'icon' => 'wallet',
-                    'description' => 'Транзакции, подписки, инвойсы и налоговые операции.',
-                    'links' => [
-                        ['label' => 'Транзакции', 'href' => route('transactions.index')],
-                        ['label' => 'Инвойсы', 'href' => route('invoices.index')],
-                        ['label' => 'Подписки', 'href' => route('subscriptions.index')],
-                        ['label' => 'Периоды оплаты', 'href' => route('current-payments.index')],
-                        ['label' => 'Налоги', 'href' => route('tax-settings.edit')],
-                    ],
-                    'highlights' => [
-                        sprintf('%d транзакций на рассмотрении', $pendingTransactions),
-                        sprintf('%d tax-ошибок по инвойсам', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count()),
-                    ],
-                ],
-                [
-                    'label' => 'Операции',
-                    'icon' => 'tasks',
-                    'description' => 'Задачи, массовые коммуникации и welcome-контент.',
-                    'links' => [
-                        ['label' => 'Задачи', 'href' => route('tasks.index')],
-                        ['label' => 'Рассылка', 'href' => route('notifications.create')],
-                        ['label' => 'Welcome', 'href' => route('messages.welcome.edit')],
-                    ],
-                    'highlights' => [
-                        sprintf('%d задач в работе', $tasksInProgress),
-                        sprintf('%d задач ждут старта', Task::query()->where('status', Task::STATUS_TODO)->count()),
-                    ],
-                ],
-                [
-                    'label' => 'Диагностика',
-                    'icon' => 'activity',
-                    'description' => 'Технические логи, запросы интеграций и инструменты отладки.',
-                    'links' => [
-                        ['label' => 'API лог', 'href' => route('api-request-logs.index')],
-                        ['label' => '3x-ui Debug', 'href' => route('xui-debug.index')],
-                        ['label' => 'Tax Debug', 'href' => route('tax-debug.index')],
-                    ],
-                    'highlights' => [
-                        sprintf('%d ошибок API за сутки', $integrationErrors),
-                        sprintf('%d ошибок tax-отправки', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count()),
-                    ],
-                ],
-            ],
+            'status_strip' => $this->statusStrip(
+                $activeServers,
+                $serverWarnings,
+                $pendingTransactions,
+                $openSupportTickets,
+                $integrationErrors,
+                $tasksInProgress,
+            ),
+            'quick_actions' => $this->quickActions(),
+            'create_actions' => $this->createActions(),
+            'sections' => $this->sections(
+                $activeServers,
+                $serverWarnings,
+                $pendingTransactions,
+                $openSupportTickets,
+                $integrationErrors,
+                $tasksInProgress,
+            ),
             'attention_items' => $attentionItems,
         ];
+    }
+
+    /** @return array<int, array<string, string>> */
+    private function statusStrip(
+        int $activeServers,
+        int $serverWarnings,
+        int $pendingTransactions,
+        int $openSupportTickets,
+        int $integrationErrors,
+        int $tasksInProgress,
+    ): array {
+        return [
+            ['label' => 'Сеть', 'value' => $serverWarnings > 0 ? 'Есть предупреждения' : 'Работает', 'meta' => sprintf('%d активных серверов', $activeServers), 'tone' => $serverWarnings > 0 ? 'warning' : 'success'],
+            ['label' => 'Биллинг', 'value' => $pendingTransactions > 0 ? 'Ожидаются решения' : 'Работает', 'meta' => sprintf('%d транзакций на рассмотрении', $pendingTransactions), 'tone' => $pendingTransactions > 0 ? 'warning' : 'success'],
+            ['label' => 'Поддержка', 'value' => (string) $openSupportTickets, 'meta' => 'Открытых тикетов', 'tone' => $openSupportTickets > 0 ? 'warning' : 'muted'],
+            ['label' => 'Интеграции', 'value' => (string) $integrationErrors, 'meta' => 'Ошибок API за 24 часа', 'tone' => $integrationErrors > 0 ? 'danger' : 'success'],
+            ['label' => 'Фоновые задачи', 'value' => (string) $tasksInProgress, 'meta' => 'Задач в работе', 'tone' => $tasksInProgress > 0 ? 'muted' : 'success'],
+        ];
+    }
+
+    /** @return array<int, array<string, string>> */
+    private function quickActions(): array
+    {
+        return [
+            ['label' => 'Добавить сервер', 'href' => route('servers.create'), 'variant' => 'primary'],
+            ['label' => 'Найти пользователя', 'href' => route('users.index', ['telegram' => '']), 'variant' => 'secondary'],
+            ['label' => 'Создать транзакцию', 'href' => route('transactions.create'), 'variant' => 'secondary'],
+            ['label' => 'Открыть диагностику', 'href' => route('api-request-logs.index'), 'variant' => 'ghost'],
+        ];
+    }
+
+    /** @return array<int, array<string, string>> */
+    private function createActions(): array
+    {
+        return [
+            ['label' => 'Сервер', 'href' => route('servers.create')],
+            ['label' => 'Прокси', 'href' => route('proxies.create')],
+            ['label' => 'Пользователь', 'href' => route('users.create')],
+            ['label' => 'Транзакция', 'href' => route('transactions.create')],
+            ['label' => 'Инвойс', 'href' => route('invoices.index')],
+            ['label' => 'Задача', 'href' => route('tasks.create')],
+        ];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function sections(
+        int $activeServers,
+        int $serverWarnings,
+        int $pendingTransactions,
+        int $openSupportTickets,
+        int $integrationErrors,
+        int $tasksInProgress,
+    ): array {
+        return [
+            $this->networkSection($activeServers, $serverWarnings),
+            $this->usersSection($openSupportTickets),
+            $this->billingSection($pendingTransactions),
+            $this->operationsSection($tasksInProgress),
+            $this->diagnosticsSection($integrationErrors),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function networkSection(int $activeServers, int $serverWarnings): array
+    {
+        return ['label' => 'Сеть', 'icon' => 'server', 'description' => 'Серверы, Xray-конфигурации, прокси и внешние подписки.', 'links' => [
+            ['label' => 'Серверы', 'href' => route('servers.index')], ['label' => 'Xray Configs', 'href' => route('xray-configs.index')], ['label' => 'Прокси', 'href' => route('proxies.index')], ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index')],
+        ], 'highlights' => [sprintf('%d активных серверов', $activeServers), sprintf('%d серверов с предупреждениями', $serverWarnings), sprintf('%d активных внешних подписок', VlessExternalSubscription::query()->where('is_active', true)->count())]];
+    }
+
+    /** @return array<string, mixed> */
+    private function usersSection(int $openSupportTickets): array
+    {
+        return ['label' => 'Пользователи', 'icon' => 'users', 'description' => 'Участники сервиса, реферальные связи и обращения в поддержку.', 'links' => [
+            ['label' => 'Участники', 'href' => route('users.index')], ['label' => 'Рефералка', 'href' => route('referrals.index')], ['label' => 'Розыгрыши', 'href' => route('giveaways.index')], ['label' => 'Поддержка', 'href' => route('support-tickets.index')],
+        ], 'highlights' => [sprintf('%d активных пользователей', User::query()->where('is_active', true)->count()), sprintf('%d открытых тикетов', $openSupportTickets)]];
+    }
+
+    /** @return array<string, mixed> */
+    private function billingSection(int $pendingTransactions): array
+    {
+        return ['label' => 'Биллинг', 'icon' => 'wallet', 'description' => 'Транзакции, подписки, инвойсы и налоговые операции.', 'links' => [
+            ['label' => 'Транзакции', 'href' => route('transactions.index')], ['label' => 'Инвойсы', 'href' => route('invoices.index')], ['label' => 'Подписки', 'href' => route('subscriptions.index')], ['label' => 'Периоды оплаты', 'href' => route('current-payments.index')], ['label' => 'Налоги', 'href' => route('tax-settings.edit')],
+        ], 'highlights' => [sprintf('%d транзакций на рассмотрении', $pendingTransactions), sprintf('%d tax-ошибок по инвойсам', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count())]];
+    }
+
+    /** @return array<string, mixed> */
+    private function operationsSection(int $tasksInProgress): array
+    {
+        return ['label' => 'Операции', 'icon' => 'tasks', 'description' => 'Задачи, массовые коммуникации и welcome-контент.', 'links' => [
+            ['label' => 'Задачи', 'href' => route('tasks.index')], ['label' => 'Рассылка', 'href' => route('notifications.create')], ['label' => 'Welcome', 'href' => route('messages.welcome.edit')],
+        ], 'highlights' => [sprintf('%d задач в работе', $tasksInProgress), sprintf('%d задач ждут старта', Task::query()->where('status', Task::STATUS_TODO)->count())]];
+    }
+
+    /** @return array<string, mixed> */
+    private function diagnosticsSection(int $integrationErrors): array
+    {
+        return ['label' => 'Диагностика', 'icon' => 'activity', 'description' => 'Технические логи, запросы интеграций и инструменты отладки.', 'links' => [
+            ['label' => 'API лог', 'href' => route('api-request-logs.index')], ['label' => '3x-ui Debug', 'href' => route('xui-debug.index')], ['label' => 'Tax Debug', 'href' => route('tax-debug.index')],
+        ], 'highlights' => [sprintf('%d ошибок API за сутки', $integrationErrors), sprintf('%d ошибок tax-отправки', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count())]];
     }
 
     /**

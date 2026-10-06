@@ -55,15 +55,19 @@ class DisableConfigsOfOverdueDebtorsCommand extends Command
             ->pluck('balance', 'user_id');
 
         User::query()
-            ->select('id')
             ->when($userId, fn ($query, $value) => $query->whereKey($value))
             ->chunkById(200, function ($users) use ($balances): void {
-                foreach ($users as $user) {
-                    User::query()
-                        ->whereKey($user->id)
-                        ->update([
-                            'balance' => round((float) ($balances[$user->id] ?? 0.0), 2),
-                        ]);
+                $updatedAt = now();
+                $updates = $users
+                    ->map(fn (User $user): array => [
+                        ...$user->getAttributes(),
+                        'balance' => round((float) ($balances[$user->id] ?? 0.0), 2),
+                        'updated_at' => $updatedAt,
+                    ])
+                    ->all();
+
+                if ($updates !== []) {
+                    User::query()->upsert($updates, ['id'], ['balance', 'updated_at']);
                 }
             });
     }

@@ -21,7 +21,7 @@ class StoreSupportTicketMessageRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return SupportTicketReplyData::class;
     }

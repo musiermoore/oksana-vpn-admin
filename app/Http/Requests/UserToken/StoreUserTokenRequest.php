@@ -21,7 +21,7 @@ class StoreUserTokenRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return UserTokenData::class;
     }

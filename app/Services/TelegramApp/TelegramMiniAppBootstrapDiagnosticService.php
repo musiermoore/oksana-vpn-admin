@@ -62,32 +62,32 @@ class TelegramMiniAppBootstrapDiagnosticService
             'Env: '.config('app.env'),
             'Page: '.$this->limit($data->page, 120),
             'Error: '.$this->limit($data->errorMessage, 500),
-            $data->errorName ? 'Error name: '.$this->limit($data->errorName, 120) : null,
+            $this->optionalLine('Error name', $data->errorName, 120),
             'Attempts: '.$data->attempts,
             'Delay ms: '.$data->delayMs,
             'Href: '.$this->limit($data->href, 300),
             'Path: '.$this->limit($data->path, 200),
-            $data->search ? 'Search: '.$this->limit($data->search, 400) : null,
-            $data->referrer ? 'Referrer: '.$this->limit($data->referrer, 300) : null,
+            $this->optionalLine('Search', $data->search, 400),
+            $this->optionalLine('Referrer', $data->referrer, 300),
             'IP: '.$this->limit((string) $request->ip(), 120),
             'Browser UA: '.$this->limit((string) ($data->userAgent ?: $request->userAgent()), 500),
-            $data->timezone ? 'Timezone: '.$this->limit($data->timezone, 120) : null,
-            $data->language ? 'Language: '.$this->limit($data->language, 40) : null,
-            'Telegram WebApp: '.($data->telegramWebAppAvailable ? 'yes' : 'no'),
-            $data->telegramPlatform ? 'Telegram platform: '.$this->limit($data->telegramPlatform, 120) : null,
-            $data->telegramVersion ? 'Telegram version: '.$this->limit($data->telegramVersion, 120) : null,
-            $data->telegramColorScheme ? 'Telegram color scheme: '.$this->limit($data->telegramColorScheme, 120) : null,
-            $data->telegramUserId ? 'Telegram profile user id: '.$this->limit($data->telegramUserId, 120) : null,
-            $data->telegramStartParam ? 'Telegram start param: '.$this->limit($data->telegramStartParam, 200) : null,
-            'Stored token: '.($data->hasStoredToken ? 'yes' : 'no'),
-            $data->storedTelegramUserId ? 'Stored telegram user id: '.$this->limit($data->storedTelegramUserId, 120) : null,
+            $this->optionalLine('Timezone', $data->timezone, 120),
+            $this->optionalLine('Language', $data->language, 40),
+            $this->yesNoLine('Telegram WebApp', $data->telegramWebAppAvailable),
+            $this->optionalLine('Telegram platform', $data->telegramPlatform, 120),
+            $this->optionalLine('Telegram version', $data->telegramVersion, 120),
+            $this->optionalLine('Telegram color scheme', $data->telegramColorScheme, 120),
+            $this->optionalLine('Telegram profile user id', $data->telegramUserId, 120),
+            $this->optionalLine('Telegram start param', $data->telegramStartParam, 200),
+            $this->yesNoLine('Stored token', $data->hasStoredToken),
+            $this->optionalLine('Stored telegram user id', $data->storedTelegramUserId, 120),
             'InitData source: '.$this->limit((string) ($data->telegramInitDataSource ?: 'missing'), 120),
             'InitData length: '.$data->telegramInitDataLength,
-            ! empty($data->telegramInitDataKeys) ? 'InitData keys: '.implode(', ', array_slice($data->telegramInitDataKeys, 0, 20)) : null,
-            $data->telegramInitDataUserId ? 'InitData user id: '.$this->limit($data->telegramInitDataUserId, 120) : null,
-            $data->telegramInitDataAuthDate ? 'InitData auth_date: '.$this->limit($data->telegramInitDataAuthDate, 120) : null,
-            $data->telegramInitDataQueryIdPrefix ? 'InitData query_id prefix: '.$this->limit($data->telegramInitDataQueryIdPrefix, 120) : null,
-            $data->telegramInitDataHashPrefix ? 'InitData hash prefix: '.$this->limit($data->telegramInitDataHashPrefix, 120) : null,
+            $this->initDataKeysLine($data->telegramInitDataKeys),
+            $this->optionalLine('InitData user id', $data->telegramInitDataUserId, 120),
+            $this->optionalLine('InitData auth_date', $data->telegramInitDataAuthDate, 120),
+            $this->optionalLine('InitData query_id prefix', $data->telegramInitDataQueryIdPrefix, 120),
+            $this->optionalLine('InitData hash prefix', $data->telegramInitDataHashPrefix, 120),
         ]);
 
         return Str::limit(implode("\n", $lines), 3900, "\n...");
@@ -96,5 +96,21 @@ class TelegramMiniAppBootstrapDiagnosticService
     private function limit(?string $value, int $limit): string
     {
         return Str::limit(trim((string) $value), $limit, '...');
+    }
+
+    private function optionalLine(string $label, ?string $value, int $limit): ?string
+    {
+        return $value ? $label.': '.$this->limit($value, $limit) : null;
+    }
+
+    private function yesNoLine(string $label, bool $value): string
+    {
+        return $label.': '.($value ? 'yes' : 'no');
+    }
+
+    /** @param array<int, string> $keys */
+    private function initDataKeysLine(array $keys): ?string
+    {
+        return $keys !== [] ? 'InitData keys: '.implode(', ', array_slice($keys, 0, 20)) : null;
     }
 }

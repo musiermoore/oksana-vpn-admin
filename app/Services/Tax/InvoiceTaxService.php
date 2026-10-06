@@ -107,17 +107,29 @@ class InvoiceTaxService
         $settings = $this->settings->getCurrent();
 
         if (! $settings instanceof TaxSetting) {
-            $this->invoices->update($invoice, [
-                'tax_status' => Invoice::TAX_STATUS_FAILED,
-                'tax_last_error_at' => now(),
-                'tax_error_message' => 'Не найдены TaxSettings.',
-            ]);
+            $this->markInvoiceFailed($invoice, 'Не найдены TaxSettings.');
 
             return;
         }
 
         $scope = 'invoice-'.$invoice->id;
-        $log = $this->logs->create([
+        $log = $this->createSendLog($invoice, $settings, $initiatorUserId);
+
+        try {
+            $this->sendInvoice($invoice, $settings, $log, $scope);
+        } catch (Throwable $exception) {
+            $this->handleSendFailure($invoice, $log, $exception);
+        } finally {
+            $this->moyNalog->clearToken($scope);
+        }
+    }
+
+    private function createSendLog(
+        Invoice $invoice,
+        TaxSetting $settings,
+        ?int $initiatorUserId,
+    ): TaxRequestLog {
+        return $this->logs->create([
             'user_id' => $initiatorUserId,
             'invoice_id' => $invoice->id,
             'preset' => 'income',
@@ -129,69 +141,89 @@ class InvoiceTaxService
             'queued_at' => $invoice->tax_queued_at ?? now(),
             'started_at' => now(),
         ]);
+    }
 
-        try {
-            $this->invoices->update($invoice, [
-                'tax_status' => Invoice::TAX_STATUS_SENDING,
-                'tax_error_message' => null,
-                'tax_last_error_at' => null,
-                'tax_service_name' => $settings->service_name,
-                'tax_estimated_commission' => round((float) $invoice->amount * 0.04, 2),
-            ]);
+    private function sendInvoice(
+        Invoice $invoice,
+        TaxSetting $settings,
+        TaxRequestLog $log,
+        string $scope,
+    ): void {
+        $this->markInvoiceSending($invoice, $settings);
+        $this->moyNalog->authenticate($settings, $scope);
+        $result = $this->moyNalog->createIncomeReceipt($invoice, $settings, $scope);
+        $response = $result['response'];
 
-            $this->moyNalog->authenticate($settings, $scope);
-            $result = $this->moyNalog->createIncomeReceipt($invoice, $settings, $scope);
-            $response = $result['response'];
+        $this->logs->update($log, [
+            'status' => $response->successful() ? 'completed' : 'failed',
+            'response_status' => $response->status(),
+            'response_headers' => $response->headers(),
+            'response_body' => $response->body(),
+            'response_json' => $result['json'] ?? null,
+            'completed_at' => now(),
+            'error_message' => $response->successful() ? null : $response->body(),
+        ]);
 
-            $this->logs->update($log, [
-                'status' => $response->successful() ? 'completed' : 'failed',
-                'response_status' => $response->status(),
-                'response_headers' => $response->headers(),
-                'response_body' => $response->body(),
-                'response_json' => $result['json'] ?? null,
-                'completed_at' => now(),
-                'error_message' => $response->successful() ? null : $response->body(),
-            ]);
+        if (! $response->successful()) {
+            $this->markInvoiceFailed($invoice, $response->body(), $result);
 
-            if (! $response->successful()) {
-                $this->invoices->update($invoice, [
-                    'tax_status' => Invoice::TAX_STATUS_FAILED,
-                    'tax_last_error_at' => now(),
-                    'tax_error_message' => $response->body(),
-                    'tax_request_payload' => $result['payload'] ?? null,
-                    'tax_response_payload' => $result['json'] ?? null,
-                ]);
-
-                return;
-            }
-
-            $this->invoices->update($invoice, [
-                'tax_status' => Invoice::TAX_STATUS_SENT,
-                'tax_sent_at' => now(),
-                'tax_service_name' => $settings->service_name,
-                'tax_estimated_commission' => round((float) $invoice->amount * 0.04, 2),
-                'tax_receipt_uuid' => $result['receipt_uuid'] ?: null,
-                'tax_error_message' => null,
-                'tax_request_payload' => $result['payload'] ?? null,
-                'tax_response_payload' => $result['json'] ?? null,
-            ]);
-        } catch (Throwable $exception) {
-            report($exception);
-
-            $this->logs->update($log, [
-                'status' => 'failed',
-                'error_message' => $exception->getMessage(),
-                'completed_at' => now(),
-            ]);
-
-            $this->invoices->update($invoice, [
-                'tax_status' => Invoice::TAX_STATUS_FAILED,
-                'tax_last_error_at' => now(),
-                'tax_error_message' => $exception->getMessage(),
-            ]);
-        } finally {
-            $this->moyNalog->clearToken($scope);
+            return;
         }
+
+        $this->markInvoiceSent($invoice, $settings, $result);
+    }
+
+    private function markInvoiceSending(Invoice $invoice, TaxSetting $settings): void
+    {
+        $this->invoices->update($invoice, [
+            'tax_status' => Invoice::TAX_STATUS_SENDING,
+            'tax_error_message' => null,
+            'tax_last_error_at' => null,
+            'tax_service_name' => $settings->service_name,
+            'tax_estimated_commission' => round((float) $invoice->amount * 0.04, 2),
+        ]);
+    }
+
+    private function markInvoiceFailed(Invoice $invoice, string $message, array $result = []): void
+    {
+        $attributes = [
+            'tax_status' => Invoice::TAX_STATUS_FAILED,
+            'tax_last_error_at' => now(),
+            'tax_error_message' => $message,
+        ];
+
+        if ($result !== []) {
+            $attributes['tax_request_payload'] = $result['payload'] ?? null;
+            $attributes['tax_response_payload'] = $result['json'] ?? null;
+        }
+
+        $this->invoices->update($invoice, $attributes);
+    }
+
+    private function markInvoiceSent(Invoice $invoice, TaxSetting $settings, array $result): void
+    {
+        $this->invoices->update($invoice, [
+            'tax_status' => Invoice::TAX_STATUS_SENT,
+            'tax_sent_at' => now(),
+            'tax_service_name' => $settings->service_name,
+            'tax_estimated_commission' => round((float) $invoice->amount * 0.04, 2),
+            'tax_receipt_uuid' => $result['receipt_uuid'] ?: null,
+            'tax_error_message' => null,
+            'tax_request_payload' => $result['payload'] ?? null,
+            'tax_response_payload' => $result['json'] ?? null,
+        ]);
+    }
+
+    private function handleSendFailure(Invoice $invoice, TaxRequestLog $log, Throwable $exception): void
+    {
+        report($exception);
+
+        $this->logs->update($log, [
+            'status' => 'failed',
+            'error_message' => $exception->getMessage(),
+            'completed_at' => now(),
+        ]);
+        $this->markInvoiceFailed($invoice, $exception->getMessage());
     }
 
     public function handleDebug(int $logId): void

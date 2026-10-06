@@ -33,7 +33,7 @@ class StoreConfigRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ConfigStoreData::class;
     }

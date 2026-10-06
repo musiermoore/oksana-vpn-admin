@@ -30,7 +30,7 @@ class StoreBulkConfigRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return ConfigBulkStoreData::class;
     }

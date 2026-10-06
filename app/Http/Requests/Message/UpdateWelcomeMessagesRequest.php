@@ -30,7 +30,7 @@ class UpdateWelcomeMessagesRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return WelcomeMessagesData::class;
     }

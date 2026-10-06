@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\PaymentPeriod;
@@ -14,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 class SubscriptionService
 {
     private const TRIAL_PACKAGE_MONTHS = 0;
+
     private const TRIAL_PACKAGE_DAYS = 2;
 
     private const PACKAGE_DISCOUNTS = [
@@ -199,81 +202,118 @@ class SubscriptionService
             return false;
         }
 
-        DB::transaction(function () use ($user, $transaction, $packagePrice, $months) {
-            $lockedTransaction = Transaction::query()
-                ->lockForUpdate()
-                ->find($transaction->id);
-
-            if (! $lockedTransaction) {
-                return;
-            }
-
-            $extraData = $lockedTransaction->extra_data ?? [];
-            if (($extraData['package_activation_processed'] ?? false) === true) {
-                return;
-            }
-
-            $startDate = $this->resolveNextSubscriptionStartDate($user);
-            $endDate = Carbon::parse($startDate)->addMonths($months)->toDateString();
-
-            $subscription = UserSubscription::query()->firstOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'start_date' => $startDate,
-                    'end_date' => $endDate,
-                ],
-                [
-                    'price' => $packagePrice,
-                    'source' => 'purchase',
-                    'transaction_id' => $lockedTransaction->id,
-                    'meta' => [
-                        'subscription_months' => $months,
-                    ],
-                ]
-            );
-
-            if ($subscription->wasRecentlyCreated) {
-                $subscriptionTransaction = $user->transactions()->create([
-                    'type_id' => TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
-                    'amount' => -$packagePrice,
-                    'is_approved' => true,
-                    'description' => $this->buildPackageTransactionDescription($months),
-                    'extra_data' => [
-                        'subscription_months' => $months,
-                        'package_price' => $packagePrice,
-                        'referral_accumulated_discount_percent_used' => (int) data_get($extraData, 'referral_accumulated_discount_percent', 0),
-                        'referral_permanent_discount_percent_used' => (int) data_get($extraData, 'referral_permanent_discount_percent', 0),
-                        'referral_total_discount_percent_used' => (int) data_get($extraData, 'referral_total_discount_percent', 0),
-                        'referral_discount_amount' => (float) data_get($extraData, 'referral_discount_amount', 0),
-                    ],
-                ]);
-
-                $subscription->forceFill([
-                    'transaction_id' => $subscriptionTransaction->id,
-                ])->save();
-
-                if ((int) data_get($extraData, 'referral_accumulated_discount_percent', 0) > 0) {
-                    $user->forceFill([
-                        'referral_accumulated_discount_percent' => 0,
-                    ])->save();
-                }
-
-                app(ReferralRewardService::class)->scheduleForSubscriptionPurchase($user, $subscriptionTransaction);
-            }
-
-            $this->syncUserSubscriptionExpiry($user);
-
-            $extraData['package_activation_processed'] = true;
-            $extraData['subscription_start_date'] = $startDate;
-            $extraData['subscription_end_date'] = $endDate;
-            $extraData['subscription_transaction_id'] = $subscription->transaction_id;
-
-            $lockedTransaction->update([
-                'extra_data' => $extraData,
-            ]);
+        DB::transaction(function () use ($user, $transaction, $months, $packagePrice): void {
+            $this->activatePurchasedMonthsLocked($user, $transaction->id, $months, $packagePrice);
         });
 
         return true;
+    }
+
+    private function activatePurchasedMonthsLocked(
+        User $user,
+        int $transactionId,
+        int $months,
+        float $packagePrice,
+    ): void {
+        $transaction = Transaction::query()->lockForUpdate()->find($transactionId);
+
+        if (! $transaction) {
+            return;
+        }
+
+        $extraData = $transaction->extra_data ?? [];
+
+        if (($extraData['package_activation_processed'] ?? false) === true) {
+            return;
+        }
+
+        $startDate = $this->resolveNextSubscriptionStartDate($user);
+        $endDate = Carbon::parse($startDate)->addMonths($months)->toDateString();
+        $subscription = $this->firstOrCreatePurchasedSubscription(
+            $user,
+            $transaction,
+            $months,
+            $packagePrice,
+            $startDate,
+            $endDate,
+        );
+
+        if ($subscription->wasRecentlyCreated) {
+            $this->recordPurchasedSubscriptionDebit($user, $subscription, $months, $packagePrice, $extraData);
+        }
+
+        $this->syncUserSubscriptionExpiry($user);
+        $this->markPackageActivationProcessed($transaction, $subscription, $extraData, $startDate, $endDate);
+    }
+
+    private function firstOrCreatePurchasedSubscription(
+        User $user,
+        Transaction $transaction,
+        int $months,
+        float $packagePrice,
+        string $startDate,
+        string $endDate,
+    ): UserSubscription {
+        return UserSubscription::query()->firstOrCreate(
+            ['user_id' => $user->id, 'start_date' => $startDate, 'end_date' => $endDate],
+            [
+                'price' => $packagePrice,
+                'source' => 'purchase',
+                'transaction_id' => $transaction->id,
+                'meta' => ['subscription_months' => $months],
+            ],
+        );
+    }
+
+    private function recordPurchasedSubscriptionDebit(
+        User $user,
+        UserSubscription $subscription,
+        int $months,
+        float $packagePrice,
+        array $purchaseMeta,
+    ): void {
+        $subscriptionTransaction = $user->transactions()->create([
+            'type_id' => TransactionType::idBySlug(TransactionType::SLUG_SUBSCRIPTION),
+            'amount' => -$packagePrice,
+            'is_approved' => true,
+            'description' => $this->buildPackageTransactionDescription($months),
+            'extra_data' => $this->subscriptionDebitMeta($months, $packagePrice, $purchaseMeta),
+        ]);
+
+        $subscription->forceFill(['transaction_id' => $subscriptionTransaction->id])->save();
+
+        if ((int) data_get($purchaseMeta, 'referral_accumulated_discount_percent', 0) > 0) {
+            $user->forceFill(['referral_accumulated_discount_percent' => 0])->save();
+        }
+
+        app(ReferralRewardService::class)->scheduleForSubscriptionPurchase($user, $subscriptionTransaction);
+    }
+
+    private function subscriptionDebitMeta(int $months, float $packagePrice, array $purchaseMeta): array
+    {
+        return [
+            'subscription_months' => $months,
+            'package_price' => $packagePrice,
+            'referral_accumulated_discount_percent_used' => (int) data_get($purchaseMeta, 'referral_accumulated_discount_percent', 0),
+            'referral_permanent_discount_percent_used' => (int) data_get($purchaseMeta, 'referral_permanent_discount_percent', 0),
+            'referral_total_discount_percent_used' => (int) data_get($purchaseMeta, 'referral_total_discount_percent', 0),
+            'referral_discount_amount' => (float) data_get($purchaseMeta, 'referral_discount_amount', 0),
+        ];
+    }
+
+    private function markPackageActivationProcessed(
+        Transaction $transaction,
+        UserSubscription $subscription,
+        array $extraData,
+        string $startDate,
+        string $endDate,
+    ): void {
+        $extraData['package_activation_processed'] = true;
+        $extraData['subscription_start_date'] = $startDate;
+        $extraData['subscription_end_date'] = $endDate;
+        $extraData['subscription_transaction_id'] = $subscription->transaction_id;
+
+        $transaction->update(['extra_data' => $extraData]);
     }
 
     public function activatePackageForUser(

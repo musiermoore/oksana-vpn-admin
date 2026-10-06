@@ -1,20 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\Config;
 use App\Models\Server;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 
 class WireGuardService
 {
     private Carbon $startDate;
+
     private Carbon $endDate;
+
     private bool $filter = false;
+
     private string|int|null $userId = null;
 
     public function __construct()
@@ -98,7 +101,7 @@ class WireGuardService
                     'latest_handshake' => null,
                     'transfer' => null,
                     'telegram' => null,
-                    'server' => $server
+                    'server' => $server,
                 ];
             } elseif (preg_match($handshakePattern, $line, $matches) && $currentPeer) {
                 $currentPeer['latest_handshake'] = $matches[1];
@@ -149,89 +152,107 @@ class WireGuardService
             return collect();
         }
 
-        $clientPeers = [];
-
-        $configPath = storage_path('app/wireguard/clients-' . $server->slug_code);
-
-        $clientPeers = array_merge($clientPeers, $this->getWireguardHandshakes($server));
+        $clientPeers = $this->getWireguardHandshakes($server);
+        $configPath = storage_path('app/wireguard/clients-'.$server->slug_code);
 
         if (! File::isDirectory($configPath)) {
             return collect($clientPeers);
         }
 
+        $clientPeers = $this->attachConfigsToPeers($clientPeers, $configPath, $serverId);
+
+        return $this->formatClientPeers($clientPeers);
+    }
+
+    private function attachConfigsToPeers(array $clientPeers, string $configPath, int $serverId): array
+    {
         $contacts = $this->getContacts($serverId);
-        $files = $this->listFilesInDirectory($configPath);
 
-        foreach ($files as $file) {
-            try {
-                $fileContent = File::get($configPath . '/' . $file);
-            } catch (\Exception $exception) {
-                report($exception);
+        foreach ($this->listFilesInDirectory($configPath) as $file) {
+            $fileContent = $this->readConfigFile($configPath.'/'.$file);
 
+            if ($fileContent === null) {
+                continue;
+            }
+
+            $address = $this->configAddress($fileContent);
+
+            if ($address === null) {
                 continue;
             }
 
             $clientName = str_replace('.conf', '', $file);
-            $lines = explode(PHP_EOL, $fileContent);
+            $index = $this->findIndexByColumn($clientPeers, 'allowed_ips', str_replace('/24', '/32', $address));
 
-            $addressPattern = '/Address = (.*)/';
-            $address = null;
-
-            foreach ($lines as $line) {
-                $line = trim($line);
-
-                if (preg_match($addressPattern, $line, $matches)) {
-                    $address = $matches[1];
-                }
+            if ($index === -1) {
+                continue;
             }
 
-            if ($address) {
-                $index = $this->findIndexByColumn($clientPeers, 'allowed_ips', str_replace('/24', '/32', $address));
+            $config = $contacts[$clientName] ?? null;
+            $this->loadRecentTraffic($config);
+            $clientPeers[$index]['name'] = $clientName;
+            $clientPeers[$index]['telegram'] = $config->user->telegram ?? ($clientName.' (?)');
+            $clientPeers[$index]['config'] = $config;
+        }
 
-                $config = $contacts[$clientName] ?? null;
-                $config?->load([
-                    'traffic' => function ($query) {
-                        $query
-                            ->where('created_at', '>=', $this->startDate)
-                            ->where('created_at', '<=', $this->endDate);
-                    }
-                ])->append(['sent_traffic', 'received_traffic']);
+        return $clientPeers;
+    }
 
-                if ($index !== -1) {
-                    $clientPeers[$index]['name'] = $clientName;
-                    $clientPeers[$index]['telegram'] = $config->user->telegram ?? ($clientName . ' (?)');
-                    $clientPeers[$index]['config'] = $config;
-                }
+    private function readConfigFile(string $path): ?string
+    {
+        try {
+            return File::get($path);
+        } catch (\Exception $exception) {
+            report($exception);
+
+            return null;
+        }
+    }
+
+    private function configAddress(string $fileContent): ?string
+    {
+        foreach (explode(PHP_EOL, $fileContent) as $line) {
+            if (preg_match('/Address = (.*)/', trim($line), $matches)) {
+                return $matches[1];
             }
         }
 
+        return null;
+    }
+
+    private function loadRecentTraffic(?Config $config): void
+    {
+        $config?->load([
+            'traffic' => function ($query): void {
+                $query
+                    ->where('created_at', '>=', $this->startDate)
+                    ->where('created_at', '<=', $this->endDate);
+            },
+        ])->append(['sent_traffic', 'received_traffic']);
+    }
+
+    private function formatClientPeers(array $clientPeers): Collection
+    {
         return collect($clientPeers)
             ->sortByDesc('latest_handshake')
-            ->filter(function ($item) use ($serverId) {
+            ->filter(function ($item) {
                 $config = $item['config'] ?? null;
                 $trafficTypes = $config->last_traffic ?? [];
 
-                return !$this->filter
+                return ! $this->filter
                     || (
                         (
-                            !$this->userId
+                            ! $this->userId
                             || $this->userId == $config?->user_id
                         )
                         && (
-                            !empty($trafficTypes['sent'])
-                            || !empty($trafficTypes['received'])
+                            ! empty($trafficTypes['sent'])
+                            || ! empty($trafficTypes['received'])
                         )
                     );
             })
-            ->sortByDesc(function ($item) {
-                return $item['config']->sent_traffic ?? 0;
-            })
-            ->map(function ($peer) {
-                return [
-                    'is_active' => $this->isActive($peer),
-                    ...$peer
-                ];
-            })
+            ->sortByDesc(fn ($item) => $item['config']->sent_traffic ?? 0)
+            ->map(fn ($peer) => ['is_active' => $this->isActive($peer), ...$peer])
             ->values();
     }
 
@@ -241,7 +262,7 @@ class WireGuardService
 
         return [
             'active' => $peers->where('is_active', '=', true),
-            'inactive' => $peers->where('is_active', '=', false)
+            'inactive' => $peers->where('is_active', '=', false),
         ];
     }
 

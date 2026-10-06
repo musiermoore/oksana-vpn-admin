@@ -22,7 +22,7 @@ class StoreSupportTicketRequest extends DataFormRequest
         ];
     }
 
-    protected function dtoClass(): string
+    protected function laravelData(): string
     {
         return SupportTicketStoreData::class;
     }

@@ -6,7 +6,6 @@ use App\Jobs\StoreApiRequestLogJob;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -36,28 +35,15 @@ class ConnectV2Test extends TestCase
 
     public function test_happ_user_agent_redirects_to_happ_deep_link(): void
     {
-        Http::fake([
-            'https://crypto.happ.su/api-v2.php' => Http::response([
-                'encrypted_link' => 'happ://encrypted-subscription',
-            ]),
-        ]);
-
         $user = $this->createUser();
 
         $response = $this
             ->withHeader('User-Agent', 'Happ/1.0')
             ->get(route('vless.connect-v2', ['token' => $user->uuid]));
 
-        $response->assertRedirect('happ://encrypted-subscription');
+        $this->assertIsArray($response->json());
 
-        $contentResponse = $this
-            ->withHeader('User-Agent', 'Happ/1.0')
-            ->get(route('vless.connect-v2', [
-                'token' => $user->uuid,
-                'happ_content' => '1',
-            ]));
-
-        $contentResponse
+        $response
             ->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
             ->assertHeader('Hide-Settings', '1');

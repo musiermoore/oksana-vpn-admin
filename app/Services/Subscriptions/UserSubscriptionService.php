@@ -84,18 +84,11 @@ class UserSubscriptionService
     public function buildConnectV2(User $user, ?string $app = null): SubscriptionBuildResult
     {
         if ($app === 'happ') {
-            $nodes = [
-                ...$this->buildNamedNodes($user),
-                ...$this->externalSubscriptions->getNamedNodesForUserByPurpose(
-                    $user,
-                    VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
-                ),
-            ];
-
             return $this->buildFromNodes(
-                $nodes,
+                $this->buildNamedNodes($user),
                 'json',
                 XrayRouting::SUBSCRIPTION_CONNECT,
+                $user,
             );
         }
 

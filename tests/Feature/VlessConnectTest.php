@@ -1174,7 +1174,7 @@ class VlessConnectTest extends TestCase
         $location = $response->headers->get('Location');
 
         $this->assertNotNull($location);
-        $this->assertStringStartsWith('incy://import/', $location);
+        $this->assertStringStartsWith('incy://crypt1/', $location);
     }
 
     public function test_connect_raw_requires_basic_auth_and_returns_debug_json(): void

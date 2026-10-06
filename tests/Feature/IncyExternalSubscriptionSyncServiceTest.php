@@ -7,6 +7,8 @@ namespace Tests\Feature;
 use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Models\VlessExternalSubscription;
 use App\Services\ExternalSubscriptions\ExternalSubscriptionPullHeaders;
+use App\Services\ExternalSubscriptions\Incy\IncyCryptLinkDecoder;
+use App\Services\ExternalSubscriptions\Incy\IncyCryptLinkEncoder;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -60,6 +62,19 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
             'vless://uuid-1@de.example.com:443?type=tcp&security=reality#Germany 1',
             $result->configs[0]->url
         );
+    }
+
+    public function test_encoder_creates_links_accepted_by_the_existing_decoder(): void
+    {
+        config()->set('incy.keymat.remote_enabled', false);
+
+        $url = 'https://vpn.example/connect-v2?token=uuid&format=json';
+        $link = app(IncyCryptLinkEncoder::class)->encode($url, 'Oksana VPN v2');
+        $decoded = app(IncyCryptLinkDecoder::class)->decode($link);
+
+        $this->assertStringStartsWith('incy://crypt1/', $link);
+        $this->assertSame($url, $decoded['url']);
+        $this->assertSame('Oksana VPN v2', $decoded['name']);
     }
 
     public function test_sync_sends_incy_client_headers_when_fetching_subscription_url(): void

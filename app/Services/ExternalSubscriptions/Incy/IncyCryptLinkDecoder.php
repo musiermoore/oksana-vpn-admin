@@ -11,7 +11,7 @@ class IncyCryptLinkDecoder
     private const PREFIX = 'incy://crypt1/';
 
     public function __construct(
-        private readonly IncyKeyMaterialProvider $keyMaterialProvider,
+        private readonly IncyCryptLinkKeyDeriver $keyDeriver,
     ) {}
 
     /**
@@ -48,7 +48,7 @@ class IncyCryptLinkDecoder
         $plaintext = openssl_decrypt(
             $ciphertext,
             'aes-256-gcm',
-            $this->deriveKey(),
+            $this->keyDeriver->derive(),
             OPENSSL_RAW_DATA,
             $iv,
             $tag
@@ -74,23 +74,6 @@ class IncyCryptLinkDecoder
                 ? trim($data['n'])
                 : null,
         ];
-    }
-
-    private function deriveKey(): string
-    {
-        $material = $this->keyMaterialProvider->get();
-        $salt = (string) config('incy.keymat.salt', 'incydeepcrypt1v2026.06');
-        $key = hash('sha256', $salt.$material['km_a'].$material['km_b'], true);
-        $expectedFingerprint = (string) config(
-            'incy.keymat.expected_key_fingerprint',
-            'b6bf708471cc90043232967660aade86a50b4e57929db2e53c5fa34db624c08c'
-        );
-
-        if (! hash_equals($expectedFingerprint, hash('sha256', $key))) {
-            throw new RuntimeException('INCY K1 fingerprint mismatch.');
-        }
-
-        return $key;
     }
 
     private function base64UrlDecode(string $value): string

@@ -3,12 +3,17 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\ExternalSubscriptions\Incy\IncyCryptLinkEncoder;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class VlessDeepLinkService
 {
+    public function __construct(
+        private readonly IncyCryptLinkEncoder $incyLinkEncoder,
+    ) {}
+
     private const CLIENT_RESPONSE_KEYS = [
         'happ' => 'happ_deep_link',
         'v2rayn' => 'v2rayn_deeplink',
@@ -98,7 +103,7 @@ class VlessDeepLinkService
             'sing-box' => 'sing-box://import-remote-profile?url='.urlencode($subscriptionLink),
             'hiddify' => 'hiddify://import/'.$subscriptionLink,
             'v2raytun' => 'v2raytun://import/'.$subscriptionLink,
-            'incy' => 'incy://import/'.$subscriptionLink,
+            'incy' => $this->incyLinkEncoder->encode($subscriptionLink),
             default => null,
         };
     }

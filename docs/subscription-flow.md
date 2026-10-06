@@ -167,6 +167,7 @@ Main `/connect`:
 - `proxies.server_id` makes proxy variants part of one server. `hide_main_node_name` makes the proxy display name stand alone.
 - Soft-deleted servers are excluded.
 - INCY requests receive Telegram links through `Support-Url`, `Profile-Web-Page-Url`, and `Announce-Url`: bot, news channel, and community chat.
+- INCY responses also send `Hide-Url: true` and `Hide-Proxy: true` to hide subscription and proxy editing controls when supported by the client.
 
 `/connect-v2`:
 
@@ -175,6 +176,7 @@ Main `/connect`:
 - Allows Postman only for admin users and returns the same subscription payload for inspection.
 - Returns `403` for unsupported clients or non-admin Postman requests.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
+- The INCY deep-link route wraps the HTTPS subscription URL as `incy://crypt1/{base64url}` using the same AES-GCM format decoded for external INCY subscriptions.
 
 WireGuard/AmneziaWG output:
 

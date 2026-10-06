@@ -281,6 +281,8 @@ class VlessConfigController extends Controller
                 'Support-Url' => config('services.telegram.incy_links.bot'),
                 'Profile-Web-Page-Url' => config('services.telegram.incy_links.news'),
                 'Announce-Url' => config('services.telegram.incy_links.chat'),
+                'Hide-Url' => 'true',
+                'Hide-Proxy' => 'true',
             ] as $name => $value) {
                 $response->header($name, (string) $value);
             }

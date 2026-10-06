@@ -112,7 +112,9 @@ class ConnectV2Test extends TestCase
             ->assertOk()
             ->assertHeader('Support-Url', 'https://t.me/test_bot')
             ->assertHeader('Profile-Web-Page-Url', 'https://t.me/test_news')
-            ->assertHeader('Announce-Url', 'https://t.me/test_chat');
+            ->assertHeader('Announce-Url', 'https://t.me/test_chat')
+            ->assertHeader('Hide-Url', 'true')
+            ->assertHeader('Hide-Proxy', 'true');
     }
 
     public function test_connect_v2_request_log_contains_user_and_query_parameters(): void

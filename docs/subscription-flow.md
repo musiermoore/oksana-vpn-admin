@@ -171,8 +171,8 @@ Main `/connect`:
 `/connect-v2`:
 
 - Resolves the user from the plain `users.uuid` query token.
-- Lowercases `User-Agent` and redirects Incy, Happ, and V2RayTun clients to their matching deep-link scheme.
-- Allows Postman only for admin users and redirects it to the normal `/connect` subscription URL.
+- Lowercases `User-Agent` and returns the normal base64 URI subscription directly to Incy, Happ, and V2RayTun clients through the universal URL.
+- Allows Postman only for admin users and returns the same subscription payload for inspection.
 - Returns `403` for unsupported clients or non-admin Postman requests.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 

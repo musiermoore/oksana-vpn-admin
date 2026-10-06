@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Http\Requests\VlessConfig\StoreVlessConfigRequest;
 use App\Http\Requests\VlessConfig\UpdateVlessConfigRequest;
 use App\Http\Resources\UserResource;
@@ -21,12 +22,12 @@ use App\Services\UserConnectedDeviceService;
 use App\Services\VlessDeepLinkService;
 use App\Services\XuiConfigServiceFactory;
 use Exception;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Symfony\Component\HttpFoundation\Response;
 
 class VlessConfigController extends Controller
 {
@@ -207,6 +208,58 @@ class VlessConfigController extends Controller
             'ext' => $subscription->fileExtension,
         ]);
 
+        return $this->subscriptionResponse($request, $user, $subscription, $metadataService);
+    }
+
+    public function connectV2(
+        Request $request,
+        SubscriptionMetadataService $metadataService,
+        UserSubscriptionService $subscriptionService,
+    ): Response
+    {
+        $user = User::query()
+            ->where('uuid', $request->string('token')->toString())
+            ->first();
+
+        if (! $user) {
+            abort(404);
+        }
+
+        $request->setUserResolver(static fn (): User => $user);
+        $userAgent = mb_strtolower((string) $request->userAgent());
+
+        Log::info('connect-v2.request', [
+            'user_id' => (int) $user->id,
+            'query' => $request->query(),
+            'user_agent' => (string) $request->userAgent(),
+        ]);
+
+        match (true) {
+            str_contains($userAgent, 'incy'),
+            str_contains($userAgent, 'happ'),
+            str_contains($userAgent, 'v2raytun'),
+            str_contains($userAgent, 'postman') && (bool) $user->is_admin => null,
+            default => abort(403),
+        };
+
+        $this->connectedDevices->recordConnection($user, $request);
+        $subscription = $subscriptionService->build($user, $request->query('format'));
+
+        Log::info('connect-v2.res', [
+            'user_id' => (int) $user->id,
+            'bytes' => strlen($subscription->content),
+            'ext' => $subscription->fileExtension,
+        ]);
+
+        return $this->subscriptionResponse($request, $user, $subscription, $metadataService);
+    }
+
+    private function subscriptionResponse(
+        Request $request,
+        User $user,
+        SubscriptionBuildResult $subscription,
+        SubscriptionMetadataService $metadataService,
+    ): Response {
         $response = response($subscription->content);
 
         foreach ($metadataService->buildHeaders(
@@ -233,41 +286,6 @@ class VlessConfigController extends Controller
         }
 
         return $response;
-    }
-
-    public function connectV2(Request $request, VlessDeepLinkService $deepLinkService): RedirectResponse
-    {
-        $user = User::query()
-            ->where('uuid', $request->string('token')->toString())
-            ->first();
-
-        if (! $user) {
-            abort(404);
-        }
-
-        $request->setUserResolver(static fn (): User => $user);
-        $userAgent = mb_strtolower((string) $request->userAgent());
-        $subscriptionLink = $deepLinkService->getConnectUrl($user);
-
-        Log::info('connect-v2.request', [
-            'user_id' => (int) $user->id,
-            'query' => $request->query(),
-            'user_agent' => (string) $request->userAgent(),
-        ]);
-
-        $redirectUrl = match (true) {
-            str_contains($userAgent, 'incy') => $deepLinkService->resolveRedirectUrl('incy', $subscriptionLink),
-            str_contains($userAgent, 'happ') => $deepLinkService->resolveRedirectUrl('happ', $subscriptionLink),
-            str_contains($userAgent, 'v2raytun') => $deepLinkService->resolveRedirectUrl('v2raytun', $subscriptionLink),
-            str_contains($userAgent, 'postman') && (bool) $user->is_admin => $subscriptionLink,
-            default => abort(403),
-        };
-
-        if ($redirectUrl === null) {
-            abort(403);
-        }
-
-        return redirect()->away($redirectUrl);
     }
 
     public function connectJson(

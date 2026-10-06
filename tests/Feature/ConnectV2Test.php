@@ -22,8 +22,10 @@ class ConnectV2Test extends TestCase
             ->withHeader('User-Agent', 'INCY/2.4.5')
             ->get(route('vless.connect-v2', ['token' => $user->uuid]));
 
-        $response->assertRedirect();
-        $this->assertStringStartsWith('incy://import/', (string) $response->headers->get('Location'));
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertHeader('Support-Url', 'https://t.me/OksanaVpnBot');
     }
 
     public function test_happ_user_agent_redirects_to_happ_deep_link(): void
@@ -40,7 +42,7 @@ class ConnectV2Test extends TestCase
             ->withHeader('User-Agent', 'Happ/1.0')
             ->get(route('vless.connect-v2', ['token' => $user->uuid]));
 
-        $response->assertRedirect('happ://encrypted-subscription');
+        $response->assertOk();
     }
 
     public function test_v2raytun_user_agent_redirects_to_v2raytun_deep_link(): void
@@ -51,8 +53,9 @@ class ConnectV2Test extends TestCase
             ->withHeader('User-Agent', 'V2RayTun/6.0')
             ->get(route('vless.connect-v2', ['token' => $user->uuid]));
 
-        $response->assertRedirect();
-        $this->assertStringStartsWith('v2raytun://import/', (string) $response->headers->get('Location'));
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
     }
 
     public function test_postman_is_available_only_for_admins(): void
@@ -63,7 +66,7 @@ class ConnectV2Test extends TestCase
         $this
             ->withHeader('User-Agent', 'PostmanRuntime/7.0')
             ->get(route('vless.connect-v2', ['token' => $admin->uuid]))
-            ->assertRedirect();
+            ->assertOk();
 
         $this
             ->withHeader('User-Agent', 'PostmanRuntime/7.0')

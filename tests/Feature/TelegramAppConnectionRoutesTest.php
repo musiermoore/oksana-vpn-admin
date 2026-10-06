@@ -272,6 +272,7 @@ class TelegramAppConnectionRoutesTest extends TestCase
         [$user, $token] = $this->createAuthorizedActiveUser();
 
         config()->set('vless.domain', 'https://vpn.example');
+        config()->set('vless.public_domain', 'https://connect.example');
 
         $response = $this->withToken($token)
             ->getJson('/telegram-app/vless/link');
@@ -279,10 +280,10 @@ class TelegramAppConnectionRoutesTest extends TestCase
         $response->assertOk();
         $payload = $response->json();
 
-        $this->assertStringStartsWith('happ://crypt', (string) ($payload['happ_deep_link'] ?? ''));
-        $this->assertStringStartsWith('v2raytun://crypt/', (string) ($payload['v2raytun_deeplink'] ?? ''));
-        $this->assertStringStartsWith('incy://crypt1/', (string) ($payload['incy_deep_link'] ?? $payload['incy_deeplink'] ?? ''));
-        $this->assertStringContainsString('/connect-v2?', (string) ($payload['link'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/deep-link/happ?', (string) ($payload['happ_deep_link'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/deep-link/v2raytun?', (string) ($payload['v2raytun_deeplink'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/deep-link/incy?', (string) ($payload['incy_deep_link'] ?? $payload['incy_deeplink'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['link'] ?? ''));
     }
 
     public function test_authenticated_admin_can_load_vless_wl_links_and_raw_link_via_telegram_app_routes(): void

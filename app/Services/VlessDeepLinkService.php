@@ -61,31 +61,30 @@ class VlessDeepLinkService
 
     public function getConnectV2Url(User $user, ?string $client = null): string
     {
-        $parameters = ['token' => $user->uuid];
-
-        if ($client !== 'happ') {
-            $parameters['format'] = 'json';
-        }
-
-        return $this->buildUrl('vless.connect-v2', $parameters);
+        return rtrim((string) config('vless.public_domain'), '/')
+            .'/start?token='.urlencode((string) $user->uuid);
     }
 
     public function getConnectV2RouteLinks(User $user): array
     {
-        return $this->getRouteLinksForRoute('vless.connect-v2-deep-link', [
-            'token' => $user->uuid,
-        ]);
+        return $this->getPublicDeepLinkLinks($user);
     }
 
     public function getConnectV2DeepLinks(User $user): array
     {
+        return $this->getPublicDeepLinkLinks($user);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getPublicDeepLinkLinks(User $user): array
+    {
         $links = [];
+        $domain = rtrim((string) config('vless.public_domain'), '/');
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $this->resolveRedirectUrl(
-                $client,
-                $this->getConnectV2Url($user, $client),
-            );
+            $links[$responseKey] = $domain.'/deep-link/'.$client.'?token='.urlencode((string) $user->uuid);
         }
 
         return $links;

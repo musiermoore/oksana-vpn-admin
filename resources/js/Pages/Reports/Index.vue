@@ -509,8 +509,10 @@ const highlightCards = computed(() => [
     width: 100%;
     padding: 16px 18px;
     border-radius: 20px;
-    background: rgba(15, 23, 42, 0.95);
-    color: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.98));
+    color: #0f172a;
 }
 
 .reports-filter__actions {
@@ -529,10 +531,10 @@ const highlightCards = computed(() => [
 .field input {
     min-height: 48px;
     padding: 0 14px;
-    border: 1px solid rgba(148, 163, 184, 0.28);
+    border: 1px solid rgba(100, 116, 139, 0.3);
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.08);
-    color: inherit;
+    background: rgba(255, 255, 255, 0.9);
+    color: #0f172a;
 }
 
 @media (max-width: 980px) {
@@ -547,7 +549,7 @@ const highlightCards = computed(() => [
 }
 
 .reports-grid--cards {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .reports-grid--main {
@@ -559,7 +561,7 @@ const highlightCards = computed(() => [
 }
 
 .metric-card {
-    padding: 24px;
+    padding: 20px;
 }
 
 .metric-card p,
@@ -569,8 +571,8 @@ const highlightCards = computed(() => [
 }
 
 .metric-card h2 {
-    margin: 14px 0 10px;
-    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    margin: 12px 0 8px;
+    font-size: clamp(1.45rem, 2vw, 2.15rem);
     color: #0f172a;
 }
 
@@ -852,7 +854,7 @@ const highlightCards = computed(() => [
     .reports-grid--cards,
     .reports-grid--secondary,
     .trend-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .reports-grid--main,
@@ -860,6 +862,12 @@ const highlightCards = computed(() => [
     .donut-layout,
     .mini-donuts {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 980px) {
+    .reports-grid--cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -891,4 +899,5 @@ const highlightCards = computed(() => [
         grid-template-columns: 1fr;
     }
 }
+
 </style>

@@ -48,7 +48,19 @@ class ConnectV2Test extends TestCase
             ->withHeader('User-Agent', 'Happ/1.0')
             ->get(route('vless.connect-v2', ['token' => $user->uuid]));
 
-        $response->assertOk();
+        $response->assertRedirect('happ://encrypted-subscription');
+
+        $contentResponse = $this
+            ->withHeader('User-Agent', 'Happ/1.0')
+            ->get(route('vless.connect-v2', [
+                'token' => $user->uuid,
+                'happ_content' => '1',
+            ]));
+
+        $contentResponse
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertHeader('Hide-Settings', '1');
     }
 
     public function test_v2raytun_user_agent_redirects_to_v2raytun_deep_link(): void

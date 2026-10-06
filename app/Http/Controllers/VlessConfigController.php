@@ -215,6 +215,7 @@ class VlessConfigController extends Controller
         Request $request,
         SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService,
+        VlessDeepLinkService $deepLinkService,
     ): Response
     {
         $user = User::query()
@@ -241,6 +242,12 @@ class VlessConfigController extends Controller
             str_contains($userAgent, 'postman') && (bool) $user->is_admin => null,
             default => abort(403),
         };
+
+        if (str_contains($userAgent, 'happ') && ! $request->boolean('happ_content')) {
+            $subscriptionUrl = $request->fullUrlWithQuery(['happ_content' => '1']);
+
+            return redirect()->away($deepLinkService->resolveRedirectUrl('happ', $subscriptionUrl));
+        }
 
         $this->connectedDevices->recordConnection($user, $request);
         $subscription = $subscriptionService->build($user, 'json');
@@ -286,6 +293,10 @@ class VlessConfigController extends Controller
             ] as $name => $value) {
                 $response->header($name, (string) $value);
             }
+        }
+
+        if (str_contains(mb_strtolower((string) $request->userAgent()), 'happ')) {
+            $response->header('Hide-Settings', '1');
         }
 
         return $response;

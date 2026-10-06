@@ -10,6 +10,7 @@ use App\Http\Controllers\GiveawayController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NonRegularPaymentController;
 use App\Http\Controllers\ProxyController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ReportsController;
@@ -130,6 +131,7 @@ Route::middleware('auth')->group(function () {
         ->name('xray-geodata.store');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
+    Route::resource('non-regular-payments', NonRegularPaymentController::class)->only(['index', 'create', 'store', 'destroy']);
     Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');
     Route::get('support-tickets/{ticketId}', [SupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticketId}/reply', [SupportTicketController::class, 'reply'])->name('support-tickets.reply');

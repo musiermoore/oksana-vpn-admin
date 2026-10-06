@@ -126,7 +126,14 @@ const taxChart = computed(() => buildChart(props.invoice_tax_status_segments));
 const invoiceStateChart = computed(() => buildChart(props.invoice_state_segments));
 
 const trendMax = computed(() => Math.max(
-    ...props.monthly_trend.flatMap((item) => [Number(item.revenue ?? 0), Number(item.server_costs ?? 0), Number(item.net_profit ?? 0)]),
+    ...props.monthly_trend.flatMap((item) => [
+        Number(item.revenue ?? 0),
+        Number(item.server_costs ?? 0),
+        Number(item.non_regular_payments ?? 0),
+        Number(item.estimated_taxes ?? 0),
+        Number(item.cash_register_fee ?? 0),
+        Number(item.net_profit ?? 0),
+    ]),
     1,
 ));
 
@@ -144,10 +151,16 @@ const highlightCards = computed(() => [
         note: `${props.server_costs.length} серверов в учете`,
     },
     {
-        label: 'Налоги 4%',
-        value: props.summary.estimated_taxes,
+        label: 'Нерегулярные расходы',
+        value: props.summary.total_non_regular_payments,
+        tone: 'violet',
+        note: 'Записи за выбранный период',
+    },
+    {
+        label: 'Налоги 4% + касса 3,5%',
+        value: Number(props.summary.estimated_taxes ?? 0) + Number(props.summary.cash_register_fee ?? 0),
         tone: 'amber',
-        note: 'Оценка от оплаченных инвойсов',
+        note: `${formatMoney(props.summary.estimated_taxes)} ₽ налогов · ${formatMoney(props.summary.cash_register_fee)} ₽ касса`,
     },
     {
         label: 'Чистый результат',
@@ -166,7 +179,7 @@ const highlightCards = computed(() => [
             <p class="reports-kicker">Финансовая аналитика</p>
             <h1>Отчеты по доходам, расходам и динамике подписок</h1>
             <p class="reports-lead">
-                Сводка собирает выручку по инвойсам, затраты по истории цен серверов и добавляет примерный налог 4%,
+                Сводка собирает выручку по инвойсам, затраты по истории цен серверов, нерегулярные расходы, налог 4% и комиссию кассы 3,5%,
                 чтобы быстрее понимать реальную картину по проекту.
             </p>
 
@@ -177,25 +190,26 @@ const highlightCards = computed(() => [
             </div>
         </div>
 
-        <form class="reports-filter" @submit.prevent="submitFilters">
-            <label class="field">
-                <span>Дата от</span>
-                <AppInput v-model="filterForm.date_from" type="date" />
-            </label>
-
-            <label class="field">
-                <span>Дата до</span>
-                <AppInput v-model="filterForm.date_to" type="date" />
-            </label>
-
-            <div class="reports-filter__actions">
-                <AppButton type="submit" :disabled="filterForm.processing">Обновить</AppButton>
-                <AppButton variant="secondary" type="button" :disabled="filterForm.processing" @click="resetFilters">
-                    Сбросить
-                </AppButton>
-            </div>
-        </form>
     </section>
+
+    <form class="reports-filter" @submit.prevent="submitFilters">
+        <label class="field">
+            <span>Дата от</span>
+            <AppInput v-model="filterForm.date_from" type="date" />
+        </label>
+
+        <label class="field">
+            <span>Дата до</span>
+            <AppInput v-model="filterForm.date_to" type="date" />
+        </label>
+
+        <div class="reports-filter__actions">
+            <AppButton type="submit" :disabled="filterForm.processing">Обновить</AppButton>
+            <AppButton variant="secondary" type="button" :disabled="filterForm.processing" @click="resetFilters">
+                Сбросить
+            </AppButton>
+        </div>
+    </form>
 
     <section class="reports-grid reports-grid--cards">
         <article
@@ -396,6 +410,20 @@ const highlightCards = computed(() => [
                         </div>
                         <strong>{{ formatCompactMoney(month.estimated_taxes) }} ₽</strong>
                     </div>
+                    <div class="trend-bar">
+                        <span>Касса</span>
+                        <div class="trend-bar__track">
+                            <div class="trend-bar__fill trend-bar__fill--taxes" :style="{ width: `${(Number(month.cash_register_fee) / trendMax) * 100}%` }" />
+                        </div>
+                        <strong>{{ formatCompactMoney(month.cash_register_fee) }} ₽</strong>
+                    </div>
+                    <div class="trend-bar">
+                        <span>Нерегулярные</span>
+                        <div class="trend-bar__track">
+                            <div class="trend-bar__fill trend-bar__fill--costs" :style="{ width: `${(Number(month.non_regular_payments) / trendMax) * 100}%` }" />
+                        </div>
+                        <strong>{{ formatCompactMoney(month.non_regular_payments) }} ₽</strong>
+                    </div>
                 </div>
             </div>
         </div>
@@ -418,9 +446,6 @@ const highlightCards = computed(() => [
 }
 
 .reports-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
-    gap: 24px;
     padding: 32px;
 }
 
@@ -478,9 +503,10 @@ const highlightCards = computed(() => [
 
 .reports-filter {
     display: grid;
-    grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
+    grid-template-columns: minmax(180px, 260px) minmax(180px, 260px) auto;
     gap: 12px;
     align-items: end;
+    width: 100%;
     padding: 16px 18px;
     border-radius: 20px;
     background: rgba(15, 23, 42, 0.95);
@@ -550,6 +576,7 @@ const highlightCards = computed(() => [
 
 .metric-card--emerald::before,
 .metric-card--blue::before,
+.metric-card--violet::before,
 .metric-card--amber::before,
 .metric-card--rose::before,
 .metric-card--slate::before {
@@ -562,6 +589,7 @@ const highlightCards = computed(() => [
 
 .metric-card--emerald::before { background: linear-gradient(90deg, #10b981, #34d399); }
 .metric-card--blue::before { background: linear-gradient(90deg, #2563eb, #38bdf8); }
+.metric-card--violet::before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
 .metric-card--amber::before { background: linear-gradient(90deg, #f59e0b, #fb923c); }
 .metric-card--rose::before { background: linear-gradient(90deg, #e11d48, #fb7185); }
 .metric-card--slate::before { background: linear-gradient(90deg, #334155, #94a3b8); }

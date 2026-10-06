@@ -11,15 +11,18 @@ use App\Models\ServerPrice;
 use App\Models\User;
 use App\Models\UserSubscription;
 use App\Repositories\InvoiceRepository;
+use App\Repositories\NonRegularPaymentRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 class ReportsService
 {
     private const TAX_RATE = 0.04;
+    private const CASH_REGISTER_FEE_RATE = 0.035;
 
     public function __construct(
         private readonly InvoiceRepository $invoices,
+        private readonly NonRegularPaymentRepository $nonRegularPayments,
     ) {}
 
     /**
@@ -44,7 +47,9 @@ class ReportsService
         $serverCosts = $this->buildServerCostBreakdown($servers, $from, $to);
         $totalServerCosts = round((float) $serverCosts->sum('total_cost'), 2);
         $estimatedTaxes = round($revenue * self::TAX_RATE, 2);
-        $netProfit = round($revenue - $totalServerCosts - $estimatedTaxes, 2);
+        $cashRegisterFee = round($revenue * self::CASH_REGISTER_FEE_RATE, 2);
+        $totalNonRegularPayments = round($this->nonRegularPayments->totalForRange($from, $to), 2);
+        $netProfit = round($revenue - $totalServerCosts - $totalNonRegularPayments - $estimatedTaxes - $cashRegisterFee, 2);
 
         $activeSubscribers = User::query()
             ->whereHas('activeSubscription', fn ($query) => $query
@@ -65,14 +70,16 @@ class ReportsService
             'summary' => $this->summaryPayload(
                 $revenue,
                 $totalServerCosts,
+                $totalNonRegularPayments,
                 $estimatedTaxes,
+                $cashRegisterFee,
                 $netProfit,
                 $paidInvoices,
                 $activeSubscribers,
                 $newUsers,
                 $subscriptionsStarted,
             ),
-            'financial_segments' => $this->financialSegments($totalServerCosts, $estimatedTaxes, $netProfit),
+            'financial_segments' => $this->financialSegments($totalServerCosts, $totalNonRegularPayments, $estimatedTaxes, $cashRegisterFee, $netProfit),
             'invoice_tax_status_segments' => $this->invoiceTaxStatusSegments($paidInvoices),
             'invoice_state_segments' => $this->invoiceStateSegments($invoicesCreatedInRange),
             'server_costs' => $serverCosts->values()->all(),
@@ -95,7 +102,9 @@ class ReportsService
     private function summaryPayload(
         float $revenue,
         float $totalServerCosts,
+        float $totalNonRegularPayments,
         float $estimatedTaxes,
+        float $cashRegisterFee,
         float $netProfit,
         Collection $paidInvoices,
         int $activeSubscribers,
@@ -105,7 +114,9 @@ class ReportsService
         return [
             'revenue' => $revenue,
             'total_server_costs' => $totalServerCosts,
+            'total_non_regular_payments' => $totalNonRegularPayments,
             'estimated_taxes' => $estimatedTaxes,
+            'cash_register_fee' => $cashRegisterFee,
             'net_profit' => $netProfit,
             'margin_percent' => $revenue > 0 ? round(($netProfit / $revenue) * 100, 1) : 0.0,
             'paid_invoices_count' => $paidInvoices->count(),
@@ -120,10 +131,12 @@ class ReportsService
     }
 
     /** @return array<int, array<string, int|float|string>> */
-    private function financialSegments(float $serverCosts, float $taxes, float $netProfit): array
+    private function financialSegments(float $serverCosts, float $nonRegularPayments, float $taxes, float $cashRegisterFee, float $netProfit): array
     {
         return [
             ['label' => 'Серверы', 'value' => $serverCosts, 'color' => '#1d4ed8'],
+            ['label' => 'Нерегулярные расходы', 'value' => $nonRegularPayments, 'color' => '#7c3aed'],
+            ['label' => 'Касса 3,5%', 'value' => $cashRegisterFee, 'color' => '#0891b2'],
             ['label' => 'Налоги 4%', 'value' => $taxes, 'color' => '#f97316'],
             ['label' => 'Чистая прибыль', 'value' => max(0, $netProfit), 'color' => '#16a34a'],
             ['label' => 'Убыток', 'value' => max(0, -$netProfit), 'color' => '#b91c1c'],
@@ -284,13 +297,17 @@ class ReportsService
 
                 $serverCosts = round((float) $this->buildServerCostBreakdown($servers, $month, $monthEnd)->sum('total_cost'), 2);
                 $estimatedTaxes = round($revenue * self::TAX_RATE, 2);
+                $cashRegisterFee = round($revenue * self::CASH_REGISTER_FEE_RATE, 2);
+                $nonRegularPayments = round($this->nonRegularPayments->totalForRange($month, $monthEnd), 2);
 
                 return [
                     'label' => $month->translatedFormat('M Y'),
                     'revenue' => $revenue,
                     'server_costs' => $serverCosts,
+                    'non_regular_payments' => $nonRegularPayments,
                     'estimated_taxes' => $estimatedTaxes,
-                    'net_profit' => round($revenue - $serverCosts - $estimatedTaxes, 2),
+                    'cash_register_fee' => $cashRegisterFee,
+                    'net_profit' => round($revenue - $serverCosts - $nonRegularPayments - $estimatedTaxes - $cashRegisterFee, 2),
                 ];
             })
             ->values()

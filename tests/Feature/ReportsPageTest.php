@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\Invoice;
+use App\Models\NonRegularPayment;
 use App\Models\Server;
 use App\Models\ServerPrice;
 use App\Models\User;
@@ -65,6 +66,15 @@ class ReportsPageTest extends TestCase
             'price' => 310,
         ]);
 
+        $nonRegularPayment = NonRegularPayment::query()->create([
+            'amount' => 100,
+            'description' => 'Change server IP',
+        ]);
+        $nonRegularPayment->forceFill([
+            'created_at' => '2026-07-20 10:00:00',
+            'updated_at' => '2026-07-20 10:00:00',
+        ])->saveQuietly();
+
         $activeServer = Server::query()->create([
             'name' => 'Active Node',
             'code' => 'ACT-1',
@@ -88,9 +98,11 @@ class ReportsPageTest extends TestCase
                 ->where('filters.date_to', '2026-07-31')
                 ->where('summary.revenue', 1000)
                 ->where('summary.total_server_costs', 630)
+                ->where('summary.total_non_regular_payments', 100)
                 ->where('summary.estimated_taxes', 40)
-                ->where('summary.net_profit', 330)
-                ->where('summary.margin_percent', 33)
+                ->where('summary.cash_register_fee', 35)
+                ->where('summary.net_profit', 195)
+                ->where('summary.margin_percent', 19.5)
                 ->where('summary.paid_invoices_count', 1)
                 ->where('top_servers.0.name', 'Active Node')
                 ->where('top_servers.0.total_cost', 320)

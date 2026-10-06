@@ -63,6 +63,12 @@ Important note:
 - subscription charges are negative amounts
 - only approved transactions affect stored balance
 
+### Non-regular payments
+
+Non-regular payments are standalone expense records for costs such as changing a server IP. Each record stores its id, amount, description, and timestamps. Reports include records created inside the selected period as expenses.
+
+Reports also split payment costs into a 4% estimated tax and a 3.5% cash-register fee, both calculated from paid invoice revenue.
+
 ### Transaction Types
 
 `transaction_types` is a reference table.

@@ -30,6 +30,46 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         return $this->buildForSubscriptionType($nodes, XrayRouting::SUBSCRIPTION_CONNECT);
     }
 
+    public function buildHappDiagnosticProfile(): SubscriptionBuildResult
+    {
+        $profile = [[
+            'remarks' => 'Happ test',
+            'log' => $this->settingsProvider->log(),
+            'dns' => $this->settingsProvider->dns(),
+            'inbounds' => $this->settingsProvider->inbounds(),
+            'outbounds' => [[
+                'protocol' => 'vless',
+                'settings' => [
+                    'vnext' => [[
+                        'address' => 'example.com',
+                        'port' => 443,
+                        'users' => [[
+                            'id' => '00000000-0000-0000-0000-000000000000',
+                            'encryption' => 'none',
+                        ]],
+                    ]],
+                ],
+                'streamSettings' => [
+                    'network' => 'tcp',
+                    'security' => 'tls',
+                    'tlsSettings' => ['serverName' => 'example.com'],
+                ],
+            ]],
+            'routing' => $this->settingsProvider->routing(XrayRouting::SUBSCRIPTION_CONNECT),
+        ]];
+
+        $geodata = $this->settingsProvider->geodata();
+        if ($geodata !== null) {
+            $profile[0]['geodata'] = $geodata;
+        }
+
+        return new SubscriptionBuildResult(
+            content: json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
+            contentType: 'application/json; charset=UTF-8',
+            fileExtension: 'json',
+        );
+    }
+
     /**
      * @param  array<int, NormalizedNode>  $nodes
      */

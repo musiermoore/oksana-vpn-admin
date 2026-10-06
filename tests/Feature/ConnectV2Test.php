@@ -102,7 +102,10 @@ class ConnectV2Test extends TestCase
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.remarks', 'Happ test')
-            ->assertJsonPath('0.routing.rules', []);
+            ->assertJsonPath('0.routing.domainStrategy', 'AsIs')
+            ->assertJsonStructure([
+                '0' => ['dns', 'inbounds', 'outbounds', 'routing'],
+            ]);
     }
 
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void

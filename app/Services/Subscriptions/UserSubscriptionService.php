@@ -84,7 +84,7 @@ class UserSubscriptionService
     public function buildConnectV2(User $user, ?string $app = null): SubscriptionBuildResult
     {
         if ($app === 'happ') {
-            return $this->buildHappDiagnosticProfile();
+            return $this->connectJsonBuilder->buildHappDiagnosticProfile();
         }
 
         $nodes = [
@@ -96,58 +96,6 @@ class UserSubscriptionService
         ];
 
         return $this->buildFromNodes($nodes, 'json', XrayRouting::SUBSCRIPTION_CONNECT, $user);
-    }
-
-    private function buildHappDiagnosticProfile(): SubscriptionBuildResult
-    {
-        $profile = [[
-            'remarks' => 'Happ test',
-            'log' => ['loglevel' => 'warning'],
-            'dns' => [
-                'servers' => ['1.1.1.1'],
-                'queryStrategy' => 'UseIPv4',
-            ],
-            'inbounds' => [[
-                'port' => 10808,
-                'protocol' => 'socks',
-                'settings' => [
-                    'auth' => 'noauth',
-                    'udp' => true,
-                ],
-                'sniffing' => [
-                    'enabled' => true,
-                    'destOverride' => ['http', 'tls'],
-                ],
-            ]],
-            'outbounds' => [[
-                'protocol' => 'vless',
-                'settings' => [
-                    'vnext' => [[
-                        'address' => 'example.com',
-                        'port' => 443,
-                        'users' => [[
-                            'id' => '00000000-0000-0000-0000-000000000000',
-                            'encryption' => 'none',
-                        ]],
-                    ]],
-                ],
-                'streamSettings' => [
-                    'network' => 'tcp',
-                    'security' => 'tls',
-                    'tlsSettings' => ['serverName' => 'example.com'],
-                ],
-            ]],
-            'routing' => [
-                'domainStrategy' => 'AsIs',
-                'rules' => [],
-            ],
-        ]];
-
-        return new SubscriptionBuildResult(
-            content: json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
-            contentType: 'application/json; charset=UTF-8',
-            fileExtension: 'json',
-        );
     }
 
     private function appendCustomJsonProfiles(SubscriptionBuildResult $result, User $user): SubscriptionBuildResult

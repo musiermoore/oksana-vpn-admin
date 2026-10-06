@@ -99,13 +99,14 @@ class ConnectV2Test extends TestCase
             ]));
 
         $response
-            ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.remarks', 'Happ test')
-            ->assertJsonPath('0.routing.domainStrategy', 'AsIs')
-            ->assertJsonStructure([
-                '0' => ['dns', 'inbounds', 'outbounds', 'routing'],
-            ]);
+            ->assertOk();
+
+        $response
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertHeader('Hide-Settings', '1')
+            ->assertJsonStructure();
+
+        $this->assertStringNotContainsString('Happ test', $response->getContent());
     }
 
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void

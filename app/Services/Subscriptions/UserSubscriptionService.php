@@ -84,7 +84,11 @@ class UserSubscriptionService
     public function buildConnectV2(User $user, ?string $app = null): SubscriptionBuildResult
     {
         if ($app === 'happ') {
-            return $this->connectJsonBuilder->buildHappDiagnosticProfile();
+            return $this->buildFromNodes(
+                $this->buildNamedNodes($user),
+                'json',
+                XrayRouting::SUBSCRIPTION_CONNECT,
+            );
         }
 
         $nodes = [

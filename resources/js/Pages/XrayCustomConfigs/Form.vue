@@ -32,7 +32,9 @@ watch(() => form.name, (name) => {
         form.slug = slugify(name);
     }
 });
-const settings = ref({ domainStrategy: initialBase.routing?.domainStrategy || 'AsIs', loglevel: initialBase.log?.loglevel || 'warning', extra: initialBase });
+const settings = ref({ domainStrategy: initialBase.routing?.domainStrategy || 'AsIs', loglevel: initialBase.log?.loglevel || 'warning' });
+const baseSettingsJson = ref(JSON.stringify(initialBase, null, 2));
+const baseSettingsError = ref('');
 const groupSlug = (value) => `group-${slugify(value) || 'new-group'}`;
 const groups = ref((initial.outbound_groups || []).map((group) => ({ ...group, xray_inbound_ids: group.xray_inbound_ids || [], external_subscription_config_ids: group.external_subscription_config_ids || [], external_subscription_ids: group.external_subscription_ids || [], proxy_ids: group.proxy_ids || [], _tagManuallyEdited: Boolean(group.tag && group.tag !== groupSlug(group.name)) })));
 const expandedGroups = ref(new Set(groups.value.length ? [0] : []));
@@ -265,7 +267,7 @@ const dropRoute = (index) => { if (draggedRouteIndex.value === null || draggedRo
 const addRoute = () => { routes.value.push({ name: `Route ${routes.value.length + 1}`, match_type: 'domain', match_values: '', match_values_list: [], value_input: '', target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true, _menuOpen: false }); expandedRoutes.value = new Set([...expandedRoutes.value, routes.value.length - 1]); };
 const duplicateRoute = (route, index) => { const copy = JSON.parse(JSON.stringify(route)); copy.name = `${route.name || 'Route'} copy`; copy.value_input = ''; copy._menuOpen = false; routes.value.splice(index + 1, 0, copy); expandedRoutes.value = new Set([...expandedRoutes.value, index + 1]); };
 const removeRoute = (route, index) => { if (!window.confirm(`Delete route “${route.name || `Route ${index + 1}`}”?`)) return; routes.value.splice(index, 1); };
-watch([form, settings, groups, routes], () => {
+watch([form, settings, baseSettingsJson, groups, routes], () => {
     hasUnsavedChanges.value = true;
 
     if (!previewContent.value) {
@@ -284,25 +286,44 @@ watch([form, settings, groups, routes], () => {
 }, { deep: true });
 const cancelEditing = () => { if (!hasUnsavedChanges.value || window.confirm('Discard unsaved changes?')) window.location.href = '/xray-custom-configs'; };
 
-const buildBaseSettings = () => ({ ...settings.value.extra, log: { ...(settings.value.extra.log || {}), loglevel: settings.value.loglevel }, routing: { ...(settings.value.extra.routing || {}), domainStrategy: settings.value.domainStrategy } });
+const parseBaseSettings = () => {
+    try {
+        const parsed = JSON.parse(baseSettingsJson.value || '{}');
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+            throw new Error('Base settings must be a JSON object.');
+        }
+        baseSettingsError.value = '';
+        return parsed;
+    } catch (error) {
+        baseSettingsError.value = error.message || 'Base settings must be valid JSON.';
+        return null;
+    }
+};
+const buildBaseSettings = () => {
+    const base = parseBaseSettings();
+    if (base === null) return null;
+    return { ...base, log: { ...(base.log || {}), loglevel: settings.value.loglevel }, routing: { ...(base.routing || {}), domainStrategy: settings.value.domainStrategy } };
+};
 const buildRoutes = () => routes.value.map(({ match_values_list, value_input, _menuOpen, ...route }, index) => {
     const values = routeValues({ ...route, match_values_list });
     const rules = route.match_type === 'domain' ? { domain: values.map((value) => value.includes(':') ? value : `domain:${value}`) } : { [route.match_type]: values };
     return { ...route, rules, sort_order: index };
 });
-const requestPayload = () => ({
+const requestPayload = (baseSettings = buildBaseSettings()) => ({
     is_active: Boolean(form.is_active),
     external_subscription_config_ids: [],
-    base_settings_json: JSON.stringify(buildBaseSettings()),
+    base_settings_json: JSON.stringify(baseSettings || {}),
     outbound_groups_json: JSON.stringify(buildGroups()),
     routes_json: JSON.stringify(buildRoutes()),
 });
-const submit = () => { const request = form.transform((data) => ({ ...data, ...requestPayload(), dns_settings_id: data.dns_settings_id || null, geodata_id: data.geodata_id || null })); props.method === 'put' ? request.put(props.submit_url) : request.post(props.submit_url); };
+const submit = () => { const baseSettings = buildBaseSettings(); if (baseSettings === null) return; const request = form.transform((data) => ({ ...data, ...requestPayload(baseSettings), dns_settings_id: data.dns_settings_id || null, geodata_id: data.geodata_id || null })); props.method === 'put' ? request.put(props.submit_url) : request.post(props.submit_url); };
 const preview = async () => {
     previewing.value = true;
     try {
         const url = props.config ? `${props.submit_url}/preview` : '/xray-custom-configs/preview';
-        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify({ ...form.data(), ...requestPayload(), preview_mode: previewMode.value, user_id: previewMode.value === 'user' ? Number(previewUserId.value) : undefined }) });
+        const baseSettings = buildBaseSettings();
+        if (baseSettings === null) return;
+        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify({ ...form.data(), ...requestPayload(baseSettings), preview_mode: previewMode.value, user_id: previewMode.value === 'user' ? Number(previewUserId.value) : undefined }) });
         previewContent.value = await response.json();
     } finally {
         previewing.value = false;
@@ -360,6 +381,12 @@ const saveResource = async () => {
                     <label class="field"><span>Domain Strategy</span><AppSelect v-model="settings.domainStrategy" :options="domainStrategyOptions" /></label>
                     <label class="field"><span>Log Level</span><AppSelect v-model="settings.loglevel" :options="logLevelOptions" /></label>
                 </div>
+                <label class="field base-settings-json-field">
+                    <span>Additional Xray base settings (JSON)</span>
+                    <AppTextarea v-model="baseSettingsJson" rows="14" spellcheck="false" />
+                    <small>Use this for settings such as observatory, policy, stats, domainMatcher, or any other Xray profile-level option. The structured fields above override loglevel and domainStrategy.</small>
+                    <small v-if="baseSettingsError" class="form-error">{{ baseSettingsError }}</small>
+                </label>
             </div>
             <div class="source-section">
                 <div class="source-section__header"><div><h2>Sources</h2><p>Choose which outbound sources may be used by this configuration.</p></div><strong>{{ totalSourcesSelected }} sources selected</strong></div>

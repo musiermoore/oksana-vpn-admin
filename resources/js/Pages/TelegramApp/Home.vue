@@ -77,7 +77,7 @@ const primaryActionLabel = computed(() => {
         return 'Продлить подписку';
     }
 
-    return 'Открыть конфиги';
+    return 'Подключить VPN';
 });
 
 const hasPositiveBalance = computed(() => Number(user.value?.balance ?? 0) > 0);
@@ -85,8 +85,8 @@ const hasPositiveBalance = computed(() => Number(user.value?.balance ?? 0) > 0);
 const quickLinks = computed(() => {
     const configItems = [
         {
-            title: 'Стандартные',
-            description: 'Прямая ссылка, быстрое подключение и QR-код.',
+            title: 'Xray / VLESS',
+            description: 'Incy, Happ, V2RayTun и другие приложения.',
             href: telegramMiniAppRoutes.vless,
             icon: 'shield',
             iconClass: 'tg-list-card__icon',

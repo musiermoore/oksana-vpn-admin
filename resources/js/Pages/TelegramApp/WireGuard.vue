@@ -219,8 +219,8 @@ onBeforeUnmount(() => {
                         <AppIcon name="shield" />
                     </div>
                     <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Стандартные</div>
-                        <div class="tg-list-card__description">Прямая ссылка, быстрое подключение и QR-код.</div>
+                        <div class="tg-list-card__title">Xray / VLESS</div>
+                        <div class="tg-list-card__description">Incy, Happ, V2RayTun и другие приложения.</div>
                     </div>
                     <div class="tg-list-card__aside">
                         <AppIcon name="chevronRight" />
@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
                     </button>
                     <Link :href="telegramMiniAppRoutes.vless" class="tg-button tg-button--soft">
                         <AppIcon name="link" />
-                        <span>Открыть стандартные вместо этого</span>
+                        <span>Открыть Xray / VLESS вместо этого</span>
                     </Link>
                 </div>
 

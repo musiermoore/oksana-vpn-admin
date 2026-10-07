@@ -25,8 +25,8 @@ Code status as of `2026-06-28`:
 - `WIREGUARD_QR_RESULT`: QR result for selected config.
 - `WIREGUARD_FILE_RESULT`: config file result.
 - `EMPTY_WIREGUARD_CONFIGS`: empty WireGuard state.
-- `VLESS_HOME`: VLESS menu.
-- `VLESS_LINK_RESULT`: VLESS deep links and raw link.
+- `VLESS_HOME`: Xray / VLESS app-selection screen.
+- `VLESS_LINK_RESULT`: legacy deep link/manual import result (kept for compatibility).
 - `VLESS_QR_RESULT`: VLESS QR result.
 - `VLESS_WL_LINK_RESULT`: whitelist VLESS links.
 - `SUBSCRIPTION_OVERVIEW`: balance, debt, subscription date, and warnings.
@@ -76,8 +76,8 @@ Code status as of `2026-06-28`:
 | `WIREGUARD_CONFIG_ACTIONS` | Configs | Return to config list | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
 | `WIREGUARD_CONFIG_ACTIONS` | VLESS | Open VLESS | `GET /api/users/{telegramId}/vless/link` or `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | auto | Check access and load base links | `GET /api/users/{telegramId}/vless/link` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
-| `VLESS_HOME` | Link | Show deep links and raw link | `GET /api/users/{telegramId}/vless/link` | `VLESS_LINK_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
-| `VLESS_HOME` | QR Code | Get QR | `GET /api/users/{telegramId}/vless/qr-code` | `VLESS_QR_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | Connect app | Open protected app-specific deep link | `GET /api/users/{telegramId}/vless/link` | external VPN app | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | QR Code app/legacy | Get selected QR | `GET /api/users/{telegramId}/vless/qr-code?target=...` | `VLESS_QR_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | Whitelist | Open whitelist links | local route `/telegram-app/vless-wl?step=links` | `VLESS_WL_LINK_RESULT` | none |
 | `SUBSCRIPTION_OVERVIEW` | auto | Load balance, debt, subscription date | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
 | `SUBSCRIPTION_OVERVIEW` | Buy subscription | Load packages | `GET /telegram-app/subscription-packages` | `SUBSCRIPTION_PACKAGE_SELECT` | `PAYMENT_ERROR` |

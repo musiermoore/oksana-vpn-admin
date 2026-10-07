@@ -24,47 +24,60 @@ const copyToast = ref('');
 const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
+const qrTarget = ref('legacy');
 let copyToastTimeoutId = null;
 
 const configHubHref = computed(() => telegramMiniAppRoutes.wireguard);
+
+const qrTitle = computed(() => {
+    if (qrTarget.value === 'legacy') {
+        return 'QR-код старого формата';
+    }
+
+    return `QR-код для ${qrTarget.value === 'v2raytun' ? 'V2RayTun' : qrTarget.value === 'happ' ? 'Happ' : 'Incy'}`;
+});
+
+const qrDescription = computed(() => {
+    if (qrTarget.value === 'legacy') {
+        return 'Для ручного импорта в старые или неподдерживаемые приложения.';
+    }
+
+    return `Откройте ${qrTarget.value === 'v2raytun' ? 'V2RayTun' : qrTarget.value === 'happ' ? 'Happ' : 'Incy'} и отсканируйте код.`;
+});
+
+const qrCopyLink = computed(() => {
+    if (qrTarget.value === 'legacy') {
+        return legacyLink.value;
+    }
+
+    return preferredLinks.value.find((item) => item.target === qrTarget.value)?.url ?? '';
+});
 
 const preferredLinks = computed(() => ([
     {
         key: 'incy_deeplink',
         title: 'Incy',
-        description: 'Открыть подписку в Incy.',
+        description: 'Подключить подписку в Incy или открыть QR-код.',
         url: links.value?.incy_deeplink ?? '',
+        target: 'incy',
     },
     {
         key: 'happ_deep_link',
         title: 'Happ',
-        description: 'Открыть подписку сразу в Happ.',
+        description: 'Подключить подписку в Happ или открыть QR-код.',
         url: links.value?.happ_deep_link ?? '',
+        target: 'happ',
     },
     {
         key: 'v2raytun_deeplink',
         title: 'V2RayTun',
-        description: 'Импортировать подписку в V2RayTun.',
+        description: 'Подключить подписку в V2RayTun или открыть QR-код.',
         url: links.value?.v2raytun_deeplink ?? '',
+        target: 'v2raytun',
     },
 ]).filter((item) => item.url));
 
 const legacyLink = computed(() => links.value?.legacy_link || '');
-const qrOptions = computed(() => [
-    ...preferredLinks.value.map((item) => ({
-        key: item.key,
-        title: `QR-код для ${item.title}`,
-        description: `Открыть подписку через ${item.title}.`,
-        target: item.key === 'happ_deep_link' ? 'happ' : item.key === 'v2raytun_deeplink' ? 'v2raytun' : 'incy',
-    })),
-    {
-        key: 'legacy',
-        title: 'QR-код для старых приложений',
-        description: 'Ссылка старого формата для ручного импорта.',
-        target: 'legacy',
-    },
-]);
-
 const revokeQrUrl = () => {
     if (qrImageUrl.value) {
         URL.revokeObjectURL(qrImageUrl.value);
@@ -119,6 +132,7 @@ const openQrResult = async (target = 'legacy') => {
     loadingQr.value = true;
     actionError.value = '';
     qrStatus.value = '';
+    qrTarget.value = target;
     revokeQrUrl();
 
     try {
@@ -175,8 +189,8 @@ onBeforeUnmount(() => {
 
 <template>
     <TelegramMiniAppFrame
-        title="VLESS"
-        description="Получите прямую ссылку, быстрое подключение или QR-код."
+        title="Xray / VLESS"
+        description="Подключите VPN в Incy, Happ, V2RayTun или другом приложении."
     >
         <div v-if="copyToast" class="tg-toast" role="status">{{ copyToast }}</div>
         <section v-if="state === 'loading'" class="tg-section">
@@ -213,53 +227,11 @@ onBeforeUnmount(() => {
                         <AppIcon name="chevronLeft" />
                         <span>Назад ко всем конфигам</span>
                     </Link>
-                    <h2>Стандартные</h2>
+                    <h2>Xray / VLESS</h2>
+                    <p>Выберите приложение для подключения или QR-код.</p>
                 </div>
 
-                <button class="tg-list-card tg-list-card--button" type="button" @click="step = 'links'">
-                    <div class="tg-list-card__icon">
-                        <AppIcon name="bolt" />
-                    </div>
-                    <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Добавить конфигурацию в VPN-приложение</div>
-                        <div class="tg-list-card__description">Быстрое подключение для Happ, V2RayTun и других клиентов.</div>
-                    </div>
-                    <div class="tg-list-card__aside">
-                        <AppIcon name="chevronRight" />
-                    </div>
-                </button>
-
-                <button class="tg-list-card tg-list-card--button" type="button" :disabled="loadingQr" @click="step = 'qr-options'">
-                    <div class="tg-list-card__icon tg-list-card__icon--blue">
-                        <AppIcon name="qrcode" />
-                    </div>
-                    <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">Показать QR-код</div>
-                        <div class="tg-list-card__description">Выберите приложение или старую версию ссылки.</div>
-                    </div>
-                    <div class="tg-list-card__aside">
-                        <AppIcon name="chevronRight" />
-                    </div>
-                </button>
-            </section>
-
-            <section v-else-if="step === 'links'" class="tg-section">
-                <div class="tg-page-header__copy">
-                    <Link class="tg-link-button" :href="configHubHref">
-                        <AppIcon name="chevronLeft" />
-                        <span>Назад ко всем конфигам</span>
-                    </Link>
-                    <h2>Откройте подписку в приложении</h2>
-                    <p>Нажмите на нужный клиент. Если приложение не поддерживает импорт по ссылке, скопируйте прямую ссылку.</p>
-                </div>
-
-                <button
-                    v-for="item in preferredLinks"
-                    :key="item.key"
-                    class="tg-list-card tg-list-card--button"
-                    type="button"
-                    @click="openTelegramExternalLink(item.url)"
-                >
+                <div v-for="item in preferredLinks" :key="item.key" class="tg-list-card">
                     <div class="tg-list-card__icon">
                         <AppIcon name="shield" />
                     </div>
@@ -267,62 +239,33 @@ onBeforeUnmount(() => {
                         <div class="tg-list-card__title">{{ item.title }}</div>
                         <div class="tg-list-card__description">{{ item.description }}</div>
                     </div>
-                    <div class="tg-list-card__aside tg-inline-actions">
-                        <button
-                            class="tg-icon-button tg-icon-button--soft tg-copy-button"
-                            type="button"
-                            aria-label="Скопировать ссылку"
-                            @click.stop="copyText(item.url, 'Откройте ссылку в браузере, а не внутри приложения.')"
-                        >
-                            <AppIcon name="copy" />
+                    <div class="tg-inline-actions">
+                        <button class="tg-button tg-button--soft" type="button" @click="openTelegramExternalLink(item.url)">
+                            <AppIcon name="bolt" />
+                            <span>Подключить</span>
+                        </button>
+                        <button class="tg-button tg-button--secondary" type="button" :disabled="loadingQr" @click="openQrResult(item.target)">
+                            <AppIcon name="qrcode" />
+                            <span>QR-код</span>
                         </button>
                     </div>
-                </button>
+                </div>
 
                 <div class="tg-surface-card tg-stack">
-                    <div class="tg-section__title">Ссылка для старых приложений</div>
+                    <div class="tg-section__title">QR-код старого формата</div>
+                    <p class="tg-muted-text">Для ручного импорта в старые или неподдерживаемые приложения.</p>
                     <div class="tg-code-block">{{ legacyLink || 'Ссылка недоступна' }}</div>
-                    <p class="tg-muted-text">Это ссылка старой версии. Для использования новой версии нажимайте кнопки выше.</p>
                     <div class="tg-inline-actions">
                         <button class="tg-button tg-button--secondary" type="button" @click="copyText(legacyLink)">
                             <AppIcon name="copy" />
-                            <span>Скопировать</span>
+                            <span>Скопировать ссылку</span>
                         </button>
-                        <button class="tg-button tg-button--soft" type="button" @click="step = 'qr-options'">
+                        <button class="tg-button tg-button--soft" type="button" :disabled="loadingQr" @click="openQrResult('legacy')">
                             <AppIcon name="qrcode" />
-                            <span>Показать QR</span>
+                            <span>QR-код</span>
                         </button>
                     </div>
                 </div>
-
-                <p v-if="actionError" class="tg-error">{{ actionError }}</p>
-            </section>
-
-            <section v-else-if="step === 'qr-options'" class="tg-section">
-                <div class="tg-page-header__copy">
-                    <button class="tg-link-button" type="button" @click="step = 'menu'">
-                        <AppIcon name="chevronLeft" />
-                        <span>Назад</span>
-                    </button>
-                    <h2>Выберите QR-код</h2>
-                    <p>Каждый QR-код открывает подходящий формат ссылки.</p>
-                </div>
-
-                <button
-                    v-for="item in qrOptions"
-                    :key="item.key"
-                    class="tg-list-card tg-list-card--button"
-                    type="button"
-                    :disabled="loadingQr"
-                    @click="openQrResult(item.target)"
-                >
-                    <div class="tg-list-card__icon tg-list-card__icon--blue"><AppIcon name="qrcode" /></div>
-                    <div class="tg-list-card__body">
-                        <div class="tg-list-card__title">{{ item.title }}</div>
-                        <div class="tg-list-card__description">{{ item.description }}</div>
-                    </div>
-                    <div class="tg-list-card__aside"><AppIcon name="chevronRight" /></div>
-                </button>
             </section>
 
             <section v-else class="tg-section">
@@ -331,12 +274,12 @@ onBeforeUnmount(() => {
                         <AppIcon name="chevronLeft" />
                         <span>Назад ко всем конфигам</span>
                     </Link>
-                    <h2>Импорт по QR-коду</h2>
-                    <p>Откройте совместимый клиент и отсканируйте код.</p>
+                    <h2>{{ qrTitle }}</h2>
+                    <p>{{ qrDescription }}</p>
                 </div>
 
                 <div class="tg-qr-card">
-                    <img v-if="qrImageUrl" :src="qrImageUrl" alt="VLESS QR" class="tg-qr-card__image">
+                    <img v-if="qrImageUrl" :src="qrImageUrl" :alt="qrTitle" class="tg-qr-card__image">
                 </div>
 
                 <div class="tg-actions">
@@ -344,7 +287,7 @@ onBeforeUnmount(() => {
                         <AppIcon name="send" />
                         <span>{{ sendingQrToBot ? 'Отправляем...' : 'Отправить QR в Telegram' }}</span>
                     </button>
-                    <button class="tg-button tg-button--soft" type="button" @click="copyText(legacyLink)">
+                    <button class="tg-button tg-button--soft" type="button" @click="copyText(qrCopyLink)">
                         <AppIcon name="copy" />
                         <span>Скопировать ссылку</span>
                     </button>

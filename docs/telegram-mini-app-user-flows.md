@@ -72,13 +72,14 @@ VLESS menu flow:
 
 1. User opens `Home -> VLESS`.
 2. Frontend calls `GET /api/users/{telegramId}/vless/link` or mini-app proxy `GET /telegram-app/vless`.
-3. If access is available, show VLESS actions.
+3. If access is available, show direct app-selection cards for Incy, Happ, and V2RayTun.
 4. If no access, show debt/no-access and link to `Payments`.
 
 Actions:
 
-- `Link`: show deep links and raw link from `GET /api/users/{telegramId}/vless/link`.
-- `QR Code`: show QR from `GET /api/users/{telegramId}/vless/qr-code`.
+- `Connect`: open the protected app-specific deep link from `GET /api/users/{telegramId}/vless/link`.
+- `QR Code`: show the selected app-specific QR from `GET /api/users/{telegramId}/vless/qr-code?target=...`.
+- `Legacy`: copy or show the old-format subscription URL for manual/unsupported-app import.
 - `Whitelist`: open `/telegram-app/vless-wl?step=links`.
 - `Home`: return to Home.
 
@@ -218,8 +219,9 @@ WireGuard:
 
 VLESS:
 
-- `VLESS(menu) -> Link -> VLESS(links)`
-- `VLESS(menu) -> QR Code -> VLESS(qr)`
+- `VLESS(menu) -> Connect(app) -> external VPN app`
+- `VLESS(menu) -> QR Code(app) -> VLESS(qr:app)`
+- `VLESS(menu) -> Legacy copy/QR -> VLESS(qr:legacy)`
 - `VLESS(menu) -> Whitelist -> VLESS_WL(links)`
 - `VLESS(links) -> Back -> VLESS(menu)`
 - `VLESS(qr) -> Back -> VLESS(menu)`

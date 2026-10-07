@@ -8,6 +8,7 @@ use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\XrayInbound;
+use App\Models\XrayCustomConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -15,6 +16,39 @@ use Tests\TestCase;
 class ServerEditPageTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_connect_order_page_returns_mixed_connect_groups(): void
+    {
+        $admin = User::factory()->create();
+        $server = Server::query()->create([
+            'name' => 'Sweden',
+            'code' => 'SE-1',
+            'sort_order' => 1,
+            'ip' => '10.0.0.17',
+            'type' => Server::TYPE_VLESS,
+        ]);
+        $customConfig = XrayCustomConfig::query()->create([
+            'name' => 'Custom profile',
+            'slug' => 'custom-profile',
+            'sort_order' => 0,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('servers.connect-order'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Servers/ConnectOrder')
+                ->has('connect_sort_items')
+                ->where('connect_sort_items', function ($items) use ($customConfig, $server): bool {
+                    return collect($items)->contains(fn (array $item): bool =>
+                        $item['type'] === 'xray_custom_config' && $item['id'] === $customConfig->id
+                    ) && collect($items)->contains(fn (array $item): bool =>
+                        $item['type'] === 'server' && $item['id'] === $server->id
+                    );
+                })
+            );
+    }
 
     public function test_edit_page_returns_connect_items_as_plain_array(): void
     {

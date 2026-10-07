@@ -30,50 +30,18 @@ class ServerController extends Controller
     public function index(Request $request)
     {
         $servers = Server::query()->ordered()->get();
-        $externalSubscriptions = VlessExternalSubscription::query()->ordered()->get();
-        $xrayCustomConfigs = XrayCustomConfig::query()->ordered()->get();
-        $connectSortItems = collect([
-            ...collect(ServerResource::collection($servers)->toArray($request))
-                ->map(fn (array $server) => [
-                    'id' => (int) $server['id'],
-                    'type' => 'server',
-                    'sort_order' => (int) $server['sort_order'],
-                    'name' => (string) $server['name'],
-                    'code' => (string) $server['code'],
-                    'label' => 'Сервер',
-                ])
-                ->all(),
-            ...collect(VlessExternalSubscriptionResource::collection($externalSubscriptions)->toArray($request))
-                ->map(fn (array $subscription) => [
-                    'id' => (int) $subscription['id'],
-                    'type' => 'external_subscription',
-                    'sort_order' => (int) $subscription['sort_order'],
-                    'name' => (string) $subscription['name'],
-                    'code' => 'EXT',
-                    'label' => 'Внешняя подписка',
-                ])
-                ->all(),
-            ...$xrayCustomConfigs->map(fn (XrayCustomConfig $config): array => [
-                'id' => (int) $config->id,
-                'type' => 'xray_custom_config',
-                'sort_order' => (int) $config->sort_order,
-                'name' => (string) $config->name,
-                'code' => 'XRAY',
-                'label' => 'Xray custom config',
-            ])->all(),
-        ])
-            ->sortBy([
-                fn (array $item) => (int) $item['sort_order'],
-                fn (array $item) => (string) $item['type'],
-                fn (array $item) => (int) $item['id'],
-            ])
-            ->values()
-            ->all();
 
         return $this->inertia('Servers/Index', [
             'servers' => ServerResource::collection($servers)->toArray($request),
-            'connect_sort_items' => $connectSortItems,
+        ]);
+    }
+
+    public function connectOrder(Request $request)
+    {
+        return $this->inertia('Servers/ConnectOrder', [
+            'connect_sort_items' => $this->connectSortItems($request),
             'sort_connect_groups_url' => route('servers.sort-connect-groups'),
+            'servers_page_url' => route('servers.index'),
         ]);
     }
 
@@ -179,5 +147,51 @@ class ServerController extends Controller
 
         return redirect()->back()
             ->with('success', 'Порядок connect-элементов обновлён.');
+    }
+
+    /** @return array<int, array{id:int,type:string,sort_order:int,name:string,code:string,label:string}> */
+    private function connectSortItems(Request $request): array
+    {
+        $servers = Server::query()->ordered()->get();
+        $externalSubscriptions = VlessExternalSubscription::query()->ordered()->get();
+        $xrayCustomConfigs = XrayCustomConfig::query()->ordered()->get();
+
+        return collect([
+            ...collect(ServerResource::collection($servers)->toArray($request))
+                ->map(fn (array $server): array => [
+                    'id' => (int) $server['id'],
+                    'type' => 'server',
+                    'sort_order' => (int) $server['sort_order'],
+                    'name' => (string) $server['name'],
+                    'code' => (string) $server['code'],
+                    'label' => 'Сервер',
+                ])
+                ->all(),
+            ...collect(VlessExternalSubscriptionResource::collection($externalSubscriptions)->toArray($request))
+                ->map(fn (array $subscription): array => [
+                    'id' => (int) $subscription['id'],
+                    'type' => 'external_subscription',
+                    'sort_order' => (int) $subscription['sort_order'],
+                    'name' => (string) $subscription['name'],
+                    'code' => 'EXT',
+                    'label' => 'Внешняя подписка',
+                ])
+                ->all(),
+            ...$xrayCustomConfigs->map(fn (XrayCustomConfig $config): array => [
+                'id' => (int) $config->id,
+                'type' => 'xray_custom_config',
+                'sort_order' => (int) $config->sort_order,
+                'name' => (string) $config->name,
+                'code' => 'XRAY',
+                'label' => 'Xray custom config',
+            ])->all(),
+        ])
+            ->sortBy([
+                fn (array $item): int => $item['sort_order'],
+                fn (array $item): string => $item['type'],
+                fn (array $item): int => $item['id'],
+            ])
+            ->values()
+            ->all();
     }
 }

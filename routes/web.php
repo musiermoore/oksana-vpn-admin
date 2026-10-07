@@ -84,6 +84,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('transactions', TransactionController::class);
     Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'edit']);
     Route::resource('current-payments', CurrentPaymentController::class);
+    Route::get('servers/connect-order', [ServerController::class, 'connectOrder'])
+        ->name('servers.connect-order');
     Route::resource('servers', ServerController::class);
     Route::post('servers/connect-groups/sort', [ServerController::class, 'sortConnectGroups'])
         ->name('servers.sort-connect-groups');

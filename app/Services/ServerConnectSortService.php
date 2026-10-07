@@ -19,14 +19,15 @@ class ServerConnectSortService
     public function sortGroups(ConnectGroupSortData $data): void
     {
         DB::transaction(function () use ($data): void {
-            foreach (array_values($data->items) as $index => $item) {
+            foreach ($data->items as $item) {
                 $type = (string) ($item['type'] ?? '');
                 $id = (int) ($item['id'] ?? 0);
+                $sortOrder = (int) ($item['sort_order'] ?? 0);
 
                 match ($type) {
-                    'server' => $this->updateServerSortOrder($id, $index),
-                    'external_subscription' => $this->updateExternalSubscriptionSortOrder($id, $index),
-                    'xray_custom_config' => $this->updateXrayCustomConfigSortOrder($id, $index),
+                    'server' => $this->updateServerSortOrder($id, $sortOrder),
+                    'external_subscription' => $this->updateExternalSubscriptionSortOrder($id, $sortOrder),
+                    'xray_custom_config' => $this->updateXrayCustomConfigSortOrder($id, $sortOrder),
                     default => throw new RuntimeException('Неизвестный тип элемента сортировки.'),
                 };
             }

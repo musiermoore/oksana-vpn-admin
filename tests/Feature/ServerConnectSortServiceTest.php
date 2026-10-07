@@ -43,16 +43,16 @@ class ServerConnectSortServiceTest extends TestCase
 
         app(ServerConnectSortService::class)->sortGroups(new ConnectGroupSortData(
             items: [
-                ['type' => 'server', 'id' => $serverOne->id],
-                ['type' => 'external_subscription', 'id' => $externalSubscription->id],
-                ['type' => 'xray_custom_config', 'id' => $customConfig->id],
-                ['type' => 'server', 'id' => $serverTwo->id],
+                ['type' => 'server', 'id' => $serverOne->id, 'sort_order' => 4],
+                ['type' => 'external_subscription', 'id' => $externalSubscription->id, 'sort_order' => 1],
+                ['type' => 'xray_custom_config', 'id' => $customConfig->id, 'sort_order' => 2],
+                ['type' => 'server', 'id' => $serverTwo->id, 'sort_order' => 3],
             ],
         ));
 
         $this->assertDatabaseHas('servers', [
             'id' => $serverOne->id,
-            'sort_order' => 0,
+            'sort_order' => 4,
         ]);
         $this->assertDatabaseHas('vless_external_subscriptions', [
             'id' => $externalSubscription->id,

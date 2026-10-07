@@ -25,6 +25,7 @@ class SortConnectGroupsRequest extends DataFormRequest
                 'xray_custom_config',
             ])],
             'items.*.id' => ['required', 'integer', 'min:1'],
+            'items.*.sort_order' => ['required', 'integer', 'min:0'],
         ];
     }
 

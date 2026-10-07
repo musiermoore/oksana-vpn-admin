@@ -9,7 +9,7 @@ use App\DTOs\Data;
 class ConnectGroupSortData extends Data
 {
     /**
-     * @param  array<int, array{type:string,id:int}>  $items
+     * @param  array<int, array{type:string,id:int,sort_order:int}>  $items
      */
     public function __construct(
         public array $items,

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
@@ -191,5 +192,27 @@ class ApiRequestLoggingTest extends TestCase
         $this->assertSame($token, $payload['params']['query']['token'] ?? null);
         $this->assertStringContainsString('203.0.113.17', (string) $payload['forwarded_for']);
         $this->assertSame('DeepLinkClient/1.0', $payload['user_agent']);
+    }
+
+    public function test_payload_factory_resolves_connect_v2_user_from_uuid_token(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Connect V2 User',
+            'telegram' => '@connect-v2-user',
+            'telegram_id' => '888888',
+            'uuid' => (string) Str::uuid(),
+        ]);
+
+        $request = HttpRequest::create(route('vless.connect-v2-deep-link', [
+            'client' => 'v2raytun',
+            'token' => $user->uuid,
+        ], absolute: false), 'GET');
+
+        $route = app('router')->getRoutes()->match($request);
+        $request->setRouteResolver(fn () => $route);
+
+        $payload = app(ApiRequestLogPayloadFactory::class)->fromRequest($request, new Response());
+
+        $this->assertSame($user->id, $payload['user_id']);
     }
 }

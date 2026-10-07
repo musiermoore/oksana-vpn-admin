@@ -5,8 +5,11 @@ namespace App\Support;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -258,7 +261,17 @@ class ApiRequestLogPayloadFactory
     {
         try {
             if ($request->filled('token')) {
-                $payload = Crypt::decrypt($request->string('token')->toString());
+                $token = $request->string('token')->toString();
+
+                if (Str::isUuid($token)) {
+                    $user = User::query()->where('uuid', $token)->first();
+
+                    return $user === null
+                        ? null
+                        : ['tg' => (string) $user->telegram_id, 'i' => (int) $user->id];
+                }
+
+                $payload = Crypt::decrypt($token);
 
                 if (! is_array($payload)) {
                     return null;
@@ -272,6 +285,13 @@ class ApiRequestLogPayloadFactory
             } else {
                 return null;
             }
+        } catch (DecryptException $exception) {
+            Log::debug('connect.credentials.invalid_encrypted_token', [
+                'path' => $request->path(),
+                'exception' => $exception::class,
+            ]);
+
+            return null;
         } catch (Throwable $exception) {
             report($exception);
 

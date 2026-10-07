@@ -35,10 +35,14 @@ final class ConnectJsonProfileOrderer
                 'profiles' => json_decode($builder->buildForCustomConfig($customNodes, $config)->content),
             ]))
             ->filter(fn (array $entry): bool => is_array($entry['profiles']))
-            ->sortBy([
-                fn (array $entry): int => $entry['sort_order'],
-                fn (array $entry): string => $entry['type'],
-                fn (array $entry): int => $entry['id'],
+            ->sort(fn (array $left, array $right): int => [
+                $left['sort_order'],
+                $left['type'],
+                $left['id'],
+            ] <=> [
+                $right['sort_order'],
+                $right['type'],
+                $right['id'],
             ]);
 
         $profiles = $entries

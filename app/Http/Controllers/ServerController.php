@@ -186,10 +186,14 @@ class ServerController extends Controller
                 'label' => 'Xray custom config',
             ])->all(),
         ])
-            ->sortBy([
-                fn (array $item): int => $item['sort_order'],
-                fn (array $item): string => $item['type'],
-                fn (array $item): int => $item['id'],
+            ->sort(fn (array $left, array $right): int => [
+                $left['sort_order'],
+                $left['type'],
+                $left['id'],
+            ] <=> [
+                $right['sort_order'],
+                $right['type'],
+                $right['id'],
             ])
             ->values()
             ->all();

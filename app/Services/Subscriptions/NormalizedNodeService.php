@@ -42,13 +42,20 @@ class NormalizedNodeService
             ]);
 
         $items = $vlessConfigs
-            ->sortBy([
-                fn (array $item) => (int) $item['group_sort_order'],
-                fn (array $item) => (int) $item['item_sort_order'],
-                fn (array $item) => (int) $item['server_id'],
-                fn (array $item) => (string) $item['server_sort'],
-                fn (array $item) => $this->getTypeSortOrder((string) $item['type']),
-                fn (array $item) => (int) $item['config_id'],
+            ->sort(fn (array $left, array $right): int => [
+                (int) $left['group_sort_order'],
+                (int) $left['item_sort_order'],
+                (int) $left['server_id'],
+                (string) $left['server_sort'],
+                $this->getTypeSortOrder((string) $left['type']),
+                (int) $left['config_id'],
+            ] <=> [
+                (int) $right['group_sort_order'],
+                (int) $right['item_sort_order'],
+                (int) $right['server_id'],
+                (string) $right['server_sort'],
+                $this->getTypeSortOrder((string) $right['type']),
+                (int) $right['config_id'],
             ])
             ->values();
 
@@ -57,15 +64,24 @@ class NormalizedNodeService
         $nodes = $items
             ->flatMap(fn (array $item) => $this->buildNodesForItem($item, $proxyIndex))
             ->unique(fn (NormalizedNode $node) => $node->uri)
-            ->sortBy([
-                fn (NormalizedNode $node) => $node->sortGroupOrder,
-                fn (NormalizedNode $node) => $node->sortItemOrder,
-                fn (NormalizedNode $node) => $node->serverId,
-                fn (NormalizedNode $node) => $node->sortServerName,
-                fn (NormalizedNode $node) => $this->getTypeSortOrder($node->protocol),
-                fn (NormalizedNode $node) => $node->configId,
-                fn (NormalizedNode $node) => mb_strtolower($node->transport),
-                fn (NormalizedNode $node) => $node->uri,
+            ->sort(fn (NormalizedNode $left, NormalizedNode $right): int => [
+                $left->sortGroupOrder,
+                $left->sortItemOrder,
+                $left->serverId,
+                $left->sortServerName,
+                $this->getTypeSortOrder($left->protocol),
+                $left->configId,
+                mb_strtolower($left->transport),
+                $left->uri,
+            ] <=> [
+                $right->sortGroupOrder,
+                $right->sortItemOrder,
+                $right->serverId,
+                $right->sortServerName,
+                $this->getTypeSortOrder($right->protocol),
+                $right->configId,
+                mb_strtolower($right->transport),
+                $right->uri,
             ])
             ->values();
 
@@ -298,9 +314,12 @@ class NormalizedNodeService
 
         return collect($proxyIndex)
             ->map(fn (Collection $proxies) => $proxies
-                ->sortBy([
-                    fn (array $item) => (int) $item['sort_order'],
-                    fn (array $item) => (int) $item['proxy']->id,
+                ->sort(fn (array $left, array $right): int => [
+                    (int) $left['sort_order'],
+                    (int) $left['proxy']->id,
+                ] <=> [
+                    (int) $right['sort_order'],
+                    (int) $right['proxy']->id,
                 ])
                 ->values())
             ->all();

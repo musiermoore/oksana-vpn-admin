@@ -19,10 +19,14 @@ class NodeNameService
 
         foreach ($grouped as $group) {
             $sorted = $group
-                ->sortBy([
-                    fn (NormalizedNode $node) => $node->serverId,
-                    fn (NormalizedNode $node) => $node->configId,
-                    fn (NormalizedNode $node) => $node->uri,
+                ->sort(fn (NormalizedNode $left, NormalizedNode $right): int => [
+                    $left->serverId,
+                    $left->configId,
+                    $left->uri,
+                ] <=> [
+                    $right->serverId,
+                    $right->configId,
+                    $right->uri,
                 ])
                 ->values();
 

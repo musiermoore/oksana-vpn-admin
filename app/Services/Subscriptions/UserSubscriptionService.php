@@ -83,9 +83,23 @@ class UserSubscriptionService
 
     public function buildConnectV2(User $user, ?string $app = null): SubscriptionBuildResult
     {
-        if (in_array($app, ['happ', 'v2raytun'], true)) {
+        if ($app === 'happ') {
             return $this->buildFromNodes(
                 $this->buildNamedNodes($user),
+                'json',
+                XrayRouting::SUBSCRIPTION_CONNECT,
+                $user,
+            );
+        }
+
+        if ($app === 'v2raytun') {
+            $nodes = array_values(array_filter(
+                $this->buildNamedNodes($user),
+                static fn (NormalizedNode $node): bool => $node->transport !== 'xhttp',
+            ));
+
+            return $this->buildFromNodes(
+                $nodes,
                 'json',
                 XrayRouting::SUBSCRIPTION_CONNECT,
                 $user,

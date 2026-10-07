@@ -12,7 +12,7 @@ class XrayCustomConfigOutboundGroup extends Model
 {
     protected $fillable = [
         'xray_custom_config_id', 'name', 'tag', 'strategy', 'fallback_group_id',
-        'xray_inbound_ids', 'external_subscription_config_ids', 'proxy_ids',
+        'xray_inbound_ids', 'external_subscription_config_ids', 'external_subscription_ids', 'proxy_ids',
         'strategy_settings', 'sort_order', 'is_active',
     ];
 
@@ -22,6 +22,7 @@ class XrayCustomConfigOutboundGroup extends Model
             'strategy' => XrayBalancerStrategy::class,
             'xray_inbound_ids' => 'array',
             'external_subscription_config_ids' => 'array',
+            'external_subscription_ids' => 'array',
             'proxy_ids' => 'array',
             'strategy_settings' => 'array',
             'sort_order' => 'integer',

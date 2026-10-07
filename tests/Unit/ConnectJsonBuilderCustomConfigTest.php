@@ -31,6 +31,7 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
             'strategy' => 'roundRobin',
             'fallback_group_id' => 2,
             'xray_inbound_ids' => [10],
+            'external_subscription_ids' => [20],
             'strategy_settings' => [],
             'is_active' => true,
         ]);
@@ -80,10 +81,25 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
             sortServerName: 'Germany',
             meta: ['xray_inbound_id' => 10],
         );
+        $externalNode = new NormalizedNode(
+            id: 'external-1',
+            serverName: 'External subscription',
+            sortGroupOrder: 0,
+            sortItemOrder: 1,
+            protocol: 'vless',
+            transport: 'tcp',
+            uri: 'vless://22222222-2222-2222-2222-222222222222@external.example.com:443?type=tcp&security=tls&sni=external.example.com#External',
+            serverId: 2,
+            configId: 2,
+            sourceType: 'external_subscription',
+            sortServerName: 'external subscription',
+            meta: ['external_subscription_id' => 20, 'external_subscription_config_id' => 200],
+        );
 
-        $payload = json_decode(app(ConnectJsonBuilder::class)->buildForCustomConfig([$node], $config)->content, true, 512, JSON_THROW_ON_ERROR);
+        $payload = json_decode(app(ConnectJsonBuilder::class)->buildForCustomConfig([$node, $externalNode], $config)->content, true, 512, JSON_THROW_ON_ERROR);
         $profile = $payload[0];
 
+        $this->assertContains('germany-2', array_column($profile['outbounds'], 'tag'));
         $this->assertSame(['8.8.8.8', '1.1.1.1'], data_get($profile, 'dns.servers'));
         $this->assertSame('direct', data_get($profile, 'geodata.outbound'));
         $this->assertSame(['germany-', 'finland-'], data_get($profile, 'observatory.subjectSelector'));
@@ -95,6 +111,6 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
         $this->assertSame('tcp,udp', data_get($profile, 'routing.rules.2.network'));
         $this->assertSame('germany', data_get($profile, 'routing.rules.2.balancerTag'));
         $this->assertCount(3, $profile['routing']['rules']);
-        $this->assertSame('loopback', data_get($profile, 'outbounds.1.protocol'));
+        $this->assertContains('loopback', array_column($profile['outbounds'], 'protocol'));
     }
 }

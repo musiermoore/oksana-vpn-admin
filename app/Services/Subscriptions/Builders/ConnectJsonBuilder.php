@@ -60,21 +60,27 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         $selectedInboundIds = array_map('intval', $customConfig->xray_inbound_ids ?? []);
         $selectedExternalIds = array_map('intval', $customConfig->external_subscription_config_ids ?? []);
+        $selectedSubscriptionIds = array_map('intval', $customConfig->external_subscription_ids ?? []);
         $selectedProxyIds = array_map('intval', $customConfig->proxy_ids ?? []);
 
         $nodes = array_values(array_filter($nodes, function (NormalizedNode $node) use (
             $selectedInboundIds,
             $selectedExternalIds,
+            $selectedSubscriptionIds,
             $selectedProxyIds,
         ): bool {
             $inboundId = isset($node->meta['xray_inbound_id']) ? (int) $node->meta['xray_inbound_id'] : null;
             $externalId = isset($node->meta['external_subscription_config_id'])
                 ? (int) $node->meta['external_subscription_config_id']
                 : null;
+            $subscriptionId = isset($node->meta['external_subscription_id'])
+                ? (int) $node->meta['external_subscription_id']
+                : null;
             $proxyId = isset($node->meta['proxy_id']) ? (int) $node->meta['proxy_id'] : null;
 
             return ($inboundId !== null && in_array($inboundId, $selectedInboundIds, true))
                 || ($externalId !== null && in_array($externalId, $selectedExternalIds, true))
+                || ($subscriptionId !== null && in_array($subscriptionId, $selectedSubscriptionIds, true))
                 || ($proxyId !== null && in_array($proxyId, $selectedProxyIds, true));
         }));
 
@@ -128,7 +134,13 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         $outbounds = [];
 
         foreach ($groups as $group) {
-            $groupNodes = $this->filterNodesForTargets($nodes, $group->xray_inbound_ids, $group->external_subscription_config_ids, $group->proxy_ids);
+            $groupNodes = $this->filterNodesForTargets(
+                $nodes,
+                $group->xray_inbound_ids,
+                $group->external_subscription_config_ids,
+                $group->external_subscription_ids,
+                $group->proxy_ids,
+            );
 
             foreach ($groupNodes as $index => $node) {
                 $outbound = $this->buildOutboundForNode($node);
@@ -306,19 +318,28 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     }
 
     /** @return array<int, NormalizedNode> */
-    private function filterNodesForTargets(array $nodes, ?array $inboundIds, ?array $externalIds, ?array $proxyIds): array
+    private function filterNodesForTargets(
+        array $nodes,
+        ?array $inboundIds,
+        ?array $externalIds,
+        ?array $subscriptionIds,
+        ?array $proxyIds,
+    ): array
     {
         $inboundIds = array_map('intval', $inboundIds ?? []);
         $externalIds = array_map('intval', $externalIds ?? []);
+        $subscriptionIds = array_map('intval', $subscriptionIds ?? []);
         $proxyIds = array_map('intval', $proxyIds ?? []);
 
-        return array_values(array_filter($nodes, function (NormalizedNode $node) use ($inboundIds, $externalIds, $proxyIds): bool {
+        return array_values(array_filter($nodes, function (NormalizedNode $node) use ($inboundIds, $externalIds, $subscriptionIds, $proxyIds): bool {
             $inbound = isset($node->meta['xray_inbound_id']) ? (int) $node->meta['xray_inbound_id'] : null;
             $external = isset($node->meta['external_subscription_config_id']) ? (int) $node->meta['external_subscription_config_id'] : null;
+            $subscription = isset($node->meta['external_subscription_id']) ? (int) $node->meta['external_subscription_id'] : null;
             $proxy = isset($node->meta['proxy_id']) ? (int) $node->meta['proxy_id'] : null;
 
             return ($inbound !== null && in_array($inbound, $inboundIds, true))
                 || ($external !== null && in_array($external, $externalIds, true))
+                || ($subscription !== null && in_array($subscription, $subscriptionIds, true))
                 || ($proxy !== null && in_array($proxy, $proxyIds, true));
         }));
     }

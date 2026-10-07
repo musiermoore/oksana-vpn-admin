@@ -13,7 +13,7 @@ class XrayCustomConfig extends Model
 {
     protected $fillable = [
         'name', 'slug', 'description', 'dns_settings_id', 'geodata_id',
-        'xray_inbound_ids', 'external_subscription_config_ids', 'proxy_ids',
+        'xray_inbound_ids', 'external_subscription_config_ids', 'external_subscription_ids', 'proxy_ids',
         'xray_routing_ids', 'base_settings', 'is_active', 'sort_order',
     ];
 
@@ -22,6 +22,7 @@ class XrayCustomConfig extends Model
         return [
             'xray_inbound_ids' => 'array',
             'external_subscription_config_ids' => 'array',
+            'external_subscription_ids' => 'array',
             'proxy_ids' => 'array',
             'xray_routing_ids' => 'array',
             'base_settings' => 'array',

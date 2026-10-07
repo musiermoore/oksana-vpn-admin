@@ -11,6 +11,7 @@ class XrayCustomConfigData extends Data
     /**
      * @param  array<int, int>  $xray_inbound_ids
      * @param  array<int, int>  $external_subscription_config_ids
+     * @param  array<int, int>  $external_subscription_ids
      * @param  array<int, int>  $proxy_ids
      * @param  array<int, int>  $xray_routing_ids
      * @param  array<string, mixed>  $base_settings
@@ -25,6 +26,7 @@ class XrayCustomConfigData extends Data
         public ?int $geodata_id,
         public array $xray_inbound_ids,
         public array $external_subscription_config_ids,
+        public array $external_subscription_ids,
         public array $proxy_ids,
         public array $xray_routing_ids,
         public array $base_settings,

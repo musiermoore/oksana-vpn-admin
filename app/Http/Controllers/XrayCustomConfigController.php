@@ -11,6 +11,7 @@ use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessExternalSubscription;
+use App\Models\VlessExternalSubscriptionConfig;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayCustomConfigRoute;
@@ -233,6 +234,8 @@ class XrayCustomConfigController extends Controller
             'geodata_id' => $config->geodata_id,
             'xray_inbound_ids' => $config->xray_inbound_ids ?? [],
             'external_subscription_config_ids' => $config->external_subscription_config_ids ?? [],
+            'external_subscription_ids' => $config->external_subscription_ids
+                ?? $this->subscriptionIdsForConfigIds($config->external_subscription_config_ids ?? []),
             'proxy_ids' => $config->proxy_ids ?? [],
             'xray_routing_ids' => $config->xray_routing_ids ?? [],
             'base_settings' => $config->base_settings ?? [],
@@ -244,6 +247,8 @@ class XrayCustomConfigController extends Controller
                     'fallback_group_tag' => $group->fallbackGroup?->tag,
                     'xray_inbound_ids' => $group->xray_inbound_ids ?? [],
                     'external_subscription_config_ids' => $group->external_subscription_config_ids ?? [],
+                    'external_subscription_ids' => $group->external_subscription_ids
+                        ?? $this->subscriptionIdsForConfigIds($group->external_subscription_config_ids ?? []),
                     'proxy_ids' => $group->proxy_ids ?? [],
                     'strategy_settings' => $group->strategy_settings ?? [],
                     'sort_order' => $group->sort_order,
@@ -320,6 +325,7 @@ class XrayCustomConfigController extends Controller
                 'strategy' => (string) ($group['strategy'] ?? 'roundRobin'),
                 'xray_inbound_ids' => $group['xray_inbound_ids'] ?? [],
                 'external_subscription_config_ids' => $group['external_subscription_config_ids'] ?? [],
+                'external_subscription_ids' => $group['external_subscription_ids'] ?? [],
                 'proxy_ids' => $group['proxy_ids'] ?? [],
                 'strategy_settings' => $group['strategy_settings'] ?? [],
                 'sort_order' => (int) ($group['sort_order'] ?? $index),
@@ -360,6 +366,7 @@ class XrayCustomConfigController extends Controller
                 'strategy' => (string) ($group['strategy'] ?? 'roundRobin'),
                 'xray_inbound_ids' => $group['xray_inbound_ids'] ?? [],
                 'external_subscription_config_ids' => $group['external_subscription_config_ids'] ?? [],
+                'external_subscription_ids' => $group['external_subscription_ids'] ?? [],
                 'proxy_ids' => $group['proxy_ids'] ?? [],
                 'strategy_settings' => $group['strategy_settings'] ?? [],
                 'sort_order' => (int) ($group['sort_order'] ?? $index),
@@ -391,5 +398,21 @@ class XrayCustomConfigController extends Controller
 
         $config->setRelation('outboundGroups', collect($groups)->sortBy('sort_order')->values());
         $config->setRelation('routes', collect($routes)->sortBy('sort_order')->values());
+    }
+
+    /** @param array<int, int|string> $configIds */
+    private function subscriptionIdsForConfigIds(array $configIds): array
+    {
+        if ($configIds === []) {
+            return [];
+        }
+
+        return VlessExternalSubscriptionConfig::query()
+            ->whereIn('id', array_map('intval', $configIds))
+            ->pluck('vless_external_subscription_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

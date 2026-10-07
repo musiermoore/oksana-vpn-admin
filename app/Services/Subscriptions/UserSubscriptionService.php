@@ -126,7 +126,13 @@ class UserSubscriptionService
             return $result;
         }
 
-        $customNodes = $this->buildNamedNodes($user, VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM);
+        $customNodes = [
+            ...$this->buildNamedNodes($user, VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM),
+            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose(
+                $user,
+                VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
+            ),
+        ];
 
         foreach (XrayCustomConfig::query()
             ->active()

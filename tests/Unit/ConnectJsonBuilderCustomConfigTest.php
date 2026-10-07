@@ -8,14 +8,18 @@ use App\DTOs\Subscription\NormalizedNode;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayCustomConfigRoute;
+use App\Models\XrayRouting;
 use App\Models\XrayRoutingDnsSettings;
 use App\Models\XrayRoutingGeodata;
 use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
 use Illuminate\Support\Collection;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ConnectJsonBuilderCustomConfigTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_grouped_custom_config_builds_balancers_routes_fallback_and_direct_default(): void
     {
         $fallback = new XrayCustomConfigOutboundGroup([
@@ -40,6 +44,15 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
         $config = new XrayCustomConfig([
             'name' => 'Auto',
             'base_settings' => [],
+            'xray_routing_ids' => [1],
+        ]);
+        XrayRouting::query()->create([
+            'name' => 'Whitelist',
+            'outbound' => 'direct',
+            'subscription_types' => ['connect'],
+            'xray_inbound_ids' => [10],
+            'rules' => ['domain' => ['domain:example.ru']],
+            'is_active' => true,
         ]);
         $config->setRelation('dnsSettings', new XrayRoutingDnsSettings([
             'servers' => ['8.8.8.8', '1.1.1.1'],
@@ -107,10 +120,12 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
         $this->assertStringContainsString('"settings": {}', (string) app(ConnectJsonBuilder::class)->buildForCustomConfig([$node], $config)->content);
         $this->assertSame('leastPing', data_get($profile, 'routing.balancers.1.strategy.type'));
         $this->assertSame('germany-fallback-loop', data_get($profile, 'routing.balancers.0.fallbackTag'));
-        $this->assertSame('germany', data_get($profile, 'routing.rules.1.balancerTag'));
-        $this->assertSame('tcp,udp', data_get($profile, 'routing.rules.2.network'));
+        $this->assertSame('domain:example.ru', data_get($profile, 'routing.rules.1.domain.0'));
+        $this->assertSame('direct', data_get($profile, 'routing.rules.1.outboundTag'));
         $this->assertSame('germany', data_get($profile, 'routing.rules.2.balancerTag'));
-        $this->assertCount(3, $profile['routing']['rules']);
+        $this->assertSame('tcp,udp', data_get($profile, 'routing.rules.3.network'));
+        $this->assertSame('germany', data_get($profile, 'routing.rules.3.balancerTag'));
+        $this->assertCount(4, $profile['routing']['rules']);
         $this->assertContains('loopback', array_column($profile['outbounds'], 'protocol'));
     }
 }

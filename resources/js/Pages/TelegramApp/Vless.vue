@@ -238,16 +238,16 @@ onBeforeUnmount(() => {
                     <div class="tg-list-card__body">
                         <div class="tg-list-card__title">{{ item.title }}</div>
                         <div class="tg-list-card__description">{{ item.description }}</div>
-                    </div>
-                    <div class="tg-inline-actions">
-                        <button class="tg-button tg-button--soft" type="button" @click="openTelegramExternalLink(item.url)">
-                            <AppIcon name="bolt" />
-                            <span>Подключить</span>
-                        </button>
-                        <button class="tg-button tg-button--secondary" type="button" :disabled="loadingQr" @click="openQrResult(item.target)">
-                            <AppIcon name="qrcode" />
-                            <span>QR-код</span>
-                        </button>
+                        <div class="tg-inline-actions">
+                            <button class="tg-button tg-button--soft" type="button" @click="openTelegramExternalLink(item.url)">
+                                <AppIcon name="bolt" />
+                                <span>Подключить</span>
+                            </button>
+                            <button class="tg-button tg-button--secondary" type="button" :disabled="loadingQr" @click="openQrResult(item.target)">
+                                <AppIcon name="qrcode" />
+                                <span>QR-код</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

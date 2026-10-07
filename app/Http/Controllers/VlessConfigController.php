@@ -208,7 +208,13 @@ class VlessConfigController extends Controller
             'ext' => $subscription->fileExtension,
         ]);
 
-        return $this->subscriptionResponse($request, $user, $subscription, $metadataService);
+        $response = $this->subscriptionResponse($request, $user, $subscription, $metadataService);
+        $response->header(
+            'Announce',
+            'Вы используете старую версию подписки. Новую версию можно найти в боте: '.config('services.telegram.incy_links.bot'),
+        );
+
+        return $response;
     }
 
     public function connectV2(

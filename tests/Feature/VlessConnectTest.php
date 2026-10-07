@@ -2205,6 +2205,7 @@ class VlessConnectTest extends TestCase
         $response->assertOk();
         $response->assertHeader('Profile-Update-Interval', '1');
         $response->assertHeader('Profile-Title', 'Oksana VPN');
+        $response->assertHeader('Announce', 'Вы используете старую версию подписки. Новую версию можно найти в боте: '.config('services.telegram.incy_links.bot'));
         $response->assertHeader('Pragma', 'no-cache');
         $response->assertHeader('Expires', 'Thu, 01 Jan 1970 00:00:00 GMT');
         $response->assertHeader('X-Subscription-Devices-Limit', '5');

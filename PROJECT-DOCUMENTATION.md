@@ -161,6 +161,7 @@ Its order is explicit rather than inferred from ids:
 
 - `servers.sort_order` controls local server order
 - `vless_external_subscriptions.sort_order` controls where external groups appear among local servers
+- `xray_custom_configs.sort_order` controls where active custom JSON profiles appear among local servers and external groups in JSON subscription output
 - `xray_inbounds.sort_order` and `proxies.sort_order` control order inside one server
 - soft-deleted servers are excluded from `/connect` by default because `servers` now use Eloquent soft delete
 

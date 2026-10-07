@@ -163,7 +163,8 @@ Main `/connect`:
 - Successful requests update `user_connected_devices` by user, `User-Agent`, and route `connect`.
 - `skip_connection=true` disables device tracking for admin requests.
 - Output includes regular user VLESS nodes and external subscriptions with `include_in_main_subscription`.
-- Ordering is explicit: `servers.sort_order`, `vless_external_subscriptions.sort_order`, `xray_inbounds.sort_order`, and `proxies.sort_order`.
+- Ordering is explicit: `servers.sort_order`, `vless_external_subscriptions.sort_order`, `xray_custom_configs.sort_order`, `xray_inbounds.sort_order`, and `proxies.sort_order`.
+- Active Xray custom JSON profiles use the same shared connect-group order and are not appended unconditionally at the end of JSON output.
 - `proxies.server_id` makes proxy variants part of one server. `hide_main_node_name` makes the proxy display name stand alone.
 - Soft-deleted servers are excluded.
 - INCY requests receive Telegram links through `Support-Url`, `Profile-Web-Page-Url`, and `Announce-Url`: bot, news channel, and community chat.

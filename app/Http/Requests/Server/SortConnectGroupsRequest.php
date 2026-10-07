@@ -19,7 +19,11 @@ class SortConnectGroupsRequest extends DataFormRequest
     {
         return [
             'items' => ['required', 'array', 'min:1'],
-            'items.*.type' => ['required', 'string', Rule::in(['server', 'external_subscription'])],
+            'items.*.type' => ['required', 'string', Rule::in([
+                'server',
+                'external_subscription',
+                'xray_custom_config',
+            ])],
             'items.*.id' => ['required', 'integer', 'min:1'],
         ];
     }

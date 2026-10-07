@@ -10,6 +10,7 @@ use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\VlessExternalSubscription;
 use App\Models\XrayInbound;
+use App\Models\XrayCustomConfig;
 use App\Services\ServerConnectSortService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,7 +19,7 @@ class ServerConnectSortServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_sorts_servers_and_external_subscriptions_in_shared_connect_list(): void
+    public function test_it_sorts_servers_external_subscriptions_and_custom_configs_in_shared_connect_list(): void
     {
         $serverOne = $this->createServer('One', 'ONE', 2);
         $serverTwo = $this->createServer('Two', 'TWO', 1);
@@ -33,11 +34,18 @@ class ServerConnectSortServiceTest extends TestCase
             'is_active' => true,
             'is_ready' => true,
         ]);
+        $customConfig = XrayCustomConfig::query()->create([
+            'name' => 'Custom',
+            'slug' => 'custom',
+            'sort_order' => 3,
+            'is_active' => true,
+        ]);
 
         app(ServerConnectSortService::class)->sortGroups(new ConnectGroupSortData(
             items: [
                 ['type' => 'server', 'id' => $serverOne->id],
                 ['type' => 'external_subscription', 'id' => $externalSubscription->id],
+                ['type' => 'xray_custom_config', 'id' => $customConfig->id],
                 ['type' => 'server', 'id' => $serverTwo->id],
             ],
         ));
@@ -50,9 +58,13 @@ class ServerConnectSortServiceTest extends TestCase
             'id' => $externalSubscription->id,
             'sort_order' => 1,
         ]);
+        $this->assertDatabaseHas('xray_custom_configs', [
+            'id' => $customConfig->id,
+            'sort_order' => 2,
+        ]);
         $this->assertDatabaseHas('servers', [
             'id' => $serverTwo->id,
-            'sort_order' => 2,
+            'sort_order' => 3,
         ]);
     }
 

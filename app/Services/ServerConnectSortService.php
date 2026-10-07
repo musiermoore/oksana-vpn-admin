@@ -9,6 +9,7 @@ use App\DTOs\Server\ServerConnectItemSortData;
 use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\VlessExternalSubscription;
+use App\Models\XrayCustomConfig;
 use App\Models\XrayInbound;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -25,6 +26,7 @@ class ServerConnectSortService
                 match ($type) {
                     'server' => $this->updateServerSortOrder($id, $index),
                     'external_subscription' => $this->updateExternalSubscriptionSortOrder($id, $index),
+                    'xray_custom_config' => $this->updateXrayCustomConfigSortOrder($id, $index),
                     default => throw new RuntimeException('Неизвестный тип элемента сортировки.'),
                 };
             }
@@ -66,6 +68,17 @@ class ServerConnectSortService
 
         if ($updated === 0) {
             throw new RuntimeException('Внешняя подписка для сортировки не найдена.');
+        }
+    }
+
+    private function updateXrayCustomConfigSortOrder(int $configId, int $sortOrder): void
+    {
+        $updated = XrayCustomConfig::query()
+            ->whereKey($configId)
+            ->update(['sort_order' => $sortOrder]);
+
+        if ($updated === 0) {
+            throw new RuntimeException('Xray custom config для сортировки не найден.');
         }
     }
 

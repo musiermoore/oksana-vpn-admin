@@ -11,6 +11,7 @@ use App\Http\Requests\Server\StoreServerRequest;
 use App\Http\Requests\Server\UpdateServerRequest;
 use App\Models\Server;
 use App\Models\VlessExternalSubscription;
+use App\Models\XrayCustomConfig;
 use App\Services\Crud\ServerCrudService;
 use App\Services\ServerConnectSortService;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ class ServerController extends Controller
     {
         $servers = Server::query()->ordered()->get();
         $externalSubscriptions = VlessExternalSubscription::query()->ordered()->get();
+        $xrayCustomConfigs = XrayCustomConfig::query()->ordered()->get();
         $connectSortItems = collect([
             ...collect(ServerResource::collection($servers)->toArray($request))
                 ->map(fn (array $server) => [
@@ -51,6 +53,14 @@ class ServerController extends Controller
                     'label' => 'Внешняя подписка',
                 ])
                 ->all(),
+            ...$xrayCustomConfigs->map(fn (XrayCustomConfig $config): array => [
+                'id' => (int) $config->id,
+                'type' => 'xray_custom_config',
+                'sort_order' => (int) $config->sort_order,
+                'name' => (string) $config->name,
+                'code' => 'XRAY',
+                'label' => 'Xray custom config',
+            ])->all(),
         ])
             ->sortBy([
                 fn (array $item) => (int) $item['sort_order'],

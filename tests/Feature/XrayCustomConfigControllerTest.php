@@ -102,4 +102,32 @@ class XrayCustomConfigControllerTest extends TestCase
 
         $this->assertSame($servers, XrayRoutingDnsSettings::query()->firstOrFail()->servers);
     }
+
+    public function test_admin_can_update_an_existing_custom_dns_resource(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $settings = XrayRoutingDnsSettings::query()->create([
+            'name' => 'Old DNS',
+            'servers' => ['1.1.1.1'],
+            'query_strategy' => 'UseIPv4',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->putJson(route('xray-dns-settings.update', $settings), [
+                'name' => 'Updated DNS',
+                'description' => 'Updated DNS resource.',
+                'servers' => [
+                    ['address' => '8.8.8.8', 'skipFallback' => false],
+                ],
+                'query_strategy' => 'UseIPv4',
+                'is_default' => true,
+            ])
+            ->assertOk();
+
+        $settings->refresh();
+        $this->assertSame('Updated DNS', $settings->name);
+        $this->assertSame([['address' => '8.8.8.8', 'skipFallback' => false]], $settings->servers);
+        $this->assertTrue($settings->is_default);
+    }
 }

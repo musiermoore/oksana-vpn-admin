@@ -66,6 +66,7 @@ let previewRefreshTimer = null;
 const modal = ref(null);
 const modalForm = ref({});
 const modalError = ref('');
+const editingDnsId = ref(null);
 const hasUnsavedChanges = ref(false);
 const expandedRoutes = ref(new Set(routes.value.length ? [0] : []));
 const draggedRouteIndex = ref(null);
@@ -446,7 +447,14 @@ onBeforeUnmount(() => {
         window.clearTimeout(previewRefreshTimer);
     }
 });
-const openResourceModal = (type) => { modal.value = type; modalError.value = ''; modalForm.value = type === 'dns' ? { name: '', description: '', servers: '', query_strategy: 'UseIPv4', enable_parallel_query: false, is_default: false } : { name: '', description: '', geoip_url: '', geosite_url: '' }; };
+const openResourceModal = (type, resource = null) => {
+    modal.value = type;
+    modalError.value = '';
+    editingDnsId.value = type === 'dns' ? resource?.id || null : null;
+    modalForm.value = type === 'dns'
+        ? { name: resource?.name || '', description: resource?.description || '', servers: resource ? JSON.stringify(resource.servers || [], null, 2) : '', query_strategy: resource?.query_strategy || 'UseIPv4', enable_parallel_query: resource?.enable_parallel_query || false, is_default: resource?.is_default || false }
+        : { name: '', description: '', geoip_url: '', geosite_url: '' };
+};
 const closeResourceModal = () => { modal.value = null; };
 const parseDnsServers = (value) => {
     const input = value.trim();
@@ -472,10 +480,15 @@ const saveResource = async () => {
             return;
         }
     }
-    const response = await fetch(dns ? props.create_dns_url : props.create_geodata_url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify(body) });
+    const url = dns && editingDnsId.value ? dnsOptions.value.find((item) => item.id === editingDnsId.value)?.update_url : dns ? props.create_dns_url : props.create_geodata_url;
+    const response = await fetch(url, { method: dns && editingDnsId.value ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify(body) });
     const payload = await response.json();
     if (!response.ok) { modalError.value = payload.message || 'Не удалось сохранить настройку.'; return; }
-    if (dns) { dnsOptions.value.unshift(payload.resource); form.dns_settings_id = payload.resource.id; } else { geodataOptions.value.unshift(payload.resource); form.geodata_id = payload.resource.id; }
+    if (dns) {
+        const index = dnsOptions.value.findIndex((item) => item.id === payload.resource.id);
+        if (index === -1) dnsOptions.value.unshift(payload.resource); else dnsOptions.value[index] = payload.resource;
+        form.dns_settings_id = payload.resource.id;
+    } else { geodataOptions.value.unshift(payload.resource); form.geodata_id = payload.resource.id; }
     closeResourceModal();
 };
 </script>
@@ -497,7 +510,7 @@ const saveResource = async () => {
             </div>
             <JsonSectionEditor v-model="resourcesJson" title="Ресурсы" description="Выберите DNS и геоданные для этой конфигурации." :json-editable="false">
                 <div class="grid grid--two">
-                    <div class="field resource-field"><span>DNS Configuration</span><AppSelect v-model="form.dns_settings_id" :options="dnsOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select DNS configuration" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns')">+ Create DNS configuration</AppButton></div>
+                    <div class="field resource-field"><span>DNS Configuration</span><AppSelect v-model="form.dns_settings_id" :options="dnsOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select DNS configuration" /><div class="resource-actions"><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns')">+ Create DNS configuration</AppButton><AppButton v-if="dnsOptions.find((item) => item.id === Number(form.dns_settings_id))" class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns', dnsOptions.find((item) => item.id === Number(form.dns_settings_id)))">Edit selected DNS</AppButton></div></div>
                     <div class="field resource-field"><span>Geodata</span><AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select geodata source" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('geodata')">+ Create geodata source</AppButton></div>
                 </div>
             </JsonSectionEditor>
@@ -651,6 +664,12 @@ const saveResource = async () => {
 .resource-action {
     justify-self: start;
     margin-top: 0.1rem;
+}
+
+.resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .field small {

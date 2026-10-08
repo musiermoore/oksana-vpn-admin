@@ -167,13 +167,44 @@ class XrayCustomConfigController extends Controller
             'is_active' => true,
         ]);
 
+        $this->unsetOtherDefaultDnsSettings($settings);
+
+        return response()->json(['resource' => $this->dnsSettingsPayload($settings)]);
+    }
+
+    public function updateDnsSettings(
+        StoreXrayDnsSettingsRequest $request,
+        XrayRoutingDnsSettings $xrayRoutingDnsSettings,
+    ): JsonResponse {
+        $data = $request->toDto();
+        $xrayRoutingDnsSettings->fill($data->toModelAttributes())->save();
+        $this->unsetOtherDefaultDnsSettings($xrayRoutingDnsSettings);
+
+        return response()->json(['resource' => $this->dnsSettingsPayload($xrayRoutingDnsSettings)]);
+    }
+
+    private function unsetOtherDefaultDnsSettings(XrayRoutingDnsSettings $settings): void
+    {
         if ($settings->is_default) {
             XrayRoutingDnsSettings::query()
                 ->where('id', '!=', $settings->id)
                 ->update(['is_default' => false]);
         }
+    }
 
-        return response()->json(['resource' => ['id' => $settings->id, 'name' => $settings->name]]);
+    /** @return array<string, mixed> */
+    private function dnsSettingsPayload(XrayRoutingDnsSettings $settings): array
+    {
+        return [
+            'id' => $settings->id,
+            'name' => $settings->name,
+            'description' => $settings->description,
+            'servers' => $settings->servers,
+            'query_strategy' => $settings->query_strategy,
+            'enable_parallel_query' => $settings->enable_parallel_query,
+            'is_default' => $settings->is_default,
+            'update_url' => route('xray-dns-settings.update', $settings),
+        ];
     }
 
     public function storeGeodata(Request $request): JsonResponse
@@ -207,7 +238,7 @@ class XrayCustomConfigController extends Controller
     private function formProps(): array
     {
         return [
-            'dns_settings' => XrayRoutingDnsSettings::query()->active()->latest('id')->get(['id', 'name']),
+            'dns_settings' => XrayRoutingDnsSettings::query()->active()->latest('id')->get(),
             'geodata' => XrayRoutingGeodata::query()->active()->latest('id')->get(['id', 'name']),
             'users' => User::query()
                 ->where('is_active', true)

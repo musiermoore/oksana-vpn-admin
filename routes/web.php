@@ -134,6 +134,8 @@ Route::middleware('auth')->group(function () {
         ->name('xray-custom-configs.preview');
     Route::post('xray-dns-settings', [XrayCustomConfigController::class, 'storeDnsSettings'])
         ->name('xray-dns-settings.store');
+    Route::put('xray-dns-settings/{xrayRoutingDnsSettings}', [XrayCustomConfigController::class, 'updateDnsSettings'])
+        ->name('xray-dns-settings.update');
     Route::post('xray-geodata', [XrayCustomConfigController::class, 'storeGeodata'])
         ->name('xray-geodata.store');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);

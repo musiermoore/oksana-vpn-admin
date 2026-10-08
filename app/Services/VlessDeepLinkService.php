@@ -91,7 +91,7 @@ class VlessDeepLinkService
         $links = [];
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $this->getConnectV2Url($user);
+            $links[$responseKey] = $this->getConnectV2Url($user, $client);
         }
 
         return $links;

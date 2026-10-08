@@ -76,7 +76,7 @@ Code status as of `2026-06-28`:
 | `WIREGUARD_CONFIG_ACTIONS` | Configs | Return to config list | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
 | `WIREGUARD_CONFIG_ACTIONS` | VLESS | Open VLESS | `GET /api/users/{telegramId}/vless/link` or `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | auto | Check access and load base links | `GET /api/users/{telegramId}/vless/link` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
-| `VLESS_HOME` | Connect app | Open protected configured `/start?token=...` link | `GET /telegram-app/vless/link` | external VPN app | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | Connect app | Open protected configured `/start?token=...&app=...` link | `GET /telegram-app/vless/link` | external VPN app | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | QR Code app/legacy | Get selected QR | `GET /api/users/{telegramId}/vless/qr-code?target=...` | `VLESS_QR_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | Whitelist | Open whitelist links | local route `/telegram-app/vless-wl?step=links` | `VLESS_WL_LINK_RESULT` | none |
 | `SUBSCRIPTION_OVERVIEW` | auto | Load balance, debt, subscription date | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |

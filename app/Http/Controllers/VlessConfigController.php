@@ -219,7 +219,6 @@ class VlessConfigController extends Controller
 
     public function connectV2(
         Request $request,
-        SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService,
     ): Response
     {
@@ -232,8 +231,6 @@ class VlessConfigController extends Controller
         }
 
         $request->setUserResolver(static fn (): User => $user);
-        $userAgent = mb_strtolower((string) $request->userAgent());
-        $app = mb_strtolower($request->string('app')->toString());
 
         Log::info('connect-v2.request', [
             'user_id' => (int) $user->id,
@@ -241,17 +238,8 @@ class VlessConfigController extends Controller
             'user_agent' => (string) $request->userAgent(),
         ]);
 
-        match (true) {
-            in_array($app, ['incy', 'happ', 'v2raytun'], true),
-            str_contains($userAgent, 'incy'),
-            str_contains($userAgent, 'happ'),
-            str_contains($userAgent, 'v2raytun'),
-            str_contains($userAgent, 'postman') && (bool) $user->is_admin => null,
-            default => abort(403),
-        };
-
         $this->connectedDevices->recordConnection($user, $request);
-        $subscription = $subscriptionService->buildConnectV2($user, $app);
+        $subscription = $subscriptionService->buildConnectV2($user);
 
         Log::info('connect-v2.res', [
             'user_id' => (int) $user->id,
@@ -259,7 +247,8 @@ class VlessConfigController extends Controller
             'ext' => $subscription->fileExtension,
         ]);
 
-        return $this->subscriptionResponse($request, $user, $subscription, $metadataService, 'Oksana VPN v2', false);
+        return response($subscription->content)
+            ->header('Content-Type', $subscription->contentType);
     }
 
     private function subscriptionResponse(
@@ -450,7 +439,6 @@ class VlessConfigController extends Controller
         Request $request,
         string $client,
         VlessDeepLinkService $deepLinkService,
-        SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService,
     ): Response {
         $user = User::query()->where('uuid', $request->string('token')->toString())->first();
@@ -463,7 +451,7 @@ class VlessConfigController extends Controller
         if ($client !== 'happ' && str_contains($userAgent, $client)) {
             $request->merge(['deep_link' => true]);
 
-            return $this->connectV2($request, $metadataService, $subscriptionService);
+            return $this->connectV2($request, $subscriptionService);
         }
 
         $redirectUrl = $deepLinkService->resolveRedirectUrl(

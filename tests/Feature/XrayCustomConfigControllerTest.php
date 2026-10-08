@@ -130,4 +130,22 @@ class XrayCustomConfigControllerTest extends TestCase
         $this->assertSame([['address' => '8.8.8.8', 'skipFallback' => false]], $settings->servers);
         $this->assertTrue($settings->is_default);
     }
+
+    public function test_custom_config_form_includes_the_dns_update_url(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $settings = XrayRoutingDnsSettings::query()->create([
+            'name' => 'Editable DNS',
+            'servers' => ['8.8.8.8'],
+            'query_strategy' => 'UseIPv4',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('xray-custom-configs.create'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('dns_settings.0.id', $settings->id)
+                ->where('dns_settings.0.update_url', route('xray-dns-settings.update', $settings))
+            );
+    }
 }

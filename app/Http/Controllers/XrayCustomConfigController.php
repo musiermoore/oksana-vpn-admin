@@ -238,7 +238,9 @@ class XrayCustomConfigController extends Controller
     private function formProps(): array
     {
         return [
-            'dns_settings' => XrayRoutingDnsSettings::query()->active()->latest('id')->get(),
+            'dns_settings' => XrayRoutingDnsSettings::query()->active()->latest('id')->get()
+                ->map(fn (XrayRoutingDnsSettings $settings): array => $this->dnsSettingsPayload($settings))
+                ->values(),
             'geodata' => XrayRoutingGeodata::query()->active()->latest('id')->get(['id', 'name']),
             'users' => User::query()
                 ->where('is_active', true)

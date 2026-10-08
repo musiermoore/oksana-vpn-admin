@@ -243,6 +243,10 @@ onBeforeUnmount(() => {
                                 <AppIcon name="bolt" />
                                 <span>Подключить</span>
                             </button>
+                            <button class="tg-button tg-button--secondary" type="button" @click="copyText(item.url)">
+                                <AppIcon name="copy" />
+                                <span>Копировать</span>
+                            </button>
                             <button class="tg-button tg-button--secondary" type="button" :disabled="loadingQr" @click="openQrResult(item.target)">
                                 <AppIcon name="qrcode" />
                                 <span>QR-код</span>

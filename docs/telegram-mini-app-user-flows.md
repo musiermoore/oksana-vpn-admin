@@ -77,7 +77,7 @@ VLESS menu flow:
 
 Actions:
 
-- `Connect`: open the configured public `/start?token=...&app=...` link from `GET /api/users/{telegramId}/vless/link`.
+- `Connect`: open the client-specific unencrypted deep link from `GET /api/users/{telegramId}/vless/link`; it wraps the configured `/start?token=...&app=...` URL in the target app's import scheme.
 - `QR Code`: show the selected app-specific QR from `GET /api/users/{telegramId}/vless/qr-code?target=...`.
 - `Legacy`: copy or show the old-format subscription URL for manual/unsupported-app import.
 - `Whitelist`: open `/telegram-app/vless-wl?step=links`.

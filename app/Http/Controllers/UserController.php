@@ -87,6 +87,7 @@ class UserController extends Controller
             'payments' => CurrentPaymentResource::collection($payments)->toArray($request),
             'subscription_links' => [
                 'standard' => $this->vlessDeepLinks->getConnectUrl($user),
+                'connect_v2' => $this->vlessDeepLinks->getConnectV2Url($user),
                 'whitelist' => $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl'),
             ],
         ]);

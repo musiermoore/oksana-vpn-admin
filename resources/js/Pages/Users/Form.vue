@@ -1,5 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 defineOptions({ layout: AppLayout });
@@ -11,6 +12,26 @@ const props = defineProps({
     payments: Array,
     subscription_links: Object,
 });
+
+const copiedSubscriptionLink = ref('');
+
+const copySubscriptionLink = async (name, value) => {
+    if (!value) {
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(value);
+        copiedSubscriptionLink.value = name;
+        window.setTimeout(() => {
+            if (copiedSubscriptionLink.value === name) {
+                copiedSubscriptionLink.value = '';
+            }
+        }, 2000);
+    } catch {
+        copiedSubscriptionLink.value = '';
+    }
+};
 
 const formatDateTimeLocal = (value) => {
     if (!value) {
@@ -80,6 +101,11 @@ const joinAtOptions = props.payments.map((payment) => ({
 
         <div v-if="mode === 'edit' && subscription_links" class="grid grid--two">
             <label class="field">
+                <span>Connect v2</span>
+                <AppInput :model-value="subscription_links.connect_v2" readonly />
+            </label>
+
+            <label class="field">
                 <span>Стандартная подписка</span>
                 <AppInput :model-value="subscription_links.standard" readonly />
             </label>
@@ -90,6 +116,10 @@ const joinAtOptions = props.payments.map((payment) => ({
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
+                <AppButton variant="secondary" :href="subscription_links.connect_v2" target="_blank">Открыть connect v2</AppButton>
+                <AppButton variant="secondary" type="button" @click="copySubscriptionLink('connect_v2', subscription_links.connect_v2)">
+                    {{ copiedSubscriptionLink === 'connect_v2' ? 'Скопировано' : 'Копировать connect v2' }}
+                </AppButton>
                 <AppButton variant="secondary" :href="subscription_links.standard" target="_blank">Открыть стандартную</AppButton>
                 <AppButton variant="secondary" :href="subscription_links.whitelist" target="_blank">Открыть white list</AppButton>
             </div>

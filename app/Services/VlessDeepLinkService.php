@@ -91,10 +91,26 @@ class VlessDeepLinkService
         $links = [];
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $this->getConnectV2Url($user, $client);
+            $links[$responseKey] = $this->buildPlainConnectV2DeepLink(
+                $client,
+                $this->getConnectV2Url($user, $client),
+            );
         }
 
         return $links;
+    }
+
+    private function buildPlainConnectV2DeepLink(string $client, string $subscriptionLink): ?string
+    {
+        return match ($client) {
+            'happ' => 'happ://add/'.$subscriptionLink,
+            'v2raytun' => 'v2raytun://import/'.$subscriptionLink,
+            'incy' => 'incy://add?url='.urlencode($subscriptionLink),
+            'v2rayn', 'v2rayng', 'v2box' => $this->buildInstallSubLink($client, $subscriptionLink),
+            'sing-box' => 'sing-box://import-remote-profile?url='.urlencode($subscriptionLink),
+            'hiddify' => 'hiddify://import/'.$subscriptionLink,
+            default => null,
+        };
     }
 
     public function getConnectUrlForRoute(User $user, string $routeName, ?string $client = null): string

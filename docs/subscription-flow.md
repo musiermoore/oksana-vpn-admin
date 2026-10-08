@@ -175,7 +175,7 @@ Main `/connect`:
 - Resolves the user from the plain `users.uuid` query token.
 - Returns the same plain JSON subscription for every client through the universal URL. It does not inspect `User-Agent`/`app` or apply client-specific filtering. Standard metadata and support headers remain enabled; only config-hiding headers (`Hide-Url`, `Hide-Proxy`, `Hide-Settings`) are suppressed.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
-- The mini-app's client links use the configured public `/start?token=...&app=...` URL directly. The `/connect-v2` endpoint returns JSON; the mini-app does not expose encrypted client-specific links or hashed subscription payloads.
+- The mini-app's client links use unencrypted client import schemes around the configured public `/start?token=...&app=...` URL. The `/connect-v2` endpoint returns JSON; generated mini-app deep links do not use encrypted payloads.
 - External config names prefer `Название в connect-wl` when it is configured.
 - Legacy `/connect-v2/deep-link/{client}` routes remain available for compatibility with existing non-mini-app callers.
 - External subscriptions are included only when `include_in_connect_v2` (`Отображать в connect-v2`) is enabled. The flag also controls external profiles included in connect-v2 custom JSON profiles.

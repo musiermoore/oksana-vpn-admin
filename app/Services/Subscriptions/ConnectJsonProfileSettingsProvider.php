@@ -77,6 +77,10 @@ class ConnectJsonProfileSettingsProvider
             return $this->dns();
         }
 
+        if (is_array($settings->settings) && $settings->settings !== []) {
+            return $settings->settings;
+        }
+
         return array_filter([
             'servers' => $settings->servers,
             'queryStrategy' => $settings->query_strategy,
@@ -262,7 +266,6 @@ class ConnectJsonProfileSettingsProvider
             ->latestActive()
             ->first();
     }
-
     /**
      * @return array<string, mixed>
      */

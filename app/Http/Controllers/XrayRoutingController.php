@@ -10,10 +10,11 @@ use App\Enums\XrayRoutingOutbound;
 use App\Http\Requests\XrayRouting\ImportXrayRoutingSettingsRequest;
 use App\Http\Requests\XrayRouting\UpdateXrayRoutingRequest;
 use App\Models\XrayJsonSetting;
+use App\Models\Proxy;
 use App\Models\XrayRouting;
+use App\Models\XrayInbound;
 use App\Models\Server;
 use App\Models\VlessExternalSubscription;
-use App\Models\Proxy;
 use App\Services\Subscriptions\RoscomVpnJsonSettingsImporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -221,9 +222,11 @@ class XrayRoutingController extends Controller
     private function serverTargets(): array
     {
         return Server::query()
-            ->whereHas('xrayInbounds')
+            ->where('is_active', true)
+            ->whereHas('xrayInbounds', fn ($query) => $query->where('is_active', true))
             ->with([
                 'xrayInbounds' => fn ($query) => $query
+                    ->where('is_active', true)
                     ->select('id', 'server_id', 'external_id', 'sort_order', 'is_active', 'is_public')
                     ->ordered(),
             ])
@@ -252,8 +255,10 @@ class XrayRoutingController extends Controller
     private function externalSubscriptionTargets(): array
     {
         return VlessExternalSubscription::query()
+            ->where('is_active', true)
+            ->where('is_ready', true)
             ->whereHas('configs')
-            ->with('configs')
+            ->with(['configs' => fn ($query) => $query->orderBy('sort_order')->orderBy('id')])
             ->ordered()
             ->get()
             ->map(fn (VlessExternalSubscription $subscription): array => [
@@ -277,6 +282,12 @@ class XrayRoutingController extends Controller
     private function proxyTargets(): array
     {
         return Proxy::query()
+            ->where('is_ready', true)
+            ->whereHas('server', fn ($query) => $query->where('is_active', true))
+            ->where(function ($query): void {
+                $query->whereNull('xray_inbound_id')
+                    ->orWhereHas('xrayInbound', fn ($inboundQuery) => $inboundQuery->where('is_active', true));
+            })
             ->with('server:id,name')
             ->orderBy('server_id')
             ->orderBy('sort_order')

@@ -8,6 +8,9 @@ use App\DTOs\XrayRouting\XrayRoutingData;
 use App\Enums\XrayRoutingOutbound;
 use App\Http\Requests\DataFormRequest;
 use App\Models\XrayRouting;
+use App\Models\Proxy;
+use App\Models\XrayInbound;
+use App\Models\VlessExternalSubscriptionConfig;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -16,6 +19,15 @@ class UpdateXrayRoutingRequest extends DataFormRequest
     protected function laravelData(): string
     {
         return XrayRoutingData::class;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'xray_inbound_ids' => $this->activeInboundIds($this->input('xray_inbound_ids', [])),
+            'external_subscription_config_ids' => $this->activeExternalConfigIds($this->input('external_subscription_config_ids', [])),
+            'proxy_ids' => $this->activeProxyIds($this->input('proxy_ids', [])),
+        ]);
     }
 
     /**
@@ -89,5 +101,64 @@ class UpdateXrayRoutingRequest extends DataFormRequest
     private function uniqueIntegerList(array $items): array
     {
         return array_values(array_unique(array_map('intval', $items)));
+    }
+
+    /** @param mixed $items @return array<int, int> */
+    private function activeInboundIds(mixed $items): array
+    {
+        return $this->keepExistingIds(
+            $items,
+            XrayInbound::query()
+                ->where('is_active', true)
+                ->whereHas('server', fn ($query) => $query->where('is_active', true))
+                ->pluck('id')
+                ->all(),
+        );
+    }
+
+    /** @param mixed $items @return array<int, int> */
+    private function activeExternalConfigIds(mixed $items): array
+    {
+        return $this->keepExistingIds(
+            $items,
+            VlessExternalSubscriptionConfig::query()
+                ->whereHas('subscription', fn ($query) => $query
+                    ->where('is_active', true)
+                    ->where('is_ready', true))
+                ->pluck('id')
+                ->all(),
+        );
+    }
+
+    /** @param mixed $items @return array<int, int> */
+    private function activeProxyIds(mixed $items): array
+    {
+        return $this->keepExistingIds(
+            $items,
+            Proxy::query()
+                ->where('is_ready', true)
+                ->whereHas('server', fn ($query) => $query->where('is_active', true))
+                ->where(function ($query): void {
+                    $query->whereNull('xray_inbound_id')
+                        ->orWhereHas('xrayInbound', fn ($inboundQuery) => $inboundQuery->where('is_active', true));
+                })
+                ->pluck('id')
+                ->all(),
+        );
+    }
+
+    /** @param mixed $items @param array<int, mixed> $allowed @return array<int, int> */
+    private function keepExistingIds(mixed $items, array $allowed): array
+    {
+        if (! is_array($items)) {
+            return [];
+        }
+
+        $allowedIds = array_flip(array_map('intval', $allowed));
+
+        return array_values(array_filter(
+            array_unique(array_map('intval', $items)),
+            fn (int $id): bool => isset($allowedIds[$id]),
+        ));
     }
 }

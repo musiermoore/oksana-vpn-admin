@@ -90,6 +90,7 @@ class HandleInertiaRequests extends Middleware
                     ['label' => 'Прокси', 'href' => route('proxies.index'), 'badge' => 'PX', 'icon' => 'link'],
                     ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index'), 'badge' => 'VS', 'icon' => 'spark'],
                     ['label' => 'Xray Routing', 'href' => route('xray-routings.index'), 'badge' => 'RT', 'icon' => 'nodes'],
+                    ['label' => 'Global JSON settings', 'href' => route('xray-global-config.edit'), 'badge' => 'GS', 'icon' => 'nodes'],
                     ['label' => 'Xray Custom Configs', 'href' => route('xray-custom-configs.index'), 'badge' => 'XC', 'icon' => 'nodes'],
                 ],
             ],

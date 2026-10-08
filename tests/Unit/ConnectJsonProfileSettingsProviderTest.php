@@ -6,6 +6,7 @@ namespace Tests\Unit;
 
 use App\Models\XrayRouting;
 use App\Models\XrayRoutingDnsSettings;
+use App\Models\XrayJsonSetting;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -62,5 +63,36 @@ class ConnectJsonProfileSettingsProviderTest extends TestCase
         $this->assertCount(2, $serverRules);
         $this->assertSame('geosite:category-ru', $globalOnly[0]['domain'][0]);
         $this->assertSame('domain:example.ru', $serverRules[1]['domain'][0]);
+    }
+
+    public function test_manual_global_json_settings_override_default_profile_settings(): void
+    {
+        XrayJsonSetting::query()->create([
+            'name' => 'Global JSON',
+            'source' => 'manual_global',
+            'dns' => [
+                'queryStrategy' => 'UseIPv4',
+                'servers' => ['9.9.9.9'],
+            ],
+            'routing' => ['domainStrategy' => 'IPIfNonMatch'],
+            'is_active' => true,
+        ]);
+        XrayRouting::query()->create([
+            'name' => 'Global JSON rule',
+            'source' => 'manual_global',
+            'source_key' => '0',
+            'outbound' => 'direct',
+            'subscription_types' => ['connect', 'connect_wl'],
+            'is_global' => true,
+            'rules' => ['domain' => ['domain:example.com']],
+            'is_active' => true,
+        ]);
+
+        $provider = app(ConnectJsonProfileSettingsProvider::class);
+        $routing = $provider->routing('connect');
+
+        $this->assertSame(['9.9.9.9'], $provider->dns()['servers']);
+        $this->assertSame('IPIfNonMatch', $routing['domainStrategy']);
+        $this->assertSame('domain:example.com', $routing['rules'][0]['domain'][0]);
     }
 }

@@ -389,6 +389,52 @@ class XrayRoutingJsonImportTest extends TestCase
         $this->assertFalse($routing->is_active);
     }
 
+    public function test_update_drops_deleted_and_inactive_targets_before_validation(): void
+    {
+        $admin = $this->createAdmin();
+        $activeServer = Server::query()->create([
+            'name' => 'Active server',
+            'code' => 'ACTIVE',
+            'ip' => '10.0.0.20',
+            'type' => Server::TYPE_VLESS,
+            'is_active' => true,
+        ]);
+        $inactiveInbound = XrayInbound::query()->create([
+            'server_id' => $activeServer->id,
+            'external_id' => 202,
+            'is_active' => false,
+        ]);
+        $routing = XrayRouting::query()->create([
+            'name' => 'Stale targets',
+            'outbound' => 'direct',
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'rules' => ['domain' => ['domain:example.test']],
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('xray-routings.update', $routing), [
+                'name' => 'Cleaned targets',
+                'description' => null,
+                'outbound' => 'direct',
+                'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+                'xray_inbound_ids' => [$inactiveInbound->id, 999999],
+                'external_subscription_config_ids' => [999999],
+                'proxy_ids' => [999999],
+                'rules_json' => json_encode(['domain' => ['domain:clean.test']], JSON_THROW_ON_ERROR),
+                'sort_order' => 0,
+                'is_active' => true,
+            ])
+            ->assertRedirect(route('xray-routings.index'));
+
+        $routing->refresh();
+
+        $this->assertSame([], $routing->xray_inbound_ids);
+        $this->assertSame([], $routing->external_subscription_config_ids);
+        $this->assertSame([], $routing->proxy_ids);
+        $this->assertSame(['domain' => ['domain:clean.test']], $routing->rules);
+    }
+
     public function test_updated_subscription_types_control_generated_json_routing(): void
     {
         Http::fake();

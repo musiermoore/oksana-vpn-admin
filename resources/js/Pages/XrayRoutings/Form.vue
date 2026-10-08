@@ -90,6 +90,13 @@ const toggleGroup = (field, ids, checked) => {
         : current.filter((id) => !normalizedIds.includes(id));
 };
 
+const toggleAll = (field, ids) => {
+    const normalizedIds = ids.map(Number);
+    const shouldSelect = !allSelected(field, normalizedIds);
+
+    toggleGroup(field, normalizedIds, shouldSelect);
+};
+
 const payload = (data) => ({
     name: data.name,
     description: data.description,
@@ -164,7 +171,17 @@ const submit = () => {
         </div>
 
         <div class="field" style="grid-column: 1 / -1;">
-            <span>Локальные xray inbounds</span>
+            <div class="field-heading-row">
+                <span>Локальные xray inbounds</span>
+                <AppButton
+                    variant="secondary"
+                    size="small"
+                    type="button"
+                    @click="toggleAll('xray_inbound_ids', (targetTree?.servers ?? []).flatMap((server) => server.inbounds.map((inbound) => inbound.id)))"
+                >
+                    {{ allSelected('xray_inbound_ids', (targetTree?.servers ?? []).flatMap((server) => server.inbounds.map((inbound) => inbound.id))) ? 'Снять выделение' : 'Выбрать все' }}
+                </AppButton>
+            </div>
             <label class="field-row">
                 <input v-model="form.is_global" type="checkbox">
                 <strong>Глобальное правило для всех простых JSON-конфигураций</strong>
@@ -194,7 +211,17 @@ const submit = () => {
         </div>
 
         <div class="field" style="grid-column: 1 / -1;">
-            <span>Внешние подписки</span>
+            <div class="field-heading-row">
+                <span>Внешние подписки</span>
+                <AppButton
+                    variant="secondary"
+                    size="small"
+                    type="button"
+                    @click="toggleAll('external_subscription_config_ids', (targetTree?.external_subscriptions ?? []).flatMap((subscription) => subscription.configs.map((config) => config.id)))"
+                >
+                    {{ allSelected('external_subscription_config_ids', (targetTree?.external_subscriptions ?? []).flatMap((subscription) => subscription.configs.map((config) => config.id))) ? 'Снять выделение' : 'Выбрать все' }}
+                </AppButton>
+            </div>
             <div class="stack">
                 <div v-for="subscription in targetTree?.external_subscriptions ?? []" :key="subscription.id" class="stack">
                     <label class="field-row">
@@ -221,7 +248,17 @@ const submit = () => {
         </div>
 
         <div class="field" style="grid-column: 1 / -1;">
-            <span>Прокси</span>
+            <div class="field-heading-row">
+                <span>Прокси</span>
+                <AppButton
+                    variant="secondary"
+                    size="small"
+                    type="button"
+                    @click="toggleAll('proxy_ids', (targetTree?.proxies ?? []).map((proxy) => proxy.id))"
+                >
+                    {{ allSelected('proxy_ids', (targetTree?.proxies ?? []).map((proxy) => proxy.id)) ? 'Снять выделение' : 'Выбрать все' }}
+                </AppButton>
+            </div>
             <div class="stack">
                 <label v-for="proxy in targetTree?.proxies ?? []" :key="proxy.id" class="field-row">
                     <input
@@ -263,5 +300,12 @@ const submit = () => {
 
 .field-row--child {
     margin-left: 1.5rem;
+}
+
+.field-heading-row {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
 }
 </style>

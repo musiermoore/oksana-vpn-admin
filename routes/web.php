@@ -40,6 +40,7 @@ use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
 use App\Http\Controllers\XrayRoutingController;
 use App\Http\Controllers\XrayCustomConfigController;
+use App\Http\Controllers\XrayGlobalConfigController;
 use App\Http\Controllers\XuiDebugController;
 use App\Http\Middleware\BasicAuth;
 use App\Http\Middleware\TrackApiRequests;
@@ -113,6 +114,10 @@ Route::middleware('auth')->group(function () {
         ->name('xray-routings.edit');
     Route::put('xray-routings/{xrayRouting}', [XrayRoutingController::class, 'update'])
         ->name('xray-routings.update');
+    Route::get('xray-global-config', [XrayGlobalConfigController::class, 'edit'])
+        ->name('xray-global-config.edit');
+    Route::put('xray-global-config', [XrayGlobalConfigController::class, 'update'])
+        ->name('xray-global-config.update');
     Route::get('xray-custom-configs', [XrayCustomConfigController::class, 'index'])
         ->name('xray-custom-configs.index');
     Route::get('xray-custom-configs/create', [XrayCustomConfigController::class, 'create'])

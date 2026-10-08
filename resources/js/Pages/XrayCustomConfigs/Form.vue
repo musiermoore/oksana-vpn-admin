@@ -448,9 +448,31 @@ onBeforeUnmount(() => {
 });
 const openResourceModal = (type) => { modal.value = type; modalError.value = ''; modalForm.value = type === 'dns' ? { name: '', description: '', servers: '', query_strategy: 'UseIPv4', enable_parallel_query: false, is_default: false } : { name: '', description: '', geoip_url: '', geosite_url: '' }; };
 const closeResourceModal = () => { modal.value = null; };
+const parseDnsServers = (value) => {
+    const input = value.trim();
+    if (!input) return [];
+
+    try {
+        const parsed = JSON.parse(input);
+        if (!Array.isArray(parsed)) throw new Error('DNS servers must be a JSON array.');
+        return parsed;
+    } catch (error) {
+        if (input.startsWith('[') || input.startsWith('{')) throw error;
+        return input.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+};
 const saveResource = async () => {
     const dns = modal.value === 'dns';
-    const response = await fetch(dns ? props.create_dns_url : props.create_geodata_url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify({ ...modalForm.value, ...(dns ? { servers: modalForm.value.servers.split(',').map((item) => item.trim()).filter(Boolean) } : {}) }) });
+    let body = { ...modalForm.value };
+    if (dns) {
+        try {
+            body.servers = parseDnsServers(modalForm.value.servers);
+        } catch (error) {
+            modalError.value = error.message || 'DNS-серверы должны быть JSON-массивом.';
+            return;
+        }
+    }
+    const response = await fetch(dns ? props.create_dns_url : props.create_geodata_url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify(body) });
     const payload = await response.json();
     if (!response.ok) { modalError.value = payload.message || 'Не удалось сохранить настройку.'; return; }
     if (dns) { dnsOptions.value.unshift(payload.resource); form.dns_settings_id = payload.resource.id; } else { geodataOptions.value.unshift(payload.resource); form.geodata_id = payload.resource.id; }
@@ -590,7 +612,7 @@ const saveResource = async () => {
             <pre v-if="previewContent" class="preview-json">{{ previewJson }}</pre>
         </div>
     </section>
-    <div v-if="modal" class="resource-modal" @click.self="closeResourceModal"><section class="page-card stack resource-modal__card"><h2>{{ modal === 'dns' ? 'Новые настройки DNS' : 'Новые геоданные' }}</h2><label class="field"><span>Название</span><AppInput v-model="modalForm.name" /></label><label class="field"><span>Описание</span><AppTextarea v-model="modalForm.description" rows="2" /></label><template v-if="modal === 'dns'"><label class="field"><span>DNS-серверы через запятую</span><AppInput v-model="modalForm.servers" placeholder="8.8.8.8, 1.1.1.1" /></label><label class="field"><span>Стратегия запросов</span><AppSelect v-model="modalForm.query_strategy" :options="[{ value: 'UseIPv4', label: 'Только IPv4' }, { value: 'UseIPv6', label: 'Только IPv6' }, { value: 'UseIP', label: 'IPv4 и IPv6' }, { value: 'AsIs', label: 'Без изменения' }]" /></label><label class="field-row"><input v-model="modalForm.enable_parallel_query" type="checkbox"> Параллельные DNS-запросы</label><label class="field-row"><input v-model="modalForm.is_default" type="checkbox"> Использовать для всех простых JSON-конфигураций</label></template><template v-else><label class="field"><span>URL geoip.dat</span><AppInput v-model="modalForm.geoip_url" /></label><label class="field"><span>URL geosite.dat</span><AppInput v-model="modalForm.geosite_url" /></label></template><p v-if="modalError" class="form-error">{{ modalError }}</p><div class="actions"><AppButton type="button" @click="saveResource">Сохранить</AppButton><AppButton variant="secondary" type="button" @click="closeResourceModal">Отмена</AppButton></div></section></div>
+    <div v-if="modal" class="resource-modal" @click.self="closeResourceModal"><section class="page-card stack resource-modal__card"><h2>{{ modal === 'dns' ? 'Новые настройки DNS' : 'Новые геоданные' }}</h2><label class="field"><span>Название</span><AppInput v-model="modalForm.name" /></label><label class="field"><span>Описание</span><AppTextarea v-model="modalForm.description" rows="2" /></label><template v-if="modal === 'dns'"><label class="field"><span>DNS-серверы: JSON-массив или через запятую</span><AppTextarea v-model="modalForm.servers" rows="8" spellcheck="false" placeholder='[{"address":"8.8.8.8","skipFallback":false}]' /></label><label class="field"><span>Стратегия запросов</span><AppSelect v-model="modalForm.query_strategy" :options="[{ value: 'UseIPv4', label: 'Только IPv4' }, { value: 'UseIPv6', label: 'Только IPv6' }, { value: 'UseIP', label: 'IPv4 и IPv6' }, { value: 'AsIs', label: 'Без изменения' }]" /></label><label class="field-row"><input v-model="modalForm.enable_parallel_query" type="checkbox"> Параллельные DNS-запросы</label><label class="field-row"><input v-model="modalForm.is_default" type="checkbox"> Использовать для всех простых JSON-конфигураций</label></template><template v-else><label class="field"><span>URL geoip.dat</span><AppInput v-model="modalForm.geoip_url" /></label><label class="field"><span>URL geosite.dat</span><AppInput v-model="modalForm.geosite_url" /></label></template><p v-if="modalError" class="form-error">{{ modalError }}</p><div class="actions"><AppButton type="button" @click="saveResource">Сохранить</AppButton><AppButton variant="secondary" type="button" @click="closeResourceModal">Отмена</AppButton></div></section></div>
 </template>
 
 <style scoped>

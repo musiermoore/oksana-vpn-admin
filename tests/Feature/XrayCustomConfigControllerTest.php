@@ -8,6 +8,7 @@ use App\Models\Server;
 use App\Models\User;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayInbound;
+use App\Models\XrayRoutingDnsSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -75,5 +76,30 @@ class XrayCustomConfigControllerTest extends TestCase
             ->assertRedirect();
 
         $this->assertFalse($config->fresh()->is_active);
+    }
+
+    public function test_admin_can_create_a_custom_dns_resource_with_structured_servers(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $servers = [
+            [
+                'address' => '8.8.8.8',
+                'domains' => ['domain:openai.com'],
+                'skipFallback' => true,
+            ],
+            '8.8.8.8',
+        ];
+
+        $this->actingAs($admin)
+            ->postJson(route('xray-dns-settings.store'), [
+                'name' => 'Structured DNS',
+                'description' => 'DNS for a custom JSON config.',
+                'servers' => $servers,
+                'query_strategy' => 'UseIPv4',
+                'is_default' => false,
+            ])
+            ->assertOk();
+
+        $this->assertSame($servers, XrayRoutingDnsSettings::query()->firstOrFail()->servers);
     }
 }

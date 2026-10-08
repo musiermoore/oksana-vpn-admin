@@ -9,7 +9,7 @@ use App\DTOs\Data;
 class XrayDnsSettingsData extends Data
 {
     /**
-     * @param  array<int, string>  $servers
+     * @param  array<int, string|array<string, mixed>>  $servers
      */
     public function __construct(
         public string $name,

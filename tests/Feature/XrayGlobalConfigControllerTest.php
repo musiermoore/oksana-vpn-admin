@@ -57,4 +57,38 @@ class XrayGlobalConfigControllerTest extends TestCase
             'outbound' => 'direct',
         ]);
     }
+
+    public function test_admin_can_save_structured_dns_servers_for_global_json_configuration(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $servers = [
+            [
+                'address' => '8.8.8.8',
+                'domains' => ['domain:openai.com', 'domain:chatgpt.com'],
+                'skipFallback' => true,
+            ],
+            [
+                'address' => '77.88.8.8',
+                'domains' => ['geosite:category-ru'],
+                'skipFallback' => true,
+            ],
+            '8.8.8.8',
+        ];
+
+        $this->actingAs($admin)
+            ->put(route('xray-global-config.update'), [
+                'dns_json' => json_encode([
+                    'queryStrategy' => 'UseIPv4',
+                    'servers' => $servers,
+                ], JSON_THROW_ON_ERROR),
+                'routing_json' => json_encode(['domainStrategy' => 'AsIs'], JSON_THROW_ON_ERROR),
+                'rules_json' => json_encode([], JSON_THROW_ON_ERROR),
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            $servers,
+            XrayRoutingDnsSettings::query()->where('is_default', true)->firstOrFail()->servers,
+        );
+    }
 }

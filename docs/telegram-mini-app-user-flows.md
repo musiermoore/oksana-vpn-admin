@@ -77,7 +77,7 @@ VLESS menu flow:
 
 Actions:
 
-- `Connect`: open the protected app-specific deep link from `GET /api/users/{telegramId}/vless/link`.
+- `Connect`: open the configured public `/start?token=...` link from `GET /api/users/{telegramId}/vless/link`.
 - `QR Code`: show the selected app-specific QR from `GET /api/users/{telegramId}/vless/qr-code?target=...`.
 - `Legacy`: copy or show the old-format subscription URL for manual/unsupported-app import.
 - `Whitelist`: open `/telegram-app/vless-wl?step=links`.
@@ -85,7 +85,7 @@ Actions:
 
 Notes:
 
-- If a deep link does not open, user should be able to copy the raw link or use QR.
+- If a universal start link does not open, user should be able to copy the raw link or use QR.
 - Whitelist QR has backend support, but current UI does not expose a path to it.
 
 ## 5. Payments And Subscription

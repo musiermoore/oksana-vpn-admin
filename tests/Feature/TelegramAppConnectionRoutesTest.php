@@ -280,9 +280,11 @@ class TelegramAppConnectionRoutesTest extends TestCase
         $response->assertOk();
         $payload = $response->json();
 
-        $this->assertStringStartsWith('https://connect.example/deep-link/happ?', (string) ($payload['happ_deep_link'] ?? ''));
-        $this->assertStringStartsWith('https://connect.example/deep-link/v2raytun?', (string) ($payload['v2raytun_deeplink'] ?? ''));
-        $this->assertStringStartsWith('https://connect.example/deep-link/incy?', (string) ($payload['incy_deep_link'] ?? $payload['incy_deeplink'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['happ_deep_link'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['v2raytun_deeplink'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['incy_deep_link'] ?? $payload['incy_deeplink'] ?? ''));
+        $this->assertSame($payload['happ_deep_link'], $payload['v2raytun_deeplink']);
+        $this->assertSame($payload['happ_deep_link'], $payload['incy_deep_link'] ?? $payload['incy_deeplink']);
         $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['link'] ?? ''));
     }
 

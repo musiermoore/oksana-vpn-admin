@@ -237,7 +237,9 @@ class UserSubscriptionService
                 configId: $node->configId,
                 sourceType: $node->sourceType,
                 sortServerName: $node->sortServerName,
-                meta: [...$node->meta, 'name' => $names[$node->id] ?? $node->serverName],
+                meta: [...$node->meta, 'name' => $externalPurpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2
+                    ? ($node->meta['name'] ?? $names[$node->id] ?? $node->serverName)
+                    : ($names[$node->id] ?? $node->serverName)],
             ),
             $nodes
         );

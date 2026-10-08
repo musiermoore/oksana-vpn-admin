@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\User;
@@ -87,10 +89,9 @@ class VlessDeepLinkService
     private function getPublicDeepLinkLinks(User $user): array
     {
         $links = [];
-        $domain = rtrim((string) config('vless.public_domain'), '/');
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $domain.'/deep-link/'.$client.'?token='.urlencode((string) $user->uuid);
+            $links[$responseKey] = $this->getConnectV2Url($user);
         }
 
         return $links;

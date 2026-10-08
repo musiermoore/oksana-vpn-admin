@@ -133,8 +133,8 @@ class ConnectV2Test extends TestCase
         $user = $this->createUser();
 
         foreach ([
-            ['name' => 'Shown in connect v2', 'include_in_connect_v2' => true],
-            ['name' => 'Hidden from connect v2', 'include_in_connect_v2' => false],
+            ['name' => 'External subscription name', 'config_name' => 'Name in subscription', 'include_in_connect_v2' => true],
+            ['name' => 'Hidden external subscription', 'config_name' => 'Hidden name in subscription', 'include_in_connect_v2' => false],
         ] as $index => $attributes) {
             $subscription = VlessExternalSubscription::query()->create([
                 'name' => $attributes['name'],
@@ -152,8 +152,8 @@ class ConnectV2Test extends TestCase
             VlessExternalSubscriptionConfig::query()->create([
                 'vless_external_subscription_id' => $subscription->id,
                 'config_key' => 'external-'.$index,
-                'name' => $attributes['name'],
-                'normalized_name' => mb_strtolower($attributes['name']),
+                'name' => $attributes['config_name'],
+                'normalized_name' => mb_strtolower($attributes['config_name']),
                 'protocol' => 'vless',
                 'url' => 'vless://external-'.$index.'@external-'.$index.'.example.com:443?type=tcp#External',
                 'sort_order' => 0,
@@ -166,6 +166,8 @@ class ConnectV2Test extends TestCase
 
         $response->assertOk();
         $this->assertStringContainsString('external-0.example.com', $response->getContent());
+        $this->assertStringContainsString('Name in subscription', $response->getContent());
+        $this->assertStringNotContainsString('External subscription name', $response->getContent());
         $this->assertStringNotContainsString('external-1.example.com', $response->getContent());
     }
 

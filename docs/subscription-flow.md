@@ -177,7 +177,8 @@ Main `/connect`:
 - Allows Postman only for admin users and returns the same subscription payload for inspection.
 - Returns `403` for unsupported clients or non-admin Postman requests.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
-- The INCY deep-link route wraps the HTTPS subscription URL as `incy://crypt1/{base64url}` using the same AES-GCM format decoded for external INCY subscriptions.
+- The mini-app's client links use the configured public `/start?token=...` URL directly. The `/connect-v2` endpoint returns JSON; the mini-app does not expose encrypted client-specific links or hashed subscription payloads.
+- Legacy `/connect-v2/deep-link/{client}` routes remain available for compatibility with existing non-mini-app callers.
 - External subscriptions are included only when `include_in_connect_v2` (`Отображать в connect-v2`) is enabled. The flag also controls external profiles included in connect-v2 custom JSON profiles.
 
 WireGuard/AmneziaWG output:

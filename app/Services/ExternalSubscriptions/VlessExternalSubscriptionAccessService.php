@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\ExternalSubscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
@@ -41,6 +43,7 @@ class VlessExternalSubscriptionAccessService
 
         $names = $this->nodeNameService->buildNames($nodes);
         $customNames = $this->buildCustomNames($configs);
+        $useSubscriptionConfigNames = $purpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2;
 
         return array_map(
             fn (NormalizedNode $node) => new NormalizedNode(
@@ -55,7 +58,9 @@ class VlessExternalSubscriptionAccessService
                 configId: $node->configId,
                 sourceType: $node->sourceType,
                 sortServerName: $node->sortServerName,
-                meta: [...$node->meta, 'name' => $customNames[$node->id] ?? $names[$node->id] ?? $node->serverName],
+                meta: [...$node->meta, 'name' => $useSubscriptionConfigNames
+                    ? ($node->meta['config_name'] ?? $names[$node->id] ?? $node->serverName)
+                    : ($customNames[$node->id] ?? $names[$node->id] ?? $node->serverName)],
             ),
             $nodes
         );

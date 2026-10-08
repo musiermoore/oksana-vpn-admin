@@ -22,6 +22,8 @@ class VlessExternalSubscriptionSyncService
 
     public const PURPOSE_WHITELIST = 'whitelist';
 
+    public const PURPOSE_CONNECT_V2 = 'connect-v2';
+
     public const PURPOSE_CUSTOM = 'custom';
 
     public function __construct(
@@ -140,6 +142,8 @@ class VlessExternalSubscriptionSyncService
             $query->where('include_in_main_subscription', true);
         } elseif ($purpose === self::PURPOSE_WHITELIST) {
             $query->where('include_in_whitelist', true);
+        } elseif ($purpose === self::PURPOSE_CONNECT_V2) {
+            $query->where('include_in_connect_v2', true);
         }
 
         return $query;

@@ -32,6 +32,7 @@ class StoreVlessExternalSubscriptionRequest extends DataFormRequest
             'connect_name_prefix' => ['nullable', 'string', 'max:255'],
             'include_in_main_subscription' => ['required', 'boolean'],
             'include_in_whitelist' => ['required', 'boolean'],
+            'include_in_connect_v2' => ['required', 'boolean'],
             'is_free' => ['required', 'boolean'],
             'is_active' => ['required', 'boolean'],
             'is_ready' => ['required', 'boolean'],

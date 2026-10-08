@@ -23,6 +23,7 @@ class VlessExternalSubscriptionResource extends JsonResource
             'connect_name_prefix' => $this->connect_name_prefix,
             'include_in_main_subscription' => (bool) $this->include_in_main_subscription,
             'include_in_whitelist' => (bool) $this->include_in_whitelist,
+            'include_in_connect_v2' => (bool) $this->include_in_connect_v2,
             'is_free' => (bool) $this->is_free,
             'is_active' => (bool) $this->is_active,
             'is_ready' => (bool) $this->is_ready,

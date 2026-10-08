@@ -25,6 +25,7 @@ class VlessExternalSubscription extends Model
         'connect_name_prefix',
         'include_in_main_subscription',
         'include_in_whitelist',
+        'include_in_connect_v2',
         'is_free',
         'is_active',
         'is_ready',
@@ -37,6 +38,7 @@ class VlessExternalSubscription extends Model
         return [
             'include_in_main_subscription' => 'boolean',
             'include_in_whitelist' => 'boolean',
+            'include_in_connect_v2' => 'boolean',
             'is_free' => 'boolean',
             'is_active' => 'boolean',
             'is_ready' => 'boolean',

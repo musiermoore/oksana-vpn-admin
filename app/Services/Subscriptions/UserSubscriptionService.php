@@ -54,6 +54,7 @@ class UserSubscriptionService
         ?string $format = null,
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
         ?User $user = null,
+        string $customExternalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
     ): SubscriptionBuildResult
     {
         $builder = $this->builderFactory->make((string) $format);
@@ -62,7 +63,7 @@ class UserSubscriptionService
             $result = $builder->buildForSubscriptionType($nodes, $subscriptionType);
 
             if ($user !== null && $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT) {
-                return $this->appendCustomJsonProfiles($user, $nodes);
+                return $this->appendCustomJsonProfiles($user, $nodes, $customExternalPurpose);
             }
 
             return $result;
@@ -82,18 +83,21 @@ class UserSubscriptionService
 
     public function buildConnectV2(User $user, ?string $app = null): SubscriptionBuildResult
     {
+        $externalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2;
+
         if ($app === 'happ') {
             return $this->buildFromNodes(
-                $this->buildNamedNodes($user),
+                $this->buildNamedNodes($user, $externalPurpose),
                 'json',
                 XrayRouting::SUBSCRIPTION_CONNECT,
                 $user,
+                $externalPurpose,
             );
         }
 
         if ($app === 'v2raytun') {
             $nodes = array_values(array_filter(
-                $this->buildNamedNodes($user),
+                $this->buildNamedNodes($user, $externalPurpose),
                 static fn (NormalizedNode $node): bool => $node->transport !== 'xhttp',
             ));
 
@@ -102,31 +106,33 @@ class UserSubscriptionService
                 'json',
                 XrayRouting::SUBSCRIPTION_CONNECT,
                 $user,
+                $externalPurpose,
             );
         }
 
-        $nodes = [
-            ...$this->buildNamedNodes($user),
-            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose(
-                $user,
-                VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
-            ),
-        ];
+        $nodes = $this->buildNamedNodes($user, $externalPurpose);
 
-        return $this->buildFromNodes($nodes, 'json', XrayRouting::SUBSCRIPTION_CONNECT, $user);
+        return $this->buildFromNodes(
+            $nodes,
+            'json',
+            XrayRouting::SUBSCRIPTION_CONNECT,
+            $user,
+            $externalPurpose,
+        );
     }
 
     /**
      * @param  array<int, NormalizedNode>  $nodes
      */
-    private function appendCustomJsonProfiles(User $user, array $nodes): SubscriptionBuildResult
+    private function appendCustomJsonProfiles(
+        User $user,
+        array $nodes,
+        string $externalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
+    ): SubscriptionBuildResult
     {
         $customNodes = [
             ...$this->buildNamedNodes($user, VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM),
-            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose(
-                $user,
-                VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
-            ),
+            ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, $externalPurpose),
         ];
         return (new ConnectJsonProfileOrderer())->build($this->connectJsonBuilder, $nodes, $customNodes);
     }

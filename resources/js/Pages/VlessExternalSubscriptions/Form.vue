@@ -25,6 +25,7 @@ const form = useForm({
     connect_name_prefix: props.subscription?.connect_name_prefix ?? '',
     include_in_main_subscription: props.subscription?.include_in_main_subscription ?? false,
     include_in_whitelist: props.subscription?.include_in_whitelist ?? true,
+    include_in_connect_v2: props.subscription?.include_in_connect_v2 ?? true,
     is_free: props.subscription?.is_free ?? false,
     is_active: props.subscription?.is_active ?? true,
     is_ready: props.subscription?.is_ready ?? true,
@@ -110,6 +111,11 @@ const loadPreview = async () => {
             <label class="field">
                 <span>Включить в подписку белых списков</span>
                 <AppCheckbox v-model="form.include_in_whitelist" />
+            </label>
+
+            <label class="field">
+                <span>Отображать в connect-v2</span>
+                <AppCheckbox v-model="form.include_in_connect_v2" />
             </label>
 
             <label class="field">

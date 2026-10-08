@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Jobs\StoreApiRequestLogJob;
 use App\Models\User;
+use App\Models\VlessExternalSubscription;
+use App\Models\VlessExternalSubscriptionConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -124,6 +126,47 @@ class ConnectV2Test extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
             ->assertJsonStructure();
+    }
+
+    public function test_connect_v2_includes_only_external_subscriptions_enabled_for_connect_v2(): void
+    {
+        $user = $this->createUser();
+
+        foreach ([
+            ['name' => 'Shown in connect v2', 'include_in_connect_v2' => true],
+            ['name' => 'Hidden from connect v2', 'include_in_connect_v2' => false],
+        ] as $index => $attributes) {
+            $subscription = VlessExternalSubscription::query()->create([
+                'name' => $attributes['name'],
+                'sort_order' => $index,
+                'type' => VlessExternalSubscription::TYPE_DIRECT,
+                'source_url' => 'vless://external-'.$index.'@external-'.$index.'.example.com:443?type=tcp#External',
+                'include_in_main_subscription' => false,
+                'include_in_whitelist' => false,
+                'include_in_connect_v2' => $attributes['include_in_connect_v2'],
+                'is_free' => true,
+                'is_active' => true,
+                'is_ready' => true,
+            ]);
+
+            VlessExternalSubscriptionConfig::query()->create([
+                'vless_external_subscription_id' => $subscription->id,
+                'config_key' => 'external-'.$index,
+                'name' => $attributes['name'],
+                'normalized_name' => mb_strtolower($attributes['name']),
+                'protocol' => 'vless',
+                'url' => 'vless://external-'.$index.'@external-'.$index.'.example.com:443?type=tcp#External',
+                'sort_order' => 0,
+            ]);
+        }
+
+        $response = $this
+            ->withHeader('User-Agent', 'INCY/2.4.5')
+            ->get(route('vless.connect-v2', ['token' => $user->uuid]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('external-0.example.com', $response->getContent());
+        $this->assertStringNotContainsString('external-1.example.com', $response->getContent());
     }
 
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void

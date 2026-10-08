@@ -31,11 +31,12 @@ class ConnectV2Test extends TestCase
 
         $response
             ->assertOk()
-            ->assertHeader('Content-Type', 'application/json; charset=UTF-8');
-        $this->assertFalse($response->headers->has('Profile-Title'));
-        $this->assertFalse($response->headers->has('Support-Url'));
-        $this->assertFalse($response->headers->has('Subscription-Userinfo'));
-        $this->assertNoSpecialSubscriptionHeaders($response);
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertHeader('Profile-Title', 'Oksana VPN v2')
+            ->assertHeader('Support-Url', 'https://t.me/OksanaVpnBot');
+        $this->assertFalse($response->headers->has('Hide-Url'));
+        $this->assertFalse($response->headers->has('Hide-Proxy'));
+        $this->assertNoConfigHidingHeaders($response);
     }
 
     public function test_happ_receives_plain_json_without_special_headers(): void
@@ -52,7 +53,7 @@ class ConnectV2Test extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8');
 
-        $this->assertNoSpecialSubscriptionHeaders($response);
+        $this->assertNoConfigHidingHeaders($response);
     }
 
     public function test_happ_deep_link_redirects_even_when_requested_by_happ_android(): void
@@ -91,7 +92,7 @@ class ConnectV2Test extends TestCase
         $response
             ->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8');
-        $this->assertNoSpecialSubscriptionHeaders($response);
+        $this->assertNoConfigHidingHeaders($response);
     }
 
     public function test_happ_app_parameter_returns_one_diagnostic_profile(): void
@@ -131,7 +132,7 @@ class ConnectV2Test extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
             ->assertJsonStructure();
-        $this->assertNoSpecialSubscriptionHeaders($response);
+        $this->assertNoConfigHidingHeaders($response);
     }
 
     public function test_connect_v2_includes_only_external_subscriptions_enabled_for_connect_v2(): void
@@ -212,7 +213,7 @@ class ConnectV2Test extends TestCase
         $response
             ->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8');
-        $this->assertNoSpecialSubscriptionHeaders($response);
+        $this->assertNoConfigHidingHeaders($response);
     }
 
     public function test_postman_receives_plain_json_for_any_user(): void
@@ -289,20 +290,12 @@ class ConnectV2Test extends TestCase
         });
     }
 
-    private function assertNoSpecialSubscriptionHeaders($response): void
+    private function assertNoConfigHidingHeaders($response): void
     {
         foreach ([
-            'Profile-Update-Interval',
-            'Profile-Title',
-            'Subscription-Userinfo',
-            'Support-Url',
-            'Profile-Web-Page-Url',
-            'Announce-Url',
             'Hide-Url',
             'Hide-Proxy',
             'Hide-Settings',
-            'X-Subscription-Devices-Limit',
-            'X-Subscription-Devices-Used',
         ] as $header) {
             $this->assertFalse($response->headers->has($header), "Unexpected {$header} header.");
         }

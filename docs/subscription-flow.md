@@ -173,7 +173,7 @@ Main `/connect`:
 `/connect-v2`:
 
 - Resolves the user from the plain `users.uuid` query token.
-- Returns the same plain JSON subscription for every client through the universal URL. It does not inspect `User-Agent`/`app`, apply client-specific filtering, or add special subscription headers; only `Content-Type: application/json` is returned for the subscription payload.
+- Returns the same plain JSON subscription for every client through the universal URL. It does not inspect `User-Agent`/`app` or apply client-specific filtering. Standard metadata and support headers remain enabled; only config-hiding headers (`Hide-Url`, `Hide-Proxy`, `Hide-Settings`) are suppressed.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 - The mini-app's client links use the configured public `/start?token=...&app=...` URL directly. The `/connect-v2` endpoint returns JSON; the mini-app does not expose encrypted client-specific links or hashed subscription payloads.
 - External config names prefer `Название в connect-wl` when it is configured.

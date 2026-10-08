@@ -219,6 +219,7 @@ class VlessConfigController extends Controller
 
     public function connectV2(
         Request $request,
+        SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService,
     ): Response
     {
@@ -247,8 +248,14 @@ class VlessConfigController extends Controller
             'ext' => $subscription->fileExtension,
         ]);
 
-        return response($subscription->content)
-            ->header('Content-Type', $subscription->contentType);
+        return $this->subscriptionResponse(
+            $request,
+            $user,
+            $subscription,
+            $metadataService,
+            'Oksana VPN v2',
+            false,
+        );
     }
 
     private function subscriptionResponse(
@@ -439,6 +446,7 @@ class VlessConfigController extends Controller
         Request $request,
         string $client,
         VlessDeepLinkService $deepLinkService,
+        SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService,
     ): Response {
         $user = User::query()->where('uuid', $request->string('token')->toString())->first();
@@ -451,7 +459,7 @@ class VlessConfigController extends Controller
         if ($client !== 'happ' && str_contains($userAgent, $client)) {
             $request->merge(['deep_link' => true]);
 
-            return $this->connectV2($request, $subscriptionService);
+            return $this->connectV2($request, $metadataService, $subscriptionService);
         }
 
         $redirectUrl = $deepLinkService->resolveRedirectUrl(

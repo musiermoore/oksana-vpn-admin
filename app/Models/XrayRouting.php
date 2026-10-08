@@ -24,6 +24,7 @@ class XrayRouting extends Model
         'xray_inbound_ids',
         'external_subscription_config_ids',
         'proxy_ids',
+        'is_global',
         'rules',
         'sort_order',
         'is_active',
@@ -40,6 +41,7 @@ class XrayRouting extends Model
             'rules' => 'array',
             'sort_order' => 'integer',
             'is_active' => 'boolean',
+            'is_global' => 'boolean',
         ];
     }
 

@@ -178,6 +178,7 @@ Main `/connect`:
 - Returns `403` for unsupported clients or non-admin Postman requests.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 - The INCY deep-link route wraps the HTTPS subscription URL as `incy://crypt1/{base64url}` using the same AES-GCM format decoded for external INCY subscriptions.
+- External subscriptions are included only when `include_in_connect_v2` (`Отображать в connect-v2`) is enabled. The flag also controls external profiles included in connect-v2 custom JSON profiles.
 
 WireGuard/AmneziaWG output:
 
@@ -222,6 +223,8 @@ Global Xray resources:
 
 - `xray_routing_geodata` stores reusable external `geoip.dat`/`geosite.dat` URLs and cached assets.
 - `xray_routing_dns_settings` stores reusable DNS server lists, query strategy, and parallel-query preference.
+- One active DNS resource can be marked as the default for all simple JSON configs; custom configs may override it with their selected resource.
+- Xray routing rules support a global scope for all simple JSON configs in addition to local inbound/server-specific targets.
 - Routing rules can target proxies through `xray_routings.proxy_ids` in addition to local inbounds and external subscription configs.
 
 Whitelist `/connect-wl-version-2`:
@@ -249,6 +252,7 @@ Key flags:
 
 - `include_in_main_subscription`: include configs in `/connect`
 - `include_in_whitelist`: include configs in whitelist output
+- `include_in_connect_v2`: include configs in `/connect-v2`
 - `is_free`: allow configs without active subscription
 - `is_active`: source is active
 - `is_ready`: source finished sync and can be used

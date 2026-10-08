@@ -26,6 +26,7 @@ class StoreXrayDnsSettingsRequest extends DataFormRequest
             'servers.*' => ['required', 'string', 'max:255'],
             'query_strategy' => ['required', 'string', 'in:AsIs,UseIP,UseIPv4,UseIPv6'],
             'enable_parallel_query' => ['boolean'],
+            'is_default' => ['boolean'],
         ];
     }
 

@@ -8,6 +8,7 @@ use App\Models\XrayJsonSetting;
 use App\Models\XrayRouting;
 use App\Models\XrayRoutingDnsSettings;
 use App\Models\XrayRoutingGeodata;
+use Illuminate\Database\Eloquent\Builder;
 
 class ConnectJsonProfileSettingsProvider
 {
@@ -41,6 +42,16 @@ class ConnectJsonProfileSettingsProvider
      */
     public function dns(): array
     {
+        $defaultSettings = XrayRoutingDnsSettings::query()
+            ->active()
+            ->where('is_default', true)
+            ->latest('id')
+            ->first();
+
+        if ($defaultSettings !== null) {
+            return $this->dnsFromSettings($defaultSettings);
+        }
+
         $settings = $this->activeSettings()?->dns;
 
         if (is_array($settings) && $settings !== []) {
@@ -163,7 +174,14 @@ class ConnectJsonProfileSettingsProvider
         return XrayRouting::query()
             ->active()
             ->forSubscriptionType($subscriptionType)
-            ->forAnyTarget($xrayInboundId, $externalSubscriptionConfigId, $proxyId)
+            ->where(function (Builder $query) use ($xrayInboundId, $externalSubscriptionConfigId, $proxyId): void {
+                $query->where('is_global', true)
+                    ->orWhere(fn (Builder $targetQuery) => $targetQuery->forAnyTarget(
+                        $xrayInboundId,
+                        $externalSubscriptionConfigId,
+                        $proxyId,
+                    ));
+            })
             ->exists();
     }
 
@@ -182,7 +200,14 @@ class ConnectJsonProfileSettingsProvider
             ->active()
             ->whereKey($routingIds)
             ->forSubscriptionType($subscriptionType)
-            ->forAnyTarget($xrayInboundId, $externalSubscriptionConfigId, $proxyId)
+            ->where(function (Builder $query) use ($xrayInboundId, $externalSubscriptionConfigId, $proxyId): void {
+                $query->where('is_global', true)
+                    ->orWhere(fn (Builder $targetQuery) => $targetQuery->forAnyTarget(
+                        $xrayInboundId,
+                        $externalSubscriptionConfigId,
+                        $proxyId,
+                    ));
+            })
             ->ordered()
             ->get()
             ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(
@@ -212,7 +237,14 @@ class ConnectJsonProfileSettingsProvider
         }
 
         return $query
-            ->forAnyTarget($xrayInboundId, $externalSubscriptionConfigId, $proxyId)
+            ->where(function (Builder $query) use ($xrayInboundId, $externalSubscriptionConfigId, $proxyId): void {
+                $query->where('is_global', true)
+                    ->orWhere(fn (Builder $targetQuery) => $targetQuery->forAnyTarget(
+                        $xrayInboundId,
+                        $externalSubscriptionConfigId,
+                        $proxyId,
+                    ));
+            })
             ->ordered()
             ->get()
             ->map(fn (XrayRouting $routing): array => $routing->toXrayRule(

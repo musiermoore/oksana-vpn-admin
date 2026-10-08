@@ -12,7 +12,7 @@ class XrayRoutingDnsSettings extends Model
     protected $table = 'xray_routing_dns_settings';
 
     protected $fillable = [
-        'name', 'description', 'servers', 'query_strategy', 'enable_parallel_query', 'is_active',
+        'name', 'description', 'servers', 'query_strategy', 'enable_parallel_query', 'is_active', 'is_default',
     ];
 
     protected function casts(): array
@@ -21,6 +21,7 @@ class XrayRoutingDnsSettings extends Model
             'servers' => 'array',
             'enable_parallel_query' => 'boolean',
             'is_active' => 'boolean',
+            'is_default' => 'boolean',
         ];
     }
 

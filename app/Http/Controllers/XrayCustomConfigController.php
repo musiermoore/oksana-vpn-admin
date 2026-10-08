@@ -167,6 +167,12 @@ class XrayCustomConfigController extends Controller
             'is_active' => true,
         ]);
 
+        if ($settings->is_default) {
+            XrayRoutingDnsSettings::query()
+                ->where('id', '!=', $settings->id)
+                ->update(['is_default' => false]);
+        }
+
         return response()->json(['resource' => ['id' => $settings->id, 'name' => $settings->name]]);
     }
 

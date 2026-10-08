@@ -58,6 +58,7 @@ const form = useForm({
     xray_inbound_ids: props.initialRouting?.xray_inbound_ids ?? [],
     external_subscription_config_ids: props.initialRouting?.external_subscription_config_ids ?? [],
     proxy_ids: props.initialRouting?.proxy_ids ?? [],
+    is_global: props.initialRouting?.is_global ?? false,
 });
 
 const selectedSubscriptionTypes = () => [
@@ -100,6 +101,7 @@ const payload = (data) => ({
     xray_inbound_ids: data.xray_inbound_ids,
     external_subscription_config_ids: data.external_subscription_config_ids,
     proxy_ids: data.proxy_ids,
+    is_global: data.is_global,
 });
 
 const submit = () => {
@@ -163,6 +165,11 @@ const submit = () => {
 
         <div class="field" style="grid-column: 1 / -1;">
             <span>Локальные xray inbounds</span>
+            <label class="field-row">
+                <input v-model="form.is_global" type="checkbox">
+                <strong>Глобальное правило для всех простых JSON-конфигураций</strong>
+            </label>
+            <small>Отключите эту опцию, чтобы применить правило только к выбранному серверу/inbound ниже.</small>
             <div class="stack">
                 <div v-for="server in targetTree?.servers ?? []" :key="server.id" class="stack">
                     <label class="field-row">

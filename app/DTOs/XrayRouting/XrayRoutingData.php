@@ -27,6 +27,7 @@ class XrayRoutingData extends Data
         public array $xray_inbound_ids,
         public array $external_subscription_config_ids,
         public array $proxy_ids,
+        public bool $is_global,
         public array $rules,
         public int $sort_order,
         public bool $is_active,

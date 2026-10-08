@@ -17,6 +17,7 @@ class XrayDnsSettingsData extends Data
         public array $servers,
         public string $queryStrategy,
         public bool $enableParallelQuery = false,
+        public bool $isDefault = false,
     ) {}
 
     /**
@@ -30,6 +31,7 @@ class XrayDnsSettingsData extends Data
             'servers' => $this->servers,
             'query_strategy' => $this->queryStrategy,
             'enable_parallel_query' => $this->enableParallelQuery,
+            'is_default' => $this->isDefault,
         ];
     }
 }

@@ -153,6 +153,8 @@ External VLESS subscriptions support multiple source formats:
 - Each routing rule chooses `direct`, `proxy`, or `blocked`, stores Xray field-rule data in JSON, and uses JSON `subscription_types` to apply to `connect`, `connect_wl`, or future subscription outputs. Admins can create multiple rules and edit rule JSON, order, activity, outbound, subscription scope, local `xray_inbound_ids`, and external subscription config targets after import.
 - Routing rules can also target proxy nodes through `proxy_ids`.
 - Reusable global DNS and geodata resources are stored in `xray_routing_dns_settings` and `xray_routing_geodata`. Custom JSON definitions in `xray_custom_configs` select those resources and selected nodes/routings while still filtering local and external nodes per requesting user.
+- A DNS resource marked as default is used by every simple JSON config; custom JSON profiles can still select their own DNS resource.
+- Routing rules can be marked global for every simple JSON config or targeted to selected local inbounds/servers. Untargeted rules remain inactive for generated profiles unless explicitly marked global.
 - `xray_custom_config_outbound_groups` and `xray_custom_config_routes` extend custom configs into named, ordered balancer groups and site-specific routing. Groups support `roundRobin`, `leastPing`, `leastLoad`, and `random`; a group may fall back to another multi-node group, while unmatched traffic defaults to `direct`.
 - Empty routing target arrays mean the rule is not applied anywhere; JSON profiles receive only rules explicitly scoped to their local Xray inbound or external subscription config.
 - Imported geodata URLs are validated and cached in `storage/app/xray-geodata` by URL plus `LastUpdated`; JSON subscriptions emit Xray `geodata.assets`, so the client-side Xray Core downloads `geoip.dat`/`geosite.dat` into its own resource path.
@@ -164,6 +166,12 @@ Its order is explicit rather than inferred from ids:
 - `xray_custom_configs.sort_order` controls where active custom JSON profiles appear among local servers and external groups in JSON subscription output
 - `xray_inbounds.sort_order` and `proxies.sort_order` control order inside one server
 - soft-deleted servers are excluded from `/connect` by default because `servers` now use Eloquent soft delete
+
+External VLESS subscription visibility is controlled independently per output:
+
+- `include_in_main_subscription` controls `/connect`
+- `include_in_whitelist` controls whitelist output
+- `include_in_connect_v2` controls `/connect-v2`
 
 Important WireGuard/AmneziaWG rules:
 

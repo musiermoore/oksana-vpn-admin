@@ -34,6 +34,9 @@ class ConnectV2Test extends TestCase
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
             ->assertHeader('Profile-Title', 'Oksana VPN v2')
             ->assertHeader('Support-Url', 'https://t.me/OksanaVpnBot');
+
+        $this->assertFalse($response->headers->has('Hide-Url'));
+        $this->assertFalse($response->headers->has('Hide-Proxy'));
     }
 
     public function test_happ_user_agent_redirects_to_happ_deep_link(): void
@@ -48,8 +51,9 @@ class ConnectV2Test extends TestCase
 
         $response
             ->assertOk()
-            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
-            ->assertHeader('Hide-Settings', '1');
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8');
+
+        $this->assertFalse($response->headers->has('Hide-Settings'));
     }
 
     public function test_happ_deep_link_redirects_even_when_requested_by_happ_android(): void
@@ -78,15 +82,17 @@ class ConnectV2Test extends TestCase
     {
         $user = $this->createUser();
 
-        $this
+        $response = $this
             ->withHeader('User-Agent', 'Mozilla/5.0')
             ->get(route('vless.connect-v2', [
                 'token' => $user->uuid,
                 'app' => 'happ',
-            ]))
+            ]));
+
+        $response
             ->assertOk()
-            ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
-            ->assertHeader('Hide-Settings', '1');
+            ->assertHeader('Content-Type', 'application/json; charset=UTF-8');
+        $this->assertFalse($response->headers->has('Hide-Settings'));
     }
 
     public function test_happ_app_parameter_returns_one_diagnostic_profile(): void
@@ -105,9 +111,9 @@ class ConnectV2Test extends TestCase
 
         $response
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
-            ->assertHeader('Hide-Settings', '1')
             ->assertJsonStructure();
 
+        $this->assertFalse($response->headers->has('Hide-Settings'));
         $this->assertStringNotContainsString('Happ test', $response->getContent());
     }
 
@@ -140,6 +146,7 @@ class ConnectV2Test extends TestCase
                 'name' => $attributes['name'],
                 'sort_order' => $index,
                 'type' => VlessExternalSubscription::TYPE_DIRECT,
+                'connect_name_prefix' => $attributes['include_in_connect_v2'] ? 'Connect WL Name' : null,
                 'source_url' => 'vless://external-'.$index.'@external-'.$index.'.example.com:443?type=tcp#External',
                 'include_in_main_subscription' => false,
                 'include_in_whitelist' => false,
@@ -166,7 +173,7 @@ class ConnectV2Test extends TestCase
 
         $response->assertOk();
         $this->assertStringContainsString('external-0.example.com', $response->getContent());
-        $this->assertStringContainsString('Name in subscription', $response->getContent());
+        $this->assertStringContainsString('Connect WL Name', $response->getContent());
         $this->assertStringNotContainsString('External subscription name', $response->getContent());
         $this->assertStringNotContainsString('external-1.example.com', $response->getContent());
     }

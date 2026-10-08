@@ -59,7 +59,7 @@ class VlessExternalSubscriptionAccessService
                 sourceType: $node->sourceType,
                 sortServerName: $node->sortServerName,
                 meta: [...$node->meta, 'name' => $useSubscriptionConfigNames
-                    ? ($node->meta['config_name'] ?? $names[$node->id] ?? $node->serverName)
+                    ? ($customNames[$node->id] ?? $node->meta['config_name'] ?? $names[$node->id] ?? $node->serverName)
                     : ($customNames[$node->id] ?? $names[$node->id] ?? $node->serverName)],
             ),
             $nodes

@@ -259,7 +259,7 @@ class VlessConfigController extends Controller
             'ext' => $subscription->fileExtension,
         ]);
 
-        return $this->subscriptionResponse($request, $user, $subscription, $metadataService, 'Oksana VPN v2');
+        return $this->subscriptionResponse($request, $user, $subscription, $metadataService, 'Oksana VPN v2', false);
     }
 
     private function subscriptionResponse(
@@ -268,6 +268,7 @@ class VlessConfigController extends Controller
         SubscriptionBuildResult $subscription,
         SubscriptionMetadataService $metadataService,
         string $profileTitle = 'Oksana VPN',
+        bool $hideClientSettings = true,
     ): Response {
         $response = response($subscription->content);
 
@@ -295,12 +296,12 @@ class VlessConfigController extends Controller
         $userAgent = mb_strtolower((string) $request->userAgent());
         $app = mb_strtolower($request->string('app')->toString());
         $effectiveClient = $app !== '' ? $app : $userAgent;
-        if (str_contains($effectiveClient, 'incy')) {
+        if ($hideClientSettings && str_contains($effectiveClient, 'incy')) {
             $response->header('Hide-Url', 'true');
             $response->header('Hide-Proxy', 'true');
         }
 
-        if (str_contains($effectiveClient, 'happ')) {
+        if ($hideClientSettings && str_contains($effectiveClient, 'happ')) {
             $response->header('Hide-Settings', '1');
         }
 

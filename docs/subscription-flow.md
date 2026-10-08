@@ -178,6 +178,7 @@ Main `/connect`:
 - Returns `403` for unsupported clients or non-admin Postman requests.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 - The mini-app's client links use the configured public `/start?token=...&app=...` URL directly. The `/connect-v2` endpoint returns JSON; the mini-app does not expose encrypted client-specific links or hashed subscription payloads.
+- Plain `/connect-v2` imports do not send client UI-hiding headers, so Incy and Happ can show the imported profile settings. External config names prefer `Название в connect-wl` when it is configured.
 - Legacy `/connect-v2/deep-link/{client}` routes remain available for compatibility with existing non-mini-app callers.
 - External subscriptions are included only when `include_in_connect_v2` (`Отображать в connect-v2`) is enabled. The flag also controls external profiles included in connect-v2 custom JSON profiles.
 

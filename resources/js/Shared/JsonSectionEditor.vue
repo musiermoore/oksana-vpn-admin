@@ -6,6 +6,7 @@ const props = defineProps({
     description: { type: String, default: '' },
     modelValue: { type: String, required: true },
     error: { type: String, default: '' },
+    jsonEditable: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -26,8 +27,8 @@ const toggleMode = () => {
                 <h2>{{ title }}</h2>
                 <p v-if="description">{{ description }}</p>
             </div>
-            <AppButton variant="secondary" type="button" @click="toggleMode">
-                {{ jsonMode ? 'Открыть builder' : 'Edit in JSON' }}
+            <AppButton v-if="jsonEditable" variant="secondary" type="button" @click="toggleMode">
+                {{ jsonMode ? 'Открыть конструктор' : 'Редактировать JSON' }}
             </AppButton>
         </div>
 
@@ -41,6 +42,10 @@ const toggleMode = () => {
 </template>
 
 <style scoped>
+.json-section {
+    grid-column: 1 / -1;
+}
+
 .json-section__header {
     align-items: flex-start;
     display: flex;

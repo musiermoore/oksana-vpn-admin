@@ -356,14 +356,50 @@ const parseSection = (value, fallback, onValue) => {
     }
 };
 const groupsJson = computed({
-    get: () => sectionJson(buildGroups()),
+    get: () => sectionJson(buildGroups().map(({ xray_inbound_ids, external_subscription_config_ids, external_subscription_ids, proxy_ids, sort_order, ...group }) => group)),
     set: (value) => parseSection(value, buildGroups(), (parsed) => {
-        if (Array.isArray(parsed)) groups.value = parsed.map((group, index) => ({ ...group, name: group.name || `Group ${index + 1}`, tag: group.tag || groupSlug(group.name), strategy: group.strategy || 'roundRobin', fallback_group_tag: group.fallback_group_tag || '', xray_inbound_ids: group.xray_inbound_ids || [], external_subscription_ids: group.external_subscription_ids || [], proxy_ids: group.proxy_ids || [], _tagManuallyEdited: true, _menuOpen: false }));
+        if (Array.isArray(parsed)) groups.value = parsed.map((group, index) => {
+            const existing = groups.value.find((item) => item.tag === group.tag) || groups.value[index] || {};
+            const { xray_inbound_ids, external_subscription_config_ids, external_subscription_ids, proxy_ids, sort_order, ...xrayGroup } = group;
+
+            return {
+                ...xrayGroup,
+                name: xrayGroup.name || `Group ${index + 1}`,
+                tag: xrayGroup.tag || groupSlug(xrayGroup.name),
+                strategy: xrayGroup.strategy || 'roundRobin',
+                fallback_group_tag: xrayGroup.fallback_group_tag || '',
+                xray_inbound_ids: existing.xray_inbound_ids || [],
+                external_subscription_config_ids: existing.external_subscription_config_ids || [],
+                external_subscription_ids: existing.external_subscription_ids || [],
+                proxy_ids: existing.proxy_ids || [],
+                _tagManuallyEdited: true,
+                _menuOpen: false,
+            };
+        });
     }),
 });
 const routesJson = computed({
-    get: () => sectionJson(buildRoutes()),
-    set: (value) => parseSection(value, buildRoutes(), (parsed) => { if (Array.isArray(parsed)) routes.value = parsed.map(normalizeRoute); }),
+    get: () => sectionJson(buildRoutes().map((route) => ({
+        type: 'field',
+        ...route.rules,
+        outboundTag: route.target_type === 'balancer' ? route.target_tag : route.target_type,
+    }))),
+    set: (value) => parseSection(value, buildRoutes(), (parsed) => {
+        if (Array.isArray(parsed)) {
+            routes.value = parsed.map((rule, index) => {
+                const { type, outboundTag, ...rules } = rule || {};
+                const target = String(outboundTag || 'proxy');
+                const targetType = ['direct', 'block'].includes(target) ? target : 'balancer';
+
+                return normalizeRoute({
+                    rules,
+                    target_type: targetType,
+                    target_tag: targetType === 'balancer' ? target : '',
+                    is_active: true,
+                }, index);
+            });
+        }
+    }),
 });
 const routingTemplatesJson = computed({
     get: () => sectionJson(ids('xray_routing_ids')),
@@ -423,12 +459,12 @@ const saveResource = async () => {
 </script>
 
 <template>
-    <Head :title="props.config ? 'Edit Xray Configuration' : 'Create Xray Configuration'" />
+    <Head :title="props.config ? 'Редактирование конфигурации Xray' : 'Создание конфигурации Xray'" />
     <section class="page-card stack xray-config-form">
         <div class="page-header"><div><h1>{{ props.config ? 'Edit Xray Configuration' : 'Create Xray Configuration' }}</h1></div></div>
         <form class="grid grid--two" @submit.prevent="submit">
             <div class="form-section">
-                <h2>Basic information</h2>
+                <h2>Основная информация</h2>
                 <div class="grid grid--two">
                     <label class="field"><span>Configuration Name</span><AppInput v-model="form.name" required /></label>
                     <label class="field"><span>Slug</span><AppInput v-model="form.slug" required @input="slugManuallyEdited = true" /><small>Generated automatically from the configuration name.</small></label>
@@ -437,13 +473,13 @@ const saveResource = async () => {
                     <label class="field basic-status"><span>Status</span><AppCheckbox v-model="form.is_active" /> <small>{{ form.is_active ? 'Enabled' : 'Disabled' }}</small></label>
                 </div>
             </div>
-            <JsonSectionEditor v-model="resourcesJson" title="Resources" description="Select reusable DNS and geodata resources for this configuration.">
+            <JsonSectionEditor v-model="resourcesJson" title="Ресурсы" description="Выберите DNS и геоданные для этой конфигурации." :json-editable="false">
                 <div class="grid grid--two">
                     <div class="field resource-field"><span>DNS Configuration</span><AppSelect v-model="form.dns_settings_id" :options="dnsOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select DNS configuration" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns')">+ Create DNS configuration</AppButton></div>
                     <div class="field resource-field"><span>Geodata</span><AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select geodata source" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('geodata')">+ Create geodata source</AppButton></div>
                 </div>
             </JsonSectionEditor>
-            <JsonSectionEditor v-model="baseSettingsJson" title="Base settings" description="Profile-level Xray settings such as routing strategy, logging, policy, or observatory.">
+            <JsonSectionEditor v-model="baseSettingsJson" title="Основные настройки" description="Основные настройки профиля Xray: маршрутизация, журналирование, policy и observatory.">
                 <div class="grid grid--two">
                     <label class="field"><span>Domain Strategy</span><AppSelect v-model="settings.domainStrategy" :options="domainStrategyOptions" /></label>
                     <label class="field"><span>Log Level</span><AppSelect v-model="settings.loglevel" :options="logLevelOptions" /></label>
@@ -451,7 +487,7 @@ const saveResource = async () => {
                 <small v-if="baseSettingsError" class="form-error">{{ baseSettingsError }}</small>
             </JsonSectionEditor>
             <div class="source-section">
-                <div class="source-section__header"><div><h2>Sources</h2><p>Choose which outbound sources may be used by this configuration.</p></div><strong>{{ totalSourcesSelected }} sources selected</strong></div>
+                <div class="source-section__header"><div><h2>Источники</h2><p>Выберите источники исходящих подключений для этой конфигурации.</p></div><strong>{{ totalSourcesSelected }} выбрано</strong></div>
                 <div class="source-picker">
                     <div class="source-picker__header"><h3>Local servers &amp; inbounds</h3><strong>{{ localSelectedCount }} selected</strong></div>
                     <div class="source-toolbar"><AppInput v-model="localSearch" placeholder="Search servers or inbounds..." /><AppSelect v-model="localCountry" :options="countries.map((country) => ({ value: country, label: country }))" placeholder="Country" /></div>
@@ -489,12 +525,12 @@ const saveResource = async () => {
                     <div class="source-list source-list--flat"><label v-for="proxy in visibleProxies" :key="proxy.id" class="source-child-row"><input type="checkbox" :checked="checked('proxy_ids', proxy.id)" @change="toggle('proxy_ids', proxy.id, $event.target.checked)"><span>{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}<small>{{ proxy.is_ready ? 'Available' : 'Unavailable' }}</small></span></label><p v-if="visibleProxies.length === 0" class="source-empty">No matching proxy nodes.</p></div>
                 </div>
             </div>
-            <JsonSectionEditor v-model="routingTemplatesJson" title="Routing rule templates" description="Optional reusable rules that will be included in this configuration.">
+            <JsonSectionEditor v-model="routingTemplatesJson" title="Шаблоны правил маршрутизации" description="Необязательные правила, которые будут включены в эту конфигурацию." :json-editable="false">
                 <div class="routing-list"><label v-for="routing in props.targets.routings || []" :key="routing.id" class="routing-row"><input type="checkbox" :checked="checked('xray_routing_ids', routing.id)" @change="toggle('xray_routing_ids', routing.id, $event.target.checked)"><span><strong>{{ routing.name }}</strong><small>{{ routing.description || 'Reusable routing rule template.' }}{{ routing.is_active ? '' : ' · Inactive' }}</small></span></label><p v-if="!(props.targets.routings || []).length" class="source-empty">No routing rule templates available.</p></div>
             </JsonSectionEditor>
-            <JsonSectionEditor v-model="groupsJson" title="Outbound groups" description="Combine servers, subscription configs, and proxy nodes into reusable outbound groups. Groups can use balancing and fallback.">
-                <div class="groups-section__header"><div></div><AppButton variant="secondary" type="button" @click="addGroup">+ Add group</AppButton></div>
-                <div v-if="groups.length === 0" class="groups-empty">No outbound groups yet. Add a group to create reusable balancing and fallback pools.</div>
+            <JsonSectionEditor v-model="groupsJson" title="Группы исходящих подключений" description="Объединяйте серверы, подписки и proxy-ноды в группы с балансировкой и резервными маршрутами.">
+                <div class="groups-section__header"><div></div><AppButton variant="secondary" type="button" @click="addGroup">+ Добавить группу</AppButton></div>
+                <div v-if="groups.length === 0" class="groups-empty">Групп исходящих подключений пока нет. Добавьте группу для создания пула балансировки.</div>
                 <article v-for="(group, index) in groups" :key="index" class="group-card" :class="{ 'group-card--collapsed': !isGroupExpanded(index) }">
                     <div class="group-card__header"><button type="button" class="group-card__toggle" :aria-expanded="isGroupExpanded(index)" @click="toggleGroupExpanded(index)"><span><strong>{{ group.name || 'New outbound group' }}</strong><small>{{ group.tag }}</small></span><span class="group-card__summary"><b>{{ groupMemberCount(group) }} members</b><span>{{ strategyLabel(group.strategy) }}</span><span>{{ group.fallback_group_tag ? `Fallback → ${groups.find((item) => item.tag === group.fallback_group_tag)?.name || group.fallback_group_tag}` : 'No fallback' }}</span></span><span class="source-chevron">{{ isGroupExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Group actions" @click.stop="group._menuOpen = !group._menuOpen">⋯</button><div v-if="group._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateGroup(group, index)">Duplicate group</button><button type="button" class="is-danger" @click="removeGroup(group, index)">Delete group</button></div></div></div>
                     <div v-if="isGroupExpanded(index)" class="group-card__body">
@@ -505,9 +541,9 @@ const saveResource = async () => {
                     </div>
                 </article>
             </JsonSectionEditor>
-            <JsonSectionEditor v-model="routesJson" title="Site routes" description="Route traffic for specific domains, IPs, ports, or networks. Rules are evaluated from top to bottom.">
-                <div class="routes-section__header"><div></div><AppButton variant="secondary" type="button" @click="addRoute">+ Add route</AppButton></div>
-                <div v-if="routes.length === 0" class="routes-empty">No site routes yet. Add a route to define traffic behavior.</div>
+            <JsonSectionEditor v-model="routesJson" title="Маршруты сайтов" description="Настройте маршрутизацию для доменов, IP-адресов, портов и сетей. Правила применяются сверху вниз.">
+                <div class="routes-section__header"><div></div><AppButton variant="secondary" type="button" @click="addRoute">+ Добавить маршрут</AppButton></div>
+                <div v-if="routes.length === 0" class="routes-empty">Маршрутов сайтов пока нет. Добавьте маршрут, чтобы настроить правила.</div>
                 <article v-for="(route, index) in routes" :key="route" class="route-card" :class="{ 'route-card--collapsed': !isRouteExpanded(index) }" draggable="true" @dragstart="dragStartRoute(index)" @dragover.prevent @drop="dropRoute(index)">
                     <div class="route-card__header"><span class="route-drag-handle" title="Drag to reorder">⠿</span><button type="button" class="route-card__toggle" :aria-expanded="isRouteExpanded(index)" @click="toggleRouteExpanded(index)"><span class="route-card__title"><b>{{ index + 1 }}</b><strong>{{ route.name || `Route ${index + 1}` }}</strong><small>{{ routeSummary(route) }}</small></span><span class="route-card__status" :class="{ 'is-disabled': !route.is_active }">{{ route.is_active ? 'Enabled' : 'Disabled' }}</span><span class="source-chevron">{{ isRouteExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Route actions" @click.stop="route._menuOpen = !route._menuOpen">⋯</button><div v-if="route._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateRoute(route, index)">Duplicate route</button><button type="button" class="is-danger" @click="removeRoute(route, index)">Delete route</button></div></div></div>
                     <div v-if="isRouteExpanded(index)" class="route-card__body">

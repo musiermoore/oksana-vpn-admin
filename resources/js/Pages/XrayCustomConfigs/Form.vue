@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import JsonSectionEditor from '../../Shared/JsonSectionEditor.vue';
 
 defineOptions({ layout: AppLayout });
 
@@ -103,19 +104,24 @@ const ids = (field) => (form[field] || []).map(Number);
 const checked = (field, id) => ids(field).includes(Number(id));
 const toggle = (field, id, value) => { const current = ids(field); form[field] = value ? [...new Set([...current, Number(id)])] : current.filter((item) => item !== Number(id)); };
 const normalized = (value) => String(value || '').toLocaleLowerCase();
+const inboundLabel = (inbound) => [
+    `Inbound #${inbound.external_id}`,
+    inbound.protocol,
+    inbound.remark,
+].map((value) => String(value || '').trim()).filter(Boolean).join(' · ');
 const countryFlag = (value) => ({ Finland: '🇫🇮', Germany: '🇩🇪', Netherlands: '🇳🇱', Sweden: '🇸🇪', France: '🇫🇷', Poland: '🇵🇱', UnitedKingdom: '🇬🇧', 'United Kingdom': '🇬🇧' }[String(value)] || '');
 const serverMatches = (server) => {
     const query = normalized(localSearch.value).trim();
     const countryMatches = !localCountry.value || server.name === localCountry.value;
     if (!countryMatches) return false;
     if (!query) return true;
-    return normalized(server.name).includes(query) || (server.xray_inbounds || []).some((inbound) => normalized(`inbound #${inbound.external_id}`).includes(query));
+    return normalized(server.name).includes(query) || (server.xray_inbounds || []).some((inbound) => normalized(inboundLabel(inbound)).includes(query));
 };
 const visibleServers = computed(() => (props.targets.servers || []).filter(serverMatches));
 const visibleInbounds = (server) => {
     const query = normalized(localSearch.value).trim();
     if (!query || normalized(server.name).includes(query)) return server.xray_inbounds || [];
-    return (server.xray_inbounds || []).filter((inbound) => normalized(`inbound #${inbound.external_id}`).includes(query));
+    return (server.xray_inbounds || []).filter((inbound) => normalized(inboundLabel(inbound)).includes(query));
 };
 const countries = computed(() => [...new Set((props.targets.servers || []).map((server) => server.name).filter(Boolean))]);
 const serverSelectedCount = (server) => (server.xray_inbounds || []).filter((inbound) => checked('xray_inbound_ids', inbound.id)).length;
@@ -235,11 +241,11 @@ const openGroupMemberPicker = (index) => { groupMemberPickerIndex.value = index;
 const closeGroupMemberPicker = (save = false) => { if (!save && activeGroup.value && groupMemberSnapshot.value) Object.assign(activeGroup.value, groupMemberSnapshot.value); groupMemberSnapshot.value = null; groupMemberPickerIndex.value = null; };
 const activeGroup = computed(() => groupMemberPickerIndex.value === null ? null : groups.value[groupMemberPickerIndex.value]);
 const memberMatches = (value) => normalized(value).includes(normalized(groupMemberSearch.value).trim());
-const memberServerMatches = (server) => (!groupMemberCountry.value || server.name === groupMemberCountry.value) && (memberMatches(server.name) || server.xray_inbounds.some((inbound) => memberMatches(`inbound #${inbound.external_id}`)));
+const memberServerMatches = (server) => (!groupMemberCountry.value || server.name === groupMemberCountry.value) && (memberMatches(server.name) || server.xray_inbounds.some((inbound) => memberMatches(inboundLabel(inbound))));
 const memberVisibleServers = computed(() => !['subscription', 'proxy'].includes(groupMemberType.value) && availableServers.value.filter(memberServerMatches));
 const memberVisibleSubscriptions = computed(() => groupMemberType.value !== 'local' && groupMemberType.value !== 'proxy' && availableSubscriptions.value.filter((subscription) => memberMatches(subscription.name) || subscription.configs.some((config) => memberMatches(config.name))));
 const memberVisibleProxies = computed(() => groupMemberType.value !== 'local' && groupMemberType.value !== 'subscription' && availableProxies.value.filter((proxy) => (!groupMemberCountry.value || proxy.server?.name === groupMemberCountry.value) && memberMatches(`${proxy.server?.name || ''} ${proxy.name}`)));
-const memberVisibleInbounds = (server) => memberMatches(server.name) ? server.xray_inbounds : server.xray_inbounds.filter((inbound) => memberMatches(`inbound #${inbound.external_id}`));
+const memberVisibleInbounds = (server) => memberMatches(server.name) ? server.xray_inbounds : server.xray_inbounds.filter((inbound) => memberMatches(inboundLabel(inbound)));
 const memberVisibleConfigs = (subscription) => memberMatches(subscription.name) ? subscription.configs : subscription.configs.filter((config) => memberMatches(config.name));
 const memberServerState = (server) => { const items = server.xray_inbounds; const selected = items.filter((inbound) => activeGroup.value && groupChecked(activeGroup.value, 'xray_inbound_ids', inbound.id)).length; return { total: items.length, selected, checked: items.length > 0 && selected === items.length, indeterminate: selected > 0 && selected < items.length }; };
 const memberSubscriptionState = (subscription) => { const selected = activeGroup.value && groupChecked(activeGroup.value, 'external_subscription_ids', subscription.id); return { total: subscription.configs.length, selected: selected ? subscription.configs.length : 0, checked: selected, indeterminate: false }; };
@@ -284,6 +290,19 @@ watch([form, settings, baseSettingsJson, groups, routes], () => {
         await preview();
     }, 10000);
 }, { deep: true });
+watch(baseSettingsJson, (value) => {
+    try {
+        const parsed = JSON.parse(value || '{}');
+        if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
+            settings.value = {
+                domainStrategy: parsed.routing?.domainStrategy || settings.value.domainStrategy,
+                loglevel: parsed.log?.loglevel || settings.value.loglevel,
+            };
+        }
+    } catch {
+        // Keep the in-progress JSON text until it becomes valid again.
+    }
+});
 const cancelEditing = () => { if (!hasUnsavedChanges.value || window.confirm('Discard unsaved changes?')) window.location.href = '/xray-custom-configs'; };
 
 const parseBaseSettings = () => {
@@ -308,6 +327,56 @@ const buildRoutes = () => routes.value.map(({ match_values_list, value_input, _m
     const values = routeValues({ ...route, match_values_list });
     const rules = route.match_type === 'domain' ? { domain: values.map((value) => value.includes(':') ? value : `domain:${value}`) } : { [route.match_type]: values };
     return { ...route, rules, sort_order: index };
+});
+const sectionJson = (value) => JSON.stringify(value, null, 2);
+const normalizeRoute = (route, index) => {
+    const rules = route.rules || {};
+    const matchType = route.match_type || Object.keys(rules).find((key) => ['domain', 'ip', 'port', 'network', 'protocol'].includes(key)) || 'domain';
+    const values = Array.isArray(rules[matchType]) ? rules[matchType].map((value) => String(value).replace(/^domain:/, '')) : splitRouteValues(route.match_values || rules[matchType]);
+
+    return {
+        ...route,
+        name: route.name || `Route ${index + 1}`,
+        match_type: matchType,
+        match_values: values.join(', '),
+        match_values_list: values,
+        value_input: '',
+        target_type: route.target_type || 'balancer',
+        target_tag: route.target_tag || groups.value[0]?.tag || '',
+        is_active: route.is_active ?? true,
+        _menuOpen: false,
+    };
+};
+const parseSection = (value, fallback, onValue) => {
+    try {
+        const parsed = JSON.parse(value);
+        onValue(parsed);
+    } catch {
+        onValue(fallback);
+    }
+};
+const groupsJson = computed({
+    get: () => sectionJson(buildGroups()),
+    set: (value) => parseSection(value, buildGroups(), (parsed) => {
+        if (Array.isArray(parsed)) groups.value = parsed.map((group, index) => ({ ...group, name: group.name || `Group ${index + 1}`, tag: group.tag || groupSlug(group.name), strategy: group.strategy || 'roundRobin', fallback_group_tag: group.fallback_group_tag || '', xray_inbound_ids: group.xray_inbound_ids || [], external_subscription_ids: group.external_subscription_ids || [], proxy_ids: group.proxy_ids || [], _tagManuallyEdited: true, _menuOpen: false }));
+    }),
+});
+const routesJson = computed({
+    get: () => sectionJson(buildRoutes()),
+    set: (value) => parseSection(value, buildRoutes(), (parsed) => { if (Array.isArray(parsed)) routes.value = parsed.map(normalizeRoute); }),
+});
+const routingTemplatesJson = computed({
+    get: () => sectionJson(ids('xray_routing_ids')),
+    set: (value) => parseSection(value, ids('xray_routing_ids'), (parsed) => { if (Array.isArray(parsed)) form.xray_routing_ids = parsed.map(Number).filter(Number.isFinite); }),
+});
+const resourcesJson = computed({
+    get: () => sectionJson({ dns_settings_id: form.dns_settings_id || null, geodata_id: form.geodata_id || null }),
+    set: (value) => parseSection(value, { dns_settings_id: form.dns_settings_id || null, geodata_id: form.geodata_id || null }, (parsed) => {
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            form.dns_settings_id = parsed.dns_settings_id || null;
+            form.geodata_id = parsed.geodata_id || null;
+        }
+    }),
 });
 const requestPayload = (baseSettings = buildBaseSettings()) => ({
     is_active: Boolean(form.is_active),
@@ -368,26 +437,19 @@ const saveResource = async () => {
                     <label class="field basic-status"><span>Status</span><AppCheckbox v-model="form.is_active" /> <small>{{ form.is_active ? 'Enabled' : 'Disabled' }}</small></label>
                 </div>
             </div>
-            <div class="form-section">
-                <h2>Resources</h2>
+            <JsonSectionEditor v-model="resourcesJson" title="Resources" description="Select reusable DNS and geodata resources for this configuration.">
                 <div class="grid grid--two">
                     <div class="field resource-field"><span>DNS Configuration</span><AppSelect v-model="form.dns_settings_id" :options="dnsOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select DNS configuration" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns')">+ Create DNS configuration</AppButton></div>
                     <div class="field resource-field"><span>Geodata</span><AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select geodata source" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('geodata')">+ Create geodata source</AppButton></div>
                 </div>
-            </div>
-            <div class="form-section">
-                <h2>Base settings</h2>
+            </JsonSectionEditor>
+            <JsonSectionEditor v-model="baseSettingsJson" title="Base settings" description="Profile-level Xray settings such as routing strategy, logging, policy, or observatory.">
                 <div class="grid grid--two">
                     <label class="field"><span>Domain Strategy</span><AppSelect v-model="settings.domainStrategy" :options="domainStrategyOptions" /></label>
                     <label class="field"><span>Log Level</span><AppSelect v-model="settings.loglevel" :options="logLevelOptions" /></label>
                 </div>
-                <label class="field base-settings-json-field">
-                    <span>Additional Xray base settings (JSON)</span>
-                    <AppTextarea v-model="baseSettingsJson" rows="14" spellcheck="false" />
-                    <small>Use this for settings such as observatory, policy, stats, domainMatcher, or any other Xray profile-level option. The structured fields above override loglevel and domainStrategy.</small>
-                    <small v-if="baseSettingsError" class="form-error">{{ baseSettingsError }}</small>
-                </label>
-            </div>
+                <small v-if="baseSettingsError" class="form-error">{{ baseSettingsError }}</small>
+            </JsonSectionEditor>
             <div class="source-section">
                 <div class="source-section__header"><div><h2>Sources</h2><p>Choose which outbound sources may be used by this configuration.</p></div><strong>{{ totalSourcesSelected }} sources selected</strong></div>
                 <div class="source-picker">
@@ -400,7 +462,7 @@ const saveResource = async () => {
                                 <input type="checkbox" :checked="serverState(server).checked" :indeterminate="serverState(server).indeterminate" @change="toggleServer(server, $event.target.checked)">
                                 <button type="button" class="source-expand" :aria-expanded="isServerExpanded(server.id)" @click="toggleServerExpanded(server.id)"><span>{{ countryFlag(server.name) }} {{ server.name }}</span><span class="source-count">{{ serverState(server).selected }} / {{ serverState(server).total }} selected</span><span class="source-chevron">{{ isServerExpanded(server.id) ? '⌄' : '›' }}</span></button>
                             </div>
-                            <div v-if="isServerExpanded(server.id)" class="source-children"><label v-for="inbound in visibleInbounds(server)" :key="inbound.id" class="source-child-row"><input type="checkbox" :checked="checked('xray_inbound_ids', inbound.id)" @change="toggle('xray_inbound_ids', inbound.id, $event.target.checked)"><span>Inbound #{{ inbound.external_id }}</span></label></div>
+                            <div v-if="isServerExpanded(server.id)" class="source-children"><label v-for="inbound in visibleInbounds(server)" :key="inbound.id" class="source-child-row"><input type="checkbox" :checked="checked('xray_inbound_ids', inbound.id)" @change="toggle('xray_inbound_ids', inbound.id, $event.target.checked)"><span>{{ inboundLabel(inbound) }}</span></label></div>
                         </div>
                         <p v-if="visibleServers.length === 0" class="source-empty">No matching servers or inbounds.</p>
                     </div>
@@ -427,25 +489,24 @@ const saveResource = async () => {
                     <div class="source-list source-list--flat"><label v-for="proxy in visibleProxies" :key="proxy.id" class="source-child-row"><input type="checkbox" :checked="checked('proxy_ids', proxy.id)" @change="toggle('proxy_ids', proxy.id, $event.target.checked)"><span>{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}<small>{{ proxy.is_ready ? 'Available' : 'Unavailable' }}</small></span></label><p v-if="visibleProxies.length === 0" class="source-empty">No matching proxy nodes.</p></div>
                 </div>
             </div>
-            <div class="source-section routing-templates">
-                <div class="source-section__header"><div><h2>Routing rule templates</h2><p>Optional reusable rules that will be included in this configuration.</p></div></div>
+            <JsonSectionEditor v-model="routingTemplatesJson" title="Routing rule templates" description="Optional reusable rules that will be included in this configuration.">
                 <div class="routing-list"><label v-for="routing in props.targets.routings || []" :key="routing.id" class="routing-row"><input type="checkbox" :checked="checked('xray_routing_ids', routing.id)" @change="toggle('xray_routing_ids', routing.id, $event.target.checked)"><span><strong>{{ routing.name }}</strong><small>{{ routing.description || 'Reusable routing rule template.' }}{{ routing.is_active ? '' : ' · Inactive' }}</small></span></label><p v-if="!(props.targets.routings || []).length" class="source-empty">No routing rule templates available.</p></div>
-            </div>
-            <div class="groups-section">
-                <div class="groups-section__header"><div><h2>Outbound groups</h2><p>Combine servers, subscription configs, and proxy nodes into reusable outbound groups. Groups can use balancing and fallback.</p></div><AppButton variant="secondary" type="button" @click="addGroup">+ Add group</AppButton></div>
+            </JsonSectionEditor>
+            <JsonSectionEditor v-model="groupsJson" title="Outbound groups" description="Combine servers, subscription configs, and proxy nodes into reusable outbound groups. Groups can use balancing and fallback.">
+                <div class="groups-section__header"><div></div><AppButton variant="secondary" type="button" @click="addGroup">+ Add group</AppButton></div>
                 <div v-if="groups.length === 0" class="groups-empty">No outbound groups yet. Add a group to create reusable balancing and fallback pools.</div>
                 <article v-for="(group, index) in groups" :key="index" class="group-card" :class="{ 'group-card--collapsed': !isGroupExpanded(index) }">
                     <div class="group-card__header"><button type="button" class="group-card__toggle" :aria-expanded="isGroupExpanded(index)" @click="toggleGroupExpanded(index)"><span><strong>{{ group.name || 'New outbound group' }}</strong><small>{{ group.tag }}</small></span><span class="group-card__summary"><b>{{ groupMemberCount(group) }} members</b><span>{{ strategyLabel(group.strategy) }}</span><span>{{ group.fallback_group_tag ? `Fallback → ${groups.find((item) => item.tag === group.fallback_group_tag)?.name || group.fallback_group_tag}` : 'No fallback' }}</span></span><span class="source-chevron">{{ isGroupExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Group actions" @click.stop="group._menuOpen = !group._menuOpen">⋯</button><div v-if="group._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateGroup(group, index)">Duplicate group</button><button type="button" class="is-danger" @click="removeGroup(group, index)">Delete group</button></div></div></div>
                     <div v-if="isGroupExpanded(index)" class="group-card__body">
                         <div class="grid grid--two"><label class="field"><span>Group name</span><AppInput v-model="group.name" @input="onGroupNameInput(group)" /></label><label class="field"><span>Group tag</span><AppInput v-model="group.tag" @input="group._tagManuallyEdited = true" /><small>Generated automatically from the group name.</small></label><label class="field"><span>Balancing strategy</span><AppSelect v-model="group.strategy" :options="strategyOptions" /></label><label class="field"><span>Fallback group</span><AppSelect v-model="group.fallback_group_tag" :options="fallbackOptions(group)" /></label></div>
                         <p v-if="groupInvalidMemberCount(group)" class="group-warning">{{ groupInvalidMemberCount(group) }} member(s) are no longer enabled in Sources and will be removed when saved.</p>
-                        <div class="group-members"><h3>Members</h3><div class="group-member-type"><div class="group-member-type__header"><strong>Local servers &amp; inbounds</strong><span>{{ availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length }} selected</span></div><div v-if="availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length" class="group-member-list"><span v-for="inbound in availableServers.flatMap((server) => groupSelectedInbounds(group, server))" :key="`gm-i-${inbound.id}`">{{ countryFlag(availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name) }} {{ availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name }} · Inbound #{{ inbound.external_id }}</span></div><small v-else class="group-member-empty">No local servers or inbounds added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>External subscriptions</strong><span>{{ group.external_subscription_ids.length }} selected</span></div><div v-if="availableSubscriptions.filter((subscription) => group.external_subscription_ids.includes(subscription.id)).length" class="group-member-list"><span v-for="subscription in availableSubscriptions.filter((item) => group.external_subscription_ids.includes(item.id))" :key="`gm-s-${subscription.id}`">{{ subscription.name }} · all current configs</span></div><small v-else class="group-member-empty">No subscription configs added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>Proxy nodes</strong><span>{{ groupSelectedProxies(group).length }} selected</span></div><div v-if="groupSelectedProxies(group).length" class="group-member-list"><span v-for="proxy in groupSelectedProxies(group)" :key="`gm-p-${proxy.id}`">{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}</span></div><small v-else class="group-member-empty">No proxy nodes added.</small></div></div>
+                        <div class="group-members"><h3>Members</h3><div class="group-member-type"><div class="group-member-type__header"><strong>Local servers &amp; inbounds</strong><span>{{ availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length }} selected</span></div><div v-if="availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length" class="group-member-list"><span v-for="inbound in availableServers.flatMap((server) => groupSelectedInbounds(group, server))" :key="`gm-i-${inbound.id}`">{{ countryFlag(availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name) }} {{ availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name }} · {{ inboundLabel(inbound) }}</span></div><small v-else class="group-member-empty">No local servers or inbounds added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>External subscriptions</strong><span>{{ group.external_subscription_ids.length }} selected</span></div><div v-if="availableSubscriptions.filter((subscription) => group.external_subscription_ids.includes(subscription.id)).length" class="group-member-list"><span v-for="subscription in availableSubscriptions.filter((item) => group.external_subscription_ids.includes(item.id))" :key="`gm-s-${subscription.id}`">{{ subscription.name }} · all current configs</span></div><small v-else class="group-member-empty">No subscription configs added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>Proxy nodes</strong><span>{{ groupSelectedProxies(group).length }} selected</span></div><div v-if="groupSelectedProxies(group).length" class="group-member-list"><span v-for="proxy in groupSelectedProxies(group)" :key="`gm-p-${proxy.id}`">{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}</span></div><small v-else class="group-member-empty">No proxy nodes added.</small></div></div>
                         <div class="group-card__actions"><AppButton variant="secondary" type="button" @click="openGroupMemberPicker(index)">+ Add members</AppButton><button type="button" class="picker-text-button" @click="openGroupMemberPicker(index)">Manage members</button></div><div v-if="group.fallback_group_tag" class="fallback-chain"><strong>Fallback chain</strong><span>{{ fallbackChain(group).join(' → ') }}</span></div>
                     </div>
                 </article>
-            </div>
-            <div class="routes-section">
-                <div class="routes-section__header"><div><h2>Site routes</h2><p>Route traffic for specific domains, IPs, ports, or networks.<br>Rules are evaluated from top to bottom.</p></div><AppButton variant="secondary" type="button" @click="addRoute">+ Add route</AppButton></div>
+            </JsonSectionEditor>
+            <JsonSectionEditor v-model="routesJson" title="Site routes" description="Route traffic for specific domains, IPs, ports, or networks. Rules are evaluated from top to bottom.">
+                <div class="routes-section__header"><div></div><AppButton variant="secondary" type="button" @click="addRoute">+ Add route</AppButton></div>
                 <div v-if="routes.length === 0" class="routes-empty">No site routes yet. Add a route to define traffic behavior.</div>
                 <article v-for="(route, index) in routes" :key="route" class="route-card" :class="{ 'route-card--collapsed': !isRouteExpanded(index) }" draggable="true" @dragstart="dragStartRoute(index)" @dragover.prevent @drop="dropRoute(index)">
                     <div class="route-card__header"><span class="route-drag-handle" title="Drag to reorder">⠿</span><button type="button" class="route-card__toggle" :aria-expanded="isRouteExpanded(index)" @click="toggleRouteExpanded(index)"><span class="route-card__title"><b>{{ index + 1 }}</b><strong>{{ route.name || `Route ${index + 1}` }}</strong><small>{{ routeSummary(route) }}</small></span><span class="route-card__status" :class="{ 'is-disabled': !route.is_active }">{{ route.is_active ? 'Enabled' : 'Disabled' }}</span><span class="source-chevron">{{ isRouteExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Route actions" @click.stop="route._menuOpen = !route._menuOpen">⋯</button><div v-if="route._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateRoute(route, index)">Duplicate route</button><button type="button" class="is-danger" @click="removeRoute(route, index)">Delete route</button></div></div></div>
@@ -456,7 +517,7 @@ const saveResource = async () => {
                         <div class="grid grid--two"><label class="field"><span>Route via</span><AppSelect v-model="route.target_type" :options="targetTypeOptions" /></label><label v-if="route.target_type === 'balancer'" class="field"><span>Target group</span><AppSelect v-model="route.target_tag" :options="groupOptions" /><small>{{ groups.find((group) => group.tag === route.target_tag)?.tag || 'Select an outbound group.' }}</small></label></div>
                     </div>
                 </article>
-            </div>
+            </JsonSectionEditor>
             <div class="config-form-footer"><span :class="{ 'is-dirty': hasUnsavedChanges }">{{ hasUnsavedChanges ? 'Unsaved changes' : 'No unsaved changes' }}</span><div class="actions"><button type="button" class="footer-cancel" @click="cancelEditing">Cancel</button><AppButton type="submit" :disabled="form.processing">Save configuration</AppButton></div></div>
         </form>
         <div v-if="activeGroup" class="group-member-modal" @click.self="closeGroupMemberPicker">
@@ -465,7 +526,7 @@ const saveResource = async () => {
                 <div class="source-toolbar source-toolbar--triple"><AppInput v-model="groupMemberSearch" placeholder="Search sources..." /><AppSelect v-model="groupMemberType" :options="[{ value: 'local', label: 'Local servers & inbounds' }, { value: 'subscription', label: 'External subscriptions' }, { value: 'proxy', label: 'Proxy nodes' }]" placeholder="Type" /><AppSelect v-model="groupMemberCountry" :options="memberCountries.map((country) => ({ value: country, label: country }))" placeholder="Country" /></div>
                 <div class="source-actions"><span>{{ activeGroup ? groupMemberCount(activeGroup) : 0 }} members selected</span><button type="button" class="picker-text-button" @click="toggleAllGroupMembers('xray_inbound_ids', memberVisibleServers.flatMap((server) => memberVisibleInbounds(server)), true); toggleAllGroupMembers('external_subscription_ids', memberVisibleSubscriptions, true); toggleAllGroupMembers('proxy_ids', memberVisibleProxies, true)">Select all visible</button><button type="button" class="picker-text-button" @click="toggleAllGroupMembers('xray_inbound_ids', memberVisibleServers.flatMap((server) => memberVisibleInbounds(server)), false); toggleAllGroupMembers('external_subscription_ids', memberVisibleSubscriptions, false); toggleAllGroupMembers('proxy_ids', memberVisibleProxies, false)">Clear selection</button></div>
                 <div class="group-member-modal__list">
-                    <div v-if="memberVisibleServers.length" class="member-picker-section"><div class="member-picker-section__header"><strong>Local servers &amp; inbounds</strong><span>{{ memberVisibleServers.flatMap((server) => server.xray_inbounds).filter((inbound) => groupChecked(activeGroup, 'xray_inbound_ids', inbound.id)).length }} selected</span></div><div v-for="server in memberVisibleServers" :key="`mp-s-${server.id}`" class="source-group"><div class="source-parent-row"><input type="checkbox" :checked="memberServerState(server).checked" :indeterminate="memberServerState(server).indeterminate" @change="toggleMemberServer(server, $event.target.checked)"><button type="button" class="source-expand" :aria-expanded="isMemberServerExpanded(server.id)" @click="toggleMemberServerExpanded(server.id)"><span>{{ countryFlag(server.name) }} {{ server.name }}</span><span class="source-count">{{ memberServerState(server).selected }} / {{ memberServerState(server).total }} selected</span><span class="source-chevron">{{ isMemberServerExpanded(server.id) ? '⌄' : '›' }}</span></button></div><div v-if="isMemberServerExpanded(server.id)" class="source-children"><label v-for="inbound in memberVisibleInbounds(server)" :key="`mp-i-${inbound.id}`" class="source-child-row"><input type="checkbox" :checked="groupChecked(activeGroup, 'xray_inbound_ids', inbound.id)" @change="toggleGroup(activeGroup, 'xray_inbound_ids', inbound.id, $event.target.checked)"><span>Inbound #{{ inbound.external_id }}</span></label></div></div></div>
+                    <div v-if="memberVisibleServers.length" class="member-picker-section"><div class="member-picker-section__header"><strong>Local servers &amp; inbounds</strong><span>{{ memberVisibleServers.flatMap((server) => server.xray_inbounds).filter((inbound) => groupChecked(activeGroup, 'xray_inbound_ids', inbound.id)).length }} selected</span></div><div v-for="server in memberVisibleServers" :key="`mp-s-${server.id}`" class="source-group"><div class="source-parent-row"><input type="checkbox" :checked="memberServerState(server).checked" :indeterminate="memberServerState(server).indeterminate" @change="toggleMemberServer(server, $event.target.checked)"><button type="button" class="source-expand" :aria-expanded="isMemberServerExpanded(server.id)" @click="toggleMemberServerExpanded(server.id)"><span>{{ countryFlag(server.name) }} {{ server.name }}</span><span class="source-count">{{ memberServerState(server).selected }} / {{ memberServerState(server).total }} selected</span><span class="source-chevron">{{ isMemberServerExpanded(server.id) ? '⌄' : '›' }}</span></button></div><div v-if="isMemberServerExpanded(server.id)" class="source-children"><label v-for="inbound in memberVisibleInbounds(server)" :key="`mp-i-${inbound.id}`" class="source-child-row"><input type="checkbox" :checked="groupChecked(activeGroup, 'xray_inbound_ids', inbound.id)" @change="toggleGroup(activeGroup, 'xray_inbound_ids', inbound.id, $event.target.checked)"><span>{{ inboundLabel(inbound) }}</span></label></div></div></div>
                     <div v-if="memberVisibleSubscriptions.length" class="member-picker-section"><div class="member-picker-section__header"><strong>External subscriptions</strong><span>{{ memberVisibleSubscriptions.filter((subscription) => groupChecked(activeGroup, 'external_subscription_ids', subscription.id)).length }} selected</span></div><div v-for="subscription in memberVisibleSubscriptions" :key="`mp-e-${subscription.id}`" class="source-group"><div class="source-parent-row"><input type="checkbox" :checked="memberSubscriptionState(subscription).checked" @change="toggleMemberSubscription(subscription, $event.target.checked)"><button type="button" class="source-expand" :aria-expanded="isMemberSubscriptionExpanded(subscription.id)" @click="toggleMemberSubscriptionExpanded(subscription.id)"><span>{{ subscription.name }}</span><span class="source-count">{{ memberSubscriptionState(subscription).selected }} / {{ memberSubscriptionState(subscription).total }} current configs</span><span class="source-chevron">{{ isMemberSubscriptionExpanded(subscription.id) ? '⌄' : '›' }}</span></button></div><div v-if="isMemberSubscriptionExpanded(subscription.id)" class="source-children"><span v-for="config in memberVisibleConfigs(subscription)" :key="`mp-c-${config.id}`" class="source-child-row">{{ config.name }}</span></div></div></div>
                     <div v-if="memberVisibleProxies.length" class="member-picker-section"><div class="member-picker-section__header"><strong>Proxy nodes</strong><span>{{ memberVisibleProxies.filter((proxy) => groupChecked(activeGroup, 'proxy_ids', proxy.id)).length }} selected</span></div><label v-for="proxy in memberVisibleProxies" :key="`mp-p-${proxy.id}`" class="source-child-row"><input type="checkbox" :checked="groupChecked(activeGroup, 'proxy_ids', proxy.id)" @change="toggleGroup(activeGroup, 'proxy_ids', proxy.id, $event.target.checked)"><span>{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}<small>{{ proxy.is_ready ? 'Available' : 'Unavailable' }}</small></span></label></div>
                     <p v-if="!memberVisibleServers.length && !memberVisibleSubscriptions.length && !memberVisibleProxies.length" class="source-empty">No enabled sources match your filters.</p>

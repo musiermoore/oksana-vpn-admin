@@ -66,7 +66,7 @@ class SyncXrayInboundsCommandTest extends TestCase
                         'protocol' => 'vless',
                         'port' => 443,
                         'remark' => 'Main inbound',
-                        'settings' => json_encode(['clients' => []], JSON_UNESCAPED_SLASHES),
+                        'settings' => json_encode(['clients' => [['email' => 'alice@example.com']], 'decryption' => 'none'], JSON_UNESCAPED_SLASHES),
                     ],
                     [
                         'id' => 13,
@@ -100,6 +100,8 @@ class SyncXrayInboundsCommandTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('Main inbound', data_get($record->params, 'remark'));
+        $this->assertSame('none', data_get($record->params, 'settings.decryption'));
+        $this->assertNull(data_get($record->params, 'settings.clients'));
 
         $config->refresh();
 

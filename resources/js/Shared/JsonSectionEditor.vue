@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { ref, watch } from 'vue';
 
 const props = defineProps({
     title: { type: String, required: true },
@@ -10,10 +10,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 const jsonMode = ref(false);
-const jsonValue = computed({
-    get: () => props.modelValue,
-    set: (value) => emit('update:modelValue', value),
-});
+const jsonValue = ref(props.modelValue);
+watch(() => props.modelValue, (value) => { jsonValue.value = value; });
+const updateJson = (value) => { jsonValue.value = value; emit('update:modelValue', value); };
 
 const toggleMode = () => {
     jsonMode.value = !jsonMode.value;
@@ -32,7 +31,7 @@ const toggleMode = () => {
             </AppButton>
         </div>
 
-        <AppTextarea v-if="jsonMode" v-model="jsonValue" rows="12" spellcheck="false" />
+        <AppTextarea v-if="jsonMode" :model-value="jsonValue" rows="12" spellcheck="false" @update:model-value="updateJson" />
         <div v-else class="json-section__builder">
             <slot />
         </div>

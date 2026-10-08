@@ -77,7 +77,7 @@ class SyncXrayInboundsCommand extends Command
                 'server_id' => $server->id,
                 'external_id' => $externalId,
                 'sort_order' => $existingExternalIds->has($externalId) ? 0 : $nextSortOrder++,
-                'params' => json_encode($inbound, JSON_THROW_ON_ERROR),
+                'params' => json_encode($this->snapshotParams($inbound), JSON_THROW_ON_ERROR),
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
@@ -101,6 +101,32 @@ class SyncXrayInboundsCommand extends Command
     {
         return $normalizedInbound['settings'] !== []
             || $normalizedInbound['stream_settings'] !== [];
+    }
+
+    /**
+     * The panel's client list is duplicated in vless_configs and can be very large.
+     * Keep only the inbound definition needed by the application snapshot.
+     *
+     * @param  array<string, mixed>  $inbound
+     * @return array<string, mixed>
+     */
+    private function snapshotParams(array $inbound): array
+    {
+        $settings = $inbound['settings'] ?? null;
+
+        if (is_array($settings)) {
+            unset($settings['clients']);
+            $inbound['settings'] = $settings;
+        } elseif (is_string($settings)) {
+            $decodedSettings = json_decode($settings, true);
+
+            if (is_array($decodedSettings)) {
+                unset($decodedSettings['clients']);
+                $inbound['settings'] = $decodedSettings;
+            }
+        }
+
+        return $inbound;
     }
 
     /**

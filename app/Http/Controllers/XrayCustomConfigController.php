@@ -220,7 +220,18 @@ class XrayCustomConfigController extends Controller
                 ])
                 ->values(),
             'targets' => [
-                'servers' => Server::query()->whereHas('xrayInbounds')->with('xrayInbounds:id,server_id,external_id')->ordered()->get(),
+                'servers' => Server::query()->whereHas('xrayInbounds')->with([
+                    'xrayInbounds' => fn ($query) => $query->select('id', 'server_id', 'external_id', 'params'),
+                ])->ordered()->get()->map(fn (Server $server): array => [
+                    'id' => $server->id,
+                    'name' => $server->name,
+                    'xray_inbounds' => $server->xrayInbounds->map(fn ($inbound): array => [
+                        'id' => $inbound->id,
+                        'external_id' => $inbound->external_id,
+                        'protocol' => (string) data_get($inbound->params, 'protocol', ''),
+                        'remark' => (string) data_get($inbound->params, 'remark', ''),
+                    ])->values()->all(),
+                ])->values()->all(),
                 'external_subscriptions' => VlessExternalSubscription::query()->whereHas('configs')->with('configs')->ordered()->get(),
                 'proxies' => Proxy::query()->with('server:id,name')->orderBy('server_id')->orderBy('sort_order')->get(),
                 'routings' => XrayRouting::query()->ordered()->get(['id', 'name', 'description', 'is_active']),

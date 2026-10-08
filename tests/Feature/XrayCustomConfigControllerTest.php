@@ -4,14 +4,47 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\Server;
 use App\Models\User;
 use App\Models\XrayCustomConfig;
+use App\Models\XrayInbound;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class XrayCustomConfigControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_create_form_includes_inbound_protocol_and_remark(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $server = Server::query()->create([
+            'name' => 'Germany',
+            'code' => 'DE-1',
+            'sort_order' => 1,
+            'ip' => '10.0.0.10',
+            'type' => Server::TYPE_VLESS,
+        ]);
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 1,
+            'sort_order' => 1,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['protocol' => 'vless', 'remark' => 'Main VLESS'],
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('xray-custom-configs.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('XrayCustomConfigs/Form')
+                ->where('targets.servers.0.xray_inbounds.0.id', $inbound->id)
+                ->where('targets.servers.0.xray_inbounds.0.protocol', 'vless')
+                ->where('targets.servers.0.xray_inbounds.0.remark', 'Main VLESS')
+            );
+    }
 
     public function test_edit_form_can_disable_a_custom_config(): void
     {

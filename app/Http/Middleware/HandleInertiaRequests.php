@@ -132,6 +132,7 @@ class HandleInertiaRequests extends Middleware
                     ['label' => 'API лог', 'href' => route('api-request-logs.index'), 'badge' => 'LG', 'icon' => 'log'],
                     ['label' => '3x-ui Debug', 'href' => route('xui-debug.index'), 'badge' => 'XD', 'icon' => 'terminal'],
                     ['label' => 'Tax Debug', 'href' => route('tax-debug.index'), 'badge' => 'TD', 'icon' => 'bug'],
+                    ['label' => 'Subscription Debug', 'href' => route('subscription-debug.index'), 'badge' => 'SD', 'icon' => 'link'],
                 ],
             ],
         ];

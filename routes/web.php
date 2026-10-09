@@ -42,9 +42,13 @@ use App\Http\Controllers\XrayRoutingController;
 use App\Http\Controllers\XrayCustomConfigController;
 use App\Http\Controllers\XrayGlobalConfigController;
 use App\Http\Controllers\XuiDebugController;
+use App\Http\Controllers\SubscriptionDebugController;
 use App\Http\Middleware\BasicAuth;
 use App\Http\Middleware\TrackApiRequests;
 use Illuminate\Support\Facades\Route;
+
+Route::get('subscription-debug', [SubscriptionDebugController::class, 'index'])
+    ->name('subscription-debug.index');
 
 Route::middleware([BasicAuth::class, 'guest'])->group(function () {
     Route::get('login', [AuthController::class, 'create'])->name('login');
@@ -170,6 +174,8 @@ Route::middleware('auth')->group(function () {
     Route::post('xui-debug', [XuiDebugController::class, 'execute'])->name('xui-debug.execute');
     Route::get('tax-debug', [TaxDebugController::class, 'index'])->name('tax-debug.index');
     Route::post('tax-debug', [TaxDebugController::class, 'execute'])->name('tax-debug.execute');
+    Route::post('subscription-debug', [SubscriptionDebugController::class, 'store'])
+        ->name('subscription-debug.store');
     Route::get('tax-settings', [TaxSettingController::class, 'edit'])->name('tax-settings.edit');
     Route::put('tax-settings', [TaxSettingController::class, 'update'])->name('tax-settings.update');
     Route::post('invoices/send-paid', [InvoiceController::class, 'sendPaid'])->name('invoices.send-paid');

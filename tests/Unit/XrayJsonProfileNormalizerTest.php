@@ -81,6 +81,53 @@ class XrayJsonProfileNormalizerTest extends TestCase
         $this->assertSame(1, $extra->xmux->maxConnections);
     }
 
+    public function test_it_normalizes_empty_websocket_headers_array_to_an_object(): void
+    {
+        $profile = [
+            'outbounds' => [[
+                'protocol' => 'vless',
+                'streamSettings' => [
+                    'network' => 'ws',
+                    'wsSettings' => [
+                        'path' => '/',
+                        'headers' => [],
+                    ],
+                ],
+            ]],
+        ];
+
+        $normalized = (new XrayJsonProfileNormalizer())->normalizeProfile($profile);
+
+        $headers = $normalized['outbounds'][0]['streamSettings']['wsSettings']['headers'];
+
+        $this->assertInstanceOf(stdClass::class, $headers);
+        $this->assertSame([], get_object_vars($headers));
+    }
+
+    public function test_it_removes_grpc_mode_for_v2raytun_only(): void
+    {
+        $profile = [
+            'outbounds' => [[
+                'protocol' => 'vless',
+                'streamSettings' => [
+                    'network' => 'grpc',
+                    'grpcSettings' => [
+                        'serviceName' => 'grpc-service',
+                        'mode' => true,
+                    ],
+                ],
+            ]],
+        ];
+
+        $normalizer = new XrayJsonProfileNormalizer();
+
+        $v2rayTun = $normalizer->normalizeProfile($profile, 'v2raytun');
+        $happ = $normalizer->normalizeProfile($profile, 'happ');
+
+        $this->assertArrayNotHasKey('mode', $v2rayTun['outbounds'][0]['streamSettings']['grpcSettings']);
+        $this->assertTrue($happ['outbounds'][0]['streamSettings']['grpcSettings']['mode']);
+    }
+
     public function test_it_converts_routing_port_arrays_to_happ_compatible_strings(): void
     {
         $profile = [

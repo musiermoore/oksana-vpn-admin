@@ -10,9 +10,9 @@ class XrayJsonProfileNormalizer
      * @param  array<string, mixed>  $profile
      * @return array<string, mixed>
      */
-    public function normalizeProfile(array $profile): array
+    public function normalizeProfile(array $profile, ?string $client = null): array
     {
-        return $this->normalizeRouting($this->normalizeOutbounds($this->normalizeInbounds($profile)));
+        return $this->normalizeRouting($this->normalizeOutbounds($this->normalizeInbounds($profile), $client));
     }
 
     /**
@@ -44,13 +44,13 @@ class XrayJsonProfileNormalizer
      * @param  array<string, mixed>  $profile
      * @return array<string, mixed>
      */
-    private function normalizeOutbounds(array $profile): array
+    private function normalizeOutbounds(array $profile, ?string $client): array
     {
         if (! is_array($profile['outbounds'] ?? null)) {
             return $profile;
         }
 
-        $profile['outbounds'] = array_map(function (mixed $outbound): mixed {
+        $profile['outbounds'] = array_map(function (mixed $outbound) use ($client): mixed {
             if (! is_array($outbound) || ! is_array($outbound['streamSettings'] ?? null)) {
                 return $outbound;
             }
@@ -59,6 +59,16 @@ class XrayJsonProfileNormalizer
                 && ($outbound['streamSettings']['tcpSettings'] ?? null) === []
             ) {
                 $outbound['streamSettings']['tcpSettings'] = (object) [];
+            }
+
+            if (($outbound['streamSettings']['wsSettings']['headers'] ?? null) === []) {
+                $outbound['streamSettings']['wsSettings']['headers'] = (object) [];
+            }
+
+            if ($client === 'v2raytun'
+                && is_array($outbound['streamSettings']['grpcSettings'] ?? null)
+            ) {
+                unset($outbound['streamSettings']['grpcSettings']['mode']);
             }
 
             if (($outbound['streamSettings']['network'] ?? null) === 'xhttp'

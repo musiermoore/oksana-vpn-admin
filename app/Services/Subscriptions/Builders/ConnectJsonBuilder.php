@@ -88,7 +88,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         $profiles = collect($nodes)
             ->map(fn (NormalizedNode $node) => $this->buildProfile($node, XrayRouting::SUBSCRIPTION_CONNECT, $customConfig, $client))
             ->filter()
-            ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile))
+            ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile, $client))
             ->values()
             ->all();
 
@@ -125,7 +125,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         $this->appendGroupedGeodata($profile, $customConfig, $client);
 
         return new SubscriptionBuildResult(
-            content: json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
+            content: json_encode([$this->profileNormalizer->normalizeProfile($profile, $client)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
             contentType: 'application/json; charset=UTF-8',
             fileExtension: 'json',
         );

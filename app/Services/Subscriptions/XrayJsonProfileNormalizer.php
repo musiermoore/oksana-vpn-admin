@@ -88,21 +88,35 @@ class XrayJsonProfileNormalizer
      */
     private function normalizeRouting(array $profile): array
     {
-        if (! is_array($profile['routing']['balancers'] ?? null)) {
-            return $profile;
+        if (is_array($profile['routing']['balancers'] ?? null)) {
+            $profile['routing']['balancers'] = array_map(function (mixed $balancer): mixed {
+                if (! is_array($balancer) || ! is_array($balancer['strategy'] ?? null)) {
+                    return $balancer;
+                }
+
+                if (($balancer['strategy']['settings'] ?? null) === []) {
+                    $balancer['strategy']['settings'] = (object) [];
+                }
+
+                return $balancer;
+            }, $profile['routing']['balancers']);
         }
 
-        $profile['routing']['balancers'] = array_map(function (mixed $balancer): mixed {
-            if (! is_array($balancer) || ! is_array($balancer['strategy'] ?? null)) {
-                return $balancer;
-            }
+        if (is_array($profile['routing']['rules'] ?? null)) {
+            $profile['routing']['rules'] = array_map(function (mixed $rule): mixed {
+                if (! is_array($rule) || ! is_array($rule['port'] ?? null)) {
+                    return $rule;
+                }
 
-            if (($balancer['strategy']['settings'] ?? null) === []) {
-                $balancer['strategy']['settings'] = (object) [];
-            }
+                $ports = array_values(array_filter(
+                    array_map(static fn (mixed $port): string => trim((string) $port), $rule['port']),
+                    static fn (string $port): bool => $port !== '',
+                ));
+                $rule['port'] = implode(',', $ports);
 
-            return $balancer;
-        }, $profile['routing']['balancers']);
+                return $rule;
+            }, $profile['routing']['rules']);
+        }
 
         return $profile;
     }

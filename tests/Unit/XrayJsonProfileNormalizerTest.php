@@ -80,4 +80,21 @@ class XrayJsonProfileNormalizerTest extends TestCase
         $this->assertFalse($extra->noGRPCHeader);
         $this->assertSame(1, $extra->xmux->maxConnections);
     }
+
+    public function test_it_converts_routing_port_arrays_to_happ_compatible_strings(): void
+    {
+        $profile = [
+            'routing' => [
+                'rules' => [[
+                    'type' => 'field',
+                    'port' => ['25', 123, ' 443 '],
+                    'outboundTag' => 'direct',
+                ]],
+            ],
+        ];
+
+        $normalized = (new XrayJsonProfileNormalizer())->normalizeProfile($profile);
+
+        $this->assertSame('25,123,443', $normalized['routing']['rules'][0]['port']);
+    }
 }

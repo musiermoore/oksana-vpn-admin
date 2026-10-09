@@ -280,15 +280,12 @@ class TelegramAppConnectionRoutesTest extends TestCase
         $response->assertOk();
         $payload = $response->json();
 
-        $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['happ_deep_link'] ?? ''));
-        $this->assertStringContainsString('&app=happ', (string) ($payload['happ_deep_link'] ?? ''));
-        $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['v2raytun_deeplink'] ?? ''));
-        $this->assertStringContainsString('&app=v2raytun', (string) ($payload['v2raytun_deeplink'] ?? ''));
-        $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['incy_deeplink'] ?? ''));
-        $this->assertStringContainsString('&app=incy', (string) ($payload['incy_deeplink'] ?? ''));
+        $this->assertStringContainsString('/deep-link/happ?token=', (string) ($payload['happ_deep_link'] ?? ''));
+        $this->assertStringContainsString('/deep-link/v2raytun?token=', (string) ($payload['v2raytun_deeplink'] ?? ''));
+        $this->assertStringContainsString('/deep-link/incy?token=', (string) ($payload['incy_deeplink'] ?? ''));
         $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['connect_v2_link'] ?? ''));
         $this->assertStringContainsString((string) $user->uuid, (string) ($payload['connect_v2_link'] ?? ''));
-        $this->assertStringContainsString('/connect?', (string) ($payload['connect_v1_link'] ?? ''));
+        $this->assertStringStartsWith('https://connect.example/subscription?tg=', (string) ($payload['connect_v1_link'] ?? ''));
         $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['link'] ?? ''));
     }
 

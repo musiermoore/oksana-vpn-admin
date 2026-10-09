@@ -176,8 +176,31 @@ Main `/connect`:
 - Returns the same plain JSON subscription for every client through the universal URL. It does not inspect `User-Agent`/`app` or apply client-specific filtering. Standard metadata and support headers remain enabled; only config-hiding headers (`Hide-Url`, `Hide-Proxy`, `Hide-Settings`) are suppressed.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 - The mini-app's client links use unencrypted client import schemes around the configured public `/start?token=...&app=...` URL. The `/connect-v2` endpoint returns JSON; generated mini-app deep links do not use encrypted payloads.
-- Mini-app deep-link fields use the public `connect` `/start?token=...&app=...` URL, which redirects into the selected client; Incy's final import form is `incy://add/{urlencoded_start_url}`.
-- Mini-app exposes copyable `connect_v2_link` (`/start?token=...`) and `connect_v1_link` (`/connect?...`) values as separate collapsed "new subscription" and "old subscription" blocks, each with copy and QR actions.
+- Mini-app deep-link fields use the public `connect` `/deep-link/{client}?token=...` URL, which the reverse proxy forwards to `/connect-v2/deep-link/{client}` and redirects into the selected client; Incy's final import form is `incy://add/{urlencoded_start_url}`.
+- Mini-app exposes copyable `connect_v2_link` (`/start?token=...`) and `connect_v1_link` (`/subscription?...`) values as separate collapsed "new subscription" and "old subscription" blocks, each with copy and QR actions.
+
+Public `connect` reverse-proxy contract:
+
+```caddyfile
+connect.oksana1984.ru {
+    handle /start {
+        rewrite * /connect-v2?{query}
+        reverse_proxy https://panel.oksana1984.ru
+    }
+
+    handle /deep-link/* {
+        rewrite * /connect-v2{uri}
+        reverse_proxy https://panel.oksana1984.ru
+    }
+
+    handle /subscription {
+        rewrite * /connect?{query}
+        reverse_proxy https://panel.oksana1984.ru
+    }
+}
+```
+
+The mini-app must use `connect.oksana1984.ru` for `/start`, `/deep-link/*`, and legacy `/subscription` links. `panel.oksana1984.ru` is the upstream only and must not be exposed in user-facing subscription links.
 - External config names prefer `Название в connect-wl` when it is configured.
 - Legacy `/connect-v2/deep-link/{client}` routes remain available for compatibility with existing non-mini-app callers.
 - External subscriptions are included only when `include_in_connect_v2` (`Отображать в connect-v2`) is enabled. The flag also controls external profiles included in connect-v2 custom JSON profiles.

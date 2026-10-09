@@ -24,7 +24,7 @@ const copyToast = ref('');
 const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
-const qrTarget = ref('legacy');
+const qrTarget = ref('connect-v1');
 const showNewSubscription = ref(false);
 const showOldSubscription = ref(false);
 let copyToastTimeoutId = null;
@@ -40,20 +40,12 @@ const qrTitle = computed(() => {
         return 'QR-код старой подписки';
     }
 
-    if (qrTarget.value === 'legacy') {
-        return 'QR-код старого формата';
-    }
-
     return `QR-код для ${qrTarget.value === 'v2raytun' ? 'V2RayTun' : qrTarget.value === 'happ' ? 'Happ' : 'Incy'}`;
 });
 
 const qrDescription = computed(() => {
     if (qrTarget.value === 'connect-v2' || qrTarget.value === 'connect-v1') {
         return 'Отсканируйте код в приложении для импорта подписки.';
-    }
-
-    if (qrTarget.value === 'legacy') {
-        return 'Для ручного импорта в старые или неподдерживаемые приложения.';
     }
 
     return `Откройте ${qrTarget.value === 'v2raytun' ? 'V2RayTun' : qrTarget.value === 'happ' ? 'Happ' : 'Incy'} и отсканируйте код.`;
@@ -66,10 +58,6 @@ const qrCopyLink = computed(() => {
 
     if (qrTarget.value === 'connect-v1') {
         return connectV1Link.value;
-    }
-
-    if (qrTarget.value === 'legacy') {
-        return legacyLink.value;
     }
 
     return preferredLinks.value.find((item) => item.target === qrTarget.value)?.url ?? '';
@@ -99,9 +87,8 @@ const preferredLinks = computed(() => ([
     },
 ]).filter((item) => item.url));
 
-const legacyLink = computed(() => links.value?.legacy_link || '');
 const connectV2Link = computed(() => links.value?.connect_v2_link || links.value?.link || '');
-const connectV1Link = computed(() => links.value?.connect_v1_link || legacyLink.value || '');
+const connectV1Link = computed(() => links.value?.connect_v1_link || links.value?.legacy_link || '');
 const revokeQrUrl = () => {
     if (qrImageUrl.value) {
         URL.revokeObjectURL(qrImageUrl.value);
@@ -152,7 +139,7 @@ const loadData = async () => {
     state.value = 'ready';
 };
 
-const openQrResult = async (target = 'legacy') => {
+const openQrResult = async (target = 'connect-v1') => {
     loadingQr.value = true;
     actionError.value = '';
     qrStatus.value = '';
@@ -328,18 +315,6 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="tg-surface-card tg-stack">
-                    <div class="tg-section__title">QR-код старого формата</div>
-                    <p class="tg-muted-text">Для ручного импорта в старые или неподдерживаемые приложения.</p>
-                    <div class="tg-inline-actions tg-inline-actions--icons">
-                        <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать ссылку старого формата" title="Скопировать ссылку старого формата" @click="copyText(legacyLink)">
-                            <AppIcon name="copy" />
-                        </button>
-                        <button class="tg-icon-button tg-icon-button--soft" type="button" aria-label="Показать QR-код старого формата" title="Показать QR-код старого формата" :disabled="loadingQr" @click="openQrResult('legacy')">
-                            <AppIcon name="qrcode" />
-                        </button>
-                    </div>
-                </div>
             </section>
 
             <section v-else class="tg-section">

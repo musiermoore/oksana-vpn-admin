@@ -80,7 +80,8 @@ class VlessDeepLinkService
 
     public function getConnectV1Url(User $user): string
     {
-        return $this->getConnectUrl($user);
+        return rtrim((string) config('vless.public_domain'), '/')
+            .'/subscription?'.http_build_query($this->getConnectRouteParameters($user));
     }
 
     public function getConnectV2RouteLinks(User $user): array
@@ -106,7 +107,8 @@ class VlessDeepLinkService
         $links = [];
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $this->getConnectV2Url($user, $client);
+            $links[$responseKey] = rtrim((string) config('vless.public_domain'), '/')
+                .'/deep-link/'.$client.'?token='.urlencode((string) $user->uuid);
         }
 
         return $links;

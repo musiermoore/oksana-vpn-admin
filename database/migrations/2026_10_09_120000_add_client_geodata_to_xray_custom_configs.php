@@ -12,12 +12,20 @@ return new class extends Migration
     {
         Schema::create('xray_custom_config_geodata', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('xray_custom_config_id')->constrained('xray_custom_configs')->cascadeOnDelete();
+            $table->unsignedBigInteger('xray_custom_config_id');
             $table->string('client_key', 32);
-            $table->foreignId('geodata_id')->constrained('xray_routing_geodata')->restrictOnDelete();
+            $table->unsignedBigInteger('geodata_id');
             $table->timestamps();
-            $table->unique(['xray_custom_config_id', 'client_key']);
-            $table->index(['client_key', 'geodata_id']);
+            $table->foreign('xray_custom_config_id', 'xcg_geo_config_fk')
+                ->references('id')
+                ->on('xray_custom_configs')
+                ->cascadeOnDelete();
+            $table->foreign('geodata_id', 'xcg_geo_data_fk')
+                ->references('id')
+                ->on('xray_routing_geodata')
+                ->restrictOnDelete();
+            $table->unique(['xray_custom_config_id', 'client_key'], 'xcg_geo_client_uq');
+            $table->index(['client_key', 'geodata_id'], 'xcg_geo_data_idx');
         });
     }
 

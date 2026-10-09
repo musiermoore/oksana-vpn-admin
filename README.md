@@ -59,6 +59,21 @@ docker compose logs -f vite
 
 Styles and scripts live in `resources/css` and `resources/js`.
 
+### Database Index And Foreign-Key Names
+
+When adding migrations, explicitly name foreign keys, unique constraints, and indexes if the automatically generated name can become long. MySQL limits identifier names to 64 characters, and Laravel's generated names combine the full table and column names.
+
+Prefer short, stable names:
+
+```php
+$table->foreign('xray_custom_config_id', 'xcg_geo_config_fk')
+    ->references('id')
+    ->on('xray_custom_configs');
+$table->unique(['xray_custom_config_id', 'client_key'], 'xcg_geo_client_uq');
+```
+
+Use the same explicit names in rollback operations when the migration needs to drop a specific constraint.
+
 ## Production
 
 Production uses a separate compose file:

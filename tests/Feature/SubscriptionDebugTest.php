@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\DTOs\SubscriptionDebug\StoreSubscriptionDebugData;
 use App\Models\User;
+use App\Services\SubscriptionDebugService;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -16,7 +18,8 @@ final class SubscriptionDebugTest extends TestCase
     public function test_authenticated_user_can_open_the_editor_and_create_a_json_subscription(): void
     {
         Storage::fake('local');
-        Redis::shouldReceive('get')->once()->with('subscription-debug:uuid')->andReturn('');
+        Redis::shouldReceive('get')->twice()->with('subscription-debug:uuid')->andReturn('');
+        Redis::shouldReceive('ttl')->once()->with('subscription-debug:uuid')->andReturn(-2);
         Redis::shouldReceive('setex')->once()->withArgs(function (string $key, int $ttl, string $value): bool {
             return $key === 'subscription-debug:uuid'
                 && $ttl === 3600
@@ -59,6 +62,23 @@ final class SubscriptionDebugTest extends TestCase
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
             ->assertSee('{"dns":{}}', false);
         self::assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+    }
+
+    public function test_saving_again_reuses_the_active_uuid_and_remaining_ttl(): void
+    {
+        Storage::fake('local');
+        $uuid = (string) Str::uuid();
+        Redis::shouldReceive('get')->once()->with('subscription-debug:uuid')->andReturn($uuid.'|json');
+        Redis::shouldReceive('ttl')->once()->with('subscription-debug:uuid')->andReturn(1700);
+        Redis::shouldReceive('setex')->once()->with('subscription-debug:uuid', 1700, $uuid.'|url');
+
+        $storedUuid = app(SubscriptionDebugService::class)->store(new StoreSubscriptionDebugData(
+            type: 'url',
+            body: 'vless://updated',
+        ));
+
+        self::assertSame($uuid, $storedUuid);
+        Storage::disk('local')->assertExists('subscription-debug/body');
     }
 
     public function test_public_subscription_is_not_available_without_a_redis_marker(): void

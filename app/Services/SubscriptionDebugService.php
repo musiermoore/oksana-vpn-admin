@@ -23,14 +23,27 @@ final class SubscriptionDebugService
 
     public function store(StoreSubscriptionDebugData $data): string
     {
-        $uuid = (string) Str::uuid();
+        $marker = $this->marker();
+        $currentUuid = $marker[0] ?? '';
+        $currentType = $marker[1] ?? null;
+        $markerTtl = (int) Redis::ttl(self::MARKER_KEY);
+        $hasActiveMarker = Str::isUuid($currentUuid)
+            && in_array($currentType, ['json', 'url'], true)
+            && $markerTtl > 0;
+        $uuid = $hasActiveMarker ? $currentUuid : (string) Str::uuid();
         $disk = $this->disk();
 
         if (! $disk->put(self::BODY_PATH, $data->body)) {
             throw new \RuntimeException('Unable to store subscription debug body.');
         }
 
-        Redis::setex(self::MARKER_KEY, self::TTL_SECONDS, $uuid.'|'.$data->type);
+        if (! $hasActiveMarker || $currentType !== $data->type) {
+            Redis::setex(
+                self::MARKER_KEY,
+                $hasActiveMarker ? $markerTtl : self::TTL_SECONDS,
+                $uuid.'|'.$data->type,
+            );
+        }
 
         return $uuid;
     }

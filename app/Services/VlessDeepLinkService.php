@@ -180,10 +180,6 @@ class VlessDeepLinkService
 
     public function resolveConnectV2RedirectUrl(string $client, string $subscriptionLink): ?string
     {
-        if ($client === 'incy') {
-            return 'incy://add/'.urlencode($subscriptionLink);
-        }
-
         if ($client === 'v2raytun') {
             return 'v2raytun://import/'.$subscriptionLink;
         }

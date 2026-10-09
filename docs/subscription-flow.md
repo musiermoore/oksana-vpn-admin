@@ -176,7 +176,7 @@ Main `/connect`:
 - Returns the same plain JSON subscription for every client through the universal URL. It does not inspect `User-Agent`/`app` or apply client-specific filtering. Standard metadata and support headers remain enabled; only config-hiding headers (`Hide-Url`, `Hide-Proxy`, `Hide-Settings`) are suppressed.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 - The mini-app's client links use unencrypted client import schemes around the configured public `/start?token=...&app=...` URL. The `/connect-v2` endpoint returns JSON; generated mini-app deep links do not use encrypted payloads.
-- Mini-app deep-link fields use the public `connect` `/deep-link/{client}?token=...` URL, which the reverse proxy forwards to `/connect-v2/deep-link/{client}` and redirects into the selected client. Incy's final import form is `incy://add/{urlencoded_start_url}`. V2RayTun temporarily uses the plain `v2raytun://import/{start_url}` form while its official API integration is pending.
+- Mini-app deep-link fields use the public `connect` `/deep-link/{client}?token=...` URL, which the reverse proxy forwards to `/connect-v2/deep-link/{client}` and redirects into the selected client. INCY and Happ use their encrypted import formats. V2RayTun temporarily uses the plain `v2raytun://import/{start_url}` form while its official API integration is pending.
 - Mini-app exposes copyable `connect_v2_link` (`/start?token=...`) and `connect_v1_link` (`/subscription?...`) values as separate collapsed "new subscription" and "old subscription" blocks, each with copy and QR actions.
 
 Public `connect` reverse-proxy contract:

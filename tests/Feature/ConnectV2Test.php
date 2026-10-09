@@ -81,18 +81,18 @@ class ConnectV2Test extends TestCase
         ));
     }
 
-    public function test_incy_deep_link_redirects_to_plain_encoded_add_link(): void
+    public function test_incy_deep_link_redirects_to_encrypted_add_link(): void
     {
         $user = $this->createUser();
 
-        $this
+        $response = $this
             ->get(route('vless.connect-v2-deep-link', [
                 'client' => 'incy',
                 'token' => $user->uuid,
-            ]))
-            ->assertRedirect('incy://add/'.urlencode(
-                'https://connect.oksana1984.ru/start?token='.$user->uuid.'&app=incy'
-            ));
+            ]));
+
+        $response->assertRedirect();
+        $this->assertStringStartsWith('incy://crypt1/', (string) $response->headers->get('Location'));
     }
 
     public function test_v2raytun_deep_link_redirects_to_plain_import_link(): void

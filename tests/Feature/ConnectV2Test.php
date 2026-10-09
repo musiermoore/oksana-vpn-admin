@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Jobs\StoreApiRequestLogJob;
+use App\DTOs\Subscription\SubscriptionBuildResult;
+use App\Services\Subscriptions\UserSubscriptionService;
 use App\Models\User;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
@@ -10,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Mockery;
 use Tests\TestCase;
 
 class ConnectV2Test extends TestCase
@@ -147,6 +150,30 @@ class ConnectV2Test extends TestCase
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
             ->assertJsonStructure();
         $this->assertNoConfigHidingHeaders($response);
+    }
+
+    public function test_connect_v2_passes_app_parameter_to_subscription_builder(): void
+    {
+        $user = $this->createUser();
+        $builder = Mockery::mock(UserSubscriptionService::class);
+        $builder->shouldReceive('buildConnectV2')
+            ->once()
+            ->withArgs(static fn (User $resolvedUser, ?string $app): bool =>
+                $resolvedUser->is($user) && $app === 'v2raytun'
+            )
+            ->andReturn(new SubscriptionBuildResult(
+                content: '[]',
+                contentType: 'application/json; charset=UTF-8',
+                fileExtension: 'json',
+            ));
+        $this->app->instance(UserSubscriptionService::class, $builder);
+
+        $this
+            ->getJson(route('vless.connect-v2', [
+                'token' => $user->uuid,
+                'app' => 'v2raytun',
+            ]))
+            ->assertOk();
     }
 
     public function test_connect_v2_includes_only_external_subscriptions_enabled_for_connect_v2(): void

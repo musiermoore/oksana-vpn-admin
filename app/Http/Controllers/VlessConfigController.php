@@ -240,7 +240,18 @@ class VlessConfigController extends Controller
         ]);
 
         $this->connectedDevices->recordConnection($user, $request);
-        $subscription = $subscriptionService->buildConnectV2($user);
+        $app = mb_strtolower($request->string('app')->toString());
+        $userAgent = mb_strtolower((string) $request->userAgent());
+
+        if ($app === '' && str_contains($userAgent, 'v2raytun')) {
+            $app = 'v2raytun';
+        }
+
+        if ($app === '' && str_contains($userAgent, 'happ')) {
+            $app = 'happ';
+        }
+
+        $subscription = $subscriptionService->buildConnectV2($user, $app !== '' ? $app : null);
 
         Log::info('connect-v2.res', [
             'user_id' => (int) $user->id,

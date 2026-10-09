@@ -95,6 +95,21 @@ class ConnectV2Test extends TestCase
             ));
     }
 
+    public function test_v2raytun_deep_link_redirects_to_plain_import_link(): void
+    {
+        $user = $this->createUser();
+
+        $this
+            ->get(route('vless.connect-v2-deep-link', [
+                'client' => 'v2raytun',
+                'token' => $user->uuid,
+            ]))
+            ->assertRedirect(
+                'v2raytun://import/https://connect.oksana1984.ru/start?token='
+                .$user->uuid.'&app=v2raytun'
+            );
+    }
+
     public function test_app_parameter_allows_happ_subscription_without_happ_user_agent(): void
     {
         $user = $this->createUser();

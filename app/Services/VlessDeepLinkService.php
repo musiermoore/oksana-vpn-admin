@@ -184,6 +184,10 @@ class VlessDeepLinkService
             return 'incy://add/'.urlencode($subscriptionLink);
         }
 
+        if ($client === 'v2raytun') {
+            return 'v2raytun://import/'.$subscriptionLink;
+        }
+
         return $this->resolveRedirectUrl($client, $subscriptionLink);
     }
 

@@ -53,12 +53,18 @@ final class SubscriptionDebugController extends Controller
     {
         $subscription = $this->subscriptions->body($uuid);
 
-        return response($subscription['body'], 200, [
+        $headers = [
             'Content-Type' => $subscription['type'] === 'json'
                 ? 'application/json; charset=UTF-8'
                 : 'text/plain; charset=UTF-8',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'no-cache',
-        ]);
+        ];
+
+        if ($subscription['type'] === 'json') {
+            $headers['Content-Disposition'] = 'attachment; filename="subscription.json"';
+        }
+
+        return response($subscription['body'], 200, $headers);
     }
 }

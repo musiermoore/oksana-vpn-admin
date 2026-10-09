@@ -60,6 +60,7 @@ final class SubscriptionDebugTest extends TestCase
 
         $response->assertOk()
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->assertHeader('Content-Disposition', 'attachment; filename="subscription.json"')
             ->assertSee('{"dns":{}}', false);
         self::assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
     }
@@ -101,6 +102,7 @@ final class SubscriptionDebugTest extends TestCase
         $this->get('/subscription-debug?uuid='.$uuid)
             ->assertOk()
             ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertHeaderMissing('Content-Disposition')
             ->assertSee('vless://example', false)
             ->assertSee('vmess://example', false);
     }

@@ -77,9 +77,9 @@ VLESS menu flow:
 
 Actions:
 
-- `Connect`: open the client-specific redirect URL from `GET /api/users/{telegramId}/vless/link`; the server redirects to the target app's import scheme. Incy receives `incy://add/{urlencoded_start_url}`.
+- `Connect`: open the public `connect` `/start?token=...&app=...` URL from `GET /api/users/{telegramId}/vless/link`; it redirects to the target app's import scheme. Incy receives `incy://add/{urlencoded_start_url}`.
 - `QR Code`: show the selected app-specific QR from `GET /api/users/{telegramId}/vless/qr-code?target=...`.
-- `Connect v2` and `Connect v1`: copy the corresponding manual-import URLs from a collapsed section.
+- `New subscription` and `Old subscription`: separate collapsed blocks with copy and QR actions for Connect v2 and Connect v1.
 - `Legacy`: copy or show the old-format subscription URL for manual/unsupported-app import.
 - `Whitelist`: open `/telegram-app/vless-wl?step=links`.
 - `Home`: return to Home.

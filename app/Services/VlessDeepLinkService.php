@@ -75,9 +75,7 @@ class VlessDeepLinkService
 
     public function getConnectV2EndpointUrl(User $user): string
     {
-        return $this->buildUrl('vless.connect-v2', [
-            'token' => (string) $user->uuid,
-        ]);
+        return $this->getConnectV2Url($user);
     }
 
     public function getConnectV1Url(User $user): string
@@ -108,18 +106,10 @@ class VlessDeepLinkService
         $links = [];
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $this->buildConnectV2DeepLinkRouteUrl($user, $client);
+            $links[$responseKey] = $this->getConnectV2Url($user, $client);
         }
 
         return $links;
-    }
-
-    private function buildConnectV2DeepLinkRouteUrl(User $user, string $client): string
-    {
-        return $this->buildUrl('vless.connect-v2-deep-link', [
-            'client' => $client,
-            'token' => (string) $user->uuid,
-        ]);
     }
 
     private function buildPlainConnectV2DeepLink(string $client, string $subscriptionLink): ?string
@@ -127,7 +117,7 @@ class VlessDeepLinkService
         return match ($client) {
             'happ' => 'happ://add/'.$subscriptionLink,
             'v2raytun' => 'v2raytun://import/'.$subscriptionLink,
-            'incy' => 'incy://add?url='.urlencode($subscriptionLink),
+            'incy' => 'incy://add/'.urlencode($subscriptionLink),
             'v2rayn', 'v2rayng', 'v2box' => $this->buildInstallSubLink($client, $subscriptionLink),
             'sing-box' => 'sing-box://import-remote-profile?url='.urlencode($subscriptionLink),
             'hiddify' => 'hiddify://import/'.$subscriptionLink,

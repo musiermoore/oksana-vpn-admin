@@ -279,6 +279,14 @@ class ApiUserService
 
     public function getVlessConnectV2QrLink(User $user, string $target): string
     {
+        if ($target === 'connect-v2') {
+            return $this->vlessDeepLinks->getConnectV2Url($user);
+        }
+
+        if ($target === 'connect-v1') {
+            return $this->vlessDeepLinks->getConnectV1Url($user);
+        }
+
         if ($target === 'legacy') {
             return $this->vlessDeepLinks->getConnectUrl($user);
         }

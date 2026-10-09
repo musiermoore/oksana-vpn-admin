@@ -25,12 +25,21 @@ const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
 const qrTarget = ref('legacy');
-const showConnectLinks = ref(false);
+const showNewSubscription = ref(false);
+const showOldSubscription = ref(false);
 let copyToastTimeoutId = null;
 
 const configHubHref = computed(() => telegramMiniAppRoutes.wireguard);
 
 const qrTitle = computed(() => {
+    if (qrTarget.value === 'connect-v2') {
+        return 'QR-код новой подписки';
+    }
+
+    if (qrTarget.value === 'connect-v1') {
+        return 'QR-код старой подписки';
+    }
+
     if (qrTarget.value === 'legacy') {
         return 'QR-код старого формата';
     }
@@ -39,6 +48,10 @@ const qrTitle = computed(() => {
 });
 
 const qrDescription = computed(() => {
+    if (qrTarget.value === 'connect-v2' || qrTarget.value === 'connect-v1') {
+        return 'Отсканируйте код в приложении для импорта подписки.';
+    }
+
     if (qrTarget.value === 'legacy') {
         return 'Для ручного импорта в старые или неподдерживаемые приложения.';
     }
@@ -47,6 +60,14 @@ const qrDescription = computed(() => {
 });
 
 const qrCopyLink = computed(() => {
+    if (qrTarget.value === 'connect-v2') {
+        return connectV2Link.value;
+    }
+
+    if (qrTarget.value === 'connect-v1') {
+        return connectV1Link.value;
+    }
+
     if (qrTarget.value === 'legacy') {
         return legacyLink.value;
     }
@@ -258,30 +279,50 @@ onBeforeUnmount(() => {
                 <div class="tg-surface-card tg-stack">
                     <div class="tg-section__head">
                         <div>
-                            <div class="tg-section__title">Connect v2 и v1</div>
-                            <p class="tg-muted-text">Ссылки для ручного импорта.</p>
+                            <div class="tg-section__title">Новая подписка</div>
+                            <p class="tg-muted-text">Connect v2</p>
                         </div>
-                        <button class="tg-icon-button" type="button" :aria-label="showConnectLinks ? 'Скрыть ссылки Connect' : 'Показать ссылки Connect'" :title="showConnectLinks ? 'Скрыть ссылки' : 'Показать ссылки'" :aria-expanded="showConnectLinks" @click="showConnectLinks = !showConnectLinks">
-                            <AppIcon :name="showConnectLinks ? 'chevronDown' : 'chevronRight'" />
+                        <button class="tg-icon-button" type="button" :aria-label="showNewSubscription ? 'Скрыть новую подписку' : 'Показать новую подписку'" :title="showNewSubscription ? 'Скрыть ссылку' : 'Показать ссылку'" :aria-expanded="showNewSubscription" @click="showNewSubscription = !showNewSubscription">
+                            <AppIcon :name="showNewSubscription ? 'chevronDown' : 'chevronRight'" />
                         </button>
                     </div>
-                    <div v-if="showConnectLinks" class="tg-stack">
+                    <div v-if="showNewSubscription" class="tg-stack">
                         <div class="tg-code-row">
                             <div class="tg-code-row__body">
-                                <strong>Connect v2</strong>
+                                <strong>Новая подписка</strong>
                                 <div class="tg-code-block">{{ connectV2Link || 'Ссылка недоступна' }}</div>
                             </div>
                             <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать Connect v2" title="Скопировать Connect v2" @click="copyText(connectV2Link)">
                                 <AppIcon name="copy" />
                             </button>
+                            <button class="tg-icon-button tg-icon-button--soft" type="button" aria-label="Показать QR-код новой подписки" title="Показать QR-код новой подписки" :disabled="loadingQr" @click="openQrResult('connect-v2')">
+                                <AppIcon name="qrcode" />
+                            </button>
                         </div>
+                    </div>
+                </div>
+
+                <div class="tg-surface-card tg-stack">
+                    <div class="tg-section__head">
+                        <div>
+                            <div class="tg-section__title">Старая подписка</div>
+                            <p class="tg-muted-text">Connect v1</p>
+                        </div>
+                        <button class="tg-icon-button" type="button" :aria-label="showOldSubscription ? 'Скрыть ссылку старой подписки' : 'Показать ссылку старой подписки'" :title="showOldSubscription ? 'Скрыть ссылку' : 'Показать ссылку'" :aria-expanded="showOldSubscription" @click="showOldSubscription = !showOldSubscription">
+                            <AppIcon :name="showOldSubscription ? 'chevronDown' : 'chevronRight'" />
+                        </button>
+                    </div>
+                    <div v-if="showOldSubscription" class="tg-stack">
                         <div class="tg-code-row">
                             <div class="tg-code-row__body">
-                                <strong>Connect v1</strong>
+                                <strong>Старая подписка</strong>
                                 <div class="tg-code-block">{{ connectV1Link || 'Ссылка недоступна' }}</div>
                             </div>
-                            <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать Connect v1" title="Скопировать Connect v1" @click="copyText(connectV1Link)">
+                            <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать старую подписку" title="Скопировать старую подписку" @click="copyText(connectV1Link)">
                                 <AppIcon name="copy" />
+                            </button>
+                            <button class="tg-icon-button tg-icon-button--soft" type="button" aria-label="Показать QR-код старой подписки" title="Показать QR-код старой подписки" :disabled="loadingQr" @click="openQrResult('connect-v1')">
+                                <AppIcon name="qrcode" />
                             </button>
                         </div>
                     </div>

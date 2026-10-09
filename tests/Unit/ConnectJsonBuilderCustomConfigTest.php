@@ -8,6 +8,7 @@ use App\DTOs\Subscription\NormalizedNode;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayCustomConfigRoute;
+use App\Models\XrayCustomConfigGeodata;
 use App\Models\XrayRouting;
 use App\Models\XrayRoutingDnsSettings;
 use App\Models\XrayRoutingGeodata;
@@ -64,6 +65,16 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
                 ['file' => 'geosite.dat', 'url' => 'https://example.test/geosite.dat'],
             ],
         ]));
+        $happGeodata = XrayRoutingGeodata::query()->create([
+            'name' => 'Happ geodata',
+            'assets' => [
+                ['file' => 'geosite.dat', 'url' => 'https://happ.example.test/geosite.dat'],
+            ],
+            'is_active' => true,
+        ]);
+        $config->setRelation('clientGeodata', new Collection([
+            new XrayCustomConfigGeodata(['client_key' => 'happ', 'geodata_id' => $happGeodata->id]),
+        ]));
         $config->setRelation('outboundGroups', new Collection([$primary, $fallback]));
         $config->setRelation('routes', new Collection([
             new XrayCustomConfigRoute([
@@ -109,12 +120,13 @@ class ConnectJsonBuilderCustomConfigTest extends TestCase
             meta: ['external_subscription_id' => 20, 'external_subscription_config_id' => 200],
         );
 
-        $payload = json_decode(app(ConnectJsonBuilder::class)->buildForCustomConfig([$node, $externalNode], $config)->content, true, 512, JSON_THROW_ON_ERROR);
+        $payload = json_decode(app(ConnectJsonBuilder::class)->buildForCustomConfig([$node, $externalNode], $config, 'happ')->content, true, 512, JSON_THROW_ON_ERROR);
         $profile = $payload[0];
 
         $this->assertContains('germany-2', array_column($profile['outbounds'], 'tag'));
         $this->assertSame(['8.8.8.8', '1.1.1.1'], data_get($profile, 'dns.servers'));
         $this->assertSame('direct', data_get($profile, 'geodata.outbound'));
+        $this->assertSame('https://happ.example.test/geosite.dat', data_get($profile, 'geodata.assets.0.url'));
         $this->assertSame(['germany-', 'finland-'], data_get($profile, 'observatory.subjectSelector'));
         $this->assertSame('roundRobin', data_get($profile, 'routing.balancers.0.strategy.type'));
         $this->assertStringContainsString('"settings": {}', (string) app(ConnectJsonBuilder::class)->buildForCustomConfig([$node], $config)->content);

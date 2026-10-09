@@ -164,7 +164,21 @@ See:
 - [docs/telegram-mini-app-user-flows.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-user-flows.md)
 - [docs/telegram-mini-app-state-machine.md](/Users/alexandersustavov/projects/home/wireguard-vpn-app/docs/telegram-mini-app-state-machine.md)
 
-## 10. When To Update Docs
+## 10. HAPP Xray JSON subscriptions
+
+The `/subscription-debug` JSON response is consumed by HAPP as an Xray configuration. Keep these compatibility rules when editing generated profiles:
+
+- Return raw JSON with `Content-Type: application/json; charset=UTF-8` and, for JSON subscriptions, `Content-Disposition: attachment; filename="subscription.json"`.
+- Use a comma-separated string for routing ports, for example `"25,123,443"`; do not use an array of port strings.
+- Route directly to named outbounds with `outboundTag`. Simple balancers with `tag` and exact `selector` values are supported.
+- Do not use explicit `roundRobin` strategy blocks. For `leastLoad`, use the tested millisecond `maxRTT` form such as `"3000ms"`; `"5s"` was rejected. `expected`, `tolerance`, and `baselines` are optional in the tested configuration.
+- WireGuard, XHTTP, and loopback outbounds are supported by the tested core. Loopback fallbacks must reference an actual inbound tag.
+- Do not remove WireGuard or XHTTP nodes from a client subscription based only on another client’s compatibility issue. Keep them unless the target client has a verified, tested incompatibility.
+- `geoip`, `geosite`, and `geodata` must be shipped together with compatible pinned `geoip.dat` and `geosite.dat` assets. Without those assets, remove the matchers and geodata block.
+- Custom configurations can select geodata per client profile (`incy`, `happ`, `v2raytun`, `other`); an unrecognized client uses `other`.
+- For load balancing, the tested observability form is `burstObservatory` with `pingConfig`; regular `observatory` should not be assumed compatible with `leastLoad`.
+
+## 11. When To Update Docs
 
 Update docs when these change:
 

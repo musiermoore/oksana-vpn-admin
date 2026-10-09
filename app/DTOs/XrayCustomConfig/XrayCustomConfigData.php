@@ -24,6 +24,8 @@ class XrayCustomConfigData extends Data
         public ?string $description,
         public ?int $dns_settings_id,
         public ?int $geodata_id,
+        /** @var array<string, int|null> */
+        public array $geodata_by_client,
         public array $xray_inbound_ids,
         public array $external_subscription_config_ids,
         public array $external_subscription_ids,

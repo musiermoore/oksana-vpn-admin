@@ -20,11 +20,12 @@ final class ConnectJsonProfileOrderer
         ConnectJsonBuilder $builder,
         array $nodes,
         array $customNodes,
+        ?string $client = null,
     ): SubscriptionBuildResult {
         $customConfigs = XrayCustomConfig::query()
             ->active()
             ->ordered()
-            ->with(['dnsSettings', 'geodata', 'outboundGroups.fallbackGroup', 'routes'])
+            ->with(['dnsSettings', 'geodata', 'clientGeodata', 'outboundGroups.fallbackGroup', 'routes'])
             ->get();
 
         $entries = collect($this->buildBaseProfileEntries($builder, $nodes))
@@ -32,7 +33,7 @@ final class ConnectJsonProfileOrderer
                 'type' => 'xray_custom_config',
                 'id' => (int) $config->id,
                 'sort_order' => (int) $config->sort_order,
-                'profiles' => json_decode($builder->buildForCustomConfig($customNodes, $config)->content),
+                'profiles' => json_decode($builder->buildForCustomConfig($customNodes, $config, $client)->content),
             ]))
             ->filter(fn (array $entry): bool => is_array($entry['profiles']))
             ->sort(fn (array $left, array $right): int => [

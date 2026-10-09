@@ -134,7 +134,7 @@ class ConnectV2Test extends TestCase
         $this->assertStringNotContainsString('Happ test', $response->getContent());
     }
 
-    public function test_v2raytun_app_parameter_returns_standard_and_custom_profiles_without_xhttp(): void
+    public function test_v2raytun_app_parameter_returns_standard_and_custom_profiles_with_xhttp_support(): void
     {
         $user = $this->createUser();
 

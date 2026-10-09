@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Models\XrayCustomConfig;
+use App\Models\XrayCustomConfigGeodata;
 use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayCustomConfigRoute;
 use App\Models\XrayRouting;
@@ -31,7 +32,7 @@ class XrayCustomConfigController extends Controller
     {
         return $this->inertia('XrayCustomConfigs/Index', [
             'create_page_url' => route('xray-custom-configs.create'),
-            'configs' => XrayCustomConfig::query()->with(['dnsSettings', 'geodata'])->latest('id')->get()->map(
+            'configs' => XrayCustomConfig::query()->with(['dnsSettings', 'geodata', 'clientGeodata'])->latest('id')->get()->map(
                 fn (XrayCustomConfig $config): array => $this->payload($config)
             )->values(),
         ]);
@@ -62,7 +63,7 @@ class XrayCustomConfigController extends Controller
 
     public function edit(XrayCustomConfig $xrayCustomConfig)
     {
-        $xrayCustomConfig->load(['outboundGroups.fallbackGroup', 'routes']);
+        $xrayCustomConfig->load(['outboundGroups.fallbackGroup', 'routes', 'clientGeodata']);
 
         return $this->inertia('XrayCustomConfigs/Form', [
             ...$this->formProps(),
@@ -92,7 +93,7 @@ class XrayCustomConfigController extends Controller
     ): JsonResponse {
         $user = $this->previewUser($request);
 
-        $result = $service->build($user, $xrayCustomConfig);
+        $result = $service->build($user, $xrayCustomConfig, $this->clientKey($request->query('app')));
 
         return response()->json([
             'user_id' => $user->id,
@@ -108,6 +109,13 @@ class XrayCustomConfigController extends Controller
         $data = $request->toDto();
         $config = new XrayCustomConfig($data->toArray());
         $this->setDraftGroupsAndRoutes($config, $data);
+        $config->setRelation('clientGeodata', collect($data->geodata_by_client)
+            ->filter(static fn (mixed $id): bool => $id !== null)
+            ->map(fn (mixed $id, string $clientKey): XrayCustomConfigGeodata => new XrayCustomConfigGeodata([
+                'client_key' => $clientKey,
+                'geodata_id' => (int) $id,
+            ]))
+            ->values());
         $config->load(['dnsSettings', 'geodata']);
 
         $user = $this->previewUser($request);
@@ -139,7 +147,7 @@ class XrayCustomConfigController extends Controller
             return null;
         }
 
-        $result = $service->build($user, $xrayCustomConfig);
+        $result = $service->build($user, $xrayCustomConfig, $this->clientKey($request->query('app')));
         $response = response($request->boolean('base64') ? base64_encode($result->content) : $result->content);
 
         foreach ($metadataService->buildHeaders(
@@ -282,6 +290,9 @@ class XrayCustomConfigController extends Controller
             'description' => $config->description,
             'dns_settings_id' => $config->dns_settings_id,
             'geodata_id' => $config->geodata_id,
+            'geodata_by_client' => $config->relationLoaded('clientGeodata')
+                ? $config->clientGeodata->mapWithKeys(fn ($mapping): array => [(string) $mapping->client_key => (int) $mapping->geodata_id])->all()
+                : [],
             'xray_inbound_ids' => $config->xray_inbound_ids ?? [],
             'external_subscription_config_ids' => $config->external_subscription_config_ids ?? [],
             'external_subscription_ids' => $config->external_subscription_ids
@@ -362,10 +373,27 @@ class XrayCustomConfigController extends Controller
             ->findOrFail($request->integer('user_id'));
     }
 
+    private function clientKey(mixed $app): string
+    {
+        $client = is_string($app) ? mb_strtolower(trim($app)) : '';
+
+        return in_array($client, ['incy', 'happ', 'v2raytun'], true) ? $client : 'other';
+    }
+
     private function syncGroupsAndRoutes(XrayCustomConfig $config, XrayCustomConfigData $data): void
     {
         $config->outboundGroups()->delete();
         $config->routes()->delete();
+        $config->clientGeodata()->delete();
+
+        foreach ($data->geodata_by_client as $clientKey => $geodataId) {
+            if ($geodataId !== null && in_array($clientKey, ['incy', 'happ', 'v2raytun', 'other'], true)) {
+                $config->clientGeodata()->create([
+                    'client_key' => $clientKey,
+                    'geodata_id' => $geodataId,
+                ]);
+            }
+        }
         $groupsByTag = [];
 
         foreach ($data->outbound_groups as $index => $group) {

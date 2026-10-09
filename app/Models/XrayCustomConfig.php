@@ -41,6 +41,11 @@ class XrayCustomConfig extends Model
         return $this->belongsTo(XrayRoutingGeodata::class, 'geodata_id');
     }
 
+    public function clientGeodata(): HasMany
+    {
+        return $this->hasMany(XrayCustomConfigGeodata::class)->with('geodata');
+    }
+
     public function outboundGroups(): HasMany
     {
         return $this->hasMany(XrayCustomConfigOutboundGroup::class)->orderBy('sort_order')->orderBy('id');

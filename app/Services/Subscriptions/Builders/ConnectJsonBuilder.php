@@ -9,6 +9,7 @@ use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayRouting;
+use App\Models\XrayRoutingGeodata;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
 use App\Services\Subscriptions\SubscriptionUriParser;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
@@ -52,10 +53,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     /**
      * @param  array<int, NormalizedNode>  $nodes
      */
-    public function buildForCustomConfig(array $nodes, XrayCustomConfig $customConfig): SubscriptionBuildResult
+    public function buildForCustomConfig(array $nodes, XrayCustomConfig $customConfig, ?string $client = null): SubscriptionBuildResult
     {
         if ($customConfig->relationLoaded('outboundGroups') && $customConfig->outboundGroups->isNotEmpty()) {
-            return $this->buildGroupedCustomConfig($nodes, $customConfig);
+            return $this->buildGroupedCustomConfig($nodes, $customConfig, $client);
         }
 
         $selectedInboundIds = array_map('intval', $customConfig->xray_inbound_ids ?? []);
@@ -85,7 +86,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         }));
 
         $profiles = collect($nodes)
-            ->map(fn (NormalizedNode $node) => $this->buildProfile($node, XrayRouting::SUBSCRIPTION_CONNECT, $customConfig))
+            ->map(fn (NormalizedNode $node) => $this->buildProfile($node, XrayRouting::SUBSCRIPTION_CONNECT, $customConfig, $client))
             ->filter()
             ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile))
             ->values()
@@ -103,7 +104,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
      *
      * @param  array<int, NormalizedNode>  $nodes
      */
-    private function buildGroupedCustomConfig(array $nodes, XrayCustomConfig $customConfig): SubscriptionBuildResult
+    private function buildGroupedCustomConfig(array $nodes, XrayCustomConfig $customConfig, ?string $client): SubscriptionBuildResult
     {
         $groups = $customConfig->outboundGroups->where('is_active', true)->values();
         $groupedNodes = $this->groupedNodes($nodes, $groups);
@@ -121,7 +122,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         );
 
         $this->appendGroupedObservatory($profile, $groups, $base);
-        $this->appendGroupedGeodata($profile, $customConfig);
+        $this->appendGroupedGeodata($profile, $customConfig, $client);
 
         return new SubscriptionBuildResult(
             content: json_encode([$this->profileNormalizer->normalizeProfile($profile)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
@@ -376,9 +377,14 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         ];
     }
 
-    private function appendGroupedGeodata(array &$profile, XrayCustomConfig $customConfig): void
+    private function appendGroupedGeodata(array &$profile, XrayCustomConfig $customConfig, ?string $client): void
     {
-        $geodata = $this->settingsProvider->geodataFromSettings($customConfig->geodata);
+        $clientKey = in_array($client, ['incy', 'happ', 'v2raytun'], true) ? $client : 'other';
+        $geodataId = $customConfig->clientGeodata
+            ->firstWhere('client_key', $clientKey)?->geodata_id;
+        $geodata = $this->settingsProvider->geodataFromSettings(
+            $geodataId === null ? $customConfig->geodata : XrayRoutingGeodata::query()->find($geodataId),
+        );
 
         if ($geodata === null) {
             return;
@@ -450,6 +456,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         NormalizedNode $node,
         string $subscriptionType,
         ?XrayCustomConfig $customConfig = null,
+        ?string $client = null,
     ): ?array {
         [$xrayInboundId, $externalSubscriptionConfigId, $proxyId] = $this->nodeTargetIds($node);
 
@@ -461,6 +468,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $xrayInboundId,
                 $externalSubscriptionConfigId,
                 $proxyId,
+                $client,
             );
         }
 
@@ -494,7 +502,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             ...array_filter([
                 'geodata' => $customConfig === null
                     ? $this->settingsProvider->geodata()
-                    : $this->settingsProvider->geodataFromSettings($customConfig->geodata),
+                    : $this->settingsProvider->geodataFromSettings($this->geodataForClient($customConfig, $client)),
             ]),
             'routing' => $customConfig === null
                 ? $this->settingsProvider->routing($subscriptionType, $xrayInboundId, $externalSubscriptionConfigId, $proxyId)
@@ -506,6 +514,15 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->settingsProvider->blockOutbound(),
             ],
         ];
+    }
+
+    private function geodataForClient(XrayCustomConfig $customConfig, ?string $client): mixed
+    {
+        $clientKey = in_array($client, ['incy', 'happ', 'v2raytun'], true) ? $client : 'other';
+        $geodataId = $customConfig->clientGeodata
+            ->firstWhere('client_key', $clientKey)?->geodata_id;
+
+        return $geodataId === null ? $customConfig->geodata : XrayRoutingGeodata::query()->find($geodataId);
     }
 
     private function nodeTargetIds(NormalizedNode $node): array
@@ -526,6 +543,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         ?int $xrayInboundId,
         ?int $externalSubscriptionConfigId,
         ?int $proxyId,
+        ?string $client = null,
     ): array {
         $profile = [
             ...$node->meta['json_profile'],
@@ -548,6 +566,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         if ($customConfig !== null) {
             $profile['dns'] = $this->settingsProvider->dnsFromSettings($customConfig->dnsSettings);
+            $profile['geodata'] = $this->settingsProvider->geodataFromSettings($this->geodataForClient($customConfig, $client));
             $profile['routing'] = $this->customRouting($customConfig, $subscriptionType, $node);
             $profile = [...($customConfig->base_settings ?? []), ...$profile];
         }

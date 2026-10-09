@@ -17,13 +17,14 @@ class XrayCustomConfigService
         private readonly ConnectJsonBuilder $builder,
     ) {}
 
-    public function build(User $user, XrayCustomConfig $config): SubscriptionBuildResult
+    public function build(User $user, XrayCustomConfig $config, ?string $client = null): SubscriptionBuildResult
     {
-        $config->loadMissing(['dnsSettings', 'geodata', 'outboundGroups.fallbackGroup', 'routes']);
+        $config->loadMissing(['dnsSettings', 'geodata', 'clientGeodata', 'outboundGroups.fallbackGroup', 'routes']);
 
         return $this->builder->buildForCustomConfig(
             $this->subscriptions->buildNamedNodes($user, VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM),
             $config,
+            $client,
         );
     }
 }

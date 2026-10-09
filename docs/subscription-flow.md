@@ -237,10 +237,12 @@ Custom Xray JSON configurations:
 - External subscriptions are stored by subscription ID. Every current config belonging to a selected subscription is loaded when the profile is built, so sync changes are reflected automatically without editing the custom profile.
 - Selected local and external nodes are still filtered through the requesting user's active/visible configs; the profile does not grant access to another user's configs.
 - Custom profiles may select reusable global DNS settings and geodata assets and may provide additional base Xray settings such as policy, inbounds, and balancers.
+- Custom profiles may select different geodata resources for `incy`, `happ`, `v2raytun`, and `other`. The explicit `app` parameter selects the profile; unknown or missing clients use `other`, and the legacy `geodata_id` remains the fallback.
+- WireGuard and XHTTP nodes are retained in generated client subscriptions. They are not removed automatically without a verified incompatibility for that specific client.
 - Custom profiles may define ordered outbound groups. Each group can select its own local inbounds, external subscriptions, or proxies and is emitted as an Xray balancer with `roundRobin`, `leastPing`, `leastLoad`, or `random` strategy.
 - A group can fall back to another group; the fallback group may itself contain several nodes, so ordered fallback chains and multi-node fallback pools are supported through balancers and loopback outbounds.
 - Custom routes can send domains, IPs, ports, or networks to `direct`, `block`, a specific outbound, or a named group balancer. A final catch-all route sends unmatched traffic to `direct`.
-- `leastPing` and `leastLoad` require the corresponding Xray observatory configuration in the custom profile's base settings; otherwise use `roundRobin` or `random`.
+- `leastPing` and `leastLoad` receive generated observatory settings when the custom profile does not provide compatible settings.
 - Admin preview supports all available nodes or a selected user and uses the same user-specific builder.
 - Custom profiles are available through `connect-custom/{slug}` with the same encrypted `tg`/`i` credentials as `/connect-json`.
 

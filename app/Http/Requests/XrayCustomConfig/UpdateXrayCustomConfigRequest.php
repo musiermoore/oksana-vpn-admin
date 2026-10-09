@@ -27,6 +27,8 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'description' => ['nullable', 'string', 'max:1000'],
             'dns_settings_id' => ['nullable', 'integer', Rule::exists('xray_routing_dns_settings', 'id')],
             'geodata_id' => ['nullable', 'integer', Rule::exists('xray_routing_geodata', 'id')],
+            'geodata_by_client' => ['nullable', 'array'],
+            'geodata_by_client.*' => ['nullable', 'integer', Rule::exists('xray_routing_geodata', 'id')],
             'xray_inbound_ids' => ['present', 'array'],
             'xray_inbound_ids.*' => ['integer', Rule::exists('xray_inbounds', 'id')],
             'external_subscription_config_ids' => ['present', 'array'],
@@ -87,6 +89,10 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'description' => $validated['description'] ?? null,
             'dns_settings_id' => isset($validated['dns_settings_id']) ? (int) $validated['dns_settings_id'] : null,
             'geodata_id' => isset($validated['geodata_id']) ? (int) $validated['geodata_id'] : null,
+            'geodata_by_client' => collect($validated['geodata_by_client'] ?? [])
+                ->only(['incy', 'happ', 'v2raytun', 'other'])
+                ->map(static fn (mixed $id): ?int => $id === null ? null : (int) $id)
+                ->all(),
             'xray_inbound_ids' => $this->ids($validated['xray_inbound_ids'] ?? []),
             'external_subscription_config_ids' => $this->ids($validated['external_subscription_config_ids'] ?? []),
             'external_subscription_ids' => $this->ids($validated['external_subscription_ids'] ?? []),

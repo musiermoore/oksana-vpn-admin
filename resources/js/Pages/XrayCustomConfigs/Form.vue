@@ -23,7 +23,7 @@ const initialBase = initial.base_settings || {};
 const slugify = (value) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const form = useForm({
     name: initial.name || '', slug: initial.slug || slugify(initial.name), description: initial.description || '',
-    dns_settings_id: initial.dns_settings_id || '', geodata_id: initial.geodata_id || '',
+    dns_settings_id: initial.dns_settings_id || '', geodata_id: initial.geodata_id || '', geodata_by_client: initial.geodata_by_client || { incy: null, happ: null, v2raytun: null, other: null },
     xray_inbound_ids: initial.xray_inbound_ids || [], external_subscription_config_ids: initial.external_subscription_config_ids || [], external_subscription_ids: initial.external_subscription_ids || [],
     proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], is_active: initial.is_active ?? true, sort_order: initial.sort_order ?? 0,
 });
@@ -56,6 +56,7 @@ const routes = ref((initial.routes || []).map((route) => {
 const dnsOptions = ref([...props.dns_settings]);
 const geodataOptions = ref([...props.geodata]);
 const previewMode = ref('admin');
+const previewClient = ref('other');
 const previewUserId = ref(props.users[0]?.id || '');
 const previewContent = ref(null);
 const previewing = ref(false);
@@ -232,8 +233,8 @@ const duplicateGroup = (group, index) => { const copy = JSON.parse(JSON.stringif
 const removeGroup = (group, index) => {
     const dependentRoutes = routes.value.some((route) => route.target_tag === group.tag);
     const dependentGroups = groups.value.some((item, itemIndex) => itemIndex !== index && item.fallback_group_tag === group.tag);
-    const dependencyMessage = dependentRoutes || dependentGroups ? ' This group is referenced by another group or route; those references will be cleared.' : '';
-    if (!window.confirm(`Delete outbound group “${group.name || group.tag}”?${dependencyMessage}`)) return;
+    const dependencyMessage = dependentRoutes || dependentGroups ? ' На эту группу ссылается другой маршрут или группа; эти ссылки будут очищены.' : '';
+    if (!window.confirm(`Удалить группу исходящих подключений «${group.name || group.tag}»?${dependencyMessage}`)) return;
     routes.value.forEach((route) => { if (route.target_tag === group.tag) route.target_tag = ''; });
     groups.value.forEach((item) => { if (item.fallback_group_tag === group.tag) item.fallback_group_tag = ''; });
     groups.value.splice(index, 1);
@@ -273,7 +274,7 @@ const dragStartRoute = (index) => { draggedRouteIndex.value = index; };
 const dropRoute = (index) => { if (draggedRouteIndex.value === null || draggedRouteIndex.value === index) return; const [route] = routes.value.splice(draggedRouteIndex.value, 1); routes.value.splice(index, 0, route); draggedRouteIndex.value = null; expandedRoutes.value = new Set(routes.value.map((_, routeIndex) => routeIndex).filter((routeIndex) => routeIndex === index)); };
 const addRoute = () => { routes.value.push({ name: `Route ${routes.value.length + 1}`, match_type: 'domain', match_values: '', match_values_list: [], value_input: '', target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true, _menuOpen: false }); expandedRoutes.value = new Set([...expandedRoutes.value, routes.value.length - 1]); };
 const duplicateRoute = (route, index) => { const copy = JSON.parse(JSON.stringify(route)); copy.name = `${route.name || 'Route'} copy`; copy.value_input = ''; copy._menuOpen = false; routes.value.splice(index + 1, 0, copy); expandedRoutes.value = new Set([...expandedRoutes.value, index + 1]); };
-const removeRoute = (route, index) => { if (!window.confirm(`Delete route “${route.name || `Route ${index + 1}`}”?`)) return; routes.value.splice(index, 1); };
+const removeRoute = (route, index) => { if (!window.confirm(`Удалить маршрут «${route.name || `Маршрут ${index + 1}`}»?`)) return; routes.value.splice(index, 1); };
 watch([form, settings, baseSettingsJson, groups, routes], () => {
     hasUnsavedChanges.value = true;
 
@@ -304,18 +305,18 @@ watch(baseSettingsJson, (value) => {
         // Keep the in-progress JSON text until it becomes valid again.
     }
 });
-const cancelEditing = () => { if (!hasUnsavedChanges.value || window.confirm('Discard unsaved changes?')) window.location.href = '/xray-custom-configs'; };
+const cancelEditing = () => { if (!hasUnsavedChanges.value || window.confirm('Отменить несохранённые изменения?')) window.location.href = '/xray-custom-configs'; };
 
 const parseBaseSettings = () => {
     try {
         const parsed = JSON.parse(baseSettingsJson.value || '{}');
         if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
-            throw new Error('Base settings must be a JSON object.');
+            throw new Error('Основные настройки должны быть JSON-объектом.');
         }
         baseSettingsError.value = '';
         return parsed;
     } catch (error) {
-        baseSettingsError.value = error.message || 'Base settings must be valid JSON.';
+        baseSettingsError.value = error.message || 'Основные настройки должны быть корректным JSON.';
         return null;
     }
 };
@@ -407,11 +408,12 @@ const routingTemplatesJson = computed({
     set: (value) => parseSection(value, ids('xray_routing_ids'), (parsed) => { if (Array.isArray(parsed)) form.xray_routing_ids = parsed.map(Number).filter(Number.isFinite); }),
 });
 const resourcesJson = computed({
-    get: () => sectionJson({ dns_settings_id: form.dns_settings_id || null, geodata_id: form.geodata_id || null }),
-    set: (value) => parseSection(value, { dns_settings_id: form.dns_settings_id || null, geodata_id: form.geodata_id || null }, (parsed) => {
+    get: () => sectionJson({ dns_settings_id: form.dns_settings_id || null, geodata_id: form.geodata_id || null, geodata_by_client: form.geodata_by_client }),
+    set: (value) => parseSection(value, { dns_settings_id: form.dns_settings_id || null, geodata_id: form.geodata_id || null, geodata_by_client: form.geodata_by_client }, (parsed) => {
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
             form.dns_settings_id = parsed.dns_settings_id || null;
             form.geodata_id = parsed.geodata_id || null;
+            form.geodata_by_client = { ...form.geodata_by_client, ...(parsed.geodata_by_client || {}) };
         }
     }),
 });
@@ -422,14 +424,14 @@ const requestPayload = (baseSettings = buildBaseSettings()) => ({
     outbound_groups_json: JSON.stringify(buildGroups()),
     routes_json: JSON.stringify(buildRoutes()),
 });
-const submit = () => { const baseSettings = buildBaseSettings(); if (baseSettings === null) return; const request = form.transform((data) => ({ ...data, ...requestPayload(baseSettings), dns_settings_id: data.dns_settings_id || null, geodata_id: data.geodata_id || null })); props.method === 'put' ? request.put(props.submit_url) : request.post(props.submit_url); };
+const submit = () => { const baseSettings = buildBaseSettings(); if (baseSettings === null) return; const request = form.transform((data) => ({ ...data, ...requestPayload(baseSettings), dns_settings_id: data.dns_settings_id || null, geodata_id: data.geodata_id || null, geodata_by_client: Object.fromEntries(Object.entries(data.geodata_by_client || {}).map(([key, id]) => [key, id || null])) })); props.method === 'put' ? request.put(props.submit_url) : request.post(props.submit_url); };
 const preview = async () => {
     previewing.value = true;
     try {
         const url = props.config ? `${props.submit_url}/preview` : '/xray-custom-configs/preview';
         const baseSettings = buildBaseSettings();
         if (baseSettings === null) return;
-        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify({ ...form.data(), ...requestPayload(baseSettings), preview_mode: previewMode.value, user_id: previewMode.value === 'user' ? Number(previewUserId.value) : undefined }) });
+        const response = await fetch(`${url}?app=${encodeURIComponent(previewClient.value)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', Accept: 'application/json' }, body: JSON.stringify({ ...form.data(), ...requestPayload(baseSettings), preview_mode: previewMode.value, user_id: previewMode.value === 'user' ? Number(previewUserId.value) : undefined }) });
         previewContent.value = await response.json();
     } finally {
         previewing.value = false;
@@ -511,8 +513,12 @@ const saveResource = async () => {
             <JsonSectionEditor v-model="resourcesJson" title="Ресурсы" description="Выберите DNS и геоданные для этой конфигурации." :json-editable="false">
                 <div class="grid grid--two">
                     <div class="field resource-field"><span>DNS Configuration</span><AppSelect v-model="form.dns_settings_id" :options="dnsOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select DNS configuration" /><div class="resource-actions"><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns')">+ Create DNS configuration</AppButton><AppButton v-if="dnsOptions.find((item) => item.id === Number(form.dns_settings_id))" class="resource-action" variant="secondary" type="button" @click="openResourceModal('dns', dnsOptions.find((item) => item.id === Number(form.dns_settings_id)))">Edit selected DNS</AppButton></div></div>
-                    <div class="field resource-field"><span>Geodata</span><AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Select geodata source" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('geodata')">+ Create geodata source</AppButton></div>
+                    <div class="field resource-field"><span>Резервные геоданные</span><AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Выберите источник геоданных" /><AppButton class="resource-action" variant="secondary" type="button" @click="openResourceModal('geodata')">+ Создать источник</AppButton></div>
                 </div>
+                <div class="client-geodata-grid">
+                    <label v-for="client in [{ key: 'incy', label: 'Incy' }, { key: 'happ', label: 'Happ' }, { key: 'v2raytun', label: 'V2RayTun' }, { key: 'other', label: 'Другое' }]" :key="client.key" class="field"><span>{{ client.label }}</span><AppSelect v-model="form.geodata_by_client[client.key]" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Без отдельного выбора" /></label>
+                </div>
+                <small class="form-hint">Если отдельный источник не выбран, используется резервный. Названия геоданных могут быть любыми.</small>
             </JsonSectionEditor>
             <JsonSectionEditor v-model="baseSettingsJson" title="Основные настройки" description="Основные настройки профиля Xray: маршрутизация, журналирование, policy и observatory.">
                 <div class="grid grid--two">
@@ -570,7 +576,7 @@ const saveResource = async () => {
                     <div class="group-card__header"><button type="button" class="group-card__toggle" :aria-expanded="isGroupExpanded(index)" @click="toggleGroupExpanded(index)"><span><strong>{{ group.name || 'New outbound group' }}</strong><small>{{ group.tag }}</small></span><span class="group-card__summary"><b>{{ groupMemberCount(group) }} members</b><span>{{ strategyLabel(group.strategy) }}</span><span>{{ group.fallback_group_tag ? `Fallback → ${groups.find((item) => item.tag === group.fallback_group_tag)?.name || group.fallback_group_tag}` : 'No fallback' }}</span></span><span class="source-chevron">{{ isGroupExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Group actions" @click.stop="group._menuOpen = !group._menuOpen">⋯</button><div v-if="group._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateGroup(group, index)">Duplicate group</button><button type="button" class="is-danger" @click="removeGroup(group, index)">Delete group</button></div></div></div>
                     <div v-if="isGroupExpanded(index)" class="group-card__body">
                         <div class="grid grid--two"><label class="field"><span>Group name</span><AppInput v-model="group.name" @input="onGroupNameInput(group)" /></label><label class="field"><span>Group tag</span><AppInput v-model="group.tag" @input="group._tagManuallyEdited = true" /><small>Generated automatically from the group name.</small></label><label class="field"><span>Balancing strategy</span><AppSelect v-model="group.strategy" :options="strategyOptions" /></label><label class="field"><span>Fallback group</span><AppSelect v-model="group.fallback_group_tag" :options="fallbackOptions(group)" /></label></div>
-                        <p v-if="groupInvalidMemberCount(group)" class="group-warning">{{ groupInvalidMemberCount(group) }} member(s) are no longer enabled in Sources and will be removed when saved.</p>
+                        <p v-if="groupInvalidMemberCount(group)" class="group-warning">{{ groupInvalidMemberCount(group) }} участник(ов) больше не включено в источники и будет удалено при сохранении.</p>
                         <div class="group-members"><h3>Members</h3><div class="group-member-type"><div class="group-member-type__header"><strong>Local servers &amp; inbounds</strong><span>{{ availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length }} selected</span></div><div v-if="availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length" class="group-member-list"><span v-for="inbound in availableServers.flatMap((server) => groupSelectedInbounds(group, server))" :key="`gm-i-${inbound.id}`">{{ countryFlag(availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name) }} {{ availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name }} · {{ inboundLabel(inbound) }}</span></div><small v-else class="group-member-empty">No local servers or inbounds added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>External subscriptions</strong><span>{{ group.external_subscription_ids.length }} selected</span></div><div v-if="availableSubscriptions.filter((subscription) => group.external_subscription_ids.includes(subscription.id)).length" class="group-member-list"><span v-for="subscription in availableSubscriptions.filter((item) => group.external_subscription_ids.includes(item.id))" :key="`gm-s-${subscription.id}`">{{ subscription.name }} · all current configs</span></div><small v-else class="group-member-empty">No subscription configs added.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>Proxy nodes</strong><span>{{ groupSelectedProxies(group).length }} selected</span></div><div v-if="groupSelectedProxies(group).length" class="group-member-list"><span v-for="proxy in groupSelectedProxies(group)" :key="`gm-p-${proxy.id}`">{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Auto' }} · {{ proxy.name }}</span></div><small v-else class="group-member-empty">No proxy nodes added.</small></div></div>
                         <div class="group-card__actions"><AppButton variant="secondary" type="button" @click="openGroupMemberPicker(index)">+ Add members</AppButton><button type="button" class="picker-text-button" @click="openGroupMemberPicker(index)">Manage members</button></div><div v-if="group.fallback_group_tag" class="fallback-chain"><strong>Fallback chain</strong><span>{{ fallbackChain(group).join(' → ') }}</span></div>
                     </div>
@@ -618,6 +624,7 @@ const saveResource = async () => {
             <label class="field-row"><input v-model="previewMode" type="radio" value="admin"> От имени администратора</label>
             <label class="field-row"><input v-model="previewMode" type="radio" value="user"> От имени пользователя</label>
             <AppSelect v-if="previewMode === 'user'" v-model="previewUserId" :options="props.users.map((user) => ({ value: user.id, label: user.full_name || user.telegram_id }))" />
+            <AppSelect v-model="previewClient" :options="[{ value: 'incy', label: 'Incy' }, { value: 'happ', label: 'Happ' }, { value: 'v2raytun', label: 'V2RayTun' }, { value: 'other', label: 'Другое' }]" />
             <div class="preview-section__actions">
                 <AppButton variant="secondary" type="button" :disabled="previewing" @click="preview">{{ previewing ? 'Загрузка…' : 'Предпросмотр JSON' }}</AppButton>
                 <AppButton v-if="previewContent" variant="secondary" type="button" @click="copyPreview">{{ previewCopied ? 'Скопировано' : 'Копировать JSON' }}</AppButton>
@@ -630,13 +637,34 @@ const saveResource = async () => {
 
 <style scoped>
 .xray-config-form > form {
-    gap: 0;
+    row-gap: 1rem;
+}
+
+.xray-config-form > form > .form-section,
+.xray-config-form > form > :deep(.json-section),
+.xray-config-form > form > .source-section {
+    margin: 0;
 }
 
 .form-section {
     grid-column: 1 / -1;
     padding: 1.25rem 0 1.5rem;
     border-bottom: 1px solid var(--border, rgba(184, 199, 219, 0.55));
+}
+
+.client-geodata-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border, rgba(184, 199, 219, 0.45));
+}
+
+.form-hint {
+    display: block;
+    margin-top: 0.75rem;
+    color: var(--muted);
 }
 
 .form-section:first-child {
@@ -678,6 +706,10 @@ const saveResource = async () => {
 
 @media (max-width: 700px) {
     .form-section .grid--two {
+        grid-template-columns: 1fr;
+    }
+
+    .client-geodata-grid {
         grid-template-columns: 1fr;
     }
 }

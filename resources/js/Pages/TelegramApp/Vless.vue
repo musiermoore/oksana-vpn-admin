@@ -280,7 +280,7 @@ onBeforeUnmount(() => {
                     <div class="tg-section__head">
                         <div>
                             <div class="tg-section__title">Новая подписка</div>
-                            <p class="tg-muted-text">Connect v2</p>
+                            <p class="tg-muted-text">Основная ссылка для подключения</p>
                         </div>
                         <button class="tg-icon-button" type="button" :aria-label="showNewSubscription ? 'Скрыть новую подписку' : 'Показать новую подписку'" :title="showNewSubscription ? 'Скрыть ссылку' : 'Показать ссылку'" :aria-expanded="showNewSubscription" @click="showNewSubscription = !showNewSubscription">
                             <AppIcon :name="showNewSubscription ? 'chevronDown' : 'chevronRight'" />
@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
                                 <strong>Новая подписка</strong>
                                 <div class="tg-code-block">{{ connectV2Link || 'Ссылка недоступна' }}</div>
                             </div>
-                            <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать Connect v2" title="Скопировать Connect v2" @click="copyText(connectV2Link)">
+                            <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать новую подписку" title="Скопировать новую подписку" @click="copyText(connectV2Link)">
                                 <AppIcon name="copy" />
                             </button>
                             <button class="tg-icon-button tg-icon-button--soft" type="button" aria-label="Показать QR-код новой подписки" title="Показать QR-код новой подписки" :disabled="loadingQr" @click="openQrResult('connect-v2')">
@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
                     <div class="tg-section__head">
                         <div>
                             <div class="tg-section__title">Старая подписка</div>
-                            <p class="tg-muted-text">Connect v1</p>
+                            <p class="tg-muted-text">Ссылка для старого приложения</p>
                         </div>
                         <button class="tg-icon-button" type="button" :aria-label="showOldSubscription ? 'Скрыть ссылку старой подписки' : 'Показать ссылку старой подписки'" :title="showOldSubscription ? 'Скрыть ссылку' : 'Показать ссылку'" :aria-expanded="showOldSubscription" @click="showOldSubscription = !showOldSubscription">
                             <AppIcon :name="showOldSubscription ? 'chevronDown' : 'chevronRight'" />

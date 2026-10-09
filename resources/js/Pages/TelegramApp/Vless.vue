@@ -266,7 +266,7 @@ onBeforeUnmount(() => {
                     <div class="tg-section__head">
                         <div>
                             <div class="tg-section__title">Старая подписка</div>
-                            <p class="tg-muted-text">Ссылка для старого приложения</p>
+                            <p class="tg-muted-text">Ссылка старого формата</p>
                         </div>
                         <button class="tg-icon-button" type="button" :aria-label="showOldSubscription ? 'Скрыть ссылку старой подписки' : 'Показать ссылку старой подписки'" :title="showOldSubscription ? 'Скрыть ссылку' : 'Показать ссылку'" :aria-expanded="showOldSubscription" @click="showOldSubscription = !showOldSubscription">
                             <AppIcon :name="showOldSubscription ? 'chevronDown' : 'chevronRight'" />
@@ -275,15 +275,16 @@ onBeforeUnmount(() => {
                     <div v-if="showOldSubscription" class="tg-stack">
                         <div class="tg-code-row">
                             <div class="tg-code-row__body">
-                                <strong>Старая подписка</strong>
+                                <div class="tg-code-row__actions">
+                                    <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать старую подписку" title="Скопировать старую подписку" @click="copyText(connectV1Link)">
+                                        <AppIcon name="copy" />
+                                    </button>
+                                    <button class="tg-icon-button tg-icon-button--soft" type="button" aria-label="Показать QR-код старой подписки" title="Показать QR-код старой подписки" :disabled="loadingQr" @click="openQrResult('connect-v1')">
+                                        <AppIcon name="qrcode" />
+                                    </button>
+                                </div>
                                 <div class="tg-code-block">{{ connectV1Link || 'Ссылка недоступна' }}</div>
                             </div>
-                            <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать старую подписку" title="Скопировать старую подписку" @click="copyText(connectV1Link)">
-                                <AppIcon name="copy" />
-                            </button>
-                            <button class="tg-icon-button tg-icon-button--soft" type="button" aria-label="Показать QR-код старой подписки" title="Показать QR-код старой подписки" :disabled="loadingQr" @click="openQrResult('connect-v1')">
-                                <AppIcon name="qrcode" />
-                            </button>
                         </div>
                     </div>
                 </div>

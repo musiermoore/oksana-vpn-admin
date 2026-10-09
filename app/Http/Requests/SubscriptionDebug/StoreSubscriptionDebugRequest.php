@@ -21,7 +21,7 @@ final class StoreSubscriptionDebugRequest extends DataFormRequest
     {
         return [
             'type' => ['required', 'string', 'in:json,url'],
-            'body' => ['required', 'string', 'max:51200'],
+            'body' => ['required', 'string'],
         ];
     }
 

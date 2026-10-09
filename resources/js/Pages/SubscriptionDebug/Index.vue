@@ -62,7 +62,7 @@ const copyUrl = async () => {
             <label class="field">
                 <span>Body</span>
                 <AppTextarea v-model="form.body" :placeholder="bodyPlaceholder" :auto-resize="false" rows="22" spellcheck="false" />
-                <small class="muted">До 50 MB. Текст не сохраняется в базе данных или Redis.</small>
+                <small class="muted">Текст не сохраняется в базе данных или Redis.</small>
                 <small v-if="form.errors.body" class="form-error">{{ form.errors.body }}</small>
             </label>
 

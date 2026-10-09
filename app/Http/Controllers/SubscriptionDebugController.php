@@ -31,6 +31,7 @@ final class SubscriptionDebugController extends Controller
 
         return $this->inertia('SubscriptionDebug/Index', [
             'created' => session('subscription_debug_created'),
+            'current' => $this->subscriptions->current(),
         ]);
     }
 

@@ -10,11 +10,15 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    current: {
+        type: Object,
+        default: null,
+    },
 });
 
 const form = useForm({
-    type: 'json',
-    body: '',
+    type: props.current?.type ?? 'json',
+    body: props.current?.body ?? '',
 });
 
 const typeOptions = [
@@ -28,7 +32,6 @@ const bodyPlaceholder = computed(() => form.type === 'json'
 
 const submit = () => form.post('/subscription-debug', {
     preserveScroll: true,
-    onSuccess: () => form.reset('body'),
 });
 
 const copyUrl = async () => {

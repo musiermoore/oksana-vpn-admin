@@ -40,7 +40,7 @@ final class SubscriptionDebugService
      */
     public function body(string $uuid): array
     {
-        $marker = explode('|', (string) Redis::get(self::MARKER_KEY), 2);
+        $marker = $this->marker();
 
         if (! Str::isUuid($uuid)
             || ($marker[0] ?? null) !== $uuid
@@ -61,6 +61,30 @@ final class SubscriptionDebugService
         ];
     }
 
+    /**
+     * @return array{uuid: string, type: string, body: string}|null
+     */
+    public function current(): ?array
+    {
+        $marker = $this->marker();
+
+        if (! Str::isUuid($marker[0] ?? '') || ! in_array($marker[1] ?? null, ['json', 'url'], true)) {
+            return null;
+        }
+
+        $disk = $this->disk();
+
+        if (! $disk->exists(self::BODY_PATH)) {
+            return null;
+        }
+
+        return [
+            'uuid' => $marker[0],
+            'type' => $marker[1],
+            'body' => $disk->get(self::BODY_PATH),
+        ];
+    }
+
     public function ttlSeconds(): int
     {
         return self::TTL_SECONDS;
@@ -69,5 +93,13 @@ final class SubscriptionDebugService
     private function disk(): Filesystem
     {
         return Storage::disk('local');
+    }
+
+    /**
+     * @return array{0: string, 1?: string}
+     */
+    private function marker(): array
+    {
+        return explode('|', (string) Redis::get(self::MARKER_KEY), 2);
     }
 }

@@ -16,6 +16,7 @@ final class SubscriptionDebugTest extends TestCase
     public function test_authenticated_user_can_open_the_editor_and_create_a_json_subscription(): void
     {
         Storage::fake('local');
+        Redis::shouldReceive('get')->once()->with('subscription-debug:uuid')->andReturn('');
         Redis::shouldReceive('setex')->once()->withArgs(function (string $key, int $ttl, string $value): bool {
             return $key === 'subscription-debug:uuid'
                 && $ttl === 3600

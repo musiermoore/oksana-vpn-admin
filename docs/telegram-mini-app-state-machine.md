@@ -76,7 +76,7 @@ Code status as of `2026-06-28`:
 | `WIREGUARD_CONFIG_ACTIONS` | Configs | Return to config list | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
 | `WIREGUARD_CONFIG_ACTIONS` | VLESS | Open VLESS | `GET /api/users/{telegramId}/vless/link` or `GET /telegram-app/vless` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | auto | Check access and load base links | `GET /api/users/{telegramId}/vless/link` | `VLESS_HOME` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
-| `VLESS_HOME` | Connect app | Open an unencrypted client-specific import link wrapping the configured `/start?token=...&app=...` URL | `GET /telegram-app/vless/link` | external VPN app | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
+| `VLESS_HOME` | Connect app | Open a server redirect URL which then opens the client-specific import scheme; Incy uses `incy://add/{urlencoded_start_url}` | `GET /telegram-app/vless/link` | external VPN app | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | QR Code app/legacy | Get selected QR | `GET /api/users/{telegramId}/vless/qr-code?target=...` | `VLESS_QR_RESULT` | `VLESS_ACCESS_ERROR`, `ACCESS_DENIED_DEBT` |
 | `VLESS_HOME` | Whitelist | Open whitelist links | local route `/telegram-app/vless-wl?step=links` | `VLESS_WL_LINK_RESULT` | none |
 | `SUBSCRIPTION_OVERVIEW` | auto | Load balance, debt, subscription date | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
@@ -107,6 +107,6 @@ Code status as of `2026-06-28`:
 
 - Keep Telegram bootstrap, public login, and public registration separate.
 - Bottom navigation can open `HOME`, `PAYMENTS`, and `CHATS`; `Support` is reached through `Help`.
-- VLESS mini-app client links and QR codes use unencrypted client import schemes around the configured public `/start` URL; legacy encrypted deep-link routes remain available outside the mini-app. Whitelist has backend QR support, but current UI has no path to it.
+- VLESS mini-app client links use server redirect URLs which open the client import schemes around the configured public `/start` URL; legacy encrypted deep-link routes remain available outside the mini-app. The UI keeps Connect v1/v2 manual links collapsed by default. Whitelist has backend QR support, but current UI has no path to it.
 - `SupportShow` can be reached from the ticket list or a deep link such as `ticket_{id}`.
 - Poll support messages every 5 seconds.

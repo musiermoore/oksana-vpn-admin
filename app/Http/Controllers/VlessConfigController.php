@@ -462,7 +462,7 @@ class VlessConfigController extends Controller
             return $this->connectV2($request, $metadataService, $subscriptionService);
         }
 
-        $redirectUrl = $deepLinkService->resolveRedirectUrl(
+        $redirectUrl = $deepLinkService->resolveConnectV2RedirectUrl(
             $client,
             $deepLinkService->getConnectV2Url($user, $client),
         );

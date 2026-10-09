@@ -25,6 +25,7 @@ const loadingQr = ref(false);
 const sendingQrToBot = ref(false);
 const qrStatus = ref('');
 const qrTarget = ref('legacy');
+const showConnectLinks = ref(false);
 let copyToastTimeoutId = null;
 
 const configHubHref = computed(() => telegramMiniAppRoutes.wireguard);
@@ -78,6 +79,8 @@ const preferredLinks = computed(() => ([
 ]).filter((item) => item.url));
 
 const legacyLink = computed(() => links.value?.legacy_link || '');
+const connectV2Link = computed(() => links.value?.connect_v2_link || links.value?.link || '');
+const connectV1Link = computed(() => links.value?.connect_v1_link || legacyLink.value || '');
 const revokeQrUrl = () => {
     if (qrImageUrl.value) {
         URL.revokeObjectURL(qrImageUrl.value);
@@ -238,18 +241,47 @@ onBeforeUnmount(() => {
                     <div class="tg-list-card__body">
                         <div class="tg-list-card__title">{{ item.title }}</div>
                         <div class="tg-list-card__description">{{ item.description }}</div>
-                        <div class="tg-inline-actions">
-                            <button class="tg-button tg-button--soft" type="button" @click="openTelegramExternalLink(item.url)">
+                        <div class="tg-inline-actions tg-inline-actions--icons">
+                            <button class="tg-icon-button tg-icon-button--soft" type="button" :aria-label="`Открыть ${item.title}`" :title="`Открыть ${item.title}`" @click="openTelegramExternalLink(item.url)">
                                 <AppIcon name="bolt" />
-                                <span>Подключить</span>
                             </button>
-                            <button class="tg-button tg-button--secondary" type="button" @click="copyText(item.url)">
+                            <button class="tg-icon-button tg-copy-button" type="button" :aria-label="`Скопировать ссылку ${item.title}`" :title="`Скопировать ссылку ${item.title}`" @click="copyText(item.url)">
                                 <AppIcon name="copy" />
-                                <span>Копировать</span>
                             </button>
-                            <button class="tg-button tg-button--secondary" type="button" :disabled="loadingQr" @click="openQrResult(item.target)">
+                            <button class="tg-icon-button" type="button" :aria-label="`Показать QR-код ${item.title}`" :title="`Показать QR-код ${item.title}`" :disabled="loadingQr" @click="openQrResult(item.target)">
                                 <AppIcon name="qrcode" />
-                                <span>QR-код</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tg-surface-card tg-stack">
+                    <div class="tg-section__head">
+                        <div>
+                            <div class="tg-section__title">Connect v2 и v1</div>
+                            <p class="tg-muted-text">Ссылки для ручного импорта.</p>
+                        </div>
+                        <button class="tg-icon-button" type="button" :aria-label="showConnectLinks ? 'Скрыть ссылки Connect' : 'Показать ссылки Connect'" :title="showConnectLinks ? 'Скрыть ссылки' : 'Показать ссылки'" :aria-expanded="showConnectLinks" @click="showConnectLinks = !showConnectLinks">
+                            <AppIcon :name="showConnectLinks ? 'chevronDown' : 'chevronRight'" />
+                        </button>
+                    </div>
+                    <div v-if="showConnectLinks" class="tg-stack">
+                        <div class="tg-code-row">
+                            <div class="tg-code-row__body">
+                                <strong>Connect v2</strong>
+                                <div class="tg-code-block">{{ connectV2Link || 'Ссылка недоступна' }}</div>
+                            </div>
+                            <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать Connect v2" title="Скопировать Connect v2" @click="copyText(connectV2Link)">
+                                <AppIcon name="copy" />
+                            </button>
+                        </div>
+                        <div class="tg-code-row">
+                            <div class="tg-code-row__body">
+                                <strong>Connect v1</strong>
+                                <div class="tg-code-block">{{ connectV1Link || 'Ссылка недоступна' }}</div>
+                            </div>
+                            <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать Connect v1" title="Скопировать Connect v1" @click="copyText(connectV1Link)">
+                                <AppIcon name="copy" />
                             </button>
                         </div>
                     </div>
@@ -258,15 +290,12 @@ onBeforeUnmount(() => {
                 <div class="tg-surface-card tg-stack">
                     <div class="tg-section__title">QR-код старого формата</div>
                     <p class="tg-muted-text">Для ручного импорта в старые или неподдерживаемые приложения.</p>
-                    <div class="tg-code-block">{{ legacyLink || 'Ссылка недоступна' }}</div>
-                    <div class="tg-inline-actions">
-                        <button class="tg-button tg-button--secondary" type="button" @click="copyText(legacyLink)">
+                    <div class="tg-inline-actions tg-inline-actions--icons">
+                        <button class="tg-icon-button tg-copy-button" type="button" aria-label="Скопировать ссылку старого формата" title="Скопировать ссылку старого формата" @click="copyText(legacyLink)">
                             <AppIcon name="copy" />
-                            <span>Скопировать ссылку</span>
                         </button>
-                        <button class="tg-button tg-button--soft" type="button" :disabled="loadingQr" @click="openQrResult('legacy')">
+                        <button class="tg-icon-button tg-icon-button--soft" type="button" aria-label="Показать QR-код старого формата" title="Показать QR-код старого формата" :disabled="loadingQr" @click="openQrResult('legacy')">
                             <AppIcon name="qrcode" />
-                            <span>QR-код</span>
                         </button>
                     </div>
                 </div>

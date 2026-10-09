@@ -78,6 +78,20 @@ class ConnectV2Test extends TestCase
         ));
     }
 
+    public function test_incy_deep_link_redirects_to_plain_encoded_add_link(): void
+    {
+        $user = $this->createUser();
+
+        $this
+            ->get(route('vless.connect-v2-deep-link', [
+                'client' => 'incy',
+                'token' => $user->uuid,
+            ]))
+            ->assertRedirect('incy://add/'.urlencode(
+                'https://connect.oksana1984.ru/start?token='.$user->uuid.'&app=incy'
+            ));
+    }
+
     public function test_app_parameter_allows_happ_subscription_without_happ_user_agent(): void
     {
         $user = $this->createUser();

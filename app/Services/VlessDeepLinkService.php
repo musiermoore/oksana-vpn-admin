@@ -73,6 +73,18 @@ class VlessDeepLinkService
         return $url;
     }
 
+    public function getConnectV2EndpointUrl(User $user): string
+    {
+        return $this->buildUrl('vless.connect-v2', [
+            'token' => (string) $user->uuid,
+        ]);
+    }
+
+    public function getConnectV1Url(User $user): string
+    {
+        return $this->getConnectUrl($user);
+    }
+
     public function getConnectV2RouteLinks(User $user): array
     {
         return $this->getPublicDeepLinkLinks($user);
@@ -83,6 +95,11 @@ class VlessDeepLinkService
         return $this->getPublicDeepLinkLinks($user);
     }
 
+    public function getConnectV2AppLink(User $user, string $client): ?string
+    {
+        return $this->buildPlainConnectV2DeepLink($client, $this->getConnectV2Url($user, $client));
+    }
+
     /**
      * @return array<string, string>
      */
@@ -91,13 +108,18 @@ class VlessDeepLinkService
         $links = [];
 
         foreach (self::CLIENT_RESPONSE_KEYS as $client => $responseKey) {
-            $links[$responseKey] = $this->buildPlainConnectV2DeepLink(
-                $client,
-                $this->getConnectV2Url($user, $client),
-            );
+            $links[$responseKey] = $this->buildConnectV2DeepLinkRouteUrl($user, $client);
         }
 
         return $links;
+    }
+
+    private function buildConnectV2DeepLinkRouteUrl(User $user, string $client): string
+    {
+        return $this->buildUrl('vless.connect-v2-deep-link', [
+            'client' => $client,
+            'token' => (string) $user->uuid,
+        ]);
     }
 
     private function buildPlainConnectV2DeepLink(string $client, string $subscriptionLink): ?string
@@ -162,6 +184,15 @@ class VlessDeepLinkService
             'incy' => $this->incyLinkEncoder->encode($subscriptionLink),
             default => null,
         };
+    }
+
+    public function resolveConnectV2RedirectUrl(string $client, string $subscriptionLink): ?string
+    {
+        if ($client === 'incy') {
+            return 'incy://add/'.urlencode($subscriptionLink);
+        }
+
+        return $this->resolveRedirectUrl($client, $subscriptionLink);
     }
 
     private function buildInstallSubLink(string $scheme, string $subscriptionLink): string

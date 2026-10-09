@@ -592,6 +592,15 @@
     gap: 8px;
 }
 
+.tg-inline-actions--icons {
+    justify-content: flex-end;
+}
+
+.tg-inline-actions--icons > .tg-icon-button {
+    flex: 0 0 40px;
+    width: 40px;
+}
+
 .tg-inline-actions > * {
     flex: 1 1 0;
 }
@@ -623,6 +632,23 @@
     line-height: 18px;
     color: var(--tg-text);
     overflow-wrap: anywhere;
+}
+
+.tg-code-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tg-code-row__body {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: grid;
+    gap: 6px;
+}
+
+.tg-code-row > .tg-icon-button {
+    flex: 0 0 40px;
 }
 
 .tg-note {

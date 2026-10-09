@@ -280,13 +280,12 @@ class TelegramAppConnectionRoutesTest extends TestCase
         $response->assertOk();
         $payload = $response->json();
 
-        $this->assertStringStartsWith('happ://add/https://connect.example/start?token=', (string) ($payload['happ_deep_link'] ?? ''));
-        $this->assertStringContainsString('&app=happ', (string) ($payload['happ_deep_link'] ?? ''));
-        $this->assertStringStartsWith('v2raytun://import/https://connect.example/start?token=', (string) ($payload['v2raytun_deeplink'] ?? ''));
-        $this->assertStringContainsString('&app=v2raytun', (string) ($payload['v2raytun_deeplink'] ?? ''));
-        $incyDeepLink = (string) ($payload['incy_deep_link'] ?? $payload['incy_deeplink'] ?? '');
-        $this->assertStringStartsWith('incy://add?url=https%3A%2F%2Fconnect.example%2Fstart%3Ftoken%3D', $incyDeepLink);
-        $this->assertStringContainsString('%26app%3Dincy', $incyDeepLink);
+        $this->assertStringContainsString('/connect-v2/deep-link/happ?token=', (string) ($payload['happ_deep_link'] ?? ''));
+        $this->assertStringContainsString('/connect-v2/deep-link/v2raytun?token=', (string) ($payload['v2raytun_deeplink'] ?? ''));
+        $this->assertStringContainsString('/connect-v2/deep-link/incy?token=', (string) ($payload['incy_deeplink'] ?? ''));
+        $this->assertStringStartsWith('https://vpn.example/connect-v2?token=', (string) ($payload['connect_v2_link'] ?? ''));
+        $this->assertStringContainsString((string) $user->uuid, (string) ($payload['connect_v2_link'] ?? ''));
+        $this->assertStringContainsString('/connect?', (string) ($payload['connect_v1_link'] ?? ''));
         $this->assertStringStartsWith('https://connect.example/start?token=', (string) ($payload['link'] ?? ''));
     }
 

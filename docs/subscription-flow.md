@@ -176,6 +176,8 @@ Main `/connect`:
 - Returns the same plain JSON subscription for every client through the universal URL. It does not inspect `User-Agent`/`app` or apply client-specific filtering. Standard metadata and support headers remain enabled; only config-hiding headers (`Hide-Url`, `Hide-Proxy`, `Hide-Settings`) are suppressed.
 - Request tracking stores the matched user, user agent, and query parameters so subscription-link scans can be audited.
 - The mini-app's client links use unencrypted client import schemes around the configured public `/start?token=...&app=...` URL. The `/connect-v2` endpoint returns JSON; generated mini-app deep links do not use encrypted payloads.
+- Mini-app deep-link fields point to the project's `/connect-v2/deep-link/{client}` redirect URL. The redirect then opens the client scheme; Incy uses `incy://add/{urlencoded_start_url}`.
+- Mini-app also exposes copyable `connect_v2_link` (`/connect-v2?token=...`) and `connect_v1_link` (`/connect?...`) values in a collapsed manual-import section.
 - External config names prefer `Название в connect-wl` when it is configured.
 - Legacy `/connect-v2/deep-link/{client}` routes remain available for compatibility with existing non-mini-app callers.
 - External subscriptions are included only when `include_in_connect_v2` (`Отображать в connect-v2`) is enabled. The flag also controls external profiles included in connect-v2 custom JSON profiles.

@@ -86,6 +86,8 @@ class ServerCrudServiceTest extends TestCase
                 'id' => $inbound->id,
                 'is_active' => false,
                 'is_public' => false,
+                'is_visible_in_connect' => false,
+                'is_visible_in_connect_v2' => false,
             ]],
         ));
 
@@ -93,6 +95,8 @@ class ServerCrudServiceTest extends TestCase
             'id' => $inbound->id,
             'is_active' => false,
             'is_public' => false,
+            'is_visible_in_connect' => false,
+            'is_visible_in_connect_v2' => false,
         ]);
     }
 

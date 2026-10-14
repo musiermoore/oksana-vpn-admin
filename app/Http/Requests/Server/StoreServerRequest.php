@@ -43,6 +43,8 @@ class StoreServerRequest extends DataFormRequest
             'inbounds.*.sort_order' => ['nullable', 'integer', 'min:0'],
             'inbounds.*.is_active' => ['required', 'boolean'],
             'inbounds.*.is_public' => ['required', 'boolean'],
+            'inbounds.*.is_visible_in_connect' => ['sometimes', 'boolean'],
+            'inbounds.*.is_visible_in_connect_v2' => ['sometimes', 'boolean'],
             'connect_items' => ['nullable', 'array'],
             'connect_items.*.type' => ['required', 'string', Rule::in(['inbound', 'proxy'])],
             'connect_items.*.id' => ['required', 'integer', 'min:1'],

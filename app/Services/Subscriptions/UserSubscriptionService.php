@@ -204,7 +204,12 @@ class UserSubscriptionService
     ): array
     {
         $nodes = [
-            ...$this->normalizedNodeService->collect($user),
+            ...$this->normalizedNodeService->collect(
+                $user,
+                $externalPurpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2
+                    ? 'is_visible_in_connect_v2'
+                    : 'is_visible_in_connect',
+            ),
             ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, $externalPurpose),
         ];
 

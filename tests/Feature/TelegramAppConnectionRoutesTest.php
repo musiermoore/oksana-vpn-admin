@@ -46,6 +46,65 @@ class TelegramAppConnectionRoutesTest extends TestCase
             ]);
     }
 
+    public function test_amnezia_config_list_excludes_configs_from_inactive_or_deleted_servers(): void
+    {
+        [$user, $token] = $this->createAuthorizedActiveUser();
+        $activeServer = $this->createServer('ACTIVE');
+        $inactiveServer = $this->createServer('INACTIVE', ['is_active' => false]);
+        $deletedServer = $this->createServer('DELETED');
+        $inactiveXrayServer = $this->createServer('INACTIVE-XRAY', [
+            'is_active' => false,
+            'type' => Server::TYPE_VLESS,
+        ]);
+
+        $activeConfig = Config::query()->create([
+            'server_id' => $activeServer->id,
+            'user_id' => $user->id,
+            'name' => 'active-config',
+            'is_active' => true,
+        ]);
+
+        foreach ([$inactiveServer, $deletedServer] as $server) {
+            Config::query()->create([
+                'server_id' => $server->id,
+                'user_id' => $user->id,
+                'name' => $server->code.'-config',
+                'is_active' => true,
+            ]);
+        }
+
+        $inactiveInbound = $inactiveXrayServer->xrayInbounds()->create([
+            'external_id' => 88,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => [],
+        ]);
+        \App\Models\VlessConfig::query()->create([
+            'server_id' => $inactiveXrayServer->id,
+            'xray_inbound_id' => $inactiveInbound->id,
+            'user_id' => $user->id,
+            'name' => 'inactive-xray-config',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'inactive-xray-wg',
+            'port' => 51820,
+            'protocol' => 'wireguard',
+            'type' => 'wireguard',
+            'encryption' => 'none',
+            'security' => 'none',
+            'extra' => 'wireguard://privateKey=@example.com:51820?address=10.0.0.2/32',
+        ]);
+
+        $deletedServer->delete();
+
+        $this->withToken($token)
+            ->getJson('/telegram-app/wireguard/configs')
+            ->assertOk()
+            ->assertJsonCount(1, 'configs')
+            ->assertJsonPath('configs.0.name', 'active-config')
+            ->assertJsonPath('configs.0.id', $activeConfig->id);
+    }
+
     public function test_authenticated_user_can_load_wireguard_configs_via_public_routes(): void
     {
         [$user, $token] = $this->createAuthorizedActiveUser();

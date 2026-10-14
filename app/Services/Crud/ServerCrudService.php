@@ -95,7 +95,7 @@ class ServerCrudService
     }
 
     /**
-     * @param  array<int, array{id:int, sort_order?:int, is_active:bool, is_public:bool}>  $inbounds
+     * @param  array<int, array{id:int, sort_order?:int, is_active:bool, is_public:bool, is_visible_in_connect?:bool, is_visible_in_connect_v2?:bool}>  $inbounds
      */
     private function syncXrayInbounds(Server $server, array $inbounds): void
     {
@@ -125,6 +125,8 @@ class ServerCrudService
                 $inbound->update([
                     'is_active' => (bool) ($payload['is_active'] ?? false),
                     'is_public' => (bool) ($payload['is_public'] ?? false),
+                    'is_visible_in_connect' => (bool) ($payload['is_visible_in_connect'] ?? true),
+                    'is_visible_in_connect_v2' => (bool) ($payload['is_visible_in_connect_v2'] ?? true),
                 ]);
             });
     }

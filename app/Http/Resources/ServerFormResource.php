@@ -28,6 +28,8 @@ class ServerFormResource extends ServerResource
                     'sort_order' => (int) $inbound->sort_order,
                     'is_active' => (bool) $inbound->is_active,
                     'is_public' => (bool) $inbound->is_public,
+                    'is_visible_in_connect' => (bool) $inbound->is_visible_in_connect,
+                    'is_visible_in_connect_v2' => (bool) $inbound->is_visible_in_connect_v2,
                     'protocol' => (string) data_get($inbound->params, 'protocol', ''),
                     'remark' => (string) data_get($inbound->params, 'remark', ''),
                 ])

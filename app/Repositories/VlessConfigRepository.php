@@ -24,7 +24,7 @@ class VlessConfigRepository
     {
         return $user->vlessConfigs()
             ->with([
-                'server:id,hide_configs_for_non_admins',
+                'server:id,is_active,hide_configs_for_non_admins',
                 'xrayInbound:id,external_id,is_active',
             ])
             ->get([

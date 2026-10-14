@@ -100,6 +100,8 @@ Each inbound record has:
 - `external_id`
 - `is_active`
 - `is_public`
+- `is_visible_in_connect`
+- `is_visible_in_connect_v2`
 - `params`
 
 `external_id` is the inbound id from 3x-ui.
@@ -107,6 +109,8 @@ Each inbound record has:
 `params` stores the raw inbound payload from 3x-ui so app logic does not depend on a rigid local schema for inbound settings.
 
 `sort_order` stores the explicit `/connect` order of inbounds inside a server.
+
+`is_visible_in_connect` and `is_visible_in_connect_v2` independently control whether an inbound appears in the matching subscription output. Both default to `true`. Amnezia mini-app config lists require the owning server and inbound to be active; subscription visibility flags do not affect those lists.
 
 Deleted or broken 3x-ui inbounds with empty payloads should not stay active locally.
 

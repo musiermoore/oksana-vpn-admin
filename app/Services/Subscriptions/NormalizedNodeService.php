@@ -18,16 +18,22 @@ class NormalizedNodeService
     /**
      * @return array<int, NormalizedNode>
      */
-    public function collect(User $user): array
+    public function collect(User $user, string $visibilityField = 'is_visible_in_connect'): array
     {
+        if (! in_array($visibilityField, ['is_visible_in_connect', 'is_visible_in_connect_v2'], true)) {
+            throw new \InvalidArgumentException('Unsupported inbound visibility field.');
+        }
+
         $vlessConfigs = $user->vlessConfigs()
             ->where('vless_configs.is_active', true)
             ->where('vless_configs.enable', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
-            ->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery->where('is_active', true))
+            ->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery
+                ->where('is_active', true)
+                ->where($visibilityField, true))
             ->with([
                 'server:id,name,code,ip,link_host,is_https,sort_order',
-                'xrayInbound:id,server_id,external_id,is_active,sort_order',
+                "xrayInbound:id,server_id,external_id,is_active,sort_order,{$visibilityField}",
             ])
             ->get()
             ->map(fn (VlessConfig $config) => [

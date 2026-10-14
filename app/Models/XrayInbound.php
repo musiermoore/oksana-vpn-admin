@@ -17,6 +17,8 @@ class XrayInbound extends Model
         'sort_order',
         'is_active',
         'is_public',
+        'is_visible_in_connect',
+        'is_visible_in_connect_v2',
         'params',
     ];
 
@@ -28,6 +30,8 @@ class XrayInbound extends Model
             'sort_order' => 'integer',
             'is_active' => 'boolean',
             'is_public' => 'boolean',
+            'is_visible_in_connect' => 'boolean',
+            'is_visible_in_connect_v2' => 'boolean',
             'params' => 'array',
         ];
     }

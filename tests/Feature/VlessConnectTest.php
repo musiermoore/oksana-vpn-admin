@@ -978,6 +978,65 @@ class VlessConnectTest extends TestCase
         $this->assertStringNotContainsString('Швеция • VLESS • TCP', $decoded);
     }
 
+    public function test_inbound_connect_visibility_flags_filter_v1_and_v2_independently(): void
+    {
+        $user = $this->createActiveUser('Visibility User', '@visibility-user', '991123');
+        $server = $this->createServer('Швеция', 'SE2', 'se2.oksana1984.ru');
+        $configIds = [];
+
+        foreach ([
+            ['name' => 'v1-only', 'is_visible_in_connect' => true, 'is_visible_in_connect_v2' => false],
+            ['name' => 'v2-only', 'is_visible_in_connect' => false, 'is_visible_in_connect_v2' => true],
+            ['name' => 'both', 'is_visible_in_connect' => true, 'is_visible_in_connect_v2' => true],
+        ] as $index => $flags) {
+            $inbound = XrayInbound::query()->create([
+                'server_id' => $server->id,
+                'external_id' => 20 + $index,
+                'is_active' => true,
+                'is_public' => true,
+                'is_visible_in_connect' => $flags['is_visible_in_connect'],
+                'is_visible_in_connect_v2' => $flags['is_visible_in_connect_v2'],
+                'params' => [],
+            ]);
+
+            $config = VlessConfig::query()->create([
+                'server_id' => $server->id,
+                'xray_inbound_id' => $inbound->id,
+                'inbound_id' => $inbound->external_id,
+                'user_id' => $user->id,
+                'name' => $flags['name'],
+                'is_active' => true,
+                'enable' => true,
+                'uuid' => 'visibility-'.$flags['name'],
+                'port' => 443,
+                'protocol' => 'vless',
+                'type' => 'tcp',
+                'encryption' => 'none',
+                'security' => 'reality',
+                'sni' => 'example.com',
+                'pbk' => 'public-key',
+                'sid' => 'short-id',
+                'fp' => 'chrome',
+                'flow' => 'xtls-rprx-vision',
+                'spx' => '/',
+            ]);
+            $configIds[$flags['name']] = $config->id;
+        }
+
+        $service = app(UserSubscriptionService::class);
+        $connectV1Ids = array_map(
+            fn ($node): int => $node->configId,
+            $service->buildNamedNodes($user),
+        );
+        $connectV2Ids = array_map(
+            fn ($node): int => $node->configId,
+            $service->buildNamedNodes($user, \App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2),
+        );
+
+        $this->assertEqualsCanonicalizing([$configIds['v1-only'], $configIds['both']], $connectV1Ids);
+        $this->assertEqualsCanonicalizing([$configIds['v2-only'], $configIds['both']], $connectV2Ids);
+    }
+
     public function test_connect_respects_combined_server_and_external_subscription_sort_order(): void
     {
         $user = $this->createActiveUser('Sorted User', '@sorted-user', '778899');

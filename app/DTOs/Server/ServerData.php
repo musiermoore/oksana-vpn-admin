@@ -26,7 +26,7 @@ class ServerData extends Data
         public ?string $panelPassword = null,
         public ?string $sshPrivateKey = null,
         public ?string $sshPublicKey = null,
-        /** @var array<int, array{id:int, sort_order?:int, is_active:bool, is_public:bool}> */
+        /** @var array<int, array{id:int, sort_order?:int, is_active:bool, is_public:bool, is_visible_in_connect?:bool, is_visible_in_connect_v2?:bool}> */
         public array $inbounds = [],
         /** @var array<int, array{type:string,id:int}> */
         public array $connectItems = [],

@@ -15,6 +15,7 @@ COPY public ./public
 RUN npm run build
 
 FROM ghcr.io/sagernet/sing-box:v1.14.2 AS sing-box
+FROM ghcr.io/xtls/xray-core:26.7.28 AS xray
 
 FROM musiermoore/oksana-vpn-app:latest
 
@@ -25,6 +26,7 @@ RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interacti
 
 COPY . .
 COPY --from=sing-box /usr/local/bin/sing-box /usr/local/bin/sing-box
+COPY --from=xray /usr/local/bin/xray /usr/local/bin/xray
 COPY docker/app/Caddyfile /etc/caddy/Caddyfile
 RUN rm -rf ./public/build ./public/hot
 COPY --from=frontend /app/public/build ./public/build

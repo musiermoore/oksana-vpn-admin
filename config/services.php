@@ -50,6 +50,7 @@ return [
 
     'inbound_health' => [
         'sing_box_binary' => env('INBOUND_HEALTH_SING_BOX_BINARY', 'sing-box'),
+        'xray_binary' => env('INBOUND_HEALTH_XRAY_BINARY', 'xray'),
     ],
 
     'yookassa' => [

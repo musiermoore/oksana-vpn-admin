@@ -17,6 +17,7 @@ final class XrayInboundProbeProvisioner
 
     public function __construct(
         private readonly SingBoxInboundProbeRunner $probeRunner,
+        private readonly XrayInboundProbeRunner $xrayProbeRunner,
     ) {}
 
     /** @return array{status: string, results: array<string, mixed>, error: ?string} */
@@ -32,8 +33,12 @@ final class XrayInboundProbeProvisioner
             return $this->unsupported("Full tunnel probing for {$protocol} inbounds is not supported.");
         }
 
-        if (! $this->probeRunner->isAvailable()) {
-            return $this->unsupported('sing-box client binary is not installed.');
+        $probeRunner = in_array($protocol, ['vless', 'trojan', 'shadowsocks'], true)
+            ? $this->xrayProbeRunner
+            : $this->probeRunner;
+
+        if (! $probeRunner->isAvailable()) {
+            return $this->unsupported('The client core required for this inbound is not installed.');
         }
 
         $server = $inbound->server;
@@ -42,11 +47,15 @@ final class XrayInboundProbeProvisioner
             return $this->unsupported('Owning server is not active and ready.');
         }
 
-        return $this->probeThroughInbound($server, $inbound);
+        return $this->probeThroughInbound($server, $inbound, $probeRunner);
     }
 
     /** @return array{status: string, results: array<string, mixed>, error: ?string} */
-    private function probeThroughInbound(Server $server, XrayInbound $inbound): array
+    private function probeThroughInbound(
+        Server $server,
+        XrayInbound $inbound,
+        SingBoxInboundProbeRunner|XrayInboundProbeRunner $probeRunner,
+    ): array
     {
         $xui = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $remoteInbound = collect($xui->getInbounds())
@@ -99,7 +108,7 @@ final class XrayInboundProbeProvisioner
         $config = new VlessConfig($attributes);
         $config->setRelation('server', $server);
 
-        return $this->probeRunner->check($config, $server, $inbound);
+        return $probeRunner->check($config, $server, $inbound);
     }
 
     /** @param array<string, mixed> $remoteInbound @return array<string, mixed> */

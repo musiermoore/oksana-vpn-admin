@@ -59,7 +59,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
         <AppPageHeader
             eyebrow="Network diagnostics"
             title="Inbound health"
-            description="A dedicated client per inbound tests access to Discord, Telegram, Google, ChatGPT, and YouTube through its tunnel."
+            description="A dedicated client per inbound builds the subscription profile, starts its client core, then tests Discord, Telegram, Google, ChatGPT, and YouTube through the tunnel."
             :stats="[
                 { label: 'Active inbounds', value: summary.total },
                 { label: 'Healthy', value: summary.healthy },
@@ -108,7 +108,19 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                                 <span v-else class="muted">—</span>
                             </td>
                             <td>{{ formatDate(inbound.checked_at) }}</td>
-                            <td class="health-error">{{ inbound.error || '—' }}</td>
+                            <td class="health-error">
+                                <span>{{ inbound.error || '—' }}</span>
+                                <details v-if="Object.keys(inbound.results).length" class="health-result-details">
+                                    <summary>Probe details</summary>
+                                    <ul>
+                                        <li v-for="(result, name) in inbound.results" :key="name">
+                                            <strong>{{ name }}:</strong>
+                                            <span v-if="result.ok">HTTP {{ result.status }}</span>
+                                            <span v-else>{{ result.error || `HTTP ${result.status ?? 'request failed'}` }}</span>
+                                        </li>
+                                    </ul>
+                                </details>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -139,6 +151,10 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 .health-targets { display: flex; flex-wrap: wrap; gap: .35rem; }
 .health-targets span { padding: .2rem .4rem; border-radius: .35rem; font-size: .75rem; white-space: nowrap; }
 .health-error { min-width: 14rem; max-width: 25rem; color: #991b1b; font-size: .85rem; }
+.health-result-details { margin-top: .4rem; color: var(--text-muted, #64748b); }
+.health-result-details summary { cursor: pointer; color: var(--text-color, #334155); }
+.health-result-details ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+.health-result-details li { margin-top: .2rem; overflow-wrap: anywhere; }
 .muted, .inbound-health-note { color: var(--text-muted, #64748b); }
 .inbound-health-note { margin: 0; font-size: .875rem; }
 .empty-state { padding: 2.5rem; text-align: center; }

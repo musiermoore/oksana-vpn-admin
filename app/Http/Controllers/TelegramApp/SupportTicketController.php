@@ -41,7 +41,7 @@ class SupportTicketController extends Controller
                 'name' => $server->name,
                 'inbounds' => $server->xrayInbounds->map(fn ($inbound) => [
                     'id' => $inbound->id,
-                    'name' => data_get($inbound->params, 'remark') ?: 'Inbound '.$inbound->external_id,
+                    'name' => data_get($inbound->params, 'remark') ?: 'Подключение '.$inbound->external_id,
                 ])->all(),
             ])->all();
 

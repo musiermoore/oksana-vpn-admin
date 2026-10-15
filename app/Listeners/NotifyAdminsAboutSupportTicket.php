@@ -8,9 +8,15 @@ use App\Models\User;
 use App\Services\TelegramMiniAppLinkService;
 use App\Services\TelegramBroadcastService;
 use App\Services\TelegramDevChatService;
+use Illuminate\Contracts\Events\ShouldBeDiscovered;
 
-class NotifyAdminsAboutSupportTicket
+class NotifyAdminsAboutSupportTicket implements ShouldBeDiscovered
 {
+    public static function shouldBeDiscovered(): bool
+    {
+        return false;
+    }
+
     public function __construct(
         private readonly TelegramBroadcastService $broadcastService,
         private readonly TelegramDevChatService $devChatService,
@@ -28,7 +34,9 @@ class NotifyAdminsAboutSupportTicket
             ->select(['id', 'telegram', 'telegram_id'])
             ->where('is_admin', true)
             ->whereNotNull('telegram_id')
-            ->get();
+            ->get()
+            ->unique('telegram_id')
+            ->values();
 
         if ($admins->isNotEmpty()) {
             $this->broadcastService->send($admins, e($message), extra: [

@@ -66,13 +66,16 @@ class SupportTicketController extends Controller
                 ['label' => 'Подключение v2', 'url' => $this->vlessDeepLinks->getConnectV2Url($user)],
                 ['label' => 'Подключение WL', 'url' => $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl')],
             ],
-            'amnezia_configs' => Config::query()->where('user_id', $user->id)->with('server')->get()->map(fn (Config $config) => [
-                'label' => trim(($config->server?->name ? $config->server->name.' — ' : '').$config->name),
-                'url' => route('configs.edit', $config),
-            ])->merge(VlessConfig::query()->where('user_id', $user->id)->whereRaw('LOWER(protocol) = ?', ['amneziawg'])->with('server')->get()->map(fn (VlessConfig $config) => [
-                'label' => trim(($config->server?->name ? $config->server->name.' — ' : '').$config->name),
-                'url' => route('xray-configs.edit', ['protocol' => $config->protocol, 'config' => $config->id]),
-            ]))->values()->all(),
+            'amnezia_configs' => [
+                ...Config::query()->where('user_id', $user->id)->with('server')->get()->map(fn (Config $config) => [
+                    'label' => trim(($config->server?->name ? $config->server->name.' — ' : '').$config->name),
+                    'url' => route('configs.edit', $config),
+                ])->all(),
+                ...VlessConfig::query()->where('user_id', $user->id)->whereRaw('LOWER(protocol) = ?', ['amneziawg'])->with('server')->get()->map(fn (VlessConfig $config) => [
+                    'label' => trim(($config->server?->name ? $config->server->name.' — ' : '').$config->name),
+                    'url' => route('xray-configs.edit', ['protocol' => $config->protocol, 'config' => $config->id]),
+                ])->all(),
+            ],
             'connected_devices' => $user->connectedDevices()->latest('last_connection_at')->limit(5)->get()->map(fn ($device) => [
                 'label' => $device->label,
                 'device' => $device->device,

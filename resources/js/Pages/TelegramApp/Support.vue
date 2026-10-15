@@ -36,7 +36,16 @@ const template = ref({
 let pollTimer = null;
 
 const hasTickets = computed(() => tickets.value.length > 0);
-const selectedInbounds = computed(() => servers.value.flatMap((server) => server.inbounds.filter((inbound) => template.value.inboundIds.includes(inbound.id))));
+const serverConnectionSummary = computed(() => servers.value
+    .filter((server) => template.value.serverIds.includes(server.id))
+    .map((server) => {
+        const inboundNames = server.inbounds
+            .filter((inbound) => template.value.inboundIds.includes(inbound.id))
+            .map((inbound) => inbound.name);
+
+        return `${server.name} (${inboundNames.join(', ') || 'подключения не выбраны'})`;
+    })
+    .join(', '));
 const templateMessage = computed(() => {
     if (template.value.category === 'payment') return template.value.customMessage.trim() ? 'Не получается оплатить подписку.\n\n' + template.value.customMessage : '';
     if (template.value.category === 'other') return template.value.customMessage;
@@ -46,8 +55,7 @@ const templateMessage = computed(() => {
         'VPN не работает',
         `Что не работает: ${template.value.issueTypes.length ? template.value.issueTypes.join(', ') : 'не указано'}`,
         `Приложение: ${app || 'не указано'}`,
-        `Серверы: ${servers.value.filter((server) => template.value.serverIds.includes(server.id)).map((server) => server.name).join(', ') || 'не указаны'}`,
-        `Входящие подключения: ${selectedInbounds.value.map((inbound) => inbound.name).join(', ') || 'не указаны'}`,
+        `Серверы: ${serverConnectionSummary.value || 'не указаны'}`,
         `Пробовал(а) все конфиги: ${template.value.triedAllConfigs || 'не указано'}`,
         `Обновлял(а) приложение: ${template.value.updatedApplication || 'не указано'}`,
         template.value.customMessage.trim(),
@@ -241,9 +249,10 @@ onBeforeUnmount(() => {
                             <label v-for="server in servers" :key="server.id"><input v-model="template.serverIds" type="checkbox" :value="server.id"> {{ server.name }}</label>
                         </div>
                         <div class="tg-field">
-                            <span>Какие inbounds?</span>
+                            <span>Какие подключения?</span>
                             <template v-for="server in servers.filter((item) => template.serverIds.includes(item.id))" :key="server.id">
-                                <label v-for="inbound in server.inbounds" :key="inbound.id"><input v-model="template.inboundIds" type="checkbox" :value="inbound.id"> {{ server.name }} — {{ inbound.name }}</label>
+                                <strong>{{ server.name }}</strong>
+                                <label v-for="inbound in server.inbounds" :key="inbound.id"><input v-model="template.inboundIds" type="checkbox" :value="inbound.id"> {{ inbound.name }}</label>
                             </template>
                         </div>
                         <div class="tg-field">

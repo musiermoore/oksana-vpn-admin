@@ -176,21 +176,27 @@ Ticket list:
 Create ticket:
 
 1. User opens composer.
-2. User submits subject/message.
-3. Frontend calls `POST /telegram-app/support/tickets`.
-4. On success, open `SupportShow`.
+2. User selects a Russian template: VPN не работает, не получается оплатить подписку, or другой вопрос. The VPN template collects affected protocol, app, servers, inbounds, troubleshooting answers, and a custom note, then previews the assembled message.
+3. User can attach up to five images or PDF files (5 MB each).
+4. User submits subject/message.
+5. Frontend calls `POST /telegram-app/support/tickets`.
+6. On success, open `SupportShow`.
 
 Ticket thread:
 
 1. User opens a ticket from `Support` or a `ticket_{id}` deep link.
 2. Frontend shows message history.
 3. User sends a message through `POST /telegram-app/support/tickets/{ticketId}/messages`.
-4. Frontend polls every 5 seconds.
+4. User can attach up to five images or PDF files (5 MB each).
+5. Frontend preserves line breaks and polls every 5 seconds.
 
 Display:
 
 - Admin messages are shown as operator messages.
 - User messages are shown as own messages.
+- Operator replies set the ticket to `Answered`; users' follow-up messages reopen it.
+- Operators can close a ticket manually.
+- The hourly maintenance command silently closes tickets after three days without a message. It removes attachment files one week after closure.
 
 ## 9. Full Transition List
 

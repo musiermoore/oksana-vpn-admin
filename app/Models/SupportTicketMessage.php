@@ -17,12 +17,14 @@ class SupportTicketMessage extends Model
         'sender_type',
         'sender_name',
         'message',
+        'attachments',
     ];
 
     protected function casts(): array
     {
         return [
             'sender_type' => SupportTicketSenderType::class,
+            'attachments' => 'array',
         ];
     }
 

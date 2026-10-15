@@ -830,6 +830,12 @@
     margin: 0;
     font-size: 15px;
     line-height: 21px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.tg-support-message__file {
+    overflow-wrap: anywhere;
 }
 
 .tg-support-message__meta {

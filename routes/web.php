@@ -154,6 +154,9 @@ Route::middleware('auth')->group(function () {
     Route::get('support-tickets', [SupportTicketController::class, 'index'])->name('support-tickets.index');
     Route::get('support-tickets/{ticketId}', [SupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticketId}/reply', [SupportTicketController::class, 'reply'])->name('support-tickets.reply');
+    Route::post('support-tickets/{ticketId}/close', [SupportTicketController::class, 'close'])->name('support-tickets.close');
+    Route::get('support-tickets/{ticketId}/attachments/{messageId}/{attachmentIndex}', [SupportTicketController::class, 'downloadAttachment'])
+        ->name('support-tickets.attachments.download');
 
     Route::get('configs/create-bulk', [ConfigController::class, 'createBulk'])
         ->name('configs.create-bulk');
@@ -299,10 +302,14 @@ $telegramAppAuthenticatedRoutes = function (): void {
 
         Route::get('support/tickets', [TelegramAppSupportTicketController::class, 'index'])
             ->name('support.tickets.index');
+        Route::get('support/options', [TelegramAppSupportTicketController::class, 'options'])
+            ->name('support.options');
         Route::post('support/tickets', [TelegramAppSupportTicketController::class, 'store'])
             ->name('support.tickets.store');
         Route::get('support/tickets/{ticketId}', [TelegramAppSupportTicketController::class, 'show'])
             ->name('support.tickets.show');
+        Route::get('support/tickets/{ticketId}/attachments/{messageId}/{attachmentIndex}', [TelegramAppSupportTicketController::class, 'downloadAttachment'])
+            ->name('support.tickets.attachments.download');
         Route::post('support/tickets/{ticketId}/messages', [TelegramAppSupportTicketController::class, 'addMessage'])
             ->name('support.tickets.messages.store');
 };

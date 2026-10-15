@@ -18,12 +18,45 @@ const tickets = ref([]);
 const isComposerOpen = ref(false);
 const form = ref({
     subject: '',
-    message: '',
 });
 const sending = ref(false);
+const servers = ref([]);
+const attachments = ref([]);
+const template = ref({
+    category: 'vpn',
+    issueTypes: [],
+    application: '',
+    otherApplication: '',
+    serverIds: [],
+    inboundIds: [],
+    triedAllConfigs: '',
+    updatedApplication: '',
+    customMessage: '',
+});
 let pollTimer = null;
 
 const hasTickets = computed(() => tickets.value.length > 0);
+const selectedInbounds = computed(() => servers.value.flatMap((server) => server.inbounds.filter((inbound) => template.value.inboundIds.includes(inbound.id))));
+const templateMessage = computed(() => {
+    if (template.value.category === 'payment') return template.value.customMessage.trim() ? 'Не получается оплатить подписку.\n\n' + template.value.customMessage : '';
+    if (template.value.category === 'other') return template.value.customMessage;
+
+    const app = template.value.application === 'other' ? template.value.otherApplication : template.value.application;
+    return [
+        'VPN не работает',
+        `Что не работает: ${template.value.issueTypes.length ? template.value.issueTypes.join(', ') : 'не указано'}`,
+        `Приложение: ${app || 'не указано'}`,
+        `Серверы: ${servers.value.filter((server) => template.value.serverIds.includes(server.id)).map((server) => server.name).join(', ') || 'не указаны'}`,
+        `Входящие подключения: ${selectedInbounds.value.map((inbound) => inbound.name).join(', ') || 'не указаны'}`,
+        `Пробовал(а) все конфиги: ${template.value.triedAllConfigs || 'не указано'}`,
+        `Обновлял(а) приложение: ${template.value.updatedApplication || 'не указано'}`,
+        template.value.customMessage.trim(),
+    ].filter(Boolean).join('\n');
+});
+
+const selectAttachments = (event) => {
+    attachments.value = Array.from(event.target.files ?? []).slice(0, 5);
+};
 
 const loadTickets = async () => {
     const response = await telegramMiniAppApi.get(telegramMiniAppEndpoints.supportTickets);
@@ -42,7 +75,7 @@ const closeComposer = () => {
 };
 
 const submitTicket = async () => {
-    if (form.value.message.trim() === '') {
+    if (templateMessage.value.trim() === '') {
         error.value = 'Опишите вопрос или проблему.';
         return;
     }
@@ -51,13 +84,17 @@ const submitTicket = async () => {
     error.value = '';
 
     try {
-        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.supportTickets, form.value);
+        const payload = new FormData();
+        payload.append('subject', form.value.subject || (template.value.category === 'vpn' ? 'VPN не работает' : template.value.category === 'payment' ? 'Проблема с оплатой' : 'Другой вопрос'));
+        payload.append('message', templateMessage.value);
+        attachments.value.forEach((file) => payload.append('attachments[]', file));
+        const response = await telegramMiniAppApi.post(telegramMiniAppEndpoints.supportTickets, payload);
         const ticketId = response.data?.ticket?.id;
 
         form.value = {
             subject: '',
-            message: '',
         };
+        attachments.value = [];
 
         if (ticketId) {
             window.location.href = `${telegramMiniAppRoutes.support}/${ticketId}`;
@@ -88,6 +125,8 @@ onMounted(async () => {
             profileUrl: telegramMiniAppApiEndpoint(telegramMiniAppEndpoints.profile),
         });
         await loadTickets();
+        const options = await telegramMiniAppApi.get(telegramMiniAppEndpoints.supportOptions);
+        servers.value = options.data?.servers ?? [];
         pollTimer = window.setInterval(() => {
             void loadTickets();
         }, 5000);
@@ -175,6 +214,51 @@ onBeforeUnmount(() => {
 
                 <div v-else class="tg-form">
                     <div class="tg-field">
+                        <label for="support-category">Тема обращения</label>
+                        <select id="support-category" v-model="template.category" class="tg-input">
+                            <option value="vpn">Не работает VPN</option>
+                            <option value="payment">Не получается оплатить подписку</option>
+                            <option value="other">Другой вопрос</option>
+                        </select>
+                    </div>
+
+                    <template v-if="template.category === 'vpn'">
+                        <div class="tg-field">
+                            <span>Что именно не работает?</span>
+                            <label><input v-model="template.issueTypes" type="checkbox" value="Xray / VLESS"> Xray / VLESS</label>
+                            <label><input v-model="template.issueTypes" type="checkbox" value="Amnezia"> Amnezia</label>
+                        </div>
+                        <div class="tg-field">
+                            <span>Приложение</span>
+                            <label><input v-model="template.application" type="radio" value="Incy"> Incy</label>
+                            <label><input v-model="template.application" type="radio" value="Happ"> Happ</label>
+                            <label><input v-model="template.application" type="radio" value="V2RayTun"> V2RayTun</label>
+                            <label><input v-model="template.application" type="radio" value="other"> Другое</label>
+                            <input v-if="template.application === 'other'" v-model="template.otherApplication" class="tg-input" type="text" placeholder="Название приложения">
+                        </div>
+                        <div class="tg-field">
+                            <span>Какие серверы затронуты?</span>
+                            <label v-for="server in servers" :key="server.id"><input v-model="template.serverIds" type="checkbox" :value="server.id"> {{ server.name }}</label>
+                        </div>
+                        <div class="tg-field">
+                            <span>Какие inbounds?</span>
+                            <template v-for="server in servers.filter((item) => template.serverIds.includes(item.id))" :key="server.id">
+                                <label v-for="inbound in server.inbounds" :key="inbound.id"><input v-model="template.inboundIds" type="checkbox" :value="inbound.id"> {{ server.name }} — {{ inbound.name }}</label>
+                            </template>
+                        </div>
+                        <div class="tg-field">
+                            <span>Пробовали все конфиги?</span>
+                            <label><input v-model="template.triedAllConfigs" type="radio" value="Да"> Да</label>
+                            <label><input v-model="template.triedAllConfigs" type="radio" value="Нет"> Нет</label>
+                        </div>
+                        <div class="tg-field">
+                            <span>Обновляли приложение?</span>
+                            <label><input v-model="template.updatedApplication" type="radio" value="Да"> Да</label>
+                            <label><input v-model="template.updatedApplication" type="radio" value="Нет"> Нет</label>
+                        </div>
+                    </template>
+
+                    <div class="tg-field">
                         <label for="support-subject">Тема</label>
                         <input
                             id="support-subject"
@@ -186,13 +270,24 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="tg-field">
-                        <label for="support-message">Сообщение</label>
+                        <label for="support-message">{{ template.category === 'vpn' ? 'Дополнительная информация' : 'Сообщение' }}</label>
                         <textarea
                             id="support-message"
-                            v-model="form.message"
+                            v-model="template.customMessage"
                             class="tg-textarea"
-                            placeholder="Опишите, что происходит и на каком шаге возникла проблема"
+                            placeholder="Добавьте детали обращения"
                         ></textarea>
+                    </div>
+
+                    <div class="tg-field">
+                        <label for="support-files">Файлы (до 5, изображения или PDF, до 5 МБ каждый)</label>
+                        <input id="support-files" type="file" accept="image/*,application/pdf" multiple @change="selectAttachments">
+                        <small v-if="attachments.length">{{ attachments.map((file) => file.name).join(', ') }}</small>
+                    </div>
+
+                    <div class="tg-note">
+                        <strong>Так будет выглядеть сообщение</strong>
+                        <p style="white-space: pre-wrap">{{ templateMessage }}</p>
                     </div>
 
                     <button class="tg-button" type="button" :disabled="sending" @click="submitTicket">

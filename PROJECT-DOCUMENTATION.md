@@ -223,6 +223,10 @@ One user agent can create separate rows per subscription route, for example one 
 
 Requests with `skip_connection=true` skip this tracking for admin workflows.
 
+### Support Tickets
+
+Support ticket messages can include up to five image or PDF attachments, stored privately under `storage/app/private/support-tickets/{ticket_id}`. Each file is limited to 5 MB and downloads require access to the owning ticket or an authenticated operator session. Operator replies mark tickets as answered, operator controls can close a ticket, and a user's reply reopens it. The hourly `support-tickets:cleanup` command silently closes tickets after three days without messages and deletes their attachment files one week after closure.
+
 ### Subscription Expiry Notifications
 
 Subscription reminder logs are stored in `subscription_expiry_notifications`.

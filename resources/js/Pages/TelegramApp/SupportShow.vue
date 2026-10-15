@@ -15,6 +15,7 @@ const error = ref('');
 const user = ref(null);
 const ticket = ref(null);
 const message = ref('');
+const attachments = ref([]);
 const sending = ref(false);
 let pollTimer = null;
 
@@ -42,6 +43,9 @@ const formatDateTime = (value) => {
 };
 
 const authorLabel = (item) => (item.sender_type === 'admin' ? 'Поддержка' : 'Вы');
+const selectAttachments = (event) => {
+    attachments.value = Array.from(event.target.files ?? []).slice(0, 5);
+};
 
 const loadTicket = async () => {
     const response = await telegramMiniAppApi.get(ticketUrl.value);
@@ -59,11 +63,13 @@ const sendMessage = async () => {
     error.value = '';
 
     try {
-        await telegramMiniAppApi.post(messageUrl.value, {
-            message: message.value,
-        });
+        const payload = new FormData();
+        payload.append('message', message.value);
+        attachments.value.forEach((file) => payload.append('attachments[]', file));
+        await telegramMiniAppApi.post(messageUrl.value, payload);
 
         message.value = '';
+        attachments.value = [];
         await loadTicket();
     } catch (requestError) {
         error.value = normalizeTelegramAppError(requestError, 'Не удалось отправить сообщение.');
@@ -149,6 +155,7 @@ onBeforeUnmount(() => {
                     >
                         <strong>{{ authorLabel(item) }}</strong>
                         <p class="tg-support-message__text">{{ item.message }}</p>
+                        <a v-for="file in item.attachments || []" :key="file.url" class="tg-support-message__file" :href="file.url" target="_blank">{{ file.name }}</a>
                         <span class="tg-support-message__meta">{{ formatDateTime(item.created_at) }}</span>
                     </article>
                 </div>
@@ -163,6 +170,12 @@ onBeforeUnmount(() => {
                         class="tg-textarea"
                         placeholder="Опишите, что изменилось или какой шаг не получается"
                     ></textarea>
+                </div>
+
+                <div class="tg-field">
+                    <label for="support-thread-files">Файлы (до 5, изображения или PDF, до 5 МБ каждый)</label>
+                    <input id="support-thread-files" type="file" accept="image/*,application/pdf" multiple @change="selectAttachments">
+                    <small v-if="attachments.length">{{ attachments.map((file) => file.name).join(', ') }}</small>
                 </div>
 
                 <button class="tg-button" type="button" :disabled="sending" @click="sendMessage">

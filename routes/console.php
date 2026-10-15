@@ -2,6 +2,7 @@
 
 use App\Console\Commands\AddExtraPayments;
 use App\Console\Commands\CalculatePeersTraffic;
+use App\Console\Commands\CleanupSupportTicketsCommand;
 use App\Console\Commands\CreateDefaultConfigsForActiveSubscribersCommand;
 use App\Console\Commands\DisableConfigsOfOverdueDebtorsCommand;
 use App\Console\Commands\PullVlessConfigs;
@@ -29,6 +30,7 @@ Schedule::command(RenewSubscriptionsCommand::class)->everyFiveMinutes();
 Schedule::command(SendSubscriptionExpiryRemindersCommand::class)->everyFiveMinutes();
 Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyFiveMinutes();
 Schedule::command(SendPaidInvoicesToTaxCommand::class)->dailyAt('06:00')->timezone('UTC');
+Schedule::command(CleanupSupportTicketsCommand::class)->hourly();
 
 Schedule::call(function (): void {
     Server::query()

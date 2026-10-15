@@ -112,4 +112,5 @@ export const telegramMiniAppEndpoints = {
     vlessWhiteListQrCode: 'vless-wl/qr-code',
     vlessWhiteListSendQr: 'vless-wl/send-qr',
     supportTickets: 'support/tickets',
+    supportOptions: 'support/options',
 };

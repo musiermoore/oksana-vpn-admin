@@ -15,6 +15,7 @@ use App\Repositories\SupportTicketRepository;
 use App\Services\TelegramMiniAppLinkService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class TelegramMiniAppSupportService
@@ -45,9 +46,9 @@ class TelegramMiniAppSupportService
         return $this->tickets->findForAdmin($ticketId);
     }
 
-    public function create(User $user, SupportTicketStoreData $data): SupportTicket
+    public function create(User $user, SupportTicketStoreData $data, array $attachments = []): SupportTicket
     {
-        return DB::transaction(function () use ($user, $data) {
+        return DB::transaction(function () use ($user, $data, $attachments) {
             $ticket = $this->tickets->createForUser($user, [
                 'subject' => $data->subject,
                 'status' => SupportTicketStatus::Open,
@@ -59,6 +60,7 @@ class TelegramMiniAppSupportService
                 'sender_type' => SupportTicketSenderType::User,
                 'sender_name' => $user->name,
                 'message' => $data->message,
+                'attachments' => $this->storeAttachments($ticket, $attachments),
             ]);
 
             $ticket = $this->tickets->findForAdmin((int) $ticket->id) ?? $ticket->refresh();
@@ -68,14 +70,15 @@ class TelegramMiniAppSupportService
         });
     }
 
-    public function addUserMessage(User $user, SupportTicket $ticket, SupportTicketReplyData $data): SupportTicket
+    public function addUserMessage(User $user, SupportTicket $ticket, SupportTicketReplyData $data, array $attachments = []): SupportTicket
     {
-        return DB::transaction(function () use ($user, $ticket, $data) {
+        return DB::transaction(function () use ($user, $ticket, $data, $attachments) {
             $this->messages->createForTicket($ticket, [
                 'user_id' => $user->id,
                 'sender_type' => SupportTicketSenderType::User,
                 'sender_name' => $user->name,
                 'message' => $data->message,
+                'attachments' => $this->storeAttachments($ticket, $attachments),
             ]);
 
             $ticket = $this->tickets->update($ticket, [
@@ -91,6 +94,22 @@ class TelegramMiniAppSupportService
         });
     }
 
+    /** @param array<int, UploadedFile> $attachments
+     *  @return array<int, array{name: string, url: string, mime_type: string}>
+     */
+    private function storeAttachments(SupportTicket $ticket, array $attachments): array
+    {
+        return collect($attachments)->map(function (UploadedFile $file) use ($ticket): array {
+            $path = $file->store("support-tickets/{$ticket->id}", 'local');
+
+            return [
+                'name' => $file->getClientOriginalName(),
+                'path' => $path,
+                'mime_type' => (string) $file->getMimeType(),
+            ];
+        })->all();
+    }
+
     public function addAdminReply(User $admin, SupportTicket $ticket, SupportTicketReplyData $data): SupportTicket
     {
         return DB::transaction(function () use ($admin, $ticket, $data) {
@@ -102,9 +121,9 @@ class TelegramMiniAppSupportService
             ]);
 
             $ticket = $this->tickets->update($ticket, [
-                'status' => $data->status ?? SupportTicketStatus::Answered,
+                'status' => SupportTicketStatus::Answered,
                 'last_message_at' => now(),
-                'closed_at' => ($data->status === SupportTicketStatus::Closed) ? now() : null,
+                'closed_at' => null,
             ]);
 
             $ticket = $this->tickets->findForAdmin((int) $ticket->id) ?? $ticket;
@@ -113,6 +132,14 @@ class TelegramMiniAppSupportService
 
             return $ticket;
         });
+    }
+
+    public function close(SupportTicket $ticket): SupportTicket
+    {
+        return $this->tickets->update($ticket, [
+            'status' => SupportTicketStatus::Closed,
+            'closed_at' => now(),
+        ]);
     }
 
     private function notifyUserAboutAdminReply(SupportTicket $ticket, string $message): void

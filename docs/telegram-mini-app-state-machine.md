@@ -93,9 +93,13 @@ Code status as of `2026-06-28`:
 | `HELP_MENU` | Clients | Open client app list | none | `HELP_CLIENTS` | none |
 | `HELP_MENU` | Support | Open support list | `GET /telegram-app/support/tickets` | `SUPPORT` | generic error |
 | `SUPPORT` | Create ticket | Open composer | none | `SUPPORT_COMPOSER` | none |
-| `SUPPORT_COMPOSER` | Send ticket | Create support ticket | `POST /telegram-app/support/tickets` | `SUPPORT_SHOW` | validation/generic error |
+| `SUPPORT_COMPOSER` | Choose template and send | Build a Russian preview message and create support ticket; optional maximum five images/PDF attachments, 5 MB each | `POST /telegram-app/support/tickets` | `SUPPORT_SHOW` | validation/generic error |
 | `SUPPORT` | Open ticket | Open thread | `GET /telegram-app/support/tickets/{ticketId}` | `SUPPORT_SHOW` | generic error |
-| `SUPPORT_SHOW` | Send message | Append message | `POST /telegram-app/support/tickets/{ticketId}/messages` | `SUPPORT_SHOW` | validation/generic error |
+| `SUPPORT_SHOW` | Send message | Append message with preserved newlines; optional maximum five images/PDF attachments, 5 MB each | `POST /telegram-app/support/tickets/{ticketId}/messages` | `SUPPORT_SHOW` | validation/generic error |
+
+An operator reply changes the ticket status to `answered`. An operator can close a ticket manually. A user's follow-up message reopens it.
+
+An hourly maintenance command silently closes tickets with no message for three days and deletes their attachment files after they have been closed for one week.
 
 ## 3. Access And Debt Rules
 

@@ -159,7 +159,7 @@ final class XrayInboundProbeRunner
     private function probeTargets(string $configPath, int $proxyPort): array
     {
         $binary = $this->binary();
-        $validation = new Process([$binary, 'run', '-test', '-c', $configPath]);
+        $validation = new Process([$binary, 'run', '-test', '-format=json', '-c', $configPath]);
         $validation->setTimeout(15);
         $validation->run();
 
@@ -167,7 +167,7 @@ final class XrayInboundProbeRunner
             throw new RuntimeException('Xray rejected the /connect-v2 profile: '.Str::limit(trim($validation->getErrorOutput().$validation->getOutput()), 500));
         }
 
-        $process = new Process([$binary, 'run', '-c', $configPath]);
+        $process = new Process([$binary, 'run', '-format=json', '-c', $configPath]);
         $process->setTimeout(90);
         $process->start();
 

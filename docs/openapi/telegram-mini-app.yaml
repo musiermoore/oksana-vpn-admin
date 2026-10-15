@@ -1,0 +1,1033 @@
+openapi: 3.1.0
+info:
+  title: Telegram Mini App API
+  version: 1.0.0
+  description: >-
+    Compatibility contract for the Laravel Telegram Mini App API. JSON property
+    names, nullability, status codes, and binary response media types are based
+    on the Laravel controllers, requests, resources, and route registrations.
+    The same operations are exposed under `/telegram-app` and `/public`;
+    `/public` resolves its bearer token using the public-app token store.
+    The route path `/me` is a compatibility alias for `/auth/me`.
+servers:
+  - url: /telegram-app
+    description: Telegram Mini App API
+  - url: /public
+    description: Public Mini App API mirror
+tags:
+  - name: Authentication
+  - name: User
+  - name: Payments
+  - name: Referrals
+  - name: Giveaway
+  - name: WireGuard
+  - name: VLESS
+  - name: Support
+  - name: Diagnostics
+paths:
+  /auth/telegram:
+    post:
+      tags: [Authentication]
+      operationId: authenticateTelegram
+      summary: Authenticate with Telegram WebApp initData
+      description: Validates Telegram initData and creates or links a user before issuing a bearer token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [init_data]
+              properties:
+                init_data:
+                  type: string
+                  description: Raw Telegram WebApp initData query string.
+            example:
+              init_data: query_id=AAE...&user=%7B...%7D&auth_date=...&hash=...
+      responses:
+        '200':
+          description: Authenticated; token and user fields are returned at the same object level.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthenticationResponse'}
+        '422': {$ref: '#/components/responses/ValidationOrDomainError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: loginWithPassword
+      summary: Log in with a username and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login: {type: string, maxLength: 255}
+                password: {type: string, maxLength: 255}
+            example: {login: alex, password: example-password}
+      responses:
+        '200':
+          description: Authenticated; token and user fields are returned at the same object level.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthenticationResponse'}
+        '422': {$ref: '#/components/responses/ValidationOrDomainError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /auth/register:
+    post:
+      tags: [Authentication]
+      operationId: registerWithPassword
+      summary: Register with a username and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, login, password, password_confirmation]
+              properties:
+                name: {type: string, maxLength: 255}
+                login: {type: string, maxLength: 255}
+                password: {type: string, minLength: 8, maxLength: 255}
+                password_confirmation: {type: string, description: Must exactly match password.}
+                referral: {type: [string, 'null'], maxLength: 2000}
+            example:
+              name: Alex Smith
+              login: alex
+              password: example-password
+              password_confirmation: example-password
+              referral: ref_123
+      responses:
+        '201':
+          description: User created and authenticated; token and user fields are returned at the same object level.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthenticationResponse'}
+        '422': {$ref: '#/components/responses/ValidationOrDomainError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoke the current bearer token
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: Token revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: {type: string, example: Logged out.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /me:
+    get:
+      tags: [User]
+      operationId: getMeAlias
+      summary: Get the current user profile (alias)
+      description: Exact alias of GET /auth/me.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200': {$ref: '#/components/responses/UserProfile'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /auth/me:
+    get:
+      tags: [User]
+      operationId: getMe
+      summary: Get the current user profile
+      description: Includes up to ten latest purchased subscription codes and referral and access summaries.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200': {$ref: '#/components/responses/UserProfile'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /subscription-packages:
+    get:
+      tags: [Payments]
+      operationId: getSubscriptionPackages
+      summary: List subscription packages priced for the current user
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: User-specific package pricing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/SubscriptionPackage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /payments/subscriptions:
+    post:
+      tags: [Payments]
+      operationId: purchaseSubscription
+      summary: Purchase a subscription or gift code
+      description: >-
+        `month=0` requests a trial and is only valid for personal purchases.
+        A purchase can return immediate activation, a created gift code, or a
+        YooKassa payment redirect depending on purchase_type and the user's balance.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [month]
+              properties:
+                month: {type: integer, enum: [0, 1, 3, 6, 12]}
+                return_url: {type: [string, 'null'], format: uri, maxLength: 2048}
+                purchase_type: {type: string, enum: [PERSONAL, GIFT], default: PERSONAL}
+            examples:
+              personal:
+                value: {month: 3, purchase_type: PERSONAL, return_url: 'https://mini.example/return'}
+              trial:
+                value: {month: 0, purchase_type: PERSONAL}
+              gift:
+                value: {month: 3, purchase_type: GIFT}
+      responses:
+        '200':
+          description: Immediate activation, gift code creation, or payment required.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PurchaseSubscriptionResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationOrDomainError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /payments/subscription-codes/activate:
+    post:
+      tags: [Payments]
+      operationId: activateSubscriptionCode
+      summary: Activate a gift subscription code
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string, minLength: 6, maxLength: 64}
+            example: {code: ABCD1234}
+      responses:
+        '200':
+          description: Code activated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message, code]
+                properties:
+                  status: {type: string, const: activated}
+                  message: {type: string}
+                  code: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationOrDomainError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /referrals/claim:
+    post:
+      tags: [Referrals]
+      operationId: claimReferral
+      summary: Attach a referral to the current user
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [referral]
+              properties:
+                referral: {type: string, maxLength: 500}
+            example: {referral: 'https://t.me/example_bot?startapp=ref_123'}
+      responses:
+        '200':
+          description: Referral attached; user fields are returned at the same object level with message.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/User'}
+                  - type: object
+                    required: [message, referral]
+                    properties:
+                      message: {type: string}
+                      referral: {$ref: '#/components/schemas/ReferralSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationOrDomainError'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /giveaway/current:
+    get:
+      tags: [Giveaway]
+      operationId: getCurrentGiveaway
+      summary: Get the visible giveaway and current user's participation
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: When no visible giveaway exists, giveaway and participant are null and user is omitted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [giveaway, participant]
+                properties:
+                  giveaway: {oneOf: [{$ref: '#/components/schemas/Giveaway'}, {type: 'null'}]}
+                  participant: {oneOf: [{$ref: '#/components/schemas/GiveawayParticipant'}, {type: 'null'}]}
+                  user: {$ref: '#/components/schemas/User'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /giveaway/summary:
+    get:
+      tags: [Giveaway]
+      operationId: getGiveawaySummary
+      summary: Get giveaway counts for the current user
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: Counts visible active giveaways and those where the user has not joined.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [summary]
+                properties:
+                  summary:
+                    type: object
+                    required: [active_giveaways_count, pending_participation_count]
+                    properties:
+                      active_giveaways_count: {type: integer}
+                      pending_participation_count: {type: integer}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /giveaway/participate:
+    post:
+      tags: [Giveaway]
+      operationId: participateInGiveaway
+      summary: Join the currently visible giveaway
+      description: Participation is idempotent; repeated requests return the participant's current weight.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: Participation created or existing participation returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [participant]
+                properties:
+                  participant: {$ref: '#/components/schemas/GiveawayParticipant'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/DomainError'}
+  /wireguard/configs:
+    get:
+      tags: [WireGuard]
+      operationId: listWireGuardConfigs
+      summary: List the current user's WireGuard and AmneziaWG configs
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: Config identifiers are opaque public IDs; use the returned action URLs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [configs]
+                properties:
+                  configs:
+                    type: array
+                    items: {$ref: '#/components/schemas/WireGuardConfigSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+  /wireguard/configs/{configId}/download:
+    get:
+      tags: [WireGuard]
+      operationId: downloadWireGuardConfig
+      summary: Download a WireGuard/AmneziaWG config file
+      description: Returns generated or legacy config contents as an attachment. Filename depends on the config.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      parameters:
+        - {$ref: '#/components/parameters/ConfigId'}
+      responses:
+        '200':
+          description: Config file.
+          headers:
+            Content-Disposition: {schema: {type: string}, description: Attachment filename supplied by config.}
+          content:
+            text/plain:
+              schema: {type: string}
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /wireguard/configs/{configId}/qr-code:
+    get:
+      tags: [WireGuard]
+      operationId: getWireGuardQrCode
+      summary: Download a QR code for a WireGuard config
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      parameters:
+        - {$ref: '#/components/parameters/ConfigId'}
+      responses:
+        '200':
+          description: PNG QR code (512 px, margin 5).
+          headers:
+            Content-Disposition: {schema: {type: string}, example: 'attachment; filename="qrcode.png"'}
+          content:
+            image/png: {schema: {type: string, format: binary}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /wireguard/configs/{configId}/send-file:
+    post:
+      tags: [WireGuard]
+      operationId: sendWireGuardFileToBot
+      summary: Send a config file to the user's Telegram chat
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      parameters:
+        - {$ref: '#/components/parameters/ConfigId'}
+      responses:
+        '200': {$ref: '#/components/responses/Message'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/DeliveryError'}
+  /wireguard/configs/{configId}/send-qr:
+    post:
+      tags: [WireGuard]
+      operationId: sendWireGuardQrToBot
+      summary: Send a config QR code to the user's Telegram chat
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      parameters:
+        - {$ref: '#/components/parameters/ConfigId'}
+      responses:
+        '200': {$ref: '#/components/responses/Message'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/DeliveryError'}
+  /vless/link:
+    get:
+      tags: [VLESS]
+      operationId: getVlessLinks
+      summary: Get VLESS client links and subscription links
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200': {$ref: '#/components/responses/VlessLinks'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /vless/qr-code:
+    get:
+      tags: [VLESS]
+      operationId: getVlessQrCode
+      summary: Download a VLESS QR code
+      description: Encodes the generated Connect v2 deep link, or the legacy link when target=legacy.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema: {type: string, default: legacy}
+          description: Passed to the link builder; `legacy` is the default. Supported target-specific handling is implementation-dependent.
+      responses:
+        '200':
+          description: QR code PNG.
+          headers:
+            Content-Disposition: {schema: {type: string}, example: 'attachment; filename="vless-qrcode.png"'}
+          content:
+            image/png: {schema: {type: string, format: binary}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /vless/send-qr:
+    post:
+      tags: [VLESS]
+      operationId: sendVlessQrToBot
+      summary: Send a VLESS QR code to the user's Telegram chat
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200': {$ref: '#/components/responses/Message'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '422': {$ref: '#/components/responses/DeliveryError'}
+  /vless-wl/link:
+    get:
+      tags: [VLESS]
+      operationId: getVlessWhitelistLinks
+      summary: Get VLESS whitelist links
+      description: Includes the current whitelist subscription link and client deep links when available.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200': {$ref: '#/components/responses/VlessLinks'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /vless-wl/qr-code:
+    get:
+      tags: [VLESS]
+      operationId: getVlessWhitelistQrCode
+      summary: Download a whitelist VLESS QR code
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: QR code PNG.
+          headers:
+            Content-Disposition: {schema: {type: string}, example: 'attachment; filename="vless-wl-qrcode.png"'}
+          content:
+            image/png: {schema: {type: string, format: binary}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+  /vless-wl/send-qr:
+    post:
+      tags: [VLESS]
+      operationId: sendVlessWhitelistQrToBot
+      summary: Send a whitelist VLESS QR code to the user's Telegram chat
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200': {$ref: '#/components/responses/Message'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '422': {$ref: '#/components/responses/DeliveryError'}
+  /support/tickets:
+    get:
+      tags: [Support]
+      operationId: listSupportTickets
+      summary: List support tickets for the current user
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      responses:
+        '200':
+          description: Tickets ordered by latest activity by the service/repository.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tickets]
+                properties:
+                  tickets:
+                    type: array
+                    items: {$ref: '#/components/schemas/SupportTicket'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Support]
+      operationId: createSupportTicket
+      summary: Create a support ticket with its first message
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                subject: {type: [string, 'null'], maxLength: 255}
+                message: {type: string, maxLength: 5000}
+            example: {subject: Connection problem, message: I cannot import my config.}
+      responses:
+        '201':
+          description: Ticket created; Laravel dispatches the ticket-created event.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, ticket]
+                properties:
+                  message: {type: string}
+                  ticket: {$ref: '#/components/schemas/SupportTicket'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /support/tickets/{ticketId}:
+    get:
+      tags: [Support]
+      operationId: getSupportTicket
+      summary: Get one of the current user's tickets and messages
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: Ticket with full messages array.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket]
+                properties:
+                  ticket: {$ref: '#/components/schemas/SupportTicket'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /support/tickets/{ticketId}/messages:
+    post:
+      tags: [Support]
+      operationId: addSupportTicketMessage
+      summary: Add a message to a support ticket
+      description: Reopens the ticket, appends the user message, and dispatches the user-message-created event.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema: {type: integer, minimum: 1}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: {type: string, maxLength: 5000}
+            example: {message: I have restarted the app; the issue remains.}
+      responses:
+        '200':
+          description: Message added; updated ticket returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, ticket]
+                properties:
+                  message: {type: string}
+                  ticket: {$ref: '#/components/schemas/SupportTicket'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /diagnostics/bootstrap:
+    post:
+      tags: [Diagnostics]
+      operationId: reportBootstrapDiagnostic
+      summary: Report a Mini App bootstrap failure
+      description: Accepts diagnostic metadata and records it; no credentials or raw initData field are accepted.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BootstrapDiagnostic'}
+      responses:
+        '202':
+          description: Diagnostic accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: {type: string, const: Diagnostic accepted.}
+        '422': {$ref: '#/components/responses/ValidationError'}
+
+components:
+  securitySchemes:
+    TelegramBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Token returned by `/auth/telegram`, `/auth/login`, or `/auth/register` on the `/telegram-app` server.
+    PublicAppBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Token returned by public app authentication for calls to the `/public/app` server.
+  parameters:
+    ConfigId:
+      name: configId
+      in: path
+      required: true
+      schema: {type: string, minLength: 1}
+      description: Opaque ID from the `configs[].id` field, e.g. `123` or `xray-123`.
+  responses:
+    UserProfile:
+      description: Current user's profile resource.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/UserProfile'}
+    Unauthorized:
+      description: Missing, invalid, or expired bearer token.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example: {message: Unauthorized.}
+    AccessDenied:
+      description: User does not have active access required for config/link operations.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/AccessDeniedError'}
+          example: {type: debt, message: Access requires payment.}
+    NotFound:
+      description: Resource does not exist or is not owned by the current user.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example: {message: Ticket not found.}
+    Message:
+      description: Operation completed.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message: {type: string}
+    VlessLinks:
+      description: VLESS subscription and client deep-link payload.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/VlessLinks'}
+    DeliveryError:
+      description: Telegram delivery failed or the user must first open a chat with the bot.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    ValidationError:
+      description: Laravel request validation failed.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ValidationError'}
+    ValidationOrDomainError:
+      description: Request validation or a business rule failed.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ValidationError'}
+    DomainError:
+      description: Business rule failed.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    ServerError:
+      description: Unexpected server-side failure.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string}
+    ValidationError:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string}
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: {type: string}
+    AccessDeniedError:
+      allOf:
+        - {$ref: '#/components/schemas/Error'}
+        - type: object
+          required: [type]
+          properties:
+            type: {type: string, const: debt}
+    User:
+      type: object
+      required: [id, name, telegram, telegram_id, balance, debt, is_admin, has_active_access, subscription_expires_at]
+      properties:
+        id: {type: integer}
+        name: {type: [string, 'null']}
+        telegram: {type: [string, 'null']}
+        telegram_id: {type: [string, integer, 'null']}
+        balance: {type: number}
+        debt: {type: number, minimum: 0}
+        is_admin: {type: boolean}
+        has_active_access: {type: boolean}
+        has_vless_wl_configs: {type: boolean, description: Present when returned from GET /me or referral claim; omitted from auth response and giveaway user.}
+        subscription_expires_at: {type: [string, 'null'], format: date-time}
+        has_money_for_next_subscription_month: {type: boolean, description: Present when returned from GET /me or referral claim.}
+        referral: {$ref: '#/components/schemas/ReferralSummary'}
+        subscription_codes:
+          type: array
+          description: Present on GET /me; up to ten latest purchased codes.
+          items: {$ref: '#/components/schemas/SubscriptionCode'}
+    UserProfile:
+      allOf:
+        - {$ref: '#/components/schemas/User'}
+        - type: object
+          required: [has_vless_wl_configs, has_money_for_next_subscription_month, referral, subscription_codes]
+    AuthenticationResponse:
+      allOf:
+        - {$ref: '#/components/schemas/User'}
+        - type: object
+          required: [token, expires_at, referral]
+          properties:
+            token: {type: string}
+            expires_at: {type: [string, 'null'], format: date-time}
+            referral: {$ref: '#/components/schemas/ReferralSummary'}
+    ReferralSummary:
+      type: object
+      required: [referral_link, referral_code, has_referrer, can_claim, invited_count, active_referrals_count, accumulated_discount_percent, permanent_discount_percent, total_discount_percent, next_level_active_referrals, remaining_to_next_level]
+      properties:
+        referral_link: {type: [string, 'null'], format: uri}
+        referral_code: {type: string}
+        has_referrer: {type: boolean}
+        can_claim: {type: boolean}
+        invited_count: {type: integer}
+        active_referrals_count: {type: integer}
+        accumulated_discount_percent: {type: integer}
+        permanent_discount_percent: {type: integer}
+        total_discount_percent: {type: integer}
+        next_level_active_referrals: {type: [integer, 'null']}
+        remaining_to_next_level: {type: integer}
+    SubscriptionCode:
+      type: object
+      required: [id, code, months, days, price, status, activated_at, expires_at, activated_by_user_id, created_at]
+      properties:
+        id: {type: integer}
+        code: {type: string}
+        months: {type: integer}
+        days: {type: integer}
+        price: {type: number}
+        status: {type: string}
+        activated_at: {type: [string, 'null'], format: date-time}
+        expires_at: {type: [string, 'null'], format: date-time}
+        activated_by_user_id: {type: [integer, 'null']}
+        created_at: {type: [string, 'null'], format: date-time}
+    SubscriptionPackage:
+      type: object
+      required: [month, days, price, payable_now, balance_before, balance_applied, discount_percent, is_trial]
+      properties:
+        month: {type: integer}
+        days: {type: [integer, 'null']}
+        price: {type: number}
+        payable_now: {type: number}
+        balance_before: {type: number}
+        balance_applied: {type: number}
+        discount_percent: {type: integer}
+        is_trial: {type: boolean}
+    PurchaseSubscriptionResponse:
+      oneOf:
+        - type: object
+          required: [status, message, end_date, formatted_end_date]
+          properties:
+            status: {type: string, const: activated}
+            message: {type: string}
+            end_date: {type: string, format: date}
+            formatted_end_date: {type: string, description: Date formatted d.m.Y.}
+        - type: object
+          required: [status, message, code, months, days]
+          properties:
+            status: {type: string, const: gift_code_created}
+            message: {type: string}
+            code: {type: string}
+            months: {type: integer}
+            days: {type: integer}
+        - type: object
+          required: [status, message, deposit_amount, transaction_id, invoice_id, payment_id, payment_status, confirmation_url]
+          properties:
+            status: {type: string, const: deposit_required}
+            message: {type: string}
+            deposit_amount: {type: number}
+            transaction_id: {type: integer}
+            invoice_id: {type: integer}
+            payment_id: {type: string}
+            payment_status: {type: string}
+            confirmation_url: {type: [string, 'null'], format: uri}
+    Giveaway:
+      type: object
+      required: [id, title, description, admins_only, status, status_label, starts_at, ends_at, prizes, winners]
+      properties:
+        id: {type: integer}
+        title: {type: string}
+        description: {type: [string, 'null']}
+        admins_only: {type: boolean}
+        status: {type: string}
+        status_label: {type: string}
+        starts_at: {type: [string, 'null'], format: date-time}
+        ends_at: {type: [string, 'null'], format: date-time}
+        prizes:
+          type: array
+          items:
+            type: object
+            required: [duration_months, quantity, title]
+            properties:
+              duration_months: {type: integer}
+              quantity: {type: integer}
+              title: {type: string}
+        winners:
+          type: array
+          items:
+            type: object
+            required: [name, telegram, duration_months, weight_at_draw]
+            properties:
+              name: {type: [string, 'null']}
+              telegram: {type: [string, 'null']}
+              duration_months: {type: integer}
+              weight_at_draw: {type: integer}
+    GiveawayParticipant:
+      type: object
+      required: [is_participant, base_votes, eligible_referrals, total_weight]
+      properties:
+        is_participant: {type: boolean}
+        base_votes: {type: integer}
+        eligible_referrals: {type: integer}
+        total_weight: {type: integer}
+    WireGuardConfigSummary:
+      type: object
+      required: [id, name, download_url, qr_code_url, send_file_to_bot_url, send_qr_to_bot_url]
+      properties:
+        id: {type: string, description: 'Opaque public config ID (integer IDs for legacy configs, xray-{id} for Xray-backed configs).'}
+        name: {type: string}
+        download_url: {type: string}
+        qr_code_url: {type: string}
+        send_file_to_bot_url: {type: string}
+        send_qr_to_bot_url: {type: string}
+    VlessLinks:
+      type: object
+      required: [link, raw_link, legacy_link, connect_v2_link, connect_v1_link, show_raw_link, happ_deep_link, v2rayn_deeplink, v2rayng_deeplink, v2raybox_deeplink, sing_box_deeplink, hiddify_deeplink, v2raytun_deeplink, incy_deeplink]
+      properties:
+        link: {type: string}
+        raw_link: {type: string}
+        legacy_link: {type: [string, 'null']}
+        connect_v2_link: {type: [string, 'null']}
+        connect_v1_link: {type: [string, 'null']}
+        show_raw_link: {type: boolean}
+        happ_deep_link: {type: [string, 'null']}
+        v2rayn_deeplink: {type: [string, 'null']}
+        v2rayng_deeplink: {type: [string, 'null']}
+        v2raybox_deeplink: {type: [string, 'null']}
+        sing_box_deeplink: {type: [string, 'null']}
+        hiddify_deeplink: {type: [string, 'null']}
+        v2raytun_deeplink: {type: [string, 'null']}
+        incy_deeplink: {type: [string, 'null']}
+    SupportTicket:
+      type: object
+      required: [id, subject, status, status_label, created_at, updated_at, last_message_at, closed_at, latest_message, messages, user, links]
+      properties:
+        id: {type: integer}
+        subject: {type: [string, 'null']}
+        status: {type: string, enum: [open, answered, closed]}
+        status_label: {type: string}
+        created_at: {type: [string, 'null'], format: date-time}
+        updated_at: {type: [string, 'null'], format: date-time}
+        last_message_at: {type: [string, 'null'], format: date-time}
+        closed_at: {type: [string, 'null'], format: date-time}
+        latest_message: {oneOf: [{$ref: '#/components/schemas/SupportTicketMessage'}, {type: 'null'}]}
+        messages:
+          type: array
+          items: {$ref: '#/components/schemas/SupportTicketMessage'}
+        user:
+          oneOf:
+            - type: object
+              required: [id, name, telegram, telegram_id, chat_url]
+              properties:
+                id: {type: integer}
+                name: {type: [string, 'null']}
+                telegram: {type: [string, 'null']}
+                telegram_id: {type: [string, integer, 'null']}
+                chat_url: {type: [string, 'null']}
+            - {type: 'null'}
+        links:
+          type: object
+          required: [show]
+          properties:
+            show: {type: string, description: Laravel admin ticket URL returned by the serializer.}
+    SupportTicketMessage:
+      type: object
+      required: [id, sender_type, sender_name, message, created_at]
+      properties:
+        id: {type: integer}
+        sender_type: {type: string, enum: [user, admin]}
+        sender_name: {type: [string, 'null']}
+        message: {type: string}
+        created_at: {type: [string, 'null'], format: date-time}
+    BootstrapDiagnostic:
+      type: object
+      required: [page, error_message]
+      properties:
+        page: {type: string, maxLength: 120}
+        error_message: {type: string, maxLength: 1000}
+        error_name: {type: [string, 'null'], maxLength: 255}
+        attempts: {type: [integer, 'null'], minimum: 0, maximum: 20}
+        delay_ms: {type: [integer, 'null'], minimum: 0, maximum: 10000}
+        href: {type: [string, 'null'], maxLength: 2000}
+        path: {type: [string, 'null'], maxLength: 500}
+        search: {type: [string, 'null'], maxLength: 2000}
+        referrer: {type: [string, 'null'], maxLength: 2000}
+        user_agent: {type: [string, 'null'], maxLength: 2000}
+        timezone: {type: [string, 'null'], maxLength: 120}
+        language: {type: [string, 'null'], maxLength: 40}
+        telegram_user_id: {type: [string, 'null'], maxLength: 255}
+        telegram_start_param: {type: [string, 'null'], maxLength: 255}
+        telegram_web_app_available: {type: [boolean, 'null']}
+        telegram_platform: {type: [string, 'null'], maxLength: 255}
+        telegram_version: {type: [string, 'null'], maxLength: 255}
+        telegram_color_scheme: {type: [string, 'null'], maxLength: 255}
+        telegram_init_data_source: {type: [string, 'null'], maxLength: 50}
+        telegram_init_data_length: {type: [integer, 'null'], minimum: 0, maximum: 20000}
+        telegram_init_data_keys:
+          type: [array, 'null']
+          maxItems: 20
+          items: {type: string, maxLength: 120}
+        telegram_init_data_user_id: {type: [string, 'null'], maxLength: 255}
+        telegram_init_data_auth_date: {type: [string, 'null'], maxLength: 255}
+        telegram_init_data_query_id_prefix: {type: [string, 'null'], maxLength: 255}
+        telegram_init_data_hash_prefix: {type: [string, 'null'], maxLength: 255}
+        has_stored_token: {type: [boolean, 'null']}
+        stored_telegram_user_id: {type: [string, 'null'], maxLength: 255}

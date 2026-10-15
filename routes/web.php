@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ApiRequestLogController;
+use App\Http\Controllers\AdminTelegramAppApiDocsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\CurrentPaymentController;
@@ -57,6 +58,11 @@ Route::middleware([BasicAuth::class, 'guest'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('api-docs/telegram-mini-app', [AdminTelegramAppApiDocsController::class, 'index'])
+        ->name('api-docs.telegram-mini-app');
+    Route::get('api-docs/telegram-mini-app/openapi.yaml', [AdminTelegramAppApiDocsController::class, 'spec'])
+        ->name('api-docs.telegram-mini-app.spec');
+
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
     Route::get('api-request-logs', [ApiRequestLogController::class, 'index'])->name('api-request-logs.index');

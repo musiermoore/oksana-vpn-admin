@@ -215,6 +215,22 @@ watch(isMobile, () => {
                             </Button>
                         </nav>
                     </section>
+
+                    <section v-if="currentUser?.is_admin" class="sidebar-nav__section">
+                        <nav class="sidebar-nav__group">
+                            <Link
+                                href="/api-docs/telegram-mini-app"
+                                class="sidebar-nav__link"
+                                :class="{ 'is-active': isActive('/api-docs/telegram-mini-app') }"
+                                :title="isSidebarCollapsed ? 'Telegram Mini App API' : ''"
+                            >
+                                <span class="sidebar-nav__badge">
+                                    <AppIcon name="link" class="sidebar-nav__badge-icon" />
+                                </span>
+                                <span class="sidebar-nav__label">Telegram Mini App API</span>
+                            </Link>
+                        </nav>
+                    </section>
                 </div>
 
                 <div v-if="currentUser" class="sidebar-profile">

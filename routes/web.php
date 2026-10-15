@@ -41,6 +41,7 @@ use App\Http\Controllers\WireGuardController;
 use App\Http\Controllers\XrayConfigController;
 use App\Http\Controllers\XrayRoutingController;
 use App\Http\Controllers\XrayCustomConfigController;
+use App\Http\Controllers\XrayInboundHealthController;
 use App\Http\Controllers\XrayGlobalConfigController;
 use App\Http\Controllers\XuiDebugController;
 use App\Http\Controllers\SubscriptionDebugController;
@@ -114,6 +115,10 @@ Route::middleware('auth')->group(function () {
         ->name('vless-external-subscriptions.sync');
     Route::get('xray-routings', [XrayRoutingController::class, 'index'])
         ->name('xray-routings.index');
+    Route::get('xray-inbound-health', [XrayInboundHealthController::class, 'index'])
+        ->name('xray-inbound-health.index');
+    Route::post('xray-inbound-health/run', [XrayInboundHealthController::class, 'run'])
+        ->name('xray-inbound-health.run');
     Route::get('xray-routings/create', [XrayRoutingController::class, 'create'])
         ->name('xray-routings.create');
     Route::post('xray-routings', [XrayRoutingController::class, 'store'])

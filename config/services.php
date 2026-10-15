@@ -48,6 +48,10 @@ return [
         'mini_app_init_data_ttl_seconds' => env('TELEGRAM_MINI_APP_INIT_DATA_TTL_SECONDS', 3600),
     ],
 
+    'inbound_health' => [
+        'sing_box_binary' => env('INBOUND_HEALTH_SING_BOX_BINARY', 'sing-box'),
+    ],
+
     'yookassa' => [
         'shop_id' => env('YOO_KASSA_SHOP_ID'),
         'secret_key' => env('YOO_KASSA_SECRET_KEY'),

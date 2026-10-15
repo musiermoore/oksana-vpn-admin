@@ -46,6 +46,11 @@ class XrayInbound extends Model
         return $this->hasMany(VlessConfig::class);
     }
 
+    public function healthCheck(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(XrayInboundHealthCheck::class);
+    }
+
     public function scopeOrdered(Builder $query): Builder
     {
         return $query

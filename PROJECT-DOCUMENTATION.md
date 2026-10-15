@@ -114,6 +114,12 @@ Each inbound record has:
 
 Deleted or broken 3x-ui inbounds with empty payloads should not stay active locally.
 
+### Xray Inbound Health Checks
+
+Active inbounds on active, ready servers are checked every 15 minutes. The first check creates one dedicated `health-check-*` client in the 3x-ui panel for that inbound; later checks reuse it. Each check starts a local sing-box SOCKS tunnel and requests Discord, Telegram, Google, ChatGPT, and YouTube through that tunnel. The latest state, per-site outcomes, and technical client identity are stored in `xray_inbound_health_checks`.
+
+The admin dashboard is available at `/xray-inbound-health`. A transition to unhealthy or recovery sends one alert to `TELEGRAM_DEV_CHAT_ID`; the alert recommends hiding or fixing an inbound but never changes subscription visibility automatically. Unsupported protocols are shown explicitly. Full WireGuard/AmneziaWG tunnel probing is not currently supported by the runner.
+
 ### Proxies
 
 Proxy nodes are stored in `proxies`.

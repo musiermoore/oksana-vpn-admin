@@ -2,6 +2,7 @@
 
 use App\Console\Commands\AddExtraPayments;
 use App\Console\Commands\CalculatePeersTraffic;
+use App\Console\Commands\CheckXrayInboundHealthCommand;
 use App\Console\Commands\CleanupSupportTicketsCommand;
 use App\Console\Commands\CreateDefaultConfigsForActiveSubscribersCommand;
 use App\Console\Commands\DisableConfigsOfOverdueDebtorsCommand;
@@ -23,6 +24,7 @@ Schedule::command(RemoveOldTrafficLogs::class)->everyMinute();
 Schedule::command(PullVlessConfigs::class)->everyMinute();
 Schedule::command(SyncVlessExternalSubscriptionsCommand::class)->everyFifteenMinutes();
 Schedule::command(SyncXrayInboundsCommand::class)->everyFiveMinutes();
+Schedule::command(CheckXrayInboundHealthCommand::class)->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command(SyncGiveawaysCommand::class)->everyMinute();
 Schedule::command(AddExtraPayments::class)->hourly();
 Schedule::command(CreateDefaultConfigsForActiveSubscribersCommand::class)->everyFiveMinutes();

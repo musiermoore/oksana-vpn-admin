@@ -124,7 +124,7 @@ class ApiUserService
             : $this->configs->allForUser($user);
 
         $configs = $this->isVlessType($type)
-            ? $configs->filter(fn (Model $config) => $this->isVisibleVlessConfig($config))->values()
+            ? $configs->filter(fn (Model $config) => $this->isVisibleVlessConfig($config, $user))->values()
             : $configs;
 
         return $user->is_admin
@@ -151,36 +151,45 @@ class ApiUserService
         }
 
         if ($user->is_admin) {
-            return $this->isVisibleVlessConfig($config) ? $config : null;
+            return $this->isVisibleVlessConfig($config, $user) ? $config : null;
         }
 
         if ((bool) $config->server?->hide_configs_for_non_admins) {
             return null;
         }
 
-        return $this->isVisibleVlessConfig($config) ? $config : null;
+        return $this->isVisibleVlessConfig($config, $user) ? $config : null;
     }
 
-    private function isVisibleVlessConfig(Model $config): bool
+    private function isVisibleVlessConfig(Model $config, User $viewer): bool
     {
         if (! $config instanceof \App\Models\VlessConfig) {
             return true;
         }
 
-        if (! $config->relationLoaded('xrayInbound')) {
-            $config->loadMissing('xrayInbound:id,external_id,is_active');
+        $config->loadMissing([
+            'server:id,is_active',
+            'xrayInbound:id,external_id,is_active,is_public',
+        ]);
+
+        if (! (bool) $config->is_active || ! (bool) $config->enable || ! (bool) $config->server?->is_active) {
+            return false;
         }
 
-        return $config->xrayInbound !== null && (bool) $config->xrayInbound->is_active;
+        if ($config->xrayInbound === null || ! (bool) $config->xrayInbound->is_active) {
+            return false;
+        }
+
+        return (bool) $config->xrayInbound->is_public || (bool) $viewer->is_admin;
     }
 
-    private function isVisibleWireGuardVlessConfig(Model $config): bool
+    private function isVisibleWireGuardVlessConfig(Model $config, User $user): bool
     {
         return $config instanceof VlessConfig
             && $this->isWireGuardFamilyProtocol($config->protocol)
             && $config->server !== null
             && (bool) $config->server->is_active
-            && $this->isVisibleVlessConfig($config);
+            && $this->isVisibleVlessConfig($config, $user);
     }
 
     private function isVisibleWireGuardConfig(Model $config): bool
@@ -191,7 +200,7 @@ class ApiUserService
 
         $server = $config->server;
 
-        if ($server === null || ! (bool) $server->is_active) {
+        if ($server === null || ! (bool) $server->is_active || ! (bool) $config->is_active) {
             return false;
         }
 
@@ -205,7 +214,7 @@ class ApiUserService
             ->values()
             ->concat(
                 $this->vlessConfigs->allForUser($user)
-                    ->filter(fn (Model $config) => $this->isVisibleWireGuardVlessConfig($config))
+                    ->filter(fn (Model $config) => $this->isVisibleWireGuardVlessConfig($config, $user))
                     ->values()
             );
 
@@ -245,7 +254,7 @@ class ApiUserService
             return null;
         }
 
-        if ($config instanceof VlessConfig && ! $this->isVisibleWireGuardVlessConfig($config)) {
+        if ($config instanceof VlessConfig && ! $this->isVisibleWireGuardVlessConfig($config, $user)) {
             return null;
         }
 

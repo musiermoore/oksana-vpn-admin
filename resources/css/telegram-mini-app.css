@@ -692,6 +692,35 @@
     gap: 12px;
 }
 
+.tg-support-form__subject {
+    margin-bottom: 8px;
+}
+
+.tg-attachment-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tg-attachment-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    overflow-wrap: anywhere;
+}
+
+.tg-attachment-list button {
+    flex: 0 0 auto;
+    border: 0;
+    padding: 4px 0;
+    color: var(--tg-danger);
+    background: transparent;
+    font: inherit;
+}
+
 .tg-field {
     display: grid;
     gap: 8px;

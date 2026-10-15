@@ -22,6 +22,7 @@ const form = ref({
 const sending = ref(false);
 const servers = ref([]);
 const attachments = ref([]);
+const attachmentError = ref('');
 const template = ref({
     category: 'vpn',
     issueTypes: [],
@@ -63,7 +64,16 @@ const templateMessage = computed(() => {
 });
 
 const selectAttachments = (event) => {
-    attachments.value = Array.from(event.target.files ?? []).slice(0, 5);
+    const selectedFiles = Array.from(event.target.files ?? []);
+    const remainingSlots = Math.max(0, 5 - attachments.value.length);
+    attachments.value = [...attachments.value, ...selectedFiles.slice(0, remainingSlots)];
+    attachmentError.value = selectedFiles.length > remainingSlots ? 'Можно прикрепить не более 5 файлов.' : '';
+    event.target.value = '';
+};
+
+const removeAttachment = (index) => {
+    attachments.value.splice(index, 1);
+    attachmentError.value = '';
 };
 
 const loadTickets = async () => {
@@ -103,6 +113,7 @@ const submitTicket = async () => {
             subject: '',
         };
         attachments.value = [];
+        attachmentError.value = '';
 
         if (ticketId) {
             window.location.href = `${telegramMiniAppRoutes.support}/${ticketId}`;
@@ -220,7 +231,7 @@ onBeforeUnmount(() => {
                     <span>Написать в поддержку</span>
                 </button>
 
-                <div v-else class="tg-form">
+                <div v-else class="tg-form tg-support-form">
                     <div class="tg-field">
                         <label for="support-category">Тема обращения</label>
                         <select id="support-category" v-model="template.category" class="tg-input">
@@ -267,7 +278,7 @@ onBeforeUnmount(() => {
                         </div>
                     </template>
 
-                    <div class="tg-field">
+                    <div class="tg-field tg-support-form__subject">
                         <label for="support-subject">Тема</label>
                         <input
                             id="support-subject"
@@ -291,7 +302,13 @@ onBeforeUnmount(() => {
                     <div class="tg-field">
                         <label for="support-files">Файлы (до 5, изображения или PDF, до 5 МБ каждый)</label>
                         <input id="support-files" type="file" accept="image/*,application/pdf" multiple @change="selectAttachments">
-                        <small v-if="attachments.length">{{ attachments.map((file) => file.name).join(', ') }}</small>
+                        <ul v-if="attachments.length" class="tg-attachment-list">
+                            <li v-for="(file, index) in attachments" :key="`${file.name}-${file.size}-${file.lastModified}`">
+                                <span>{{ file.name }}</span>
+                                <button type="button" :aria-label="`Удалить ${file.name}`" @click="removeAttachment(index)">Удалить</button>
+                            </li>
+                        </ul>
+                        <small v-if="attachmentError" class="tg-error">{{ attachmentError }}</small>
                     </div>
 
                     <div class="tg-note">

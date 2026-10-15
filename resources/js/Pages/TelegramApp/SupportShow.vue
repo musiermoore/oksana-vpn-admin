@@ -16,6 +16,7 @@ const user = ref(null);
 const ticket = ref(null);
 const message = ref('');
 const attachments = ref([]);
+const attachmentError = ref('');
 const sending = ref(false);
 let pollTimer = null;
 
@@ -44,7 +45,16 @@ const formatDateTime = (value) => {
 
 const authorLabel = (item) => (item.sender_type === 'admin' ? 'Поддержка' : 'Вы');
 const selectAttachments = (event) => {
-    attachments.value = Array.from(event.target.files ?? []).slice(0, 5);
+    const selectedFiles = Array.from(event.target.files ?? []);
+    const remainingSlots = Math.max(0, 5 - attachments.value.length);
+    attachments.value = [...attachments.value, ...selectedFiles.slice(0, remainingSlots)];
+    attachmentError.value = selectedFiles.length > remainingSlots ? 'Можно прикрепить не более 5 файлов.' : '';
+    event.target.value = '';
+};
+
+const removeAttachment = (index) => {
+    attachments.value.splice(index, 1);
+    attachmentError.value = '';
 };
 
 const loadTicket = async () => {
@@ -70,6 +80,7 @@ const sendMessage = async () => {
 
         message.value = '';
         attachments.value = [];
+        attachmentError.value = '';
         await loadTicket();
     } catch (requestError) {
         error.value = normalizeTelegramAppError(requestError, 'Не удалось отправить сообщение.');
@@ -175,7 +186,13 @@ onBeforeUnmount(() => {
                 <div class="tg-field">
                     <label for="support-thread-files">Файлы (до 5, изображения или PDF, до 5 МБ каждый)</label>
                     <input id="support-thread-files" type="file" accept="image/*,application/pdf" multiple @change="selectAttachments">
-                    <small v-if="attachments.length">{{ attachments.map((file) => file.name).join(', ') }}</small>
+                    <ul v-if="attachments.length" class="tg-attachment-list">
+                        <li v-for="(file, index) in attachments" :key="`${file.name}-${file.size}-${file.lastModified}`">
+                            <span>{{ file.name }}</span>
+                            <button type="button" :aria-label="`Удалить ${file.name}`" @click="removeAttachment(index)">Удалить</button>
+                        </li>
+                    </ul>
+                    <small v-if="attachmentError" class="tg-error">{{ attachmentError }}</small>
                 </div>
 
                 <button class="tg-button" type="button" :disabled="sending" @click="sendMessage">

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories;
 
 use App\Models\Config;
@@ -29,7 +31,7 @@ class ConfigRepository
     {
         return $user->configs()
             ->with('server:id,type,is_active,is_ready,hide_configs_for_non_admins')
-            ->get(['id', 'user_id', 'server_id', 'name']);
+            ->get(['id', 'user_id', 'server_id', 'name', 'is_active']);
     }
 
     public function findForUser(User $user, int|string $id): ?Config

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\TelegramApp;
 
 use App\Http\Controllers\Controller;
@@ -33,7 +35,8 @@ class SupportTicketController extends Controller
     {
         $servers = Server::query()
             ->where('is_active', true)
-            ->with(['xrayInbounds' => fn ($query) => $query->where('is_active', true)->ordered()])
+            ->whereHas('xrayInbounds', fn ($query) => $query->where('is_active', true)->where('is_public', true))
+            ->with(['xrayInbounds' => fn ($query) => $query->where('is_active', true)->where('is_public', true)->ordered()])
             ->orderBy('sort_order')
             ->get()
             ->map(fn (Server $server) => [

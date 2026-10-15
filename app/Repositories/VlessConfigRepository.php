@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories;
 
 use App\Models\User;
@@ -25,7 +27,7 @@ class VlessConfigRepository
         return $user->vlessConfigs()
             ->with([
                 'server:id,is_active,hide_configs_for_non_admins',
-                'xrayInbound:id,external_id,is_active',
+                'xrayInbound:id,external_id,is_active,is_public',
             ])
             ->get([
                 'id',
@@ -36,6 +38,8 @@ class VlessConfigRepository
                 'password',
                 'auth',
                 'protocol',
+                'is_active',
+                'enable',
             ]);
     }
 
@@ -44,7 +48,7 @@ class VlessConfigRepository
         return $user->vlessConfigs()
             ->with([
                 'server',
-                'xrayInbound:id,external_id,is_active',
+                'xrayInbound:id,external_id,is_active,is_public',
             ])
             ->find($id);
     }

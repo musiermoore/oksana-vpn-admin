@@ -1,5 +1,6 @@
 <script setup>
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 defineOptions({ layout: AppLayout });
@@ -12,12 +13,44 @@ const props = defineProps({
 const form = useForm({
     message: '',
 });
+const copiedLink = ref('');
+let copyResetTimer = null;
 
 const submit = () => {
     form.post(`/support-tickets/${props.ticket.id}/reply`);
 };
 
 const closeTicket = () => router.post(`/support-tickets/${props.ticket.id}/close`);
+
+const copyLink = async (url) => {
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(url);
+        } else {
+            const input = document.createElement('textarea');
+            input.value = url;
+            input.setAttribute('readonly', '');
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.append(input);
+            input.select();
+            const copied = document.execCommand('copy');
+            input.remove();
+
+            if (!copied) {
+                throw new Error('Clipboard copy failed');
+            }
+        }
+
+        copiedLink.value = url;
+        window.clearTimeout(copyResetTimer);
+        copyResetTimer = window.setTimeout(() => {
+            copiedLink.value = '';
+        }, 2000);
+    } catch {
+        copiedLink.value = `error:${url}`;
+    }
+};
 
 const statusLabel = (status) => ({
     open: 'Открыт',
@@ -73,33 +106,63 @@ const formatDate = (value) => value ? new Date(value).toLocaleString('ru-RU') : 
             </div>
             <div>
                 <span class="field-label">Ссылки подключения</span>
-                <p v-for="link in supportUser.connect_links" :key="link.label"><a :href="link.url" target="_blank">{{ link.label }}</a></p>
+                <div v-for="link in supportUser.connect_links" :key="link.label" class="support-link-row">
+                    <a :href="link.url" target="_blank">{{ link.label }}</a>
+                    <AppButton type="button" variant="secondary" @click="copyLink(link.url)">
+                        {{ copiedLink === link.url ? 'Скопировано' : copiedLink === `error:${link.url}` ? 'Не скопировано' : 'Копировать' }}
+                    </AppButton>
+                </div>
             </div>
         </div>
         <div>
             <span class="field-label">Конфиги Amnezia</span>
             <p v-if="!supportUser.amnezia_configs.length">Нет конфигов</p>
-            <p v-for="config in supportUser.amnezia_configs" :key="config.url"><a :href="config.url">{{ config.label }}</a></p>
-        </div>
-        <div>
-            <span class="field-label">Последние 5 транзакций</span>
-            <p v-if="!supportUser.transactions.length">Транзакций пока нет</p>
-            <div v-for="transaction in supportUser.transactions" :key="transaction.id" class="page-card">
-                <strong>{{ transaction.type }} · {{ transaction.amount }}</strong>
-                <p>{{ formatDate(transaction.date) }} · {{ transaction.approved ? 'Одобрена' : 'Ожидает' }}</p>
-                <p v-if="transaction.description">{{ transaction.description }}</p>
+            <div v-for="config in supportUser.amnezia_configs" :key="config.url" class="support-link-row">
+                <a :href="config.url">{{ config.label }}</a>
+                <AppButton type="button" variant="secondary" @click="copyLink(config.url)">
+                    {{ copiedLink === config.url ? 'Скопировано' : copiedLink === `error:${config.url}` ? 'Не скопировано' : 'Копировать' }}
+                </AppButton>
             </div>
         </div>
-        <div>
-            <span class="field-label">Последние подключения</span>
-            <p v-if="!supportUser.connected_devices.length">Данных о подключениях нет</p>
-            <div v-for="(device, index) in supportUser.connected_devices" :key="`${device.label}-${index}`" class="page-card">
-                <strong>{{ device.label || device.device || 'Устройство' }}</strong>
-                <p>{{ device.device || '—' }} · {{ device.connection_route || '—' }} · {{ formatDate(device.last_connection_at) }}</p>
-                <p>{{ device.user_agent || 'Версия приложения неизвестна' }}</p>
-                <p>{{ device.ip_address || 'IP не записан' }} · {{ device.connection_count }} подключений</p>
+        <details class="support-user-details">
+            <summary>
+                <span>Последние 5 транзакций</span>
+                <span class="support-user-details__count">{{ supportUser.transactions.length }}</span>
+            </summary>
+            <p v-if="!supportUser.transactions.length" class="support-user-details__empty">Транзакций пока нет</p>
+            <div v-else class="support-compact-list">
+                <article v-for="transaction in supportUser.transactions" :key="transaction.id" class="support-compact-item">
+                    <div class="support-compact-item__head">
+                        <strong>{{ transaction.type }} · {{ transaction.amount }}</strong>
+                        <span>{{ transaction.approved ? 'Одобрена' : 'Ожидает' }}</span>
+                    </div>
+                    <div class="support-compact-item__meta">
+                        <span>{{ formatDate(transaction.date) }}</span>
+                        <span v-if="transaction.description">{{ transaction.description }}</span>
+                    </div>
+                </article>
             </div>
-        </div>
+        </details>
+        <details class="support-user-details">
+            <summary>
+                <span>Последние подключения</span>
+                <span class="support-user-details__count">{{ supportUser.connected_devices.length }}</span>
+            </summary>
+            <p v-if="!supportUser.connected_devices.length" class="support-user-details__empty">Данных о подключениях нет</p>
+            <div v-else class="support-compact-list">
+                <article v-for="(device, index) in supportUser.connected_devices" :key="`${device.label}-${index}`" class="support-compact-item">
+                    <div class="support-compact-item__head">
+                        <strong>{{ device.label || device.device || 'Устройство' }}</strong>
+                        <span>{{ formatDate(device.last_connection_at) }}</span>
+                    </div>
+                    <div class="support-compact-item__meta">
+                        <span>{{ device.device || 'Устройство неизвестно' }} · {{ device.connection_route || 'Маршрут неизвестен' }}</span>
+                        <span>{{ device.user_agent || 'Версия приложения неизвестна' }}</span>
+                        <span>{{ device.ip_address || 'IP не записан' }} · {{ device.connection_count }} подключений</span>
+                    </div>
+                </article>
+            </div>
+        </details>
     </section>
 
     <section class="page-card stack">

@@ -176,7 +176,7 @@ Ticket list:
 Create ticket:
 
 1. User opens composer.
-2. User selects a Russian template: VPN не работает, не получается оплатить подписку, or другой вопрос. The VPN template collects affected protocol, app, servers, inbounds, troubleshooting answers, and a custom note, then previews the assembled message.
+2. User selects a Russian template: VPN не работает, не получается оплатить подписку, or другой вопрос. The VPN template collects affected protocol, app, active servers and their active public inbounds, troubleshooting answers, and a custom note, then previews the assembled message.
 3. User can attach up to five images or PDF files (5 MB each).
 4. User submits subject/message.
 5. Frontend calls `POST /telegram-app/support/tickets`.

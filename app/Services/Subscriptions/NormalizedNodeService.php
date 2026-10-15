@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Subscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
@@ -30,10 +32,11 @@ class NormalizedNodeService
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
             ->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery
                 ->where('is_active', true)
+                ->where('is_public', true)
                 ->where($visibilityField, true))
             ->with([
                 'server:id,name,code,ip,link_host,is_https,sort_order',
-                "xrayInbound:id,server_id,external_id,is_active,sort_order,{$visibilityField}",
+                "xrayInbound:id,server_id,external_id,is_active,is_public,sort_order,{$visibilityField}",
             ])
             ->get()
             ->map(fn (VlessConfig $config) => [

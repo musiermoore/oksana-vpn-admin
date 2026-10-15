@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Enums\SupportTicketStatus;
@@ -67,11 +69,26 @@ class SupportTicketController extends Controller
                 ['label' => 'Подключение WL', 'url' => $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl')],
             ],
             'amnezia_configs' => [
-                ...Config::query()->where('user_id', $user->id)->with('server')->get()->map(fn (Config $config) => [
+                ...Config::query()
+                    ->where('user_id', $user->id)
+                    ->where('is_active', true)
+                    ->whereHas('server', fn ($query) => $query->where('is_active', true))
+                    ->with('server')
+                    ->get()
+                    ->map(fn (Config $config) => [
                     'label' => trim(($config->server?->name ? $config->server->name.' — ' : '').$config->name),
                     'url' => route('configs.edit', $config),
                 ])->all(),
-                ...VlessConfig::query()->where('user_id', $user->id)->whereRaw('LOWER(protocol) = ?', ['amneziawg'])->with('server')->get()->map(fn (VlessConfig $config) => [
+                ...VlessConfig::query()
+                    ->where('user_id', $user->id)
+                    ->whereRaw('LOWER(protocol) = ?', ['amneziawg'])
+                    ->where('is_active', true)
+                    ->where('enable', true)
+                    ->whereHas('server', fn ($query) => $query->where('is_active', true))
+                    ->whereHas('xrayInbound', fn ($query) => $query->where('is_active', true)->where('is_public', true))
+                    ->with(['server', 'xrayInbound'])
+                    ->get()
+                    ->map(fn (VlessConfig $config) => [
                     'label' => trim(($config->server?->name ? $config->server->name.' — ' : '').$config->name),
                     'url' => route('xray-configs.edit', ['protocol' => $config->protocol, 'config' => $config->id]),
                 ])->all(),

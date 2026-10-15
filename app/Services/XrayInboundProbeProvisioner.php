@@ -115,11 +115,16 @@ final class XrayInboundProbeProvisioner
     private function probeClientSettings(array $remoteInbound, string $clientId, string $email): array
     {
         $protocol = mb_strtolower((string) ($remoteInbound['protocol'] ?? ''));
-        $firstClient = data_get($remoteInbound, 'settings.clients.0', []);
-        $flow = is_array($firstClient) ? (string) ($firstClient['flow'] ?? '') : '';
+        $network = mb_strtolower((string) ($remoteInbound['type'] ?? 'tcp'));
+        $flow = '';
 
-        if ($flow === '' && $protocol === 'vless' && ($remoteInbound['security'] ?? null) === 'reality') {
-            $flow = 'xtls-rprx-vision';
+        if ($protocol === 'vless' && in_array($network, ['tcp', 'raw'], true)) {
+            $firstClient = data_get($remoteInbound, 'settings.clients.0', []);
+            $flow = is_array($firstClient) ? (string) ($firstClient['flow'] ?? '') : '';
+
+            if ($flow === '' && ($remoteInbound['security'] ?? null) === 'reality') {
+                $flow = 'xtls-rprx-vision';
+            }
         }
 
         return array_filter([

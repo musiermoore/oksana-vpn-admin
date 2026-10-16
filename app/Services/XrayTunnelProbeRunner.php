@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\XrayInboundHealthCheck;
+use App\Services\Subscriptions\XrayJsonProfileNormalizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -13,6 +14,8 @@ use Throwable;
 
 final class XrayTunnelProbeRunner
 {
+    public function __construct(private readonly XrayJsonProfileNormalizer $profileNormalizer) {}
+
     /** @var array<string, string> */
     private const TARGETS = [
         'Discord' => 'https://discord.com/',
@@ -33,6 +36,7 @@ final class XrayTunnelProbeRunner
             'settings' => ['auth' => 'noauth', 'udp' => false],
             'tag' => 'inbound-health-socks',
         ]];
+        $profile = $this->profileNormalizer->normalizeProfile($profile);
         $configPath = $this->writeConfig($profile, $proxyPort);
 
         try {

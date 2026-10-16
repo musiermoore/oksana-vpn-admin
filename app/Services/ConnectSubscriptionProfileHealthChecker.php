@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Subscription\NormalizedNode;
+use App\Models\SubscriptionProfileHealthCheck;
 use App\Models\User;
 use App\Services\Subscriptions\UserSubscriptionService;
 
@@ -40,11 +41,31 @@ final class ConnectSubscriptionProfileHealthChecker
 
     private function checkConnectV2(User $user): void
     {
-        $decoded = json_decode($this->subscriptions->buildConnectV2($user)->content, true);
-        $profiles = is_array($decoded) ? $decoded : [];
+        $decoded = json_decode(
+            $this->subscriptions->buildConnectV2($user)->content,
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        if (! is_array($decoded) || ! array_is_list($decoded)) {
+            throw new \RuntimeException('The /connect-v2 subscription did not generate a JSON profile list.');
+        }
+
+        $profiles = $decoded;
 
         foreach ($profiles as $index => $profile) {
             if (! is_array($profile)) {
+                $this->recorder->record(
+                    'connect-v2',
+                    sha1('malformed-profile|'.$index.'|'.json_encode($profile)),
+                    'Invalid profile #'.($index + 1),
+                    [
+                        'status' => SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
+                        'results' => [],
+                        'error' => 'Generated /connect-v2 entry is not a JSON profile object.',
+                    ],
+                );
+
                 continue;
             }
 

@@ -25,13 +25,20 @@ final class XrayInboundProbeProvisioner
     public function check(XrayInbound $inbound): array
     {
         $protocol = mb_strtolower((string) data_get($inbound->params, 'protocol', ''));
+        $server = $inbound->server;
+
+        if (! $server instanceof Server || ! $server->is_active || ! $server->is_ready) {
+            return $this->unsupported('Owning server is not active and ready.');
+        }
+
+        if (! in_array($protocol, [...self::SUPPORTED_PROTOCOLS, 'amneziawg', 'wireguard'], true)) {
+            return $this->unsupported("Full tunnel probing for {$protocol} inbounds is not supported.");
+        }
+
+        $config = $this->provisionProbeConfig($server, $inbound);
 
         if (in_array($protocol, ['amneziawg', 'wireguard'], true)) {
             return $this->unsupported('Full tunnel probing for WireGuard/AmneziaWG is not available in this runner.');
-        }
-
-        if (! in_array($protocol, self::SUPPORTED_PROTOCOLS, true)) {
-            return $this->unsupported("Full tunnel probing for {$protocol} inbounds is not supported.");
         }
 
         $probeRunner = in_array($protocol, ['vless', 'trojan', 'shadowsocks'], true)
@@ -42,21 +49,13 @@ final class XrayInboundProbeProvisioner
             return $this->unsupported('The client core required for this inbound is not installed.');
         }
 
-        $server = $inbound->server;
-
-        if (! $server instanceof Server || ! $server->is_active || ! $server->is_ready) {
-            return $this->unsupported('Owning server is not active and ready.');
-        }
-
-        return $this->probeThroughInbound($server, $inbound, $probeRunner);
+        return $probeRunner->check($config, $server, $inbound);
     }
 
-    /** @return array{status: string, results: array<string, mixed>, error: ?string} */
-    private function probeThroughInbound(
+    private function provisionProbeConfig(
         Server $server,
         XrayInbound $inbound,
-        SingBoxInboundProbeRunner|XrayInboundProbeRunner $probeRunner,
-    ): array
+    ): VlessConfig
     {
         $xui = XuiConfigServiceFactory::make($server->getPanelApiVersion(), $server);
         $remoteInbound = collect($xui->getInbounds())
@@ -117,7 +116,7 @@ final class XrayInboundProbeProvisioner
         );
         $config->setRelation('server', $server);
 
-        return $probeRunner->check($config, $server, $inbound);
+        return $config;
     }
 
     /** @param array<string, mixed> $remoteInbound @return array<string, mixed> */

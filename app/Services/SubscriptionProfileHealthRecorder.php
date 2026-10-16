@@ -115,15 +115,20 @@ final class SubscriptionProfileHealthRecorder
 
     private function notifyOnTransition(string $flow, SubscriptionProfileHealthCheck $check, ?string $previousStatus): void
     {
-        if ($check->status === SubscriptionProfileHealthCheck::STATUS_UNHEALTHY
-            && $previousStatus !== SubscriptionProfileHealthCheck::STATUS_UNHEALTHY) {
+        if (in_array($check->status, [
+            SubscriptionProfileHealthCheck::STATUS_WARNING,
+            SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
+        ], true) && $previousStatus !== $check->status) {
             SendSubscriptionHealthSummaryJob::dispatch()
                 ->delay(now()->addSeconds(10))
                 ->afterCommit();
         }
 
         if ($check->status === SubscriptionProfileHealthCheck::STATUS_HEALTHY
-            && $previousStatus === SubscriptionProfileHealthCheck::STATUS_UNHEALTHY) {
+            && in_array($previousStatus, [
+                SubscriptionProfileHealthCheck::STATUS_WARNING,
+                SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
+            ], true)) {
             $this->devChat->send("✅ Subscription profile recovered: {$flow} / {$check->name}");
         }
     }

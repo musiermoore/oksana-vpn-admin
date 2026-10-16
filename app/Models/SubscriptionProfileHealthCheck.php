@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 final class SubscriptionProfileHealthCheck extends Model
 {
     public const STATUS_HEALTHY = 'healthy';
+    public const STATUS_WARNING = 'warning';
     public const STATUS_UNHEALTHY = 'unhealthy';
     public const STATUS_UNSUPPORTED = 'unsupported';
     public const STATUS_UNKNOWN = 'unknown';

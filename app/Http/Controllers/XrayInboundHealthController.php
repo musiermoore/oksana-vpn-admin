@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Jobs\CheckXrayInboundHealthJob;
-use App\Jobs\CheckSubscriptionProfilesHealthJob;
 use App\Models\XrayInbound;
 use App\Models\XrayInboundHealthCheck;
 use App\Models\XrayJsonSetting;
 use App\Models\SubscriptionProfileHealthCheck;
 use App\Models\User;
+use App\Services\InboundHealthCheckScheduler;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -62,6 +61,7 @@ final class XrayInboundHealthController
             'profileSummary' => [
                 'total' => $profiles->count(),
                 'healthy' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_HEALTHY)->count(),
+                'warning' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_WARNING)->count(),
                 'unhealthy' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_UNHEALTHY)->count(),
                 'unsupported' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_UNSUPPORTED)->count(),
                 'pending' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_PENDING)->count(),
@@ -70,6 +70,7 @@ final class XrayInboundHealthController
             'summary' => [
                 'total' => $inbounds->count(),
                 'healthy' => $inbounds->where('status', XrayInboundHealthCheck::STATUS_HEALTHY)->count(),
+                'warning' => $inbounds->where('status', XrayInboundHealthCheck::STATUS_WARNING)->count(),
                 'unhealthy' => $inbounds->where('status', XrayInboundHealthCheck::STATUS_UNHEALTHY)->count(),
                 'unsupported' => $inbounds->where('status', XrayInboundHealthCheck::STATUS_UNSUPPORTED)->count(),
                 'unknown' => $inbounds->where('status', XrayInboundHealthCheck::STATUS_UNKNOWN)->count(),
@@ -81,15 +82,9 @@ final class XrayInboundHealthController
         ]);
     }
 
-    public function run(): RedirectResponse
+    public function run(InboundHealthCheckScheduler $scheduler): RedirectResponse
     {
-        XrayInbound::query()
-            ->where('is_active', true)
-            ->whereHas('server', fn ($query) => $query->where('is_active', true)->where('is_ready', true))
-            ->pluck('id')
-            ->each(fn (int $id) => CheckXrayInboundHealthJob::dispatch($id)->afterCommit());
-
-        CheckSubscriptionProfilesHealthJob::dispatch()->afterCommit();
+        $scheduler->dispatch();
 
         return redirect()->route('xray-inbound-health.index')->with('success', 'Health checks queued. Results will appear as the probes finish.');
     }

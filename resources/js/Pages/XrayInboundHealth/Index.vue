@@ -13,11 +13,11 @@ const props = defineProps({
     technicalUser: { type: Object, default: null },
     profileSummary: {
         type: Object,
-        default: () => ({ total: 0, healthy: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
+        default: () => ({ total: 0, healthy: 0, warning: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
     },
     summary: {
         type: Object,
-        default: () => ({ total: 0, healthy: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
+        default: () => ({ total: 0, healthy: 0, warning: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
     },
     globalJsonSettings: {
         type: Object,
@@ -30,6 +30,7 @@ const refreshAttempts = ref(0);
 
 const statusLabel = (status) => ({
     healthy: 'Healthy',
+    warning: 'Warning',
     unhealthy: 'Unhealthy',
     unsupported: 'Unsupported',
     pending: 'Queued',
@@ -82,6 +83,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
             :stats="[
                 { label: 'Active inbounds', value: summary.total },
                 { label: 'Healthy', value: summary.healthy },
+                { label: 'Warning', value: summary.warning },
                 { label: 'Unhealthy', value: summary.unhealthy },
                 { label: 'Unsupported', value: summary.unsupported },
                 { label: 'Not checked', value: summary.unknown },
@@ -164,6 +166,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                 </div>
                 <div class="profile-health-counts">
                     <span>Healthy {{ profileSummary.healthy }}</span>
+                    <span>Warning {{ profileSummary.warning }}</span>
                     <span>Unhealthy {{ profileSummary.unhealthy }}</span>
                     <span>Unsupported {{ profileSummary.unsupported }}</span>
                 </div>
@@ -239,6 +242,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 .health-status { display: inline-flex; padding: .25rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 700; white-space: nowrap; }
 .health-status--healthy, .target-ok { color: #166534; background: #dcfce7; }
 .health-status--unhealthy, .target-failed { color: #991b1b; background: #fee2e2; }
+.health-status--warning { color: #854d0e; background: #fef3c7; }
 .health-status--unsupported { color: #854d0e; background: #fef3c7; }
 .health-status--pending { color: #1d4ed8; background: #dbeafe; }
 .health-status--unknown { color: #475569; background: #e2e8f0; }

@@ -50,11 +50,18 @@ final class XrayInboundHealthService
     {
         $label = sprintf('%s / inbound %d', $inbound->server?->name ?? 'Unknown server', $inbound->external_id);
 
-        if ($health->status === XrayInboundHealthCheck::STATUS_UNHEALTHY && $previousStatus !== $health->status) {
-            $this->devChat->send("⚠️ Inbound health check failed: {$label}\n".($health->error ?? 'One or more destinations failed.')."\nPlease hide it from connect or fix the routing.");
+        if ($health->status === XrayInboundHealthCheck::STATUS_WARNING && $previousStatus !== $health->status) {
+            $this->devChat->send("⚠️ Inbound is partially reachable: {$label}\n".($health->error ?? 'Some destinations failed.')."\nPlease review its routing.");
         }
 
-        if ($health->status === XrayInboundHealthCheck::STATUS_HEALTHY && $previousStatus === XrayInboundHealthCheck::STATUS_UNHEALTHY) {
+        if ($health->status === XrayInboundHealthCheck::STATUS_UNHEALTHY && $previousStatus !== $health->status) {
+            $this->devChat->send("⚠️ Inbound health check failed: {$label}\n".($health->error ?? 'All destinations failed.')."\nPlease hide it from connect or fix the routing.");
+        }
+
+        if ($health->status === XrayInboundHealthCheck::STATUS_HEALTHY && in_array($previousStatus, [
+            XrayInboundHealthCheck::STATUS_WARNING,
+            XrayInboundHealthCheck::STATUS_UNHEALTHY,
+        ], true)) {
             $this->devChat->send("✅ Inbound recovered: {$label}");
         }
     }

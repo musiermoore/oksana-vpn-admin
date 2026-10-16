@@ -126,11 +126,17 @@ final class SingBoxInboundProbeRunner
             }
 
             $failed = collect($results)->filter(fn (array $result): bool => ! $result['ok'])->keys()->all();
+            $reached = count($results) - count($failed);
+            $status = match (true) {
+                $failed === [] => XrayInboundHealthCheck::STATUS_HEALTHY,
+                $reached > 0 => XrayInboundHealthCheck::STATUS_WARNING,
+                default => XrayInboundHealthCheck::STATUS_UNHEALTHY,
+            };
 
             return [
-                'status' => $failed === [] ? XrayInboundHealthCheck::STATUS_HEALTHY : XrayInboundHealthCheck::STATUS_UNHEALTHY,
+                'status' => $status,
                 'results' => $results,
-                'error' => $failed === [] ? null : 'Failed destinations: '.implode(', ', $failed),
+                'error' => $failed === [] ? null : ($reached > 0 ? 'Partially reachable; failed destinations: ' : 'Failed destinations: ').implode(', ', $failed),
             ];
         } finally {
             $process->stop(1);

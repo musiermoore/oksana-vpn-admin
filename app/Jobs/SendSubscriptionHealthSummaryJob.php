@@ -35,11 +35,14 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
     public function handle(TelegramDevChatService $devChat): void
     {
         $failures = SubscriptionProfileHealthCheck::query()
-            ->where('status', SubscriptionProfileHealthCheck::STATUS_UNHEALTHY)
+            ->whereIn('status', [
+                SubscriptionProfileHealthCheck::STATUS_WARNING,
+                SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
+            ])
             ->where('checked_at', '>=', now()->subMinutes(20))
             ->orderBy('flow')
             ->orderBy('name')
-            ->get(['flow', 'name', 'error']);
+            ->get(['flow', 'name', 'status', 'error']);
 
         if ($failures->isEmpty()) {
             return;
@@ -47,9 +50,10 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
 
         $lines = $failures->take(15)
             ->map(fn (SubscriptionProfileHealthCheck $failure): string => sprintf(
-                '• %s / %s',
+                '• %s / %s (%s)',
                 $failure->flow,
                 Str::limit($failure->name, 120),
+                $failure->status,
             ))
             ->all();
 
@@ -70,6 +74,8 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
             ->all();
         $causeSummary = $causes === [] ? '' : "\nCause(s):\n• ".implode("\n• ", $causes);
 
-        $devChat->send("⚠️ Subscription health: {$failures->count()} unhealthy profile(s)\n".implode("\n", $lines).$causeSummary);
+        $warnings = $failures->where('status', SubscriptionProfileHealthCheck::STATUS_WARNING)->count();
+        $unhealthy = $failures->where('status', SubscriptionProfileHealthCheck::STATUS_UNHEALTHY)->count();
+        $devChat->send("⚠️ Subscription health: {$warnings} warning(s), {$unhealthy} unhealthy profile(s)\n".implode("\n", $lines).$causeSummary);
     }
 }

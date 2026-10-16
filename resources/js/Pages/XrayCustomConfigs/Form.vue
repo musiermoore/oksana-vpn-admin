@@ -49,8 +49,9 @@ const groupMemberSnapshot = ref(null);
 const splitRouteValues = (value) => String(value || '').split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
 const routeMatchTypes = ['domain', 'ip', 'port', 'network', 'protocol'];
 const normalizeMatchRules = (rules) => {
-    const normalized = { ...(rules || {}) };
-    const domains = Array.isArray(normalized.domain) ? normalized.domain : splitRouteValues(normalized.domain);
+    const normalized = rules && typeof rules === 'object' && !Array.isArray(rules) ? { ...rules } : {};
+    const domainRules = normalized.domain;
+    const domains = Array.isArray(domainRules) ? domainRules : splitRouteValues(domainRules);
     const geoipValues = domains.filter((value) => String(value).startsWith('geoip:'));
     if (geoipValues.length) {
         normalized.domain = domains.filter((value) => !String(value).startsWith('geoip:'));
@@ -69,24 +70,26 @@ const routeValuesFromRule = (type, value) => {
     return values.map((item) => type === 'domain' ? String(item).replace(/^domain:/, '') : String(item));
 };
 const normalizeRoute = (route, index) => {
-    const rules = normalizeMatchRules(route.rules);
+    const routeData = route && typeof route === 'object' && !Array.isArray(route) ? route : {};
+    const rules = normalizeMatchRules(routeData.rules);
     let matchTypes = routeMatchTypes.filter((type) => Object.hasOwn(rules, type));
-    if (matchTypes.length === 0) matchTypes = [route.match_type || 'domain'];
+    if (matchTypes.length === 0) matchTypes = [routeData.match_type || 'domain'];
     const matchValuesByType = Object.fromEntries(matchTypes.map((type) => [type, routeValuesFromRule(type, rules[type] ?? (type === 'network' ? 'tcp,udp' : []))]));
 
     return {
-        ...route,
-        name: route.name || `Route ${index + 1}`,
+        ...routeData,
+        name: routeData.name || `Route ${index + 1}`,
         match_types: matchTypes,
         match_values_by_type: matchValuesByType,
+        value_input_by_type: {},
         add_match_type: routeMatchTypes.find((type) => !matchTypes.includes(type)) || '',
-        target_type: route.target_type || 'balancer',
-        target_tag: route.target_tag || '',
-        is_active: route.is_active ?? true,
+        target_type: routeData.target_type || 'balancer',
+        target_tag: routeData.target_tag || '',
+        is_active: routeData.is_active ?? true,
         _menuOpen: false,
     };
 };
-const routes = ref((initial.routes || []).map(normalizeRoute));
+const routes = ref((Array.isArray(initial.routes) ? initial.routes : []).map(normalizeRoute));
 const dnsOptions = ref([...props.dns_settings]);
 const geodataOptions = ref([...props.geodata]);
 const previewMode = ref('admin');

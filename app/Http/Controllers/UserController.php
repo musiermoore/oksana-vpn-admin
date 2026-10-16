@@ -28,6 +28,7 @@ class UserController extends Controller
 
         $users = User::query()
             ->select('users.*')
+            ->whereNull('users.is_health_check_user')
             ->tap(fn ($query) => User::applyBillingSummary($query))
             ->when(! $onlyInactive && ! $getAll, fn ($query) => $query->where('users.is_active', '=', true))
             ->when($onlyInactive, fn ($query) => $query->where('users.is_active', '=', false))

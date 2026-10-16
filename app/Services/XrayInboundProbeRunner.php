@@ -76,11 +76,75 @@ final class XrayInboundProbeRunner
 
         $connectLink = $this->buildConnectLink($node);
         $connectV2Profile = $this->buildConnectV2Profile($node, $connectLink);
+
+        $connectV2Profile['routing'] = [
+            'domainStrategy' => 'AsIs',
+            'rules' => [],
+        ];
+
+        return $this->runProfile($connectV2Profile);
+    }
+
+    /** @return array{status: string, results: array<string, mixed>, error: ?string} */
+    public function checkSubscriptionNode(NormalizedNode $node, bool $applyRouting = true): array
+    {
+        if (! $applyRouting && array_key_exists('json_profile', $node->meta)) {
+            $meta = $node->meta;
+            unset($meta['json_profile']);
+            $node = new NormalizedNode(
+                id: $node->id,
+                serverName: $node->serverName,
+                sortGroupOrder: $node->sortGroupOrder,
+                sortItemOrder: $node->sortItemOrder,
+                protocol: $node->protocol,
+                transport: $node->transport,
+                uri: $node->uri,
+                serverId: $node->serverId,
+                configId: $node->configId,
+                sourceType: $node->sourceType,
+                sortServerName: $node->sortServerName,
+                meta: $meta,
+            );
+        }
+
+        $connectLink = $this->buildConnectLink($node);
+        $profile = $this->buildConnectV2Profile($node, $connectLink);
+
+        if (! $applyRouting) {
+            $profile['routing'] = [
+                'domainStrategy' => 'AsIs',
+                'rules' => [],
+            ];
+        }
+
+        return $this->runProfile($profile, 5);
+    }
+
+    /** @param array<string, mixed> $profile @return array{status: string, results: array<string, mixed>, error: ?string} */
+    public function checkGeneratedProfile(array $profile): array
+    {
+        if (! is_array($profile['outbounds'] ?? null) || $profile['outbounds'] === []) {
+            throw new RuntimeException('Generated subscription profile has no Xray outbounds.');
+        }
+
+        return $this->runProfile($profile, 5);
+    }
+
+    /** @param array<string, mixed> $profile @return array{status: string, results: array<string, mixed>, error: ?string} */
+    private function runProfile(array $profile, int $targetTimeoutSeconds = 12): array
+    {
         $proxyPort = $this->allocateLocalPort();
-        $configPath = $this->writeConfig($connectV2Profile, $proxyPort);
+        $profile['inbounds'] = [[
+            'listen' => '127.0.0.1',
+            'port' => $proxyPort,
+            'protocol' => 'socks',
+            'settings' => ['auth' => 'noauth', 'udp' => false],
+            'tag' => 'inbound-health-socks',
+        ]];
+        $configPath = $this->writeConfig($profile, $proxyPort);
 
         try {
-            return $this->probeTargets($configPath, $proxyPort);
+            return $this->probeTargets($configPath, $proxyPort, $targetTimeoutSeconds);
         } finally {
             @unlink($configPath);
         }
@@ -121,21 +185,8 @@ final class XrayInboundProbeRunner
         $profile = is_array($profiles) ? ($profiles[0] ?? null) : null;
 
         if (! is_array($profile) || ! is_array($profile['outbounds'] ?? null) || ($profile['outbounds'][0] ?? null) === null) {
-            throw new RuntimeException('The /connect-v2 subscription builder did not produce an Xray outbound.');
+            throw new RuntimeException('Generated subscription profile did not contain an Xray outbound.');
         }
-
-        $profile['inbounds'] = [[
-            'listen' => '127.0.0.1',
-            'port' => 0,
-            'protocol' => 'socks',
-            'settings' => ['auth' => 'noauth', 'udp' => false],
-            'tag' => 'inbound-health-socks',
-        ]];
-        $profile['routing'] = [
-            'domainStrategy' => 'AsIs',
-            'rules' => [],
-        ];
-        unset($profile['geodata'], $profile['observatory']);
 
         return $profile;
     }
@@ -144,19 +195,29 @@ final class XrayInboundProbeRunner
     private function writeConfig(array $profile, int $proxyPort): string
     {
         $profile['inbounds'][0]['port'] = $proxyPort;
-        $path = tempnam(sys_get_temp_dir(), 'inbound-health-xray-');
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'inbound-health-xray-');
 
-        if ($path === false) {
+        if ($temporaryPath === false) {
             throw new RuntimeException('Unable to allocate a temporary Xray config file.');
         }
 
-        file_put_contents($path, json_encode($profile, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        $path = $temporaryPath.'.json';
+
+        if (! rename($temporaryPath, $path)) {
+            @unlink($temporaryPath);
+            throw new RuntimeException('Unable to name the temporary Xray config as JSON.');
+        }
+
+        if (file_put_contents($path, json_encode($profile, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)) === false) {
+            @unlink($path);
+            throw new RuntimeException('Unable to write the temporary Xray config file.');
+        }
 
         return $path;
     }
 
     /** @return array{status: string, results: array<string, mixed>, error: ?string} */
-    private function probeTargets(string $configPath, int $proxyPort): array
+    private function probeTargets(string $configPath, int $proxyPort, int $targetTimeoutSeconds): array
     {
         $binary = $this->binary();
         $validation = new Process([$binary, 'run', '-test', '-format=json', '-c', $configPath]);
@@ -164,7 +225,7 @@ final class XrayInboundProbeRunner
         $validation->run();
 
         if (! $validation->isSuccessful()) {
-            throw new RuntimeException('Xray rejected the /connect-v2 profile: '.Str::limit(trim($validation->getErrorOutput().$validation->getOutput()), 500));
+            throw new RuntimeException('Xray rejected the generated profile: '.Str::limit(trim($validation->getErrorOutput().$validation->getOutput()), 500));
         }
 
         $process = new Process([$binary, 'run', '-format=json', '-c', $configPath]);
@@ -176,7 +237,7 @@ final class XrayInboundProbeRunner
             $results = [];
 
             foreach (self::TARGETS as $name => $url) {
-                $results[$name] = $this->probeTarget($url, $proxyPort);
+                $results[$name] = $this->probeTarget($url, $proxyPort, $targetTimeoutSeconds);
             }
 
             $failed = collect($results)->filter(fn (array $result): bool => ! $result['ok'])->keys()->all();
@@ -213,10 +274,10 @@ final class XrayInboundProbeRunner
     }
 
     /** @return array<string, mixed> */
-    private function probeTarget(string $url, int $proxyPort): array
+    private function probeTarget(string $url, int $proxyPort, int $timeoutSeconds): array
     {
         try {
-            $response = Http::timeout(12)
+            $response = Http::timeout($timeoutSeconds)
                 ->withOptions(['proxy' => 'socks5h://127.0.0.1:'.$proxyPort])
                 ->get($url);
 

@@ -40,6 +40,7 @@ class User extends Authenticatable
         'join_at',
         'balance',
         'is_admin',
+        'is_health_check_user',
         'is_active',
         'max_devices',
         'traffic_limit_bytes',
@@ -68,6 +69,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'balance' => 'float',
+            'is_health_check_user' => 'boolean',
             'referral_accumulated_discount_percent' => 'integer',
             'subscription_expires_at' => 'datetime',
             'welcome_text_seen_at' => 'datetime',
@@ -295,6 +297,10 @@ class User extends Authenticatable
 
     public function hasActiveSubscription(?Carbon $date = null): bool
     {
+        if ($this->is_health_check_user === true) {
+            return true;
+        }
+
         if ($date === null && $this->relationLoaded('activeSubscription')) {
             return $this->activeSubscription !== null;
         }

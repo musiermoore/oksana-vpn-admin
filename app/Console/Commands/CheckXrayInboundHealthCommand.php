@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Jobs\CheckXrayInboundHealthJob;
+use App\Jobs\CheckSubscriptionProfilesHealthJob;
 use App\Models\XrayInbound;
 use Illuminate\Console\Command;
 
@@ -12,7 +13,7 @@ final class CheckXrayInboundHealthCommand extends Command
 {
     protected $signature = 'xray-inbounds:check-health';
 
-    protected $description = 'Queue end-to-end health checks for active Xray inbounds';
+    protected $description = 'Queue direct inbound and subscription-profile health checks';
 
     public function handle(): int
     {
@@ -25,7 +26,9 @@ final class CheckXrayInboundHealthCommand extends Command
             CheckXrayInboundHealthJob::dispatch((int) $inboundId)->afterCommit();
         }
 
-        $this->info(sprintf('Queued health checks for %d active inbounds.', $inboundIds->count()));
+        CheckSubscriptionProfilesHealthJob::dispatch()->afterCommit();
+
+        $this->info(sprintf('Queued direct checks for %d active inbounds and the technical-user subscription check.', $inboundIds->count()));
 
         return self::SUCCESS;
     }

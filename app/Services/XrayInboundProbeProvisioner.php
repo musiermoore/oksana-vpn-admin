@@ -18,6 +18,7 @@ final class XrayInboundProbeProvisioner
     public function __construct(
         private readonly SingBoxInboundProbeRunner $probeRunner,
         private readonly XrayInboundProbeRunner $xrayProbeRunner,
+        private readonly HealthCheckUserService $healthCheckUser,
     ) {}
 
     /** @return array{status: string, results: array<string, mixed>, error: ?string} */
@@ -104,8 +105,16 @@ final class XrayInboundProbeProvisioner
             $healthRecord->save();
         }
 
-        $attributes = $xui->buildLocalConfigAttributes($remoteInbound, $settings);
-        $config = new VlessConfig($attributes);
+        $user = $this->healthCheckUser->get();
+        $attributes = $xui->buildLocalConfigAttributes($remoteInbound, $settings, (int) $user->id);
+        $config = VlessConfig::query()->updateOrCreate(
+            [
+                'user_id' => (int) $user->id,
+                'server_id' => (int) $server->id,
+                'xray_inbound_id' => (int) $inbound->id,
+            ],
+            $attributes,
+        );
         $config->setRelation('server', $server);
 
         return $probeRunner->check($config, $server, $inbound);

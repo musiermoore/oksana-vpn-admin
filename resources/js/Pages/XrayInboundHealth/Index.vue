@@ -9,9 +9,19 @@ defineOptions({ layout: AppLayout });
 
 const props = defineProps({
     inbounds: { type: Array, default: () => [] },
+    profiles: { type: Array, default: () => [] },
+    technicalUser: { type: Object, default: null },
+    profileSummary: {
+        type: Object,
+        default: () => ({ total: 0, healthy: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
+    },
     summary: {
         type: Object,
         default: () => ({ total: 0, healthy: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
+    },
+    globalJsonSettings: {
+        type: Object,
+        default: () => ({ active: 0, applied_name: null }),
     },
 });
 
@@ -22,17 +32,26 @@ const statusLabel = (status) => ({
     healthy: 'Healthy',
     unhealthy: 'Unhealthy',
     unsupported: 'Unsupported',
+    pending: 'Queued',
     unknown: 'Not checked',
 }[status] ?? status);
 
 const statusClass = (status) => `health-status health-status--${status}`;
+
+const flowLabel = (flow) => ({
+    connect: '/connect',
+    'connect-v2': '/connect-v2',
+    external: 'External subscription',
+    'external-source': 'External source sync',
+    'xray-custom': 'Xray custom subscription',
+}[flow] ?? flow);
 
 const formatDate = (value) => value
     ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
     : '—';
 
 const refreshResults = () => {
-    router.reload({ only: ['inbounds', 'summary'], preserveScroll: true });
+    router.reload({ only: ['inbounds', 'summary', 'profiles', 'profileSummary', 'globalJsonSettings'], preserveScroll: true });
     refreshAttempts.value += 1;
 
     if (refreshAttempts.value < 12) {
@@ -59,13 +78,14 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
         <AppPageHeader
             eyebrow="Network diagnostics"
             title="Inbound health"
-            description="A dedicated client per inbound builds the subscription profile, starts its client core, then tests Discord, Telegram, Google, ChatGPT, and YouTube through the tunnel."
+            :description="`Direct inbound probes bypass app routing. Subscription probes run the technical user's emitted profiles through their generated rules and test Discord, Telegram, Google, ChatGPT, and YouTube. ${props.globalJsonSettings.applied_name ? `Latest active global JSON setting: ${props.globalJsonSettings.applied_name}.` : 'No active global JSON settings are applied.'}`"
             :stats="[
                 { label: 'Active inbounds', value: summary.total },
                 { label: 'Healthy', value: summary.healthy },
                 { label: 'Unhealthy', value: summary.unhealthy },
                 { label: 'Unsupported', value: summary.unsupported },
                 { label: 'Not checked', value: summary.unknown },
+                { label: 'Active global JSON settings', value: props.globalJsonSettings.active },
             ]"
         >
             <template #actions>
@@ -74,6 +94,12 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
         </AppPageHeader>
 
         <section class="panel-card">
+            <header class="profile-health-header">
+                <div>
+                    <h2>Direct inbound</h2>
+                    <p>Uses a technical client on each inbound with app routing rules bypassed.</p>
+                </div>
+            </header>
             <div v-if="!props.inbounds.length" class="empty-state">
                 <strong>No active inbounds</strong>
                 <p>Active inbounds on ready servers will appear here.</p>
@@ -127,7 +153,74 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
             </div>
         </section>
 
+        <section class="panel-card">
+            <header class="profile-health-header">
+                <div>
+                    <h2>Subscription profile health</h2>
+                    <p>
+                        Tests emitted profiles using {{ props.technicalUser?.name ?? '@OksanaVpnDebugBot' }}
+                        (Telegram ID {{ props.technicalUser?.telegram_id ?? '000000000' }}).
+                    </p>
+                </div>
+                <div class="profile-health-counts">
+                    <span>Healthy {{ profileSummary.healthy }}</span>
+                    <span>Unhealthy {{ profileSummary.unhealthy }}</span>
+                    <span>Unsupported {{ profileSummary.unsupported }}</span>
+                </div>
+            </header>
+            <div v-if="!props.profiles.length" class="empty-state">
+                <strong>Subscription profiles have not been checked yet</strong>
+                <p>Run checks to build and probe the technical user's subscriptions.</p>
+            </div>
+            <div v-else class="table-scroll">
+                <table class="data-table inbound-health-table">
+                    <thead>
+                        <tr>
+                            <th>Flow</th>
+                            <th>Profile</th>
+                            <th>Status</th>
+                            <th>Destinations</th>
+                            <th>Last checked</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="profile in props.profiles" :key="profile.id">
+                            <td>{{ flowLabel(profile.flow) }}</td>
+                            <td>{{ profile.name }}</td>
+                            <td><span :class="statusClass(profile.status)">{{ statusLabel(profile.status) }}</span></td>
+                            <td>
+                                <div v-if="Object.keys(profile.results).length" class="health-targets">
+                                    <span v-for="(result, name) in profile.results" :key="name" :class="result.ok ? 'target-ok' : 'target-failed'">
+                                        {{ name }}<template v-if="result.status"> · {{ result.status }}</template>
+                                    </span>
+                                </div>
+                                <span v-else class="muted">—</span>
+                            </td>
+                            <td>{{ formatDate(profile.checked_at) }}</td>
+                            <td class="health-error">
+                                <span>{{ profile.error || '—' }}</span>
+                                <details v-if="Object.keys(profile.results).length" class="health-result-details">
+                                    <summary>Probe details</summary>
+                                    <ul>
+                                        <li v-for="(result, name) in profile.results" :key="name">
+                                            <strong>{{ name }}:</strong>
+                                            <span v-if="result.error">{{ result.error }}</span>
+                                            <span v-else-if="result.last_synced_at">Synced {{ formatDate(result.last_synced_at) }}</span>
+                                            <span v-else-if="result.ok">{{ result.status ? `HTTP ${result.status}` : 'OK' }}</span>
+                                            <span v-else>HTTP {{ result.status ?? 'request failed' }}</span>
+                                        </li>
+                                    </ul>
+                                </details>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <p class="inbound-health-note">
+            Only the latest active global JSON setting is applied by generated profiles; {{ props.globalJsonSettings.active }} active global setting(s) are stored.
             WireGuard and AmneziaWG full-tunnel checks are marked unsupported until the runner can safely establish those tunnel types.
             An unsupported result does not mean the inbound is down.
         </p>
@@ -147,6 +240,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 .health-status--healthy, .target-ok { color: #166534; background: #dcfce7; }
 .health-status--unhealthy, .target-failed { color: #991b1b; background: #fee2e2; }
 .health-status--unsupported { color: #854d0e; background: #fef3c7; }
+.health-status--pending { color: #1d4ed8; background: #dbeafe; }
 .health-status--unknown { color: #475569; background: #e2e8f0; }
 .health-targets { display: flex; flex-wrap: wrap; gap: .35rem; }
 .health-targets span { padding: .2rem .4rem; border-radius: .35rem; font-size: .75rem; white-space: nowrap; }
@@ -157,6 +251,10 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 .health-result-details li { margin-top: .2rem; overflow-wrap: anywhere; }
 .muted, .inbound-health-note { color: var(--text-muted, #64748b); }
 .inbound-health-note { margin: 0; font-size: .875rem; }
+.profile-health-header { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+.profile-health-header h2, .profile-health-header p { margin: 0; }
+.profile-health-header p { margin-top: .25rem; color: var(--text-muted, #64748b); font-size: .875rem; }
+.profile-health-counts { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .8rem; color: var(--text-muted, #64748b); }
 .empty-state { padding: 2.5rem; text-align: center; }
 .empty-state p { margin-bottom: 0; color: var(--text-muted, #64748b); }
 </style>

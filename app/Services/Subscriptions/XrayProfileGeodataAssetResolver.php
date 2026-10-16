@@ -17,83 +17,137 @@ final class XrayProfileGeodataAssetResolver
     /** @param array<string, mixed> $profile @return array<string, array<string, string>> */
     public function prepareProfile(array $profile): array
     {
-        $profileAssets = data_get($profile, 'geodata.assets');
+        $profileAssets = data_get($profile, 'geodata.assets', []);
+        $preparedAssets = $this->prepareDeclaredAssets(is_array($profileAssets) ? $profileAssets : []);
+        $preparedAssets = $this->prepareMissingAssets($profile, $preparedAssets);
 
-        if (! is_array($profileAssets)) {
+        return $preparedAssets;
+    }
+
+    /** @param array<int, mixed> $profileAssets @return array<string, array<string, string>> */
+    private function prepareDeclaredAssets(array $profileAssets): array
+    {
+        $preparedAssets = [];
+
+        foreach ($profileAssets as $profileAsset) {
+            foreach ($this->prepareDeclaredAsset($profileAsset) as $assetName => $asset) {
+                $preparedAssets[$assetName] = $asset;
+            }
+        }
+
+        return $preparedAssets;
+    }
+
+    /** @return array<string, array<string, string>> */
+    private function prepareDeclaredAsset(mixed $profileAsset): array
+    {
+        if (! is_array($profileAsset)
+            || ! is_string($profileAsset['url'] ?? null)
+            || ! is_string($profileAsset['file'] ?? null)) {
+            return [];
+        }
+
+        $assetName = $this->assetName($profileAsset['file']);
+
+        if ($assetName === null) {
             return [];
         }
 
         $globalSetting = XrayJsonSetting::query()->latestActive()->first();
-        $globalAssets = data_get($globalSetting?->geodata, 'assets', []);
-        $customSettings = XrayRoutingGeodata::query()->get();
-        $preparedAssets = [];
+        $globalAsset = data_get($globalSetting?->geodata, 'assets.'.$assetName);
 
-        foreach ($profileAssets as $profileAsset) {
-            if (! is_array($profileAsset)
-                || ! is_string($profileAsset['url'] ?? null)
-                || ! is_string($profileAsset['file'] ?? null)) {
-                continue;
-            }
-
-            $assetName = $this->assetName($profileAsset['file']);
-
-            if ($assetName === null) {
-                continue;
-            }
-
-            $globalAsset = is_array($globalAssets) ? ($globalAssets[$assetName] ?? null) : null;
-
-            if (is_array($globalAsset) && ($globalAsset['url'] ?? null) === $profileAsset['url']) {
-                $preparedAssets[$assetName] = $this->prepareAsset(
-                    $assetName,
-                    $profileAsset['url'],
-                    (string) data_get($globalSetting?->geodata, 'last_updated', ''),
-                    $globalAsset,
-                );
-
-                continue;
-            }
-
-            $matchedCustomSetting = false;
-
-            foreach ($customSettings as $customSetting) {
-                $customAsset = $this->customAssets($customSetting)[$assetName] ?? null;
-
-                if (! is_array($customAsset) || ($customAsset['url'] ?? null) !== $profileAsset['url']) {
-                    continue;
-                }
-
-                $lastUpdated = (string) ($customSetting->last_updated
-                    ?? $customSetting->updated_at?->toIso8601String()
-                    ?? '');
-                $preparedAsset = $this->prepareAsset(
-                    $assetName,
-                    $profileAsset['url'],
-                    $lastUpdated,
-                    $customAsset,
-                );
-                $preparedAssets[$assetName] = $preparedAsset;
-                $this->storeCustomAsset($customSetting, $assetName, $preparedAsset);
-                $matchedCustomSetting = true;
-
-                break;
-            }
-
-            if ($matchedCustomSetting) {
-                continue;
-            }
-
-            $previousAsset = $this->manifestAsset($assetName, $profileAsset['url']);
-            $preparedAssets[$assetName] = $this->prepareAsset(
+        if (is_array($globalAsset) && ($globalAsset['url'] ?? null) === $profileAsset['url']) {
+            return [$assetName => $this->prepareAsset(
                 $assetName,
                 $profileAsset['url'],
-                (string) ($profileAsset['last_updated'] ?? $previousAsset['last_updated'] ?? ''),
-                $previousAsset,
-            );
-            $this->storeManifestAsset($assetName, $preparedAssets[$assetName]);
+                (string) data_get($globalSetting?->geodata, 'last_updated', ''),
+                $globalAsset,
+            )];
+        }
+
+        $customAsset = $this->prepareCustomDeclaredAsset($assetName, $profileAsset['url']);
+
+        if ($customAsset !== null) {
+            return [$assetName => $customAsset];
+        }
+
+        return [$assetName => $this->prepareManifestDeclaredAsset($assetName, $profileAsset)];
+    }
+
+    /** @return array<string, string>|null */
+    private function prepareCustomDeclaredAsset(string $assetName, string $url): ?array
+    {
+        foreach (XrayRoutingGeodata::query()->get() as $customSetting) {
+            $customAsset = $this->customAssets($customSetting)[$assetName] ?? null;
+
+            if (! is_array($customAsset) || ($customAsset['url'] ?? null) !== $url) {
+                continue;
+            }
+
+            $lastUpdated = (string) ($customSetting->last_updated
+                ?? $customSetting->updated_at?->toIso8601String()
+                ?? '');
+            $preparedAsset = $this->prepareAsset($assetName, $url, $lastUpdated, $customAsset);
+            $this->storeCustomAsset($customSetting, $assetName, $preparedAsset);
+
+            return $preparedAsset;
+        }
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $profileAsset @return array<string, string> */
+    private function prepareManifestDeclaredAsset(string $assetName, array $profileAsset): array
+    {
+        $url = (string) $profileAsset['url'];
+        $previousAsset = $this->manifestAsset($assetName, $url);
+        $preparedAsset = $this->prepareAsset(
+            $assetName,
+            $url,
+            (string) ($profileAsset['last_updated'] ?? $previousAsset['last_updated'] ?? ''),
+            $previousAsset,
+        );
+        $this->storeManifestAsset($assetName, $preparedAsset);
+
+        return $preparedAsset;
+    }
+
+    /** @param array<string, array<string, string>> $preparedAssets @return array<string, array<string, string>> */
+    private function prepareMissingAssets(array $profile, array $preparedAssets): array
+    {
+        $fallbackGeodata = XrayRoutingGeodata::query()->active()->latest('id')->first();
+
+        foreach ($this->requiredAssets($profile) as $assetName) {
+            if (isset($preparedAssets[$assetName])) {
+                continue;
+            }
+
+            $preparedAsset = $this->prepareConfiguredFallbackAsset($assetName, $fallbackGeodata);
+
+            if ($preparedAsset !== null) {
+                $preparedAssets[$assetName] = $preparedAsset;
+            }
         }
 
         return $preparedAssets;
+    }
+
+    /** @return array<string, string>|null */
+    private function prepareConfiguredFallbackAsset(string $assetName, ?XrayRoutingGeodata $setting): ?array
+    {
+        $fallbackAsset = $setting === null ? null : ($this->customAssets($setting)[$assetName] ?? null);
+
+        if (! is_array($fallbackAsset) || ! is_string($fallbackAsset['url'] ?? null)) {
+            return null;
+        }
+
+        $lastUpdated = (string) ($setting->last_updated
+            ?? $setting->updated_at?->toIso8601String()
+            ?? '');
+        $preparedAsset = $this->prepareAsset($assetName, $fallbackAsset['url'], $lastUpdated, $fallbackAsset);
+        $this->storeCustomAsset($setting, $assetName, $preparedAsset);
+
+        return $preparedAsset;
     }
 
     /**
@@ -143,26 +197,31 @@ final class XrayProfileGeodataAssetResolver
     private function requiredAssets(array $profile): array
     {
         $required = [];
-        $rules = data_get($profile, 'routing.rules', []);
-
-        foreach (is_array($rules) ? $rules : [] as $rule) {
-            if (! is_array($rule)) {
-                continue;
-            }
-
-            foreach (['ip' => 'geoip', 'domain' => 'geosite'] as $field => $assetName) {
-                $values = $rule[$field] ?? [];
-
-                foreach (is_array($values) ? $values : [] as $value) {
-                    if (is_string($value) && str_starts_with($value, $assetName.':')) {
-                        $required[$assetName] = $assetName;
-                        break;
-                    }
-                }
-            }
-        }
+        $this->collectRequiredAssets($profile, $required);
 
         return array_values($required);
+    }
+
+    /** @param array<string, string> $required */
+    private function collectRequiredAssets(mixed $value, array &$required): void
+    {
+        if (is_string($value)) {
+            foreach (['geoip', 'geosite'] as $assetName) {
+                if (str_starts_with($value, $assetName.':')) {
+                    $required[$assetName] = $assetName;
+                }
+            }
+
+            return;
+        }
+
+        if (! is_array($value)) {
+            return;
+        }
+
+        foreach ($value as $child) {
+            $this->collectRequiredAssets($child, $required);
+        }
     }
 
     private function assetName(string $file): ?string

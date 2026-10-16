@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\XrayInboundHealthCheck;
-use App\Services\Subscriptions\XrayGeodataAssetService;
+use App\Services\Subscriptions\XrayProfileGeodataAssetResolver;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -17,7 +17,7 @@ final class XrayTunnelProbeRunner
 {
     public function __construct(
         private readonly XrayJsonProfileNormalizer $profileNormalizer,
-        private readonly XrayGeodataAssetService $geodataAssets,
+        private readonly XrayProfileGeodataAssetResolver $profileGeodataAssets,
     ) {}
 
     /** @var array<string, string> */
@@ -40,7 +40,7 @@ final class XrayTunnelProbeRunner
             'settings' => ['auth' => 'noauth', 'udp' => false],
             'tag' => 'inbound-health-socks',
         ]];
-        $preparedAssets = $this->geodataAssets->ensureProfileAssets($profile);
+        $preparedAssets = $this->profileGeodataAssets->prepareProfile($profile);
         $profile = $this->profileNormalizer->normalizeProfile($profile);
         $configPath = $this->writeConfig($profile, $proxyPort);
 
@@ -49,7 +49,7 @@ final class XrayTunnelProbeRunner
                 $configPath,
                 $proxyPort,
                 $targetTimeoutSeconds,
-                $this->geodataAssets->hasVerifiedAssetsForProfile($profile, $preparedAssets),
+                $this->profileGeodataAssets->hasVerifiedAssets($profile, $preparedAssets),
             );
         } finally {
             @unlink($configPath);

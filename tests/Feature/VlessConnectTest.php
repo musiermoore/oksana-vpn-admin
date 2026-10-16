@@ -1037,6 +1037,59 @@ class VlessConnectTest extends TestCase
         $this->assertEqualsCanonicalizing([$configIds['v2-only'], $configIds['both']], $connectV2Ids);
     }
 
+    public function test_health_check_subscription_names_include_the_inbound_number(): void
+    {
+        $user = User::query()->create([
+            'name' => '@OksanaVpnDebugBot',
+            'telegram' => '@OksanaVpnDebugBot',
+            'telegram_id' => '000000000',
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'is_active' => false,
+            'is_health_check_user' => true,
+        ]);
+        $server = $this->createServer('Health server', 'HS1', 'health.example.com');
+        $server->forceFill(['is_active' => true, 'is_ready' => true])->save();
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 137,
+            'is_active' => true,
+            'is_public' => true,
+            'is_visible_in_connect' => true,
+            'is_visible_in_connect_v2' => true,
+            'params' => ['protocol' => 'vless'],
+        ]);
+        VlessConfig::query()->create([
+            'server_id' => $server->id,
+            'inbound_id' => $inbound->external_id,
+            'xray_inbound_id' => $inbound->id,
+            'user_id' => $user->id,
+            'name' => 'health-check-137',
+            'is_active' => true,
+            'enable' => true,
+            'uuid' => 'health-check-uuid-137',
+            'port' => 443,
+            'protocol' => 'vless',
+            'type' => 'tcp',
+            'encryption' => 'none',
+            'security' => 'reality',
+            'pbk' => 'public-key',
+            'sni' => 'health.example.com',
+            'sid' => 'short-id',
+            'fp' => 'chrome',
+        ]);
+
+        $subscriptions = app(UserSubscriptionService::class);
+        $connectNode = $subscriptions->buildNamedNodes($user)[0];
+        $connectV2Profiles = json_decode(
+            $subscriptions->buildConnectV2($user)->content,
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        $this->assertSame('Health server • inbound #137', $connectNode->meta['name']);
+        $this->assertSame('Health server • inbound #137', data_get($connectV2Profiles, '0.remarks'));
+    }
+
     public function test_connect_respects_combined_server_and_external_subscription_sort_order(): void
     {
         $user = $this->createActiveUser('Sorted User', '@sorted-user', '778899');

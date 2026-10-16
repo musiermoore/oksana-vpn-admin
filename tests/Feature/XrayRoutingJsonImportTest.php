@@ -13,6 +13,7 @@ use App\Models\VlessExternalSubscriptionConfig;
 use App\Models\XrayJsonSetting;
 use App\Models\XrayInbound;
 use App\Models\XrayRouting;
+use App\Models\XrayRoutingGeodata;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -292,12 +293,12 @@ class XrayRoutingJsonImportTest extends TestCase
                 ],
             ],
         ];
-        $assets = app(\App\Services\Subscriptions\XrayGeodataAssetService::class);
-        $preparedAssets = $assets->ensureProfileAssets($profile);
+        $assets = app(\App\Services\Subscriptions\XrayProfileGeodataAssetResolver::class);
+        $preparedAssets = $assets->prepareProfile($profile);
 
         $this->assertSame($geoipContents, file_get_contents(storage_path('app/xray-geodata/geoip.dat')));
         $this->assertSame($geositeContents, file_get_contents(storage_path('app/xray-geodata/geosite.dat')));
-        $this->assertTrue($assets->hasVerifiedAssetsForProfile($profile, $preparedAssets));
+        $this->assertTrue($assets->hasVerifiedAssets($profile, $preparedAssets));
         Http::assertSentCount(2);
     }
 
@@ -323,10 +324,58 @@ class XrayRoutingJsonImportTest extends TestCase
         File::ensureDirectoryExists(storage_path('app/xray-geodata'));
         file_put_contents(storage_path('app/xray-geodata/geosite.dat'), 'geosite-data');
 
-        $this->assertFalse(app(\App\Services\Subscriptions\XrayGeodataAssetService::class)
-            ->hasVerifiedAssetsForProfile([
+        $this->assertFalse(app(\App\Services\Subscriptions\XrayProfileGeodataAssetResolver::class)
+            ->hasVerifiedAssets([
                 'routing' => ['rules' => [['type' => 'field', 'ip' => ['geoip:ru']]]],
             ]));
+    }
+
+    public function test_probe_prepares_geodata_assets_selected_for_custom_profiles(): void
+    {
+        $url = 'https://assets.example.com/custom-geosite.dat';
+        $contents = 'custom-geosite-content';
+        $setting = XrayRoutingGeodata::query()->create([
+            'name' => 'Custom profile geodata',
+            'geosite_url' => $url,
+            'assets' => [['url' => $url, 'file' => 'geosite.dat']],
+            'is_active' => true,
+        ]);
+        Http::fake([$url => Http::response($contents)]);
+
+        $profile = [
+            'geodata' => ['assets' => [['url' => $url, 'file' => 'geosite.dat']]],
+            'routing' => ['rules' => [['type' => 'field', 'domain' => ['geosite:youtube']]]],
+        ];
+        $assets = app(\App\Services\Subscriptions\XrayProfileGeodataAssetResolver::class);
+        $preparedAssets = $assets->prepareProfile($profile);
+
+        $this->assertSame($contents, file_get_contents(storage_path('app/xray-geodata/geosite.dat')));
+        $this->assertTrue($assets->hasVerifiedAssets($profile, $preparedAssets));
+        $this->assertSame(hash('sha256', $contents), data_get($setting->fresh()->assets, '0.sha256'));
+        Http::assertSentCount(1);
+    }
+
+    public function test_probe_caches_geodata_embedded_in_external_json_profiles(): void
+    {
+        $url = 'https://subscription-assets.example.com/geosite.dat';
+        $contents = 'external-geosite-content';
+        Http::fake([$url => Http::response($contents)]);
+
+        $profile = [
+            'geodata' => ['assets' => [['url' => $url, 'file' => 'geosite.dat']]],
+            'routing' => ['rules' => [['type' => 'field', 'domain' => ['geosite:youtube']]]],
+        ];
+        $assets = app(\App\Services\Subscriptions\XrayProfileGeodataAssetResolver::class);
+        $preparedAssets = $assets->prepareProfile($profile);
+
+        $this->assertSame($contents, file_get_contents(storage_path('app/xray-geodata/geosite.dat')));
+        $this->assertTrue($assets->hasVerifiedAssets($profile, $preparedAssets));
+        $this->assertSame($url, data_get(json_decode(
+            file_get_contents(storage_path('app/xray-geodata/manifest.json')),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        ), 'geosite.url'));
+        Http::assertSentCount(1);
     }
 
     public function test_import_without_geodata_urls_keeps_default_asset_behavior(): void

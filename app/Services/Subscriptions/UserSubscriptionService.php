@@ -230,22 +230,30 @@ class UserSubscriptionService
         $names = $this->nodeNameService->buildNames($nodes);
 
         $namedNodes = array_map(
-            fn (NormalizedNode $node) => new NormalizedNode(
-                id: $node->id,
-                serverName: $node->serverName,
-                sortGroupOrder: $node->sortGroupOrder,
-                sortItemOrder: $node->sortItemOrder,
-                protocol: $node->protocol,
-                transport: $node->transport,
-                uri: $node->uri,
-                serverId: $node->serverId,
-                configId: $node->configId,
-                sourceType: $node->sourceType,
-                sortServerName: $node->sortServerName,
-                meta: [...$node->meta, 'name' => $externalPurpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2
+            function (NormalizedNode $node) use ($user, $externalPurpose, $names): NormalizedNode {
+                $name = $externalPurpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2
                     ? ($node->meta['name'] ?? $names[$node->id] ?? $node->serverName)
-                    : ($names[$node->id] ?? $node->serverName)],
-            ),
+                    : ($names[$node->id] ?? $node->serverName);
+
+                if ($user->is_health_check_user && isset($node->meta['config_inbound_id'])) {
+                    $name = sprintf('%s • inbound #%s', $node->serverName, $node->meta['config_inbound_id']);
+                }
+
+                return new NormalizedNode(
+                    id: $node->id,
+                    serverName: $node->serverName,
+                    sortGroupOrder: $node->sortGroupOrder,
+                    sortItemOrder: $node->sortItemOrder,
+                    protocol: $node->protocol,
+                    transport: $node->transport,
+                    uri: $node->uri,
+                    serverId: $node->serverId,
+                    configId: $node->configId,
+                    sourceType: $node->sourceType,
+                    sortServerName: $node->sortServerName,
+                    meta: [...$node->meta, 'name' => $name],
+                );
+            },
             $nodes
         );
 

@@ -223,7 +223,7 @@ class RoscomVpnJsonSettingsImporter
         $assets = $this->geodataAssets->prepare([
             'geoip' => $urls['geoip_url'] ?? '',
             'geosite' => $urls['geosite_url'] ?? '',
-        ], $lastUpdated, $previousSetting);
+        ], $lastUpdated, data_get($previousSetting?->geodata, 'assets', []));
 
         return array_filter([
             ...$urls,

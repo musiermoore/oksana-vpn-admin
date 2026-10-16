@@ -11,6 +11,7 @@ use App\Models\SubscriptionProfileHealthCheck;
 use App\Models\User;
 use App\Services\InboundHealthCheckScheduler;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,24 +19,10 @@ final class XrayInboundHealthController
 {
     public function index(): Response
     {
-        $inbounds = XrayInbound::query()
-            ->where('is_active', true)
-            ->whereHas('server', fn ($query) => $query->where('is_active', true)->where('is_ready', true))
-            ->with(['server:id,name,code', 'healthCheck'])
-            ->get()
-            ->map(fn (XrayInbound $inbound): array => [
-                'id' => $inbound->id,
-                'server' => $inbound->server?->name,
-                'server_code' => $inbound->server?->code,
-                'external_id' => $inbound->external_id,
-                'protocol' => (string) data_get($inbound->params, 'protocol', 'unknown'),
-                'remark' => (string) data_get($inbound->params, 'remark', ''),
-                'status' => $inbound->healthCheck?->status ?? XrayInboundHealthCheck::STATUS_UNKNOWN,
-                'checked_at' => $inbound->healthCheck?->checked_at?->toIso8601String(),
-                'error' => $inbound->healthCheck?->error,
-                'results' => $inbound->healthCheck?->results ?? [],
-            ])
-            ->values();
+        $technicalUser = User::query()
+            ->where('is_health_check_user', true)
+            ->first(['id', 'name', 'telegram_id']);
+        $inbounds = $this->inboundPayloads($technicalUser);
         $profiles = SubscriptionProfileHealthCheck::query()
             ->orderBy('flow')
             ->orderBy('name')
@@ -54,10 +41,7 @@ final class XrayInboundHealthController
         return Inertia::render('XrayInboundHealth/Index', [
             'inbounds' => $inbounds,
             'profiles' => $profiles,
-            'technicalUser' => User::query()
-                ->where('is_health_check_user', true)
-                ->first(['name', 'telegram_id'])
-                ?->only(['name', 'telegram_id']),
+            'technicalUser' => $technicalUser?->only(['name', 'telegram_id']),
             'profileSummary' => [
                 'total' => $profiles->count(),
                 'healthy' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_HEALTHY)->count(),
@@ -66,6 +50,10 @@ final class XrayInboundHealthController
                 'unsupported' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_UNSUPPORTED)->count(),
                 'pending' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_PENDING)->count(),
                 'unknown' => $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_UNKNOWN)->count(),
+            ],
+            'profileFlowSummary' => [
+                'connect' => $profiles->where('flow', 'connect')->count(),
+                'connectV2' => $profiles->where('flow', 'connect-v2')->count(),
             ],
             'summary' => [
                 'total' => $inbounds->count(),
@@ -80,6 +68,45 @@ final class XrayInboundHealthController
                 'applied_name' => XrayJsonSetting::query()->latestActive()->value('name'),
             ],
         ]);
+    }
+
+    private function inboundPayloads(?User $technicalUser): Collection
+    {
+        return XrayInbound::query()
+            ->where('is_active', true)
+            ->whereHas('server', fn ($query) => $query->where('is_active', true)->where('is_ready', true))
+            ->with([
+                'server:id,name,code',
+                'healthCheck',
+                'vlessConfigs' => fn ($query) => $query
+                    ->where('user_id', $technicalUser?->id ?? 0)
+                    ->select(['id', 'xray_inbound_id', 'user_id', 'is_active', 'enable']),
+            ])
+            ->get()
+            ->map(function (XrayInbound $inbound): array {
+                $hasClientConfig = $inbound->vlessConfigs->contains(
+                    fn ($config): bool => $config->is_active && $config->enable,
+                );
+                $inclusionStatus = fn (bool $isVisible): string => ! $inbound->is_public || ! $isVisible
+                    ? 'hidden'
+                    : ($hasClientConfig ? 'included' : 'no-config');
+
+                return [
+                    'id' => $inbound->id,
+                    'server' => $inbound->server?->name,
+                    'server_code' => $inbound->server?->code,
+                    'external_id' => $inbound->external_id,
+                    'protocol' => (string) data_get($inbound->params, 'protocol', 'unknown'),
+                    'remark' => (string) data_get($inbound->params, 'remark', ''),
+                    'connect_inclusion' => $inclusionStatus($inbound->is_visible_in_connect),
+                    'connect_v2_inclusion' => $inclusionStatus($inbound->is_visible_in_connect_v2),
+                    'status' => $inbound->healthCheck?->status ?? XrayInboundHealthCheck::STATUS_UNKNOWN,
+                    'checked_at' => $inbound->healthCheck?->checked_at?->toIso8601String(),
+                    'error' => $inbound->healthCheck?->error,
+                    'results' => $inbound->healthCheck?->results ?? [],
+                ];
+            })
+            ->values();
     }
 
     public function run(InboundHealthCheckScheduler $scheduler): RedirectResponse

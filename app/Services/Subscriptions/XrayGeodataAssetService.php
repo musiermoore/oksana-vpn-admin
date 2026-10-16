@@ -50,87 +50,11 @@ class XrayGeodataAssetService
         ];
     }
 
-    /** @param array<string, mixed> $profile */
-    /** @param array<string, mixed> $profile @return array<string, array<string, string>> */
-    public function ensureProfileAssets(array $profile): array
-    {
-        $assets = data_get($profile, 'geodata.assets');
-        $setting = XrayJsonSetting::query()->latestActive()->first();
-        $managedAssets = data_get($setting?->geodata, 'assets', []);
-
-        if (! is_array($assets) || ! is_array($managedAssets)) {
-            return [];
-        }
-
-        $urls = [];
-
-        foreach ($assets as $asset) {
-            if (! is_array($asset) || ! is_string($asset['url'] ?? null) || ! is_string($asset['file'] ?? null)) {
-                continue;
-            }
-
-            $assetName = match (basename($asset['file'])) {
-                'geoip.dat' => 'geoip',
-                'geosite.dat' => 'geosite',
-                default => null,
-            };
-
-            if ($assetName !== null) {
-                $managedAsset = $managedAssets[$assetName] ?? null;
-
-                if (is_array($managedAsset) && ($managedAsset['url'] ?? null) === $asset['url']) {
-                    $urls[$assetName] = $asset['url'];
-                }
-            }
-        }
-
-        if ($urls === []) {
-            return [];
-        }
-
-        $lastUpdated = (string) data_get($setting?->geodata, 'last_updated', '');
-
-        return $this->prepare($urls, $lastUpdated, $setting);
-    }
-
-    /**
-     * @param array<string, mixed> $profile
-     * @param array<string, array<string, string>> $preparedAssets
-     */
-    public function hasVerifiedAssetsForProfile(array $profile, array $preparedAssets = []): bool
-    {
-        $requiredAssets = $this->requiredAssets($profile);
-
-        if ($requiredAssets === []) {
-            return false;
-        }
-
-        $setting = XrayJsonSetting::query()->latestActive()->first();
-
-        foreach ($requiredAssets as $asset) {
-            $managedAsset = $preparedAssets[$asset] ?? data_get($setting?->geodata, 'assets.'.$asset);
-            $path = storage_path('app/'.self::ASSET_DIR.'/'.$asset.'.dat');
-
-            if (! is_array($managedAsset)
-                || ! is_string($managedAsset['url'] ?? null)
-                || ! $this->isCached(
-                    $path,
-                    $managedAsset['url'],
-                    (string) data_get($setting?->geodata, 'last_updated', ''),
-                    $managedAsset,
-                )) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     /**
      * @param  array<string, string>  $urls
      * @return array<string, array<string, string>>
      */
-    public function prepare(array $urls, string $lastUpdated, ?XrayJsonSetting $previousSetting = null): array
+    public function prepare(array $urls, string $lastUpdated, array $previousAssets = []): array
     {
         $prepared = [];
 
@@ -143,7 +67,7 @@ class XrayGeodataAssetService
 
             $this->assertHttpsUrl($url, $asset);
 
-            $previousAsset = $this->previousAsset($previousSetting, $asset);
+            $previousAsset = $previousAssets[$asset] ?? [];
             $path = storage_path('app/'.self::ASSET_DIR.'/'.$asset.'.dat');
 
             Log::info('Routing '.$asset.' URL: '.$url);
@@ -189,19 +113,16 @@ class XrayGeodataAssetService
 
     private function assertHttpsUrl(string $url, string $asset): void
     {
-        if (parse_url($url, PHP_URL_SCHEME) !== 'https') {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (parse_url($url, PHP_URL_SCHEME) !== 'https' || ! is_string($host) || $host === '') {
             throw new RuntimeException('Routing '.$asset.'.dat URL must use HTTPS.');
         }
-    }
 
-    /**
-     * @return array<string, string>
-     */
-    private function previousAsset(?XrayJsonSetting $previousSetting, string $asset): array
-    {
-        $item = data_get($previousSetting?->geodata, 'assets.'.$asset);
-
-        return is_array($item) ? $item : [];
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false
+            && filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            throw new RuntimeException('Routing '.$asset.'.dat URL cannot target a private or reserved IP address.');
+        }
     }
 
     /**
@@ -232,6 +153,12 @@ class XrayGeodataAssetService
         self::$verifiedAssetHashes[$cacheKey] = $isValid;
 
         return $isValid;
+    }
+
+    /** @param array<string, string> $metadata */
+    public function isVerifiedAsset(string $path, string $url, string $lastUpdated, array $metadata): bool
+    {
+        return $this->isCached($path, $url, $lastUpdated, $metadata);
     }
 
     private function download(string $url, string $asset): string
@@ -269,29 +196,4 @@ class XrayGeodataAssetService
         }
     }
 
-    /** @param array<string, mixed> $profile @return array<int, string> */
-    private function requiredAssets(array $profile): array
-    {
-        $required = [];
-        $rules = data_get($profile, 'routing.rules', []);
-
-        foreach (is_array($rules) ? $rules : [] as $rule) {
-            if (! is_array($rule)) {
-                continue;
-            }
-
-            foreach (['ip' => 'geoip', 'domain' => 'geosite'] as $field => $asset) {
-                $values = $rule[$field] ?? [];
-
-                foreach (is_array($values) ? $values : [] as $value) {
-                    if (is_string($value) && str_starts_with($value, $asset.':')) {
-                        $required[$asset] = $asset;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return array_values($required);
-    }
 }

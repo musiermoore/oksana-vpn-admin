@@ -15,6 +15,10 @@ const props = defineProps({
         type: Object,
         default: () => ({ total: 0, healthy: 0, warning: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
     },
+    profileFlowSummary: {
+        type: Object,
+        default: () => ({ connect: 0, connectV2: 0 }),
+    },
     summary: {
         type: Object,
         default: () => ({ total: 0, healthy: 0, warning: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
@@ -35,6 +39,9 @@ const statusLabel = (status) => ({
     unsupported: 'Unsupported',
     pending: 'Queued',
     unknown: 'Not checked',
+    included: 'Included',
+    hidden: 'Hidden by inbound settings',
+    'no-config': 'No active test client',
 }[status] ?? status);
 
 const statusClass = (status) => `health-status health-status--${status}`;
@@ -52,7 +59,7 @@ const formatDate = (value) => value
     : '—';
 
 const refreshResults = () => {
-    router.reload({ only: ['inbounds', 'summary', 'profiles', 'profileSummary', 'globalJsonSettings'], preserveScroll: true });
+    router.reload({ only: ['inbounds', 'summary', 'profiles', 'profileSummary', 'profileFlowSummary', 'globalJsonSettings'], preserveScroll: true });
     refreshAttempts.value += 1;
 
     if (refreshAttempts.value < 12) {
@@ -113,6 +120,8 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                         <tr>
                             <th>Server / inbound</th>
                             <th>Protocol</th>
+                            <th>/connect</th>
+                            <th>/connect-v2</th>
                             <th>Status</th>
                             <th>Destinations</th>
                             <th>Last checked</th>
@@ -126,6 +135,8 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                                 <small>{{ inbound.remark || `Inbound ${inbound.external_id}` }} · #{{ inbound.external_id }}</small>
                             </td>
                             <td>{{ inbound.protocol }}</td>
+                            <td><span :class="statusClass(inbound.connect_inclusion)">{{ statusLabel(inbound.connect_inclusion) }}</span></td>
+                            <td><span :class="statusClass(inbound.connect_v2_inclusion)">{{ statusLabel(inbound.connect_v2_inclusion) }}</span></td>
                             <td><span :class="statusClass(inbound.status)">{{ statusLabel(inbound.status) }}</span></td>
                             <td>
                                 <div v-if="Object.keys(inbound.results).length" class="health-targets">
@@ -159,10 +170,16 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
             <header class="profile-health-header">
                 <div>
                     <h2>Subscription profile health</h2>
-                    <p>
-                        Tests emitted profiles using {{ props.technicalUser?.name ?? '@OksanaVpnDebugBot' }}
-                        (Telegram ID {{ props.technicalUser?.telegram_id ?? '000000000' }}).
-                    </p>
+                    <div>
+                        <p>
+                            Tests emitted profiles using {{ props.technicalUser?.name ?? '@OksanaVpnDebugBot' }}
+                            (Telegram ID {{ props.technicalUser?.telegram_id ?? '000000000' }}).
+                        </p>
+                        <p class="flow-coverage">
+                            /connect: {{ profileFlowSummary.connect }} profiles ·
+                            /connect-v2: {{ profileFlowSummary.connectV2 }} profiles
+                        </p>
+                    </div>
                 </div>
                 <div class="profile-health-counts">
                     <span>Healthy {{ profileSummary.healthy }}</span>
@@ -246,6 +263,9 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 .health-status--unsupported { color: #854d0e; background: #fef3c7; }
 .health-status--pending { color: #1d4ed8; background: #dbeafe; }
 .health-status--unknown { color: #475569; background: #e2e8f0; }
+.health-status--included { color: #166534; background: #dcfce7; }
+.health-status--hidden { color: #475569; background: #e2e8f0; }
+.health-status--no-config { color: #854d0e; background: #fef3c7; }
 .health-targets { display: flex; flex-wrap: wrap; gap: .35rem; }
 .health-targets span { padding: .2rem .4rem; border-radius: .35rem; font-size: .75rem; white-space: nowrap; }
 .health-error { min-width: 14rem; max-width: 25rem; color: #991b1b; font-size: .85rem; }
@@ -258,6 +278,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 .profile-health-header { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color, #e5e7eb); }
 .profile-health-header h2, .profile-health-header p { margin: 0; }
 .profile-health-header p { margin-top: .25rem; color: var(--text-muted, #64748b); font-size: .875rem; }
+.profile-health-header .flow-coverage { font-weight: 600; }
 .profile-health-counts { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .8rem; color: var(--text-muted, #64748b); }
 .empty-state { padding: 2.5rem; text-align: center; }
 .empty-state p { margin-bottom: 0; color: var(--text-muted, #64748b); }

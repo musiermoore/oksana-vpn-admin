@@ -8,6 +8,8 @@ use App\DTOs\Subscription\NormalizedNode;
 use App\Models\SubscriptionProfileHealthCheck;
 use App\Models\XrayRouting;
 use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
+use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
+use App\Services\Subscriptions\XrayGeodataAssetService;
 
 final class SubscriptionProfileProbe
 {
@@ -18,6 +20,8 @@ final class SubscriptionProfileProbe
     public function __construct(
         private readonly XrayInboundProbeRunner $runner,
         private readonly ConnectJsonBuilder $jsonBuilder,
+        private readonly ConnectJsonProfileSettingsProvider $settingsProvider,
+        private readonly XrayGeodataAssetService $geodataAssets,
     ) {}
 
     /** @return array{status:string,results:array<string,mixed>,error:?string} */
@@ -89,6 +93,15 @@ final class SubscriptionProfileProbe
 
         if (! is_array($profile)) {
             throw new \RuntimeException('External config did not produce a JSON client profile.');
+        }
+
+        $geodata = $this->geodataAssets->mergeDefaultGeodata(
+            is_array($profile['geodata'] ?? null) ? $profile['geodata'] : null,
+            $this->settingsProvider->geodata(),
+        );
+
+        if ($geodata !== null) {
+            $profile['geodata'] = $geodata;
         }
 
         return $this->checkJsonProfile($profile);

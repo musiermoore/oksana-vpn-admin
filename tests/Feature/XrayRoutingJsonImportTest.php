@@ -241,6 +241,94 @@ class XrayRoutingJsonImportTest extends TestCase
         $this->assertStringContainsString('"settings": {}', (string) $response->getContent());
     }
 
+    public function test_probe_asset_preparation_repairs_corrupt_managed_geodata(): void
+    {
+        $geoipUrl = 'https://assets.example.com/geoip.dat';
+        $geositeUrl = 'https://assets.example.com/geosite.dat';
+        $geoipContents = 'valid-geoip-data';
+        $geositeContents = 'valid-geosite-data';
+
+        XrayJsonSetting::query()->create([
+            'name' => 'Global geodata',
+            'source' => 'manual_global',
+            'geodata' => [
+                'last_updated' => '20261016',
+                'assets' => [
+                    'geoip' => [
+                        'url' => $geoipUrl,
+                        'file' => 'geoip.dat',
+                        'last_updated' => '20261016',
+                        'sha256' => hash('sha256', $geoipContents),
+                    ],
+                    'geosite' => [
+                        'url' => $geositeUrl,
+                        'file' => 'geosite.dat',
+                        'last_updated' => '20261016',
+                        'sha256' => hash('sha256', $geositeContents),
+                    ],
+                ],
+            ],
+            'is_active' => true,
+        ]);
+
+        File::ensureDirectoryExists(storage_path('app/xray-geodata'));
+        file_put_contents(storage_path('app/xray-geodata/geoip.dat'), 'truncated');
+        Http::fake([
+            $geoipUrl => Http::response($geoipContents),
+            $geositeUrl => Http::response($geositeContents),
+        ]);
+
+        $profile = [
+            'geodata' => [
+                'assets' => [
+                    ['url' => $geoipUrl, 'file' => 'geoip.dat'],
+                    ['url' => $geositeUrl, 'file' => 'geosite.dat'],
+                ],
+            ],
+            'routing' => [
+                'rules' => [
+                    ['type' => 'field', 'ip' => ['geoip:ru']],
+                    ['type' => 'field', 'domain' => ['geosite:youtube']],
+                ],
+            ],
+        ];
+        $assets = app(\App\Services\Subscriptions\XrayGeodataAssetService::class);
+        $preparedAssets = $assets->ensureProfileAssets($profile);
+
+        $this->assertSame($geoipContents, file_get_contents(storage_path('app/xray-geodata/geoip.dat')));
+        $this->assertSame($geositeContents, file_get_contents(storage_path('app/xray-geodata/geosite.dat')));
+        $this->assertTrue($assets->hasVerifiedAssetsForProfile($profile, $preparedAssets));
+        Http::assertSentCount(2);
+    }
+
+    public function test_partial_managed_geodata_does_not_override_xrays_default_asset_directory(): void
+    {
+        XrayJsonSetting::query()->create([
+            'name' => 'Geosite only',
+            'source' => 'manual_global',
+            'geodata' => [
+                'last_updated' => '20261016',
+                'assets' => [
+                    'geosite' => [
+                        'url' => 'https://assets.example.com/geosite.dat',
+                        'file' => 'geosite.dat',
+                        'last_updated' => '20261016',
+                        'sha256' => hash('sha256', 'geosite-data'),
+                    ],
+                ],
+            ],
+            'is_active' => true,
+        ]);
+
+        File::ensureDirectoryExists(storage_path('app/xray-geodata'));
+        file_put_contents(storage_path('app/xray-geodata/geosite.dat'), 'geosite-data');
+
+        $this->assertFalse(app(\App\Services\Subscriptions\XrayGeodataAssetService::class)
+            ->hasVerifiedAssetsForProfile([
+                'routing' => ['rules' => [['type' => 'field', 'ip' => ['geoip:ru']]]],
+            ]));
+    }
+
     public function test_import_without_geodata_urls_keeps_default_asset_behavior(): void
     {
         Http::fake();

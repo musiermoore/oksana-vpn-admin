@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\XrayInboundHealthCheck;
+use App\Services\Subscriptions\XrayGeodataAssetService;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -14,7 +15,10 @@ use Throwable;
 
 final class XrayTunnelProbeRunner
 {
-    public function __construct(private readonly XrayJsonProfileNormalizer $profileNormalizer) {}
+    public function __construct(
+        private readonly XrayJsonProfileNormalizer $profileNormalizer,
+        private readonly XrayGeodataAssetService $geodataAssets,
+    ) {}
 
     /** @var array<string, string> */
     private const TARGETS = [
@@ -36,11 +40,17 @@ final class XrayTunnelProbeRunner
             'settings' => ['auth' => 'noauth', 'udp' => false],
             'tag' => 'inbound-health-socks',
         ]];
+        $preparedAssets = $this->geodataAssets->ensureProfileAssets($profile);
         $profile = $this->profileNormalizer->normalizeProfile($profile);
         $configPath = $this->writeConfig($profile, $proxyPort);
 
         try {
-            return $this->probeTargets($configPath, $proxyPort, $targetTimeoutSeconds);
+            return $this->probeTargets(
+                $configPath,
+                $proxyPort,
+                $targetTimeoutSeconds,
+                $this->geodataAssets->hasVerifiedAssetsForProfile($profile, $preparedAssets),
+            );
         } finally {
             @unlink($configPath);
         }
@@ -72,11 +82,16 @@ final class XrayTunnelProbeRunner
     }
 
     /** @return array{status: string, results: array<string, mixed>, error: ?string} */
-    private function probeTargets(string $configPath, int $proxyPort, int $targetTimeoutSeconds): array
+    private function probeTargets(
+        string $configPath,
+        int $proxyPort,
+        int $targetTimeoutSeconds,
+        bool $useManagedAssetDirectory,
+    ): array
     {
         $binary = $this->binary();
         $validation = new Process([$binary, 'run', '-test', '-format=json', '-c', $configPath]);
-        $this->configureAssetDirectory($validation);
+        $this->configureAssetDirectory($validation, $useManagedAssetDirectory);
         $validation->setTimeout(15);
         $validation->run();
 
@@ -85,7 +100,7 @@ final class XrayTunnelProbeRunner
         }
 
         $process = new Process([$binary, 'run', '-format=json', '-c', $configPath]);
-        $this->configureAssetDirectory($process);
+        $this->configureAssetDirectory($process, $useManagedAssetDirectory);
         $process->setTimeout(90);
         $process->start();
 
@@ -189,13 +204,10 @@ final class XrayTunnelProbeRunner
         return $message;
     }
 
-    private function configureAssetDirectory(Process $process): void
+    private function configureAssetDirectory(Process $process, bool $useManagedAssetDirectory): void
     {
-        $managedDirectory = storage_path('app/xray-geodata');
-        $hasManagedAssets = is_file($managedDirectory.'/geoip.dat') || is_file($managedDirectory.'/geosite.dat');
-
-        if ($hasManagedAssets) {
-            $process->setEnv(['XRAY_LOCATION_ASSET' => $managedDirectory]);
+        if ($useManagedAssetDirectory) {
+            $process->setEnv(['XRAY_LOCATION_ASSET' => storage_path('app/xray-geodata')]);
         }
     }
 

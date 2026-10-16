@@ -9,6 +9,7 @@ use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayCustomConfigRoute;
 use App\Models\XrayCustomConfigGeodata;
+use App\Models\XrayJsonSetting;
 use App\Models\XrayRouting;
 use App\Models\XrayRoutingDnsSettings;
 use App\Models\XrayRoutingGeodata;
@@ -20,6 +21,58 @@ use Tests\TestCase;
 class ConnectJsonBuilderCustomConfigTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_stored_external_json_profile_receives_default_geodata_assets(): void
+    {
+        XrayJsonSetting::query()->create([
+            'name' => 'Global JSON',
+            'source' => 'manual_global',
+            'geodata' => [
+                'assets' => [
+                    ['url' => 'https://assets.example/geoip.dat', 'file' => 'geoip.dat'],
+                    ['url' => 'https://assets.example/geosite.dat', 'file' => 'geosite.dat'],
+                ],
+            ],
+            'is_active' => true,
+        ]);
+
+        $node = new NormalizedNode(
+            id: 'external-json',
+            serverName: 'External JSON',
+            sortGroupOrder: 0,
+            sortItemOrder: 0,
+            protocol: 'vless',
+            transport: 'tcp',
+            uri: 'vless://11111111-1111-1111-1111-111111111111@external.example.com:443?type=tcp&security=tls&sni=external.example.com#External',
+            serverId: 1,
+            configId: 1,
+            sourceType: 'external_subscription',
+            sortServerName: 'external json',
+            meta: [
+                'name' => 'External JSON',
+                'json_profile' => [
+                    'outbounds' => [['protocol' => 'freedom', 'tag' => 'proxy']],
+                    'routing' => ['domainStrategy' => 'AsIs', 'rules' => [['type' => 'field', 'ip' => ['geoip:ru']]]],
+                    'geodata' => [
+                        'assets' => [['url' => 'https://upstream.example/geosite.dat', 'file' => 'geosite.dat']],
+                    ],
+                ],
+            ],
+        );
+
+        $profiles = json_decode(
+            app(ConnectJsonBuilder::class)->buildForSubscriptionType([$node], XrayRouting::SUBSCRIPTION_CONNECT_V2)->content,
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+
+        $this->assertSame('https://upstream.example/geosite.dat', data_get($profiles, '0.geodata.assets.0.url'));
+        $this->assertSame('geosite.dat', data_get($profiles, '0.geodata.assets.0.file'));
+        $this->assertSame('https://assets.example/geoip.dat', data_get($profiles, '0.geodata.assets.1.url'));
+        $this->assertSame('geoip.dat', data_get($profiles, '0.geodata.assets.1.file'));
+        $this->assertSame('geoip:ru', data_get($profiles, '0.routing.rules.0.ip.0'));
+    }
 
     public function test_grouped_custom_config_builds_balancers_routes_fallback_and_direct_default(): void
     {

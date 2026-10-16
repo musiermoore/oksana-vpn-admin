@@ -11,6 +11,7 @@ use App\Models\XrayCustomConfigOutboundGroup;
 use App\Models\XrayRouting;
 use App\Models\XrayRoutingGeodata;
 use App\Services\Subscriptions\ConnectJsonProfileSettingsProvider;
+use App\Services\Subscriptions\XrayGeodataAssetService;
 use App\Services\Subscriptions\SubscriptionUriParser;
 use App\Services\Subscriptions\XrayJsonProfileNormalizer;
 use Illuminate\Support\Collection;
@@ -21,6 +22,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         private readonly SubscriptionUriParser $parser,
         private readonly ConnectJsonProfileSettingsProvider $settingsProvider,
         private readonly XrayJsonProfileNormalizer $profileNormalizer,
+        private readonly XrayGeodataAssetService $geodataAssets,
     ) {}
 
     /**
@@ -587,6 +589,17 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             ...$node->meta['json_profile'],
             'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
         ];
+
+        if ($customConfig === null) {
+            $geodata = $this->geodataAssets->mergeDefaultGeodata(
+                is_array($profile['geodata'] ?? null) ? $profile['geodata'] : null,
+                $this->settingsProvider->geodata(),
+            );
+
+            if ($geodata !== null) {
+                $profile['geodata'] = $geodata;
+            }
+        }
 
         if ($customConfig === null && $this->settingsProvider->hasTargetedRoutingRules(
             $subscriptionType,

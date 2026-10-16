@@ -229,7 +229,7 @@ JSON output:
 - `UseChunkFiles` is kept as import metadata only.
 - If no global or target-matching routing rules exist for a generated profile's scope and target, the builder falls back to `config/connect_json.php`; rules selected for a different inbound or external config do not suppress that fallback. Stored upstream JSON profiles keep their original routing until a matching app-managed rule overrides it.
 - `/connect-v2` uses its own `connect_v2` routing scope. External nodes embedded in any generated subscription use `external`; their upstream JSON routing remains intact when no matching app-managed external rule overrides it.
-- External JSON profiles are preserved for `/connect-json` and `format=json` to keep upstream routing, balancers, and profile-level settings; `remarks` is replaced with the calculated node name.
+- External JSON profiles preserve upstream routing, balancers, and profile-level settings. Configured global geodata assets are merged in when the profile lacks those files; matching app-managed rules can override upstream routing. Health probes only point Xray at app-managed geodata when every referenced geoip/geosite file exists and matches the active setting's recorded hash, avoiding a partial or stale app directory overriding Xray's normal asset lookup.
 - Empty `tcpSettings: []` and HTTP inbound `settings: []` are normalized to objects for Xray compatibility.
 
 Custom Xray JSON configurations:

@@ -47,12 +47,46 @@ const groupMemberExpandedServers = ref(new Set());
 const groupMemberExpandedSubscriptions = ref(new Set());
 const groupMemberSnapshot = ref(null);
 const splitRouteValues = (value) => String(value || '').split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
-const routes = ref((initial.routes || []).map((route) => {
-    const rules = route.rules || {};
-    const matchType = Object.keys(rules).find((key) => ['domain', 'ip', 'port', 'network', 'protocol'].includes(key)) || 'domain';
-    const values = Array.isArray(rules[matchType]) ? rules[matchType].map((value) => String(value).replace(/^domain:/, '')) : splitRouteValues(rules[matchType]);
-    return { ...route, match_type: matchType, match_values: values.join(', '), match_values_list: values, value_input: '', target_type: route.target_type || 'balancer', target_tag: route.target_tag || '', _menuOpen: false };
-}));
+const routeMatchTypes = ['domain', 'ip', 'port', 'network', 'protocol'];
+const normalizeMatchRules = (rules) => {
+    const normalized = { ...(rules || {}) };
+    const domains = Array.isArray(normalized.domain) ? normalized.domain : splitRouteValues(normalized.domain);
+    const geoipValues = domains.filter((value) => String(value).startsWith('geoip:'));
+    if (geoipValues.length) {
+        normalized.domain = domains.filter((value) => !String(value).startsWith('geoip:'));
+        normalized.ip = [...(Array.isArray(normalized.ip) ? normalized.ip : splitRouteValues(normalized.ip)), ...geoipValues];
+        if (normalized.domain.length === 0) delete normalized.domain;
+    }
+    return normalized;
+};
+const routeValuesFromRule = (type, value) => {
+    if (type === 'network') {
+        const values = Array.isArray(value) ? value : splitRouteValues(value);
+        return values.includes('tcp') && values.includes('udp') ? 'tcp,udp' : (values[0] || 'tcp,udp');
+    }
+
+    const values = Array.isArray(value) ? value : splitRouteValues(value);
+    return values.map((item) => type === 'domain' ? String(item).replace(/^domain:/, '') : String(item));
+};
+const normalizeRoute = (route, index) => {
+    const rules = normalizeMatchRules(route.rules);
+    let matchTypes = routeMatchTypes.filter((type) => Object.hasOwn(rules, type));
+    if (matchTypes.length === 0) matchTypes = [route.match_type || 'domain'];
+    const matchValuesByType = Object.fromEntries(matchTypes.map((type) => [type, routeValuesFromRule(type, rules[type] ?? (type === 'network' ? 'tcp,udp' : []))]));
+
+    return {
+        ...route,
+        name: route.name || `Route ${index + 1}`,
+        match_types: matchTypes,
+        match_values_by_type: matchValuesByType,
+        add_match_type: routeMatchTypes.find((type) => !matchTypes.includes(type)) || '',
+        target_type: route.target_type || 'balancer',
+        target_tag: route.target_tag || '',
+        is_active: route.is_active ?? true,
+        _menuOpen: false,
+    };
+};
+const routes = ref((initial.routes || []).map(normalizeRoute));
 const dnsOptions = ref([...props.dns_settings]);
 const geodataOptions = ref([...props.geodata]);
 const previewMode = ref('admin');
@@ -98,6 +132,7 @@ const logLevelOptions = [
 ];
 const targetTypeOptions = [{ value: 'balancer', label: 'Outbound group / Balancer' }, { value: 'direct', label: 'Direct' }, { value: 'block', label: 'Block' }];
 const matchTypeOptions = [{ value: 'domain', label: 'Domains' }, { value: 'ip', label: 'IP addresses / CIDRs' }, { value: 'port', label: 'Ports' }, { value: 'network', label: 'Networks' }, { value: 'protocol', label: 'Protocols' }];
+const networkOptions = [{ value: 'tcp', label: 'TCP' }, { value: 'udp', label: 'UDP' }, { value: 'tcp,udp', label: 'TCP + UDP' }];
 const routeMatchLabels = { domain: 'Domains', ip: 'IP addresses / CIDRs', port: 'Ports', network: 'Networks', protocol: 'Protocols' };
 const groupOptions = computed(() => groups.value.map((group) => ({ value: group.tag, label: group.name || group.tag })));
 const strategyLabel = (value) => strategyOptions.find((option) => option.value === value)?.label || value;
@@ -260,19 +295,31 @@ const toggleAllGroupMembers = (field, members, value) => members.forEach((member
 const toggleMemberServer = (server, value) => server.xray_inbounds.forEach((inbound) => activeGroup.value && toggleGroup(activeGroup.value, 'xray_inbound_ids', inbound.id, value));
 const toggleMemberSubscription = (subscription, value) => activeGroup.value && toggleGroup(activeGroup.value, 'external_subscription_ids', subscription.id, value);
 const buildGroups = () => groups.value.map(({ _tagManuallyEdited, _menuOpen, ...group }, index) => ({ ...group, xray_inbound_ids: group.xray_inbound_ids.filter((id) => checked('xray_inbound_ids', id)), external_subscription_config_ids: [], external_subscription_ids: (group.external_subscription_ids || []).filter((id) => checked('external_subscription_ids', id)), proxy_ids: group.proxy_ids.filter((id) => checked('proxy_ids', id)), sort_order: index }));
-const routePlaceholder = (route) => ({ domain: 'Add domain...', ip: 'Add IP or CIDR...', port: 'Add port or range...', network: 'Add network...', protocol: 'Add protocol...' }[route.match_type] || 'Add value...');
-const routeValues = (route) => route.match_values_list || splitRouteValues(route.match_values);
-const syncRouteValues = (route) => { route.match_values_list = [...new Set(routeValues(route).map((value) => value.trim()).filter(Boolean))]; route.match_values = route.match_values_list.join(', '); };
-const commitRouteInput = (route) => { const values = splitRouteValues(route.value_input); route.match_values_list = [...new Set([...routeValues(route), ...values])]; route.value_input = ''; syncRouteValues(route); };
-const pasteRouteValues = (route, event) => { const values = splitRouteValues(event.clipboardData?.getData('text') || ''); if (values.length > 1) { event.preventDefault(); route.match_values_list = [...new Set([...routeValues(route), ...values])]; syncRouteValues(route); } };
-const removeRouteValue = (route, index) => { route.match_values_list = routeValues(route).filter((_, valueIndex) => valueIndex !== index); syncRouteValues(route); };
 const routeDestinationLabel = (route) => route.target_type === 'balancer' ? (groups.value.find((group) => group.tag === route.target_tag)?.name || 'Outbound group') : targetTypeOptions.find((option) => option.value === route.target_type)?.label || route.target_type;
-const routeSummary = (route) => `${routeValues(route).length || 0} ${routeMatchLabels[route.match_type] || 'values'} → ${routeDestinationLabel(route)}`;
+const routeValues = (route, type) => route.match_values_by_type?.[type] || [];
+const routeSummary = (route) => `${route.match_types.map((type) => type === 'network' ? (networkOptions.find((option) => option.value === routeValues(route, type))?.label || 'Networks') : `${routeValues(route, type).length} ${routeMatchLabels[type]}`).join(' + ')} → ${routeDestinationLabel(route)}`;
 const isRouteExpanded = (index) => expandedRoutes.value.has(index);
 const toggleRouteExpanded = (index) => { const next = new Set(expandedRoutes.value); next.has(index) ? next.delete(index) : next.add(index); expandedRoutes.value = next; };
 const dragStartRoute = (index) => { draggedRouteIndex.value = index; };
 const dropRoute = (index) => { if (draggedRouteIndex.value === null || draggedRouteIndex.value === index) return; const [route] = routes.value.splice(draggedRouteIndex.value, 1); routes.value.splice(index, 0, route); draggedRouteIndex.value = null; expandedRoutes.value = new Set(routes.value.map((_, routeIndex) => routeIndex).filter((routeIndex) => routeIndex === index)); };
-const addRoute = () => { routes.value.push({ name: `Route ${routes.value.length + 1}`, match_type: 'domain', match_values: '', match_values_list: [], value_input: '', target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true, _menuOpen: false }); expandedRoutes.value = new Set([...expandedRoutes.value, routes.value.length - 1]); };
+const addRouteMatchType = (route) => {
+    const type = route.add_match_type;
+    if (!type || route.match_types.includes(type)) return;
+    route.match_types.push(type);
+    route.match_values_by_type[type] = type === 'network' ? 'tcp,udp' : [];
+    route.add_match_type = routeMatchTypes.find((item) => !route.match_types.includes(item)) || '';
+};
+const removeRouteMatchType = (route, type) => {
+    route.match_types = route.match_types.filter((item) => item !== type);
+    delete route.match_values_by_type[type];
+    route.add_match_type = routeMatchTypes.find((item) => !route.match_types.includes(item)) || '';
+};
+const routePlaceholder = (type) => ({ domain: 'Add domain...', ip: 'Add IP or CIDR...', port: 'Add port or range...', protocol: 'Add protocol...' }[type] || 'Add value...');
+const commitRouteInput = (route, type) => { const values = splitRouteValues(route.value_input_by_type?.[type]); route.match_values_by_type[type] = [...new Set([...routeValues(route, type), ...values])]; route.value_input_by_type[type] = ''; };
+const pasteRouteValues = (route, type, event) => { const values = splitRouteValues(event.clipboardData?.getData('text') || ''); if (values.length > 1) { event.preventDefault(); route.match_values_by_type[type] = [...new Set([...routeValues(route, type), ...values])]; } };
+const removeRouteValue = (route, type, index) => { route.match_values_by_type[type] = routeValues(route, type).filter((_, valueIndex) => valueIndex !== index); };
+const availableRouteMatchOptions = (route) => matchTypeOptions.filter((option) => !route.match_types.includes(option.value));
+const addRoute = () => { routes.value.push(normalizeRoute({ name: `Route ${routes.value.length + 1}`, rules: { domain: [] }, target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true }, routes.value.length)); routes.value.at(-1).value_input_by_type = {}; expandedRoutes.value = new Set([...expandedRoutes.value, routes.value.length - 1]); };
 const duplicateRoute = (route, index) => { const copy = JSON.parse(JSON.stringify(route)); copy.name = `${route.name || 'Route'} copy`; copy.value_input = ''; copy._menuOpen = false; routes.value.splice(index + 1, 0, copy); expandedRoutes.value = new Set([...expandedRoutes.value, index + 1]); };
 const removeRoute = (route, index) => { if (!window.confirm(`Удалить маршрут «${route.name || `Маршрут ${index + 1}`}»?`)) return; routes.value.splice(index, 1); };
 watch([form, settings, baseSettingsJson, groups, routes], () => {
@@ -325,29 +372,38 @@ const buildBaseSettings = () => {
     if (base === null) return null;
     return { ...base, log: { ...(base.log || {}), loglevel: settings.value.loglevel }, routing: { ...(base.routing || {}), domainStrategy: settings.value.domainStrategy } };
 };
-const buildRoutes = () => routes.value.map(({ match_values_list, value_input, _menuOpen, ...route }, index) => {
-    const values = routeValues({ ...route, match_values_list });
-    const rules = route.match_type === 'domain' ? { domain: values.map((value) => value.includes(':') ? value : `domain:${value}`) } : { [route.match_type]: values };
-    return { ...route, rules, sort_order: index };
+const buildRoutes = () => routes.value.map((route, index) => {
+    const rules = {};
+    for (const type of route.match_types) {
+        const values = routeValues(route, type);
+        if (type === 'network') {
+            if (values) rules.network = values;
+        } else if (values.length) {
+            if (type === 'domain') {
+                const ipValues = values.filter((value) => value.startsWith('geoip:'));
+                const domainValues = values.filter((value) => !value.startsWith('geoip:'));
+                if (domainValues.length) rules.domain = domainValues.map((value) => value.includes(':') ? value : `domain:${value}`);
+                if (ipValues.length) rules.ip = [...(rules.ip || []), ...ipValues];
+            } else {
+                rules[type] = values;
+            }
+        }
+    }
+
+    return { name: route.name, rules, target_type: route.target_type, target_tag: route.target_tag, is_active: route.is_active, sort_order: index };
 });
 const sectionJson = (value) => JSON.stringify(value, null, 2);
-const normalizeRoute = (route, index) => {
-    const rules = route.rules || {};
-    const matchType = route.match_type || Object.keys(rules).find((key) => ['domain', 'ip', 'port', 'network', 'protocol'].includes(key)) || 'domain';
-    const values = Array.isArray(rules[matchType]) ? rules[matchType].map((value) => String(value).replace(/^domain:/, '')) : splitRouteValues(route.match_values || rules[matchType]);
-
-    return {
-        ...route,
-        name: route.name || `Route ${index + 1}`,
-        match_type: matchType,
-        match_values: values.join(', '),
-        match_values_list: values,
-        value_input: '',
-        target_type: route.target_type || 'balancer',
-        target_tag: route.target_tag || groups.value[0]?.tag || '',
-        is_active: route.is_active ?? true,
-        _menuOpen: false,
-    };
+const normalizeRouteFromEditor = (route, index) => {
+    const { type, outboundTag, balancerTag, ...rules } = route || {};
+    const target = String(balancerTag || outboundTag || 'direct');
+    const targetType = balancerTag ? 'balancer' : (['direct', 'block'].includes(target) ? target : 'balancer');
+    return normalizeRoute({
+        name: `Route ${index + 1}`,
+        rules: normalizeMatchRules(rules),
+        target_type: targetType,
+        target_tag: targetType === 'balancer' ? target : '',
+        is_active: true,
+    }, index);
 };
 const parseSection = (value, fallback, onValue) => {
     try {
@@ -384,23 +440,10 @@ const routesJson = computed({
     get: () => sectionJson(buildRoutes().map((route) => ({
         type: 'field',
         ...route.rules,
-        outboundTag: route.target_type === 'balancer' ? route.target_tag : route.target_type,
+        ...(route.target_type === 'balancer' ? { balancerTag: route.target_tag } : { outboundTag: route.target_type }),
     }))),
     set: (value) => parseSection(value, buildRoutes(), (parsed) => {
-        if (Array.isArray(parsed)) {
-            routes.value = parsed.map((rule, index) => {
-                const { type, outboundTag, ...rules } = rule || {};
-                const target = String(outboundTag || 'proxy');
-                const targetType = ['direct', 'block'].includes(target) ? target : 'balancer';
-
-                return normalizeRoute({
-                    rules,
-                    target_type: targetType,
-                    target_tag: targetType === 'balancer' ? target : '',
-                    is_active: true,
-                }, index);
-            });
-        }
+        if (Array.isArray(parsed)) routes.value = parsed.map(normalizeRouteFromEditor);
     }),
 });
 const routingTemplatesJson = computed({
@@ -589,8 +632,13 @@ const saveResource = async () => {
                     <div class="route-card__header"><span class="route-drag-handle" title="Drag to reorder">⠿</span><button type="button" class="route-card__toggle" :aria-expanded="isRouteExpanded(index)" @click="toggleRouteExpanded(index)"><span class="route-card__title"><b>{{ index + 1 }}</b><strong>{{ route.name || `Route ${index + 1}` }}</strong><small>{{ routeSummary(route) }}</small></span><span class="route-card__status" :class="{ 'is-disabled': !route.is_active }">{{ route.is_active ? 'Enabled' : 'Disabled' }}</span><span class="source-chevron">{{ isRouteExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Route actions" @click.stop="route._menuOpen = !route._menuOpen">⋯</button><div v-if="route._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateRoute(route, index)">Duplicate route</button><button type="button" class="is-danger" @click="removeRoute(route, index)">Delete route</button></div></div></div>
                     <div v-if="isRouteExpanded(index)" class="route-card__body">
                         <div class="grid grid--two"><label class="field"><span>Route name</span><AppInput v-model="route.name" /></label><label class="field route-enabled"><span>Enabled</span><AppCheckbox v-model="route.is_active" /></label></div>
-                        <label class="field"><span>Match type</span><AppSelect v-model="route.match_type" :options="matchTypeOptions" /></label>
-                        <div class="field"><span>{{ routeMatchLabels[route.match_type] || 'Values' }}</span><div class="route-token-input"><span v-for="(value, valueIndex) in routeValues(route)" :key="`${value}-${valueIndex}`" class="route-token">{{ value }}<button type="button" aria-label="Remove value" @click="removeRouteValue(route, valueIndex)">×</button></span><input v-model="route.value_input" :placeholder="routePlaceholder(route)" @keydown.enter.prevent="commitRouteInput(route)" @keydown="$event.key === ',' ? ( $event.preventDefault(), commitRouteInput(route) ) : null" @paste="pasteRouteValues(route, $event)" @blur="commitRouteInput(route)"></div><small>Press Enter, type a comma, or paste multiple newline/comma-separated values.</small></div>
+                        <div v-for="type in route.match_types" :key="type" class="route-match-condition">
+                            <div class="route-match-condition__header"><strong>{{ routeMatchLabels[type] }}</strong><button type="button" class="picker-text-button" @click="removeRouteMatchType(route, type)">Remove match</button></div>
+                            <label v-if="type === 'network'" class="field"><span>Network</span><AppSelect v-model="route.match_values_by_type.network" :options="networkOptions" /></label>
+                            <div v-else class="field"><span>{{ routeMatchLabels[type] }}</span><div class="route-token-input"><span v-for="(value, valueIndex) in routeValues(route, type)" :key="`${value}-${valueIndex}`" class="route-token">{{ value }}<button type="button" aria-label="Remove value" @click="removeRouteValue(route, type, valueIndex)">×</button></span><input v-model="route.value_input_by_type[type]" :placeholder="routePlaceholder(type)" @keydown.enter.prevent="commitRouteInput(route, type)" @keydown="$event.key === ',' ? ( $event.preventDefault(), commitRouteInput(route, type) ) : null" @paste="pasteRouteValues(route, type, $event)" @blur="commitRouteInput(route, type)"></div><small>Press Enter, type a comma, or paste multiple newline/comma-separated values.</small></div>
+                        </div>
+                        <div class="route-match-add"><AppSelect v-model="route.add_match_type" :options="availableRouteMatchOptions(route)" placeholder="Add another match type" /><AppButton variant="secondary" type="button" :disabled="!route.add_match_type" @click="addRouteMatchType(route)">+ Add match</AppButton></div>
+                        <small>Every match type on this route must match for the route to apply.</small>
                         <div class="grid grid--two"><label class="field"><span>Route via</span><AppSelect v-model="route.target_type" :options="targetTypeOptions" /></label><label v-if="route.target_type === 'balancer'" class="field"><span>Target group</span><AppSelect v-model="route.target_tag" :options="groupOptions" /><small>{{ groups.find((group) => group.tag === route.target_tag)?.tag || 'Select an outbound group.' }}</small></label></div>
                     </div>
                 </article>
@@ -1293,6 +1341,26 @@ const saveResource = async () => {
     display: grid;
     gap: 1rem;
     padding: 0 1rem 1rem 3rem;
+}
+
+.route-match-condition {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.85rem;
+    border: 1px solid var(--border, rgba(184, 199, 219, 0.55));
+    border-radius: 12px;
+}
+
+.route-match-condition__header,
+.route-match-add {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.route-match-add > :deep(.p-select) {
+    flex: 1;
 }
 
 .route-enabled {

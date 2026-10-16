@@ -254,17 +254,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         $hasCatchAllNetworkRoute = false;
 
         foreach ($customConfig->routes->where('is_active', true) as $route) {
-            $rule = is_array($route->rules) ? $route->rules : [];
-
-            if (is_array($rule['network'] ?? null)) {
-                $networks = array_values(array_unique(array_map('strval', $rule['network'])));
-                sort($networks);
-                $rule['network'] = implode(',', $networks);
-
-                if ($networks === ['tcp', 'udp']) {
-                    $hasCatchAllNetworkRoute = true;
-                }
-            } elseif (($rule['network'] ?? null) === 'tcp,udp') {
+            [$rule, $isCatchAllNetworkRoute] = $this->normalizeGroupedRouteRules(
+                is_array($route->rules) ? $route->rules : [],
+            );
+            if ($isCatchAllNetworkRoute) {
                 $hasCatchAllNetworkRoute = true;
             }
 
@@ -288,6 +281,45 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         }
 
         return $routingRules;
+    }
+
+    /** @param array<string, mixed> $rule @return array{array<string, mixed>, bool} */
+    private function normalizeGroupedRouteRules(array $rule): array
+    {
+        $domains = is_array($rule['domain'] ?? null)
+            ? $rule['domain']
+            : (is_string($rule['domain'] ?? null) ? explode(',', $rule['domain']) : []);
+        $geoipDomains = array_values(array_filter(
+            $domains,
+            static fn (mixed $domain): bool => is_string($domain) && str_starts_with($domain, 'geoip:'),
+        ));
+
+        if ($geoipDomains !== []) {
+            $rule['domain'] = array_values(array_diff($domains, $geoipDomains));
+            $rule['ip'] = array_values(array_unique([
+                ...(is_array($rule['ip'] ?? null) ? $rule['ip'] : []),
+                ...$geoipDomains,
+            ]));
+            if ($rule['domain'] === []) {
+                unset($rule['domain']);
+            }
+        }
+
+        $networks = is_array($rule['network'] ?? null)
+            ? $rule['network']
+            : (is_string($rule['network'] ?? null) ? explode(',', $rule['network']) : []);
+        if ($networks !== []) {
+            $networks = array_values(array_unique(array_filter(
+                array_map(static fn (mixed $network): string => trim((string) $network), $networks),
+                static fn (string $network): bool => $network !== '',
+            )));
+            sort($networks);
+            $rule['network'] = implode(',', $networks);
+        }
+
+        $isCatchAllNetworkRoute = $networks === ['tcp', 'udp'] && array_keys($rule) === ['network'];
+
+        return [$rule, $isCatchAllNetworkRoute];
     }
 
     /** @return array<int, array<string, mixed>> */

@@ -243,7 +243,7 @@ Custom Xray JSON configurations:
 - WireGuard and XHTTP nodes are retained in generated client subscriptions. They are not removed automatically without a verified incompatibility for that specific client.
 - Custom profiles may define ordered outbound groups. Each group can select its own local inbounds, external subscriptions, or proxies and is emitted as an Xray balancer with `roundRobin`, `leastPing`, `leastLoad`, or `random` strategy.
 - A group can fall back to another group; the fallback group may itself contain several nodes, so ordered fallback chains and multi-node fallback pools are supported through balancers and loopback outbounds.
-- Custom routes can send domains, IPs, ports, or networks to `direct`, `block`, a specific outbound, or a named group balancer. A final catch-all route sends unmatched traffic to `direct`.
+- Custom routes can combine domain, IP, port, network, and protocol match types in one rule; all selected match types must match. Networks are selected as TCP, UDP, or TCP + UDP and serialized in Xray's comma-separated form. Routes can target `direct`, `block`, a specific outbound, or a named group balancer. A final catch-all route sends unmatched traffic to `direct` unless a TCP + UDP catch-all route is configured.
 - `leastPing` and `leastLoad` receive generated observatory settings when the custom profile does not provide compatible settings.
 - Admin preview supports all available nodes or a selected user and uses the same user-specific builder.
 - Custom profiles are available through `connect-custom/{slug}` with the same encrypted `tg`/`i` credentials as `/connect-json`.

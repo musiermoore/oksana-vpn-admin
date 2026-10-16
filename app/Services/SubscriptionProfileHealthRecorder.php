@@ -26,7 +26,7 @@ final class SubscriptionProfileHealthRecorder
             $check();
         } catch (Throwable $exception) {
             report($exception);
-            $this->record($flow, 'flow-error', ucfirst($flow).' profile generation', [
+            $this->record($flow, 'flow-error', 'Ошибка формирования: '.$this->flowName($flow), [
                 'status' => SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
                 'results' => [],
                 'error' => Str::limit($exception->getMessage(), 500),
@@ -129,7 +129,19 @@ final class SubscriptionProfileHealthRecorder
                 SubscriptionProfileHealthCheck::STATUS_WARNING,
                 SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
             ], true)) {
-            $this->devChat->send("✅ Subscription profile recovered: {$flow} / {$check->name}");
+            $this->devChat->send("🟢 Профиль восстановлен: {$this->flowName($flow)} — {$check->name}");
         }
+    }
+
+    private function flowName(string $flow): string
+    {
+        return match ($flow) {
+            'connect' => '/connect',
+            'connect-v2' => '/connect-v2',
+            'external' => 'внешняя подписка',
+            'external-source' => 'синхронизация внешних подписок',
+            'xray-custom' => 'пользовательская подписка Xray',
+            default => $flow,
+        };
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Jobs\SendSubscriptionHealthSummaryJob;
 use App\Models\XrayInbound;
 use App\Models\XrayInboundHealthCheck;
 use Illuminate\Support\Str;
@@ -48,21 +49,28 @@ final class XrayInboundHealthService
 
     private function notifyOnTransition(XrayInbound $inbound, ?string $previousStatus, XrayInboundHealthCheck $health): void
     {
-        $label = sprintf('%s / inbound %d', $inbound->server?->name ?? 'Unknown server', $inbound->external_id);
+        $label = sprintf('%s / входящий порт #%s', $inbound->server?->name ?? 'Неизвестный сервер', $inbound->external_id);
 
         if ($health->status === XrayInboundHealthCheck::STATUS_WARNING && $previousStatus !== $health->status) {
-            $this->devChat->send("⚠️ Inbound is partially reachable: {$label}\n".($health->error ?? 'Some destinations failed.')."\nPlease review its routing.");
+            $this->queueHealthSummary();
         }
 
         if ($health->status === XrayInboundHealthCheck::STATUS_UNHEALTHY && $previousStatus !== $health->status) {
-            $this->devChat->send("⚠️ Inbound health check failed: {$label}\n".($health->error ?? 'All destinations failed.')."\nPlease hide it from connect or fix the routing.");
+            $this->queueHealthSummary();
         }
 
         if ($health->status === XrayInboundHealthCheck::STATUS_HEALTHY && in_array($previousStatus, [
             XrayInboundHealthCheck::STATUS_WARNING,
             XrayInboundHealthCheck::STATUS_UNHEALTHY,
         ], true)) {
-            $this->devChat->send("✅ Inbound recovered: {$label}");
+            $this->devChat->send("🟢 Входящий сервер восстановлен: {$label}");
         }
+    }
+
+    private function queueHealthSummary(): void
+    {
+        SendSubscriptionHealthSummaryJob::dispatch()
+            ->delay(now()->addSeconds(10))
+            ->afterCommit();
     }
 }

@@ -8,31 +8,19 @@ use App\DTOs\Subscription\NormalizedNode;
 use App\Models\Server;
 use App\Models\VlessConfig;
 use App\Models\XrayInbound;
-use App\Models\XrayInboundHealthCheck;
 use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
 use App\Services\Subscriptions\SubscriptionBuilderFactory;
 use App\Services\Subscriptions\SubscriptionUriParser;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\Process\Process;
-use Throwable;
 
 final class XrayInboundProbeRunner
 {
-    /** @var array<string, string> */
-    private const TARGETS = [
-        'Discord' => 'https://discord.com/',
-        'Telegram' => 'https://telegram.org/',
-        'Google' => 'https://www.google.com/generate_204',
-        'ChatGPT' => 'https://chatgpt.com/',
-        'YouTube' => 'https://www.youtube.com/',
-    ];
-
     public function __construct(
         private readonly SubscriptionUriParser $uriParser,
         private readonly SubscriptionBuilderFactory $builderFactory,
         private readonly ConnectJsonBuilder $connectJsonBuilder,
+        private readonly XrayTunnelProbeRunner $tunnelProbe,
     ) {}
 
     public function isAvailable(): bool
@@ -82,7 +70,7 @@ final class XrayInboundProbeRunner
             'rules' => [],
         ];
 
-        return $this->runProfile($connectV2Profile);
+        return $this->tunnelProbe->runProfile($connectV2Profile);
     }
 
     /** @return array{status: string, results: array<string, mixed>, error: ?string} */
@@ -117,7 +105,7 @@ final class XrayInboundProbeRunner
             ];
         }
 
-        return $this->runProfile($profile, 5);
+        return $this->tunnelProbe->runProfile($profile, 5);
     }
 
     /** @param array<string, mixed> $profile @return array{status: string, results: array<string, mixed>, error: ?string} */
@@ -127,27 +115,7 @@ final class XrayInboundProbeRunner
             throw new RuntimeException('Generated subscription profile has no Xray outbounds.');
         }
 
-        return $this->runProfile($profile, 5);
-    }
-
-    /** @param array<string, mixed> $profile @return array{status: string, results: array<string, mixed>, error: ?string} */
-    private function runProfile(array $profile, int $targetTimeoutSeconds = 12): array
-    {
-        $proxyPort = $this->allocateLocalPort();
-        $profile['inbounds'] = [[
-            'listen' => '127.0.0.1',
-            'port' => $proxyPort,
-            'protocol' => 'socks',
-            'settings' => ['auth' => 'noauth', 'udp' => false],
-            'tag' => 'inbound-health-socks',
-        ]];
-        $configPath = $this->writeConfig($profile, $proxyPort);
-
-        try {
-            return $this->probeTargets($configPath, $proxyPort, $targetTimeoutSeconds);
-        } finally {
-            @unlink($configPath);
-        }
+        return $this->tunnelProbe->runProfile($profile, 5);
     }
 
     private function buildConnectLink(NormalizedNode $node): string
@@ -189,116 +157,6 @@ final class XrayInboundProbeRunner
         }
 
         return $profile;
-    }
-
-    /** @param array<string, mixed> $profile */
-    private function writeConfig(array $profile, int $proxyPort): string
-    {
-        $profile['inbounds'][0]['port'] = $proxyPort;
-        $temporaryPath = tempnam(sys_get_temp_dir(), 'inbound-health-xray-');
-
-        if ($temporaryPath === false) {
-            throw new RuntimeException('Unable to allocate a temporary Xray config file.');
-        }
-
-        $path = $temporaryPath.'.json';
-
-        if (! rename($temporaryPath, $path)) {
-            @unlink($temporaryPath);
-            throw new RuntimeException('Unable to name the temporary Xray config as JSON.');
-        }
-
-        if (file_put_contents($path, json_encode($profile, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)) === false) {
-            @unlink($path);
-            throw new RuntimeException('Unable to write the temporary Xray config file.');
-        }
-
-        return $path;
-    }
-
-    /** @return array{status: string, results: array<string, mixed>, error: ?string} */
-    private function probeTargets(string $configPath, int $proxyPort, int $targetTimeoutSeconds): array
-    {
-        $binary = $this->binary();
-        $validation = new Process([$binary, 'run', '-test', '-format=json', '-c', $configPath]);
-        $validation->setTimeout(15);
-        $validation->run();
-
-        if (! $validation->isSuccessful()) {
-            throw new RuntimeException('Xray rejected the generated profile: '.Str::limit(trim($validation->getErrorOutput().$validation->getOutput()), 500));
-        }
-
-        $process = new Process([$binary, 'run', '-format=json', '-c', $configPath]);
-        $process->setTimeout(90);
-        $process->start();
-
-        try {
-            $this->waitForProxy($process, $proxyPort);
-            $results = [];
-
-            foreach (self::TARGETS as $name => $url) {
-                $results[$name] = $this->probeTarget($url, $proxyPort, $targetTimeoutSeconds);
-            }
-
-            $failed = collect($results)->filter(fn (array $result): bool => ! $result['ok'])->keys()->all();
-
-            return [
-                'status' => $failed === [] ? XrayInboundHealthCheck::STATUS_HEALTHY : XrayInboundHealthCheck::STATUS_UNHEALTHY,
-                'results' => $results,
-                'error' => $failed === [] ? null : 'Failed destinations: '.implode(', ', $failed),
-            ];
-        } finally {
-            $process->stop(1);
-        }
-    }
-
-    private function waitForProxy(Process $process, int $proxyPort): void
-    {
-        for ($attempt = 0; $attempt < 30; $attempt++) {
-            if (! $process->isRunning()) {
-                throw new RuntimeException('Xray exited before opening the local proxy: '.Str::limit(trim($process->getErrorOutput()), 500));
-            }
-
-            $socket = @fsockopen('127.0.0.1', $proxyPort, $errorCode, $errorMessage, 0.2);
-
-            if (is_resource($socket)) {
-                fclose($socket);
-
-                return;
-            }
-
-            usleep(100_000);
-        }
-
-        throw new RuntimeException('Xray did not open its local SOCKS proxy.');
-    }
-
-    /** @return array<string, mixed> */
-    private function probeTarget(string $url, int $proxyPort, int $timeoutSeconds): array
-    {
-        try {
-            $response = Http::timeout($timeoutSeconds)
-                ->withOptions(['proxy' => 'socks5h://127.0.0.1:'.$proxyPort])
-                ->get($url);
-
-            return ['ok' => $response->status() < 500, 'status' => $response->status()];
-        } catch (Throwable $exception) {
-            return ['ok' => false, 'error' => Str::limit($exception->getMessage(), 180)];
-        }
-    }
-
-    private function allocateLocalPort(): int
-    {
-        $socket = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
-
-        if ($socket === false) {
-            throw new RuntimeException('Unable to allocate a local SOCKS port: '.$errorMessage);
-        }
-
-        $address = stream_socket_get_name($socket, false);
-        fclose($socket);
-
-        return (int) substr((string) $address, strrpos((string) $address, ':') + 1);
     }
 
     private function binary(): string

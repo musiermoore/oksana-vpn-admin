@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\Jobs\CheckSingleSubscriptionProfileHealthJob;
+use App\Jobs\SendSubscriptionHealthSummaryJob;
 use App\Models\SubscriptionProfileHealthCheck;
 use Illuminate\Support\Str;
 use Throwable;
@@ -116,7 +117,9 @@ final class SubscriptionProfileHealthRecorder
     {
         if ($check->status === SubscriptionProfileHealthCheck::STATUS_UNHEALTHY
             && $previousStatus !== SubscriptionProfileHealthCheck::STATUS_UNHEALTHY) {
-            $this->devChat->send("⚠️ Subscription health failed: {$flow} / {$check->name}\n".($check->error ?? 'One or more destinations failed.'));
+            SendSubscriptionHealthSummaryJob::dispatch()
+                ->delay(now()->addSeconds(10))
+                ->afterCommit();
         }
 
         if ($check->status === SubscriptionProfileHealthCheck::STATUS_HEALTHY

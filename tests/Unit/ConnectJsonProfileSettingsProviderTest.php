@@ -65,6 +65,61 @@ class ConnectJsonProfileSettingsProviderTest extends TestCase
         $this->assertSame('domain:example.ru', $serverRules[1]['domain'][0]);
     }
 
+    public function test_unmatched_scoped_rule_uses_default_routing_for_the_target(): void
+    {
+        $defaultRules = [['type' => 'field', 'network' => 'tcp,udp', 'outboundTag' => 'proxy']];
+        config(['connect_json.routing.rules' => $defaultRules]);
+
+        XrayRouting::query()->create([
+            'name' => 'Other inbound only',
+            'outbound' => 'direct',
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT],
+            'xray_inbound_ids' => [101],
+            'rules' => ['domain' => ['domain:only-one.example']],
+            'is_active' => true,
+        ]);
+
+        $rules = app(ConnectJsonProfileSettingsProvider::class)
+            ->routing(XrayRouting::SUBSCRIPTION_CONNECT, 202)['rules'];
+
+        $this->assertSame($defaultRules, $rules);
+    }
+
+    public function test_connect_v2_and_external_scopes_select_only_their_own_rules(): void
+    {
+        config(['connect_json.routing.rules' => [[
+            'type' => 'field',
+            'domain' => ['domain:default.example'],
+            'outboundTag' => 'proxy',
+        ]]]);
+
+        XrayRouting::query()->create([
+            'name' => 'Connect v2 rule',
+            'outbound' => 'direct',
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_CONNECT_V2],
+            'xray_inbound_ids' => [42],
+            'rules' => ['domain' => ['domain:v2.example']],
+            'is_active' => true,
+        ]);
+        XrayRouting::query()->create([
+            'name' => 'External rule',
+            'outbound' => 'proxy',
+            'subscription_types' => [XrayRouting::SUBSCRIPTION_EXTERNAL],
+            'external_subscription_config_ids' => [88],
+            'rules' => ['domain' => ['domain:external.example']],
+            'is_active' => true,
+        ]);
+
+        $provider = app(ConnectJsonProfileSettingsProvider::class);
+
+        $this->assertSame('domain:v2.example', $provider
+            ->routing(XrayRouting::SUBSCRIPTION_CONNECT_V2, 42)['rules'][0]['domain'][0]);
+        $this->assertSame('domain:external.example', $provider
+            ->routing(XrayRouting::SUBSCRIPTION_EXTERNAL, null, 88)['rules'][0]['domain'][0]);
+        $this->assertSame('domain:default.example', $provider
+            ->routing(XrayRouting::SUBSCRIPTION_EXTERNAL, 42)['rules'][0]['domain'][0]);
+    }
+
     public function test_manual_global_json_settings_override_default_profile_settings(): void
     {
         XrayJsonSetting::query()->create([

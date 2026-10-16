@@ -12,7 +12,11 @@ class XrayRouting extends Model
 {
     public const SUBSCRIPTION_CONNECT = 'connect';
 
+    public const SUBSCRIPTION_CONNECT_V2 = 'connect_v2';
+
     public const SUBSCRIPTION_CONNECT_WL = 'connect_wl';
+
+    public const SUBSCRIPTION_EXTERNAL = 'external';
 
     protected $fillable = [
         'name',

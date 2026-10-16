@@ -486,6 +486,65 @@ class XrayRoutingJsonImportTest extends TestCase
         $this->assertStringContainsString('geosite:wl-only', (string) $whiteListResponse->getContent());
     }
 
+    public function test_connect_v2_and_external_nodes_use_separate_routing_scopes(): void
+    {
+        $user = $this->createActiveUser();
+        $user->update(['uuid' => fake()->uuid()]);
+        $localConfig = $this->createConfig($user, 12);
+        $inboundId = (int) $localConfig->xray_inbound_id;
+        $externalSubscription = VlessExternalSubscription::query()->create([
+            'name' => 'Connect v2 external',
+            'type' => VlessExternalSubscription::TYPE_DIRECT,
+            'source_url' => 'vless://external@external.example.com:443?type=tcp#External',
+            'include_in_main_subscription' => false,
+            'include_in_whitelist' => false,
+            'include_in_connect_v2' => true,
+            'is_free' => true,
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+        $externalConfig = VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $externalSubscription->id,
+            'config_key' => 'external-v2',
+            'name' => 'External v2',
+            'normalized_name' => 'external v2',
+            'protocol' => 'vless',
+            'url' => 'vless://external@external.example.com:443?type=tcp#External',
+            'sort_order' => 0,
+        ]);
+
+        foreach ([
+            [XrayRouting::SUBSCRIPTION_CONNECT, 'connect', ['xray_inbound_ids' => [$inboundId]]],
+            [XrayRouting::SUBSCRIPTION_CONNECT_V2, 'v2', ['xray_inbound_ids' => [$inboundId]]],
+            [XrayRouting::SUBSCRIPTION_EXTERNAL, 'external', ['external_subscription_config_ids' => [$externalConfig->id]]],
+        ] as [$type, $domain, $target]) {
+            XrayRouting::query()->create([
+                'name' => $domain.' routing',
+                'outbound' => 'direct',
+                'subscription_types' => [$type],
+                'xray_inbound_ids' => $target['xray_inbound_ids'] ?? [],
+                'external_subscription_config_ids' => $target['external_subscription_config_ids'] ?? [],
+                'rules' => ['domain' => ['domain:'.$domain.'.example']],
+                'is_active' => true,
+            ]);
+        }
+
+        $connect = $this->get(route('vless.connect', [
+            'tg' => Crypt::encrypt('112238'),
+            'i' => Crypt::encrypt((string) $user->id),
+            'format' => 'json',
+        ]));
+        $connectV2 = $this->get(route('vless.connect-v2', ['token' => $user->uuid]));
+
+        $connect->assertOk();
+        $connectV2->assertOk();
+        $this->assertStringContainsString('domain:connect.example', $connect->getContent());
+        $this->assertStringNotContainsString('domain:v2.example', $connect->getContent());
+        $this->assertStringContainsString('domain:v2.example', $connectV2->getContent());
+        $this->assertStringContainsString('domain:external.example', $connectV2->getContent());
+        $this->assertStringNotContainsString('domain:connect.example', $connectV2->getContent());
+    }
+
     public function test_updated_xray_inbound_targets_control_generated_json_routing(): void
     {
         Http::fake();

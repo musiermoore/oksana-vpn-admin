@@ -21,6 +21,7 @@ final class ConnectJsonProfileOrderer
         array $nodes,
         array $customNodes,
         ?string $client = null,
+        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
     ): SubscriptionBuildResult {
         $customConfigs = XrayCustomConfig::query()
             ->active()
@@ -28,12 +29,17 @@ final class ConnectJsonProfileOrderer
             ->with(['dnsSettings', 'geodata', 'clientGeodata', 'outboundGroups.fallbackGroup', 'routes'])
             ->get();
 
-        $entries = collect($this->buildBaseProfileEntries($builder, $nodes))
+        $entries = collect($this->buildBaseProfileEntries($builder, $nodes, $subscriptionType))
             ->merge($customConfigs->map(fn (XrayCustomConfig $config): array => [
                 'type' => 'xray_custom_config',
                 'id' => (int) $config->id,
                 'sort_order' => (int) $config->sort_order,
-                'profiles' => json_decode($builder->buildForCustomConfig($customNodes, $config, $client)->content),
+                'profiles' => json_decode($builder->buildForCustomConfig(
+                    $customNodes,
+                    $config,
+                    $client,
+                    $subscriptionType,
+                )->content),
             ]))
             ->filter(fn (array $entry): bool => is_array($entry['profiles']))
             ->sort(fn (array $left, array $right): int => [
@@ -62,16 +68,20 @@ final class ConnectJsonProfileOrderer
      * @param  array<int, NormalizedNode>  $nodes
      * @return array<int, array{type:string,id:int,sort_order:int,profiles:array<int,mixed>}>
      */
-    private function buildBaseProfileEntries(ConnectJsonBuilder $builder, array $nodes): array
+    private function buildBaseProfileEntries(
+        ConnectJsonBuilder $builder,
+        array $nodes,
+        string $subscriptionType,
+    ): array
     {
         return collect($nodes)
             ->groupBy(fn (NormalizedNode $node): string => $node->sourceType === 'external_subscription'
                 ? 'external_subscription:'.(int) ($node->meta['external_subscription_id'] ?? 0)
                 : 'server:'.$node->serverId)
-            ->map(function ($group) use ($builder): array {
+            ->map(function ($group) use ($builder, $subscriptionType): array {
                 $node = $group->first();
                 $profiles = json_decode(
-                    $builder->buildForSubscriptionType($group->all(), XrayRouting::SUBSCRIPTION_CONNECT)->content,
+                    $builder->buildForSubscriptionType($group->all(), $subscriptionType)->content,
                 );
 
                 return [

@@ -116,7 +116,9 @@ class RoscomVpnJsonSettingsImporter
                 'outbound' => $rule['outbound']->value,
                 'subscription_types' => json_encode([
                     XrayRouting::SUBSCRIPTION_CONNECT,
+                    XrayRouting::SUBSCRIPTION_CONNECT_V2,
                     XrayRouting::SUBSCRIPTION_CONNECT_WL,
+                    XrayRouting::SUBSCRIPTION_EXTERNAL,
                 ], JSON_THROW_ON_ERROR),
                 'xray_inbound_ids' => '[]',
                 'external_subscription_config_ids' => '[]',

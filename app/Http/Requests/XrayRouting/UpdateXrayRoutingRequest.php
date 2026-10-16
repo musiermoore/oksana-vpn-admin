@@ -45,7 +45,9 @@ class UpdateXrayRoutingRequest extends DataFormRequest
                 'string',
                 Rule::in([
                     XrayRouting::SUBSCRIPTION_CONNECT,
+                    XrayRouting::SUBSCRIPTION_CONNECT_V2,
                     XrayRouting::SUBSCRIPTION_CONNECT_WL,
+                    XrayRouting::SUBSCRIPTION_EXTERNAL,
                 ]),
             ],
             'xray_inbound_ids' => ['present', 'array'],

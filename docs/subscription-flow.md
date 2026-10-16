@@ -219,15 +219,16 @@ JSON output:
 
 - `/connect-json` returns full Xray-style JSON configs, one object per node.
 - Objects include per-node `remarks` and `outbounds`; shared `dns`, `routing`, and `inbounds` come from app config.
-- Routing rules live in `xray_routings` with `outbound=direct|proxy|blocked`, JSON `rules`, JSON `subscription_types`, order, active state, and target arrays.
+- Routing rules live in `xray_routings` with `outbound=direct|proxy|blocked`, JSON `rules`, JSON `subscription_types`, order, active state, and target arrays. Supported scopes are `connect`, `connect_v2`, `connect_wl`, and `external`.
 - `/xray-routings` imports RoscomVPN/INCY JSON into `xray_json_settings` and generated Direct/Proxy/Block rules into `xray_routings`.
 - Empty `xray_inbound_ids` and `external_subscription_config_ids` mean a rule applies nowhere.
-- JSON builder filters rules per local inbound or external config.
+- JSON builder selects local rules by output scope and external-node rules through the separate `external` scope, even when those nodes are included in another subscription output.
 - Imported geodata URLs are validated and cached in `storage/app/xray-geodata`; unchanged `LastUpdated` reuses cache, changed `LastUpdated` downloads again.
 - Geodata replacement is atomic; failed downloads keep old active rules.
 - Laravel does not run Xray Core locally. JSON output includes Xray `geodata.assets` so the client downloads `geoip.dat` and `geosite.dat`.
 - `UseChunkFiles` is kept as import metadata only.
-- If no active routing rules exist for a subscription type, builder falls back to `config/connect_json.php`.
+- If no global or target-matching routing rules exist for a generated profile's scope and target, the builder falls back to `config/connect_json.php`; rules selected for a different inbound or external config do not suppress that fallback. Stored upstream JSON profiles keep their original routing until a matching app-managed rule overrides it.
+- `/connect-v2` uses its own `connect_v2` routing scope. External nodes embedded in any generated subscription use `external`; their upstream JSON routing remains intact when no matching app-managed external rule overrides it.
 - External JSON profiles are preserved for `/connect-json` and `format=json` to keep upstream routing, balancers, and profile-level settings; `remarks` is replaced with the calculated node name.
 - Empty `tcpSettings: []` and HTTP inbound `settings: []` are normalized to objects for Xray compatibility.
 

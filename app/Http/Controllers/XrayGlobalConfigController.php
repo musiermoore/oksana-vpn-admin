@@ -84,7 +84,12 @@ class XrayGlobalConfigController extends Controller
                 'source' => 'manual_global',
                 'source_key' => (string) $index,
                 'outbound' => $outbound,
-                'subscription_types' => json_encode(['connect', 'connect_wl'], JSON_THROW_ON_ERROR),
+                'subscription_types' => json_encode([
+                    XrayRouting::SUBSCRIPTION_CONNECT,
+                    XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                    XrayRouting::SUBSCRIPTION_CONNECT_WL,
+                    XrayRouting::SUBSCRIPTION_EXTERNAL,
+                ], JSON_THROW_ON_ERROR),
                 'xray_inbound_ids' => json_encode([], JSON_THROW_ON_ERROR),
                 'external_subscription_config_ids' => json_encode([], JSON_THROW_ON_ERROR),
                 'proxy_ids' => json_encode([], JSON_THROW_ON_ERROR),

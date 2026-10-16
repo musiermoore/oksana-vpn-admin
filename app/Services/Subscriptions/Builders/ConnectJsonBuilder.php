@@ -37,7 +37,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     public function buildForSubscriptionType(array $nodes, string $subscriptionType): SubscriptionBuildResult
     {
         $profiles = collect($nodes)
-            ->map(fn (NormalizedNode $node) => $this->buildProfile($node, $subscriptionType))
+            ->map(fn (NormalizedNode $node) => $this->buildProfile($node, $this->routingTypeForNode($node, $subscriptionType)))
             ->filter()
             ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile))
             ->values()
@@ -53,10 +53,15 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     /**
      * @param  array<int, NormalizedNode>  $nodes
      */
-    public function buildForCustomConfig(array $nodes, XrayCustomConfig $customConfig, ?string $client = null): SubscriptionBuildResult
+    public function buildForCustomConfig(
+        array $nodes,
+        XrayCustomConfig $customConfig,
+        ?string $client = null,
+        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
+    ): SubscriptionBuildResult
     {
         if ($customConfig->relationLoaded('outboundGroups') && $customConfig->outboundGroups->isNotEmpty()) {
-            return $this->buildGroupedCustomConfig($nodes, $customConfig, $client);
+            return $this->buildGroupedCustomConfig($nodes, $customConfig, $client, $subscriptionType);
         }
 
         $selectedInboundIds = array_map('intval', $customConfig->xray_inbound_ids ?? []);
@@ -86,7 +91,12 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         }));
 
         $profiles = collect($nodes)
-            ->map(fn (NormalizedNode $node) => $this->buildProfile($node, XrayRouting::SUBSCRIPTION_CONNECT, $customConfig, $client))
+            ->map(fn (NormalizedNode $node) => $this->buildProfile(
+                $node,
+                $this->routingTypeForNode($node, $subscriptionType),
+                $customConfig,
+                $client,
+            ))
             ->filter()
             ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile, $client))
             ->values()
@@ -104,13 +114,18 @@ class ConnectJsonBuilder implements SubscriptionBuilder
      *
      * @param  array<int, NormalizedNode>  $nodes
      */
-    private function buildGroupedCustomConfig(array $nodes, XrayCustomConfig $customConfig, ?string $client): SubscriptionBuildResult
+    private function buildGroupedCustomConfig(
+        array $nodes,
+        XrayCustomConfig $customConfig,
+        ?string $client,
+        string $subscriptionType,
+    ): SubscriptionBuildResult
     {
         $groups = $customConfig->outboundGroups->where('is_active', true)->values();
         $groupedNodes = $this->groupedNodes($nodes, $groups);
         $outbounds = $this->groupedOutbounds($groupedNodes, $groups);
         [$balancers, $fallbackLoopRules, $loopbackOutbounds] = $this->groupedBalancers($groups);
-        $routingRules = $this->groupedRoutingRules($customConfig, $fallbackLoopRules, $groupedNodes);
+        $routingRules = $this->groupedRoutingRules($customConfig, $fallbackLoopRules, $groupedNodes, $subscriptionType);
         $base = $customConfig->base_settings ?? [];
         $profile = $this->groupedProfile(
             $customConfig,
@@ -227,11 +242,12 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         XrayCustomConfig $customConfig,
         array $fallbackLoopRules,
         array $nodes,
+        string $subscriptionType,
     ): array
     {
         $routingRules = [
             ...$fallbackLoopRules,
-            ...$this->selectedGroupedRoutingRules($customConfig, $nodes),
+            ...$this->selectedGroupedRoutingRules($customConfig, $nodes, $subscriptionType),
         ];
         $hasCatchAllNetworkRoute = false;
 
@@ -273,32 +289,58 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function selectedGroupedRoutingRules(XrayCustomConfig $customConfig, array $nodes): array
+    private function selectedGroupedRoutingRules(
+        XrayCustomConfig $customConfig,
+        array $nodes,
+        string $subscriptionType,
+    ): array
     {
         $routingIds = array_map('intval', $customConfig->xray_routing_ids ?? []);
-        $inboundIds = $this->nodeTargetIdsForRouting($nodes, 'xray_inbound_id');
-        $externalIds = $this->nodeTargetIdsForRouting($nodes, 'external_subscription_config_id');
-        $proxyIds = $this->nodeTargetIdsForRouting($nodes, 'proxy_id');
 
-        if ($routingIds === [] || ($inboundIds === [] && $externalIds === [] && $proxyIds === [])) {
+        if ($routingIds === [] || $nodes === []) {
             return [];
         }
 
         return XrayRouting::query()
             ->active()
             ->whereKey($routingIds)
-            ->forSubscriptionType(XrayRouting::SUBSCRIPTION_CONNECT)
-            ->where(function ($query) use ($inboundIds, $externalIds, $proxyIds): void {
-                foreach ($inboundIds as $id) {
-                    $query->orWhereJsonContains('xray_inbound_ids', $id);
+            ->where(function ($query) use ($nodes, $subscriptionType): void {
+                $hasTarget = false;
+
+                foreach ($nodes as $node) {
+                    [$inboundId, $externalConfigId, $proxyId] = $this->nodeTargetIds($node);
+
+                    if ($inboundId === null && $externalConfigId === null && $proxyId === null) {
+                        continue;
+                    }
+
+                    $hasTarget = true;
+                    $query->orWhere(function ($nodeQuery) use (
+                        $node,
+                        $subscriptionType,
+                        $inboundId,
+                        $externalConfigId,
+                        $proxyId,
+                    ): void {
+                        $nodeQuery->forSubscriptionType($this->routingTypeForNode($node, $subscriptionType))
+                            ->where(function ($targetQuery) use ($inboundId, $externalConfigId, $proxyId): void {
+                                if ($inboundId !== null) {
+                                    $targetQuery->orWhereJsonContains('xray_inbound_ids', $inboundId);
+                                }
+
+                                if ($externalConfigId !== null) {
+                                    $targetQuery->orWhereJsonContains('external_subscription_config_ids', $externalConfigId);
+                                }
+
+                                if ($proxyId !== null) {
+                                    $targetQuery->orWhereJsonContains('proxy_ids', $proxyId);
+                                }
+                            });
+                    });
                 }
 
-                foreach ($externalIds as $id) {
-                    $query->orWhereJsonContains('external_subscription_config_ids', $id);
-                }
-
-                foreach ($proxyIds as $id) {
-                    $query->orWhereJsonContains('proxy_ids', $id);
+                if (! $hasTarget) {
+                    $query->whereRaw('1 = 0');
                 }
             })
             ->ordered()
@@ -312,15 +354,11 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             ->all();
     }
 
-    /** @return array<int, int> */
-    private function nodeTargetIdsForRouting(array $nodes, string $key): array
+    private function routingTypeForNode(NormalizedNode $node, string $subscriptionType): string
     {
-        return collect($nodes)
-            ->map(fn (NormalizedNode $node): ?int => isset($node->meta[$key]) ? (int) $node->meta[$key] : null)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        return $node->sourceType === 'external_subscription'
+            ? XrayRouting::SUBSCRIPTION_EXTERNAL
+            : $subscriptionType;
     }
 
     private function groupedProfile(

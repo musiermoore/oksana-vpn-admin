@@ -63,8 +63,11 @@ class UserSubscriptionService
         if ($builder instanceof ConnectJsonBuilder) {
             $result = $builder->buildForSubscriptionType($nodes, $subscriptionType);
 
-            if ($user !== null && $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT) {
-                return $this->appendCustomJsonProfiles($user, $nodes, $customExternalPurpose, $client);
+            if ($user !== null && in_array($subscriptionType, [
+                XrayRouting::SUBSCRIPTION_CONNECT,
+                XrayRouting::SUBSCRIPTION_CONNECT_V2,
+            ], true)) {
+                return $this->appendCustomJsonProfiles($user, $nodes, $customExternalPurpose, $client, $subscriptionType);
             }
 
             return $result;
@@ -91,7 +94,7 @@ class UserSubscriptionService
             return $this->buildFromNodes(
                 $this->buildNamedNodes($user, $externalPurpose),
                 'json',
-                XrayRouting::SUBSCRIPTION_CONNECT,
+                XrayRouting::SUBSCRIPTION_CONNECT_V2,
                 $user,
                 $externalPurpose,
                 $app,
@@ -103,7 +106,7 @@ class UserSubscriptionService
         return $this->buildFromNodes(
             $nodes,
             'json',
-            XrayRouting::SUBSCRIPTION_CONNECT,
+            XrayRouting::SUBSCRIPTION_CONNECT_V2,
             $user,
             $externalPurpose,
             $app,
@@ -118,13 +121,20 @@ class UserSubscriptionService
         array $nodes,
         string $externalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
         ?string $client = null,
+        string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
     ): SubscriptionBuildResult
     {
         $customNodes = [
             ...$this->buildNamedNodes($user, VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM),
             ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, $externalPurpose),
         ];
-        return (new ConnectJsonProfileOrderer())->build($this->connectJsonBuilder, $nodes, $customNodes, $client);
+        return (new ConnectJsonProfileOrderer())->build(
+            $this->connectJsonBuilder,
+            $nodes,
+            $customNodes,
+            $client,
+            $subscriptionType,
+        );
     }
 
     /**

@@ -75,7 +75,7 @@ final class SubscriptionProfileProbe
 
             $profiles = json_decode($this->jsonBuilder->buildForSubscriptionType(
                 [$node],
-                XrayRouting::SUBSCRIPTION_CONNECT,
+                XrayRouting::SUBSCRIPTION_EXTERNAL,
             )->content, true);
             $profile = is_array($profiles) ? ($profiles[0] ?? null) : null;
 

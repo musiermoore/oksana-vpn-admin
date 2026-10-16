@@ -232,15 +232,9 @@ class ConnectJsonProfileSettingsProvider
         ?int $externalSubscriptionConfigId,
         ?int $proxyId = null,
     ): array {
-        $query = XrayRouting::query()
+        $rules = XrayRouting::query()
             ->active()
-            ->forSubscriptionType($subscriptionType);
-
-        if (! (clone $query)->exists()) {
-            return config('connect_json.routing.rules', []);
-        }
-
-        return $query
+            ->forSubscriptionType($subscriptionType)
             ->where(function (Builder $query) use ($xrayInboundId, $externalSubscriptionConfigId, $proxyId): void {
                 $query->where('is_global', true)
                     ->orWhere(fn (Builder $targetQuery) => $targetQuery->forAnyTarget(
@@ -258,6 +252,8 @@ class ConnectJsonProfileSettingsProvider
             ))
             ->values()
             ->all();
+
+        return $rules === [] ? config('connect_json.routing.rules', []) : $rules;
     }
 
     private function activeSettings(): ?XrayJsonSetting

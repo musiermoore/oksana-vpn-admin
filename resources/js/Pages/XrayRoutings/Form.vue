@@ -53,18 +53,14 @@ const form = useForm({
     rules_json: pretty(props.initialRouting?.rules),
     sort_order: props.initialRouting?.sort_order ?? 0,
     is_active: props.initialRouting?.is_active ?? true,
-    connect_enabled: (props.initialRouting?.subscription_types ?? ['connect', 'connect_wl']).includes('connect'),
-    connect_wl_enabled: (props.initialRouting?.subscription_types ?? ['connect', 'connect_wl']).includes('connect_wl'),
+    subscription_types: props.initialRouting?.subscription_types ?? ['connect', 'connect_wl'],
     xray_inbound_ids: props.initialRouting?.xray_inbound_ids ?? [],
     external_subscription_config_ids: props.initialRouting?.external_subscription_config_ids ?? [],
     proxy_ids: props.initialRouting?.proxy_ids ?? [],
     is_global: props.initialRouting?.is_global ?? false,
 });
 
-const selectedSubscriptionTypes = () => [
-    ...(form.connect_enabled ? ['connect'] : []),
-    ...(form.connect_wl_enabled ? ['connect_wl'] : []),
-];
+const selectedSubscriptionTypes = () => form.subscription_types;
 
 const canSave = computed(() => selectedSubscriptionTypes().length > 0 && !form.processing);
 
@@ -157,12 +153,10 @@ const submit = () => {
                 class="field-row"
             >
                 <AppCheckbox
-                    v-if="option.value === 'connect'"
-                    v-model="form.connect_enabled"
-                />
-                <AppCheckbox
-                    v-else-if="option.value === 'connect_wl'"
-                    v-model="form.connect_wl_enabled"
+                    :model-value="form.subscription_types.includes(option.value)"
+                    @update:model-value="(checked) => form.subscription_types = checked
+                        ? [...new Set([...form.subscription_types, option.value])]
+                        : form.subscription_types.filter((type) => type !== option.value)"
                 />
                 <span>{{ option.label }}</span>
             </label>

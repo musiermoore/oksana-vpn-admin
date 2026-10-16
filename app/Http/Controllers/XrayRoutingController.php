@@ -181,8 +181,16 @@ class XrayRoutingController extends Controller
                     'value' => XrayRouting::SUBSCRIPTION_CONNECT,
                 ],
                 [
+                    'label' => 'Новая подписка (connect-v2)',
+                    'value' => XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                ],
+                [
                     'label' => 'Белые списки (connect-wl)',
                     'value' => XrayRouting::SUBSCRIPTION_CONNECT_WL,
+                ],
+                [
+                    'label' => 'Внешние подписки',
+                    'value' => XrayRouting::SUBSCRIPTION_EXTERNAL,
                 ],
             ],
             'target_tree' => [

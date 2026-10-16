@@ -309,6 +309,14 @@ const addRouteMatchType = (route) => {
     route.match_values_by_type[type] = type === 'network' ? 'tcp,udp' : [];
     route.add_match_type = routeMatchTypes.find((item) => !route.match_types.includes(item)) || '';
 };
+const changeRouteMatchType = (route, index, type) => {
+    const previousType = route.match_types[index];
+    if (!type || previousType === type || route.match_types.includes(type)) return;
+    route.match_types[index] = type;
+    delete route.match_values_by_type[previousType];
+    route.match_values_by_type[type] = type === 'network' ? 'tcp,udp' : [];
+    route.add_match_type = routeMatchTypes.find((item) => !route.match_types.includes(item)) || '';
+};
 const removeRouteMatchType = (route, type) => {
     route.match_types = route.match_types.filter((item) => item !== type);
     delete route.match_values_by_type[type];
@@ -319,6 +327,7 @@ const commitRouteInput = (route, type) => { const values = splitRouteValues(rout
 const pasteRouteValues = (route, type, event) => { const values = splitRouteValues(event.clipboardData?.getData('text') || ''); if (values.length > 1) { event.preventDefault(); route.match_values_by_type[type] = [...new Set([...routeValues(route, type), ...values])]; } };
 const removeRouteValue = (route, type, index) => { route.match_values_by_type[type] = routeValues(route, type).filter((_, valueIndex) => valueIndex !== index); };
 const availableRouteMatchOptions = (route) => matchTypeOptions.filter((option) => !route.match_types.includes(option.value));
+const routeMatchOptions = (route, currentType) => matchTypeOptions.filter((option) => option.value === currentType || !route.match_types.includes(option.value));
 const addRoute = () => { routes.value.push(normalizeRoute({ name: `Route ${routes.value.length + 1}`, rules: { domain: [] }, target_type: 'balancer', target_tag: groups.value[0]?.tag || '', is_active: true }, routes.value.length)); routes.value.at(-1).value_input_by_type = {}; expandedRoutes.value = new Set([...expandedRoutes.value, routes.value.length - 1]); };
 const duplicateRoute = (route, index) => { const copy = JSON.parse(JSON.stringify(route)); copy.name = `${route.name || 'Route'} copy`; copy.value_input = ''; copy._menuOpen = false; routes.value.splice(index + 1, 0, copy); expandedRoutes.value = new Set([...expandedRoutes.value, index + 1]); };
 const removeRoute = (route, index) => { if (!window.confirm(`Удалить маршрут «${route.name || `Маршрут ${index + 1}`}»?`)) return; routes.value.splice(index, 1); };
@@ -632,8 +641,8 @@ const saveResource = async () => {
                     <div class="route-card__header"><span class="route-drag-handle" title="Drag to reorder">⠿</span><button type="button" class="route-card__toggle" :aria-expanded="isRouteExpanded(index)" @click="toggleRouteExpanded(index)"><span class="route-card__title"><b>{{ index + 1 }}</b><strong>{{ route.name || `Route ${index + 1}` }}</strong><small>{{ routeSummary(route) }}</small></span><span class="route-card__status" :class="{ 'is-disabled': !route.is_active }">{{ route.is_active ? 'Enabled' : 'Disabled' }}</span><span class="source-chevron">{{ isRouteExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Route actions" @click.stop="route._menuOpen = !route._menuOpen">⋯</button><div v-if="route._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateRoute(route, index)">Duplicate route</button><button type="button" class="is-danger" @click="removeRoute(route, index)">Delete route</button></div></div></div>
                     <div v-if="isRouteExpanded(index)" class="route-card__body">
                         <div class="grid grid--two"><label class="field"><span>Route name</span><AppInput v-model="route.name" /></label><label class="field route-enabled"><span>Enabled</span><AppCheckbox v-model="route.is_active" /></label></div>
-                        <div v-for="type in route.match_types" :key="type" class="route-match-condition">
-                            <div class="route-match-condition__header"><strong>{{ routeMatchLabels[type] }}</strong><button type="button" class="picker-text-button" @click="removeRouteMatchType(route, type)">Remove match</button></div>
+                        <div v-for="(type, matchIndex) in route.match_types" :key="type" class="route-match-condition">
+                            <div class="route-match-condition__header"><label class="field"><span>Match type</span><AppSelect :model-value="type" :options="routeMatchOptions(route, type)" @update:model-value="changeRouteMatchType(route, matchIndex, $event)" /></label><button type="button" class="picker-text-button" @click="removeRouteMatchType(route, type)">Remove match</button></div>
                             <label v-if="type === 'network'" class="field"><span>Network</span><AppSelect v-model="route.match_values_by_type.network" :options="networkOptions" /></label>
                             <div v-else class="field"><span>{{ routeMatchLabels[type] }}</span><div class="route-token-input"><span v-for="(value, valueIndex) in routeValues(route, type)" :key="`${value}-${valueIndex}`" class="route-token">{{ value }}<button type="button" aria-label="Remove value" @click="removeRouteValue(route, type, valueIndex)">×</button></span><input v-model="route.value_input_by_type[type]" :placeholder="routePlaceholder(type)" @keydown.enter.prevent="commitRouteInput(route, type)" @keydown="$event.key === ',' ? ( $event.preventDefault(), commitRouteInput(route, type) ) : null" @paste="pasteRouteValues(route, type, $event)" @blur="commitRouteInput(route, type)"></div><small>Press Enter, type a comma, or paste multiple newline/comma-separated values.</small></div>
                         </div>
@@ -1357,6 +1366,10 @@ const saveResource = async () => {
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+}
+
+.route-match-condition__header .field {
+    flex: 1;
 }
 
 .route-match-add > :deep(.p-select) {

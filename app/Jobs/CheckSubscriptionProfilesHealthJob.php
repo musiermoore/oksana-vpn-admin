@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Services\InboundHealthCheckSettings;
 use App\Services\SubscriptionProfileHealthService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -30,8 +31,12 @@ final class CheckSubscriptionProfilesHealthJob implements ShouldQueue, ShouldBeU
         return 'subscription-profile-health';
     }
 
-    public function handle(SubscriptionProfileHealthService $healthService): void
+    public function handle(SubscriptionProfileHealthService $healthService, InboundHealthCheckSettings $settings): void
     {
+        if (! $settings->enabled()) {
+            return;
+        }
+
         $healthService->check();
     }
 }

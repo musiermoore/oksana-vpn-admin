@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\DTOs\Subscription\NormalizedNode;
+use App\Services\InboundHealthCheckSettings;
 use App\Services\SubscriptionProfileHealthRecorder;
 use App\Services\SubscriptionProfileProbe;
 use Illuminate\Bus\Queueable;
@@ -44,7 +45,12 @@ final class CheckSingleSubscriptionProfileHealthJob implements ShouldQueue, Shou
     public function handle(
         SubscriptionProfileProbe $probe,
         SubscriptionProfileHealthRecorder $recorder,
+        InboundHealthCheckSettings $settings,
     ): void {
+        if (! $settings->enabled()) {
+            return;
+        }
+
         $recorder->recordProbe($this->flow, $this->profileKey, $this->profileName, fn (): array => match ($this->mode) {
             'connect-node' => $this->subject instanceof NormalizedNode
                 ? $probe->checkConnectNode($this->subject)

@@ -11,6 +11,7 @@ const props = defineProps({
     inbounds: { type: Array, default: () => [] },
     profiles: { type: Array, default: () => [] },
     technicalUser: { type: Object, default: null },
+    healthChecksEnabled: { type: Boolean, default: true },
     profileSummary: {
         type: Object,
         default: () => ({ total: 0, healthy: 0, warning: 0, unhealthy: 0, unsupported: 0, unknown: 0 }),
@@ -76,6 +77,10 @@ const runChecks = () => router.post('/xray-inbound-health/run', {}, {
     },
 });
 
+const toggleHealthChecks = () => router.put('/xray-inbound-health/settings', {
+    is_enabled: !props.healthChecksEnabled,
+}, { preserveScroll: true });
+
 onUnmounted(() => window.clearTimeout(refreshTimer.value));
 </script>
 
@@ -98,9 +103,17 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
             ]"
         >
             <template #actions>
-                <AppButton type="button" @click="runChecks">Run checks</AppButton>
+                <AppButton variant="secondary" type="button" @click="toggleHealthChecks">
+                    {{ healthChecksEnabled ? 'Disable checks' : 'Enable checks' }}
+                </AppButton>
+                <AppButton type="button" :disabled="!healthChecksEnabled" @click="runChecks">Run checks</AppButton>
             </template>
         </AppPageHeader>
+
+        <section class="panel-card health-check-setting" :class="{ 'health-check-setting--disabled': !healthChecksEnabled }">
+            <strong>{{ healthChecksEnabled ? 'Health checks are enabled' : 'Health checks are disabled' }}</strong>
+            <p>{{ healthChecksEnabled ? 'Scheduled and manually queued checks are running.' : 'Scheduled checks are paused. Existing results remain visible.' }}</p>
+        </section>
 
         <section class="panel-card">
             <header class="profile-health-header">

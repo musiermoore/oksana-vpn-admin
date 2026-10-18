@@ -7,13 +7,19 @@ namespace App\Services;
 use App\Jobs\CheckSubscriptionProfilesHealthJob;
 use App\Jobs\CheckXrayInboundHealthJob;
 use App\Models\XrayInbound;
-use Illuminate\Support\Facades\Bus;
 use Throwable;
+use Illuminate\Support\Facades\Bus;
 
 final class InboundHealthCheckScheduler
 {
+    public function __construct(private readonly InboundHealthCheckSettings $settings) {}
+
     public function dispatch(): int
     {
+        if (! $this->settings->enabled()) {
+            return 0;
+        }
+
         $jobs = XrayInbound::query()
             ->where('is_active', true)
             ->whereHas('server', fn ($query) => $query->where('is_active', true)->where('is_ready', true))

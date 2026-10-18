@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\XrayInbound;
+use App\Services\InboundHealthCheckSettings;
 use App\Services\XrayInboundHealthService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Bus\Queueable;
@@ -33,8 +34,12 @@ final class CheckXrayInboundHealthJob implements ShouldQueue, ShouldBeUnique
         return (string) $this->inboundId;
     }
 
-    public function handle(XrayInboundHealthService $healthService): void
+    public function handle(XrayInboundHealthService $healthService, InboundHealthCheckSettings $settings): void
     {
+        if (! $settings->enabled()) {
+            return;
+        }
+
         $inbound = XrayInbound::query()
             ->with(['server', 'healthCheck'])
             ->find($this->inboundId);

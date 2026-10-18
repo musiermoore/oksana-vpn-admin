@@ -25,7 +25,6 @@ final class SubscriptionProfileHealthRecorder
         try {
             $check();
         } catch (Throwable $exception) {
-            report($exception);
             $this->record($flow, 'flow-error', 'Ошибка формирования: '.$this->flowName($flow), [
                 'status' => SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
                 'results' => [],
@@ -45,7 +44,6 @@ final class SubscriptionProfileHealthRecorder
         try {
             $this->record($flow, $key, $name, $probe());
         } catch (Throwable $exception) {
-            report($exception);
             $this->record($flow, $key, $name, [
                 'status' => SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
                 'results' => [],
@@ -125,10 +123,7 @@ final class SubscriptionProfileHealthRecorder
         }
 
         if ($check->status === SubscriptionProfileHealthCheck::STATUS_HEALTHY
-            && in_array($previousStatus, [
-                SubscriptionProfileHealthCheck::STATUS_WARNING,
-                SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
-            ], true)) {
+            && $previousStatus === SubscriptionProfileHealthCheck::STATUS_UNHEALTHY) {
             $this->devChat->send("🟢 Профиль восстановлен: {$this->flowName($flow)} — {$check->name}");
         }
     }

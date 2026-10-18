@@ -24,7 +24,6 @@ final class XrayInboundHealthService
         try {
             $result = $this->probeProvisioner->check($inbound);
         } catch (Throwable $exception) {
-            report($exception);
             $result = [
                 'status' => XrayInboundHealthCheck::STATUS_UNHEALTHY,
                 'results' => [],
@@ -59,10 +58,8 @@ final class XrayInboundHealthService
             $this->queueHealthSummary();
         }
 
-        if ($health->status === XrayInboundHealthCheck::STATUS_HEALTHY && in_array($previousStatus, [
-            XrayInboundHealthCheck::STATUS_WARNING,
-            XrayInboundHealthCheck::STATUS_UNHEALTHY,
-        ], true)) {
+        if ($health->status === XrayInboundHealthCheck::STATUS_HEALTHY
+            && $previousStatus === XrayInboundHealthCheck::STATUS_UNHEALTHY) {
             $this->devChat->send("🟢 Входящий сервер восстановлен: {$label}");
         }
     }

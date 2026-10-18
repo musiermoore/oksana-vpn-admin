@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\HealthCheck\UpdateInboundHealthCheckSettingsRequest;
 use App\Models\XrayInbound;
 use App\Models\XrayInboundHealthCheck;
 use App\Models\XrayJsonSetting;
 use App\Models\SubscriptionProfileHealthCheck;
 use App\Models\User;
 use App\Services\InboundHealthCheckScheduler;
+use App\Services\InboundHealthCheckSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -17,7 +19,7 @@ use Inertia\Response;
 
 final class XrayInboundHealthController
 {
-    public function index(): Response
+    public function index(InboundHealthCheckSettings $settings): Response
     {
         $technicalUser = User::query()
             ->where('is_health_check_user', true)
@@ -67,6 +69,7 @@ final class XrayInboundHealthController
                 'active' => XrayJsonSetting::query()->active()->count(),
                 'applied_name' => XrayJsonSetting::query()->latestActive()->value('name'),
             ],
+            'healthChecksEnabled' => $settings->enabled(),
         ]);
     }
 
@@ -109,10 +112,28 @@ final class XrayInboundHealthController
             ->values();
     }
 
-    public function run(InboundHealthCheckScheduler $scheduler): RedirectResponse
+    public function run(InboundHealthCheckScheduler $scheduler, InboundHealthCheckSettings $settings): RedirectResponse
     {
+        if (! $settings->enabled()) {
+            return redirect()->route('xray-inbound-health.index')->with('success', 'Health checks are disabled. Enable them to queue a run.');
+        }
+
         $scheduler->dispatch();
 
         return redirect()->route('xray-inbound-health.index')->with('success', 'Health checks queued. Results will appear as the probes finish.');
+    }
+
+    public function updateSettings(
+        UpdateInboundHealthCheckSettingsRequest $request,
+        InboundHealthCheckSettings $settings,
+    ): RedirectResponse
+    {
+        $data = $request->toData();
+        $settings->setEnabled($data->is_enabled);
+
+        return redirect()->route('xray-inbound-health.index')->with(
+            'success',
+            $data->is_enabled ? 'Health checks enabled.' : 'Health checks disabled.',
+        );
     }
 }

@@ -1,5 +1,4 @@
 import '../css/app.css';
-import '../css/telegram-mini-app.css';
 import 'primeicons/primeicons.css';
 import './bootstrap';
 import { createApp, h } from 'vue';

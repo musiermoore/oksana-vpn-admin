@@ -169,10 +169,8 @@ class TelegramAppAuthTest extends TestCase
     public function test_telegram_app_login_page_is_available(): void
     {
         $this->get('/telegram-app/login')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('TelegramApp/Login')
-            );
+            ->assertStatus(302)
+            ->assertRedirect('https://public.oksana1984.ru/login');
     }
 
     public function test_admin_login_page_keeps_admin_inertia_url(): void
@@ -188,11 +186,8 @@ class TelegramAppAuthTest extends TestCase
     public function test_public_login_page_uses_public_routes(): void
     {
         $this->get('/public/login')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('TelegramApp/Login')
-                ->url('/public/login')
-            );
+            ->assertStatus(302)
+            ->assertRedirect('https://public.oksana1984.ru/login');
     }
 
     public function test_hidden_public_login_page_uses_root_public_routes(): void
@@ -200,30 +195,22 @@ class TelegramAppAuthTest extends TestCase
         config()->set('app.public_hosts', ['public.oksana1984.ru']);
 
         $this->get('https://public.oksana1984.ru/public/login')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('TelegramApp/Login')
-                ->url('/login')
-            );
+            ->assertStatus(302)
+            ->assertRedirect('https://public.oksana1984.ru/login');
     }
 
     public function test_telegram_app_register_page_is_available(): void
     {
         $this->get('/telegram-app/register')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('TelegramApp/Register')
-            );
+            ->assertStatus(302)
+            ->assertRedirect('https://public.oksana1984.ru/register');
     }
 
     public function test_public_register_page_uses_public_routes(): void
     {
         $this->get('/public/register')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('TelegramApp/Register')
-                ->url('/public/register')
-            );
+            ->assertStatus(302)
+            ->assertRedirect('https://public.oksana1984.ru/register');
     }
 
     public function test_hidden_public_register_page_uses_root_public_routes(): void
@@ -231,11 +218,8 @@ class TelegramAppAuthTest extends TestCase
         config()->set('app.public_hosts', ['public.oksana1984.ru']);
 
         $this->get('https://public.oksana1984.ru/public/register')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('TelegramApp/Register')
-                ->url('/register')
-            );
+            ->assertStatus(302)
+            ->assertRedirect('https://public.oksana1984.ru/register');
     }
 
     public function test_telegram_app_password_auth_returns_mini_app_token(): void

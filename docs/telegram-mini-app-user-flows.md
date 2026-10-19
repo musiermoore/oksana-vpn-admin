@@ -8,18 +8,20 @@ See also: [docs/telegram-mini-app-state-machine.md](/Users/alexandersustavov/pro
 
 Telegram entry:
 
-1. User opens the mini-app from Telegram.
-2. Frontend sends Telegram WebApp `initData` to `POST /telegram-app/auth/telegram`.
-3. Backend validates the hash, creates or links the user, and returns a bearer token.
-4. Frontend loads `GET /telegram-app/me`.
+1. User opens the standalone Vue app at `https://public.oksana1984.ru/` from Telegram.
+2. Frontend sends Telegram WebApp `initData` to `POST https://api.oksana1984.ru/api/v1/auth/telegram`.
+3. If the user does not exist yet, the frontend calls `POST /telegram-app/auth/telegram` on the Laravel API to create the user, then retries the Go API login.
+4. Frontend loads `GET https://api.oksana1984.ru/api/v1/auth/me` with the bearer token.
 5. Default destination is `Home`; `start_param=payments` opens `Payments`.
 
 Public entry:
 
-1. User opens `/telegram-app/login`, `/public/login`, or public-subdomain `/login`.
+1. User opens `/login` on the standalone app. Old `/telegram-app/login` and `/public/login` page links redirect there.
 2. Login uses `POST /telegram-app/auth/login`.
 3. Registration uses `POST /telegram-app/auth/register`.
 4. Successful auth stores the mini-app bearer token and opens `Home`.
+
+The Laravel `/telegram-app` and `/public` API endpoints remain available to the standalone app. Old Laravel page links redirect to the matching SPA paths.
 
 Failure behavior:
 
@@ -81,7 +83,7 @@ Actions:
 - `Connect`: open the public `connect` `/deep-link/{client}?token=...` URL from `GET /api/users/{telegramId}/vless/link`; it redirects to the target app's import scheme. Incy receives `incy://add/{urlencoded_start_url}`.
 - `QR Code`: show the selected app-specific QR from `GET /api/users/{telegramId}/vless/qr-code?target=...`.
 - `New subscription` and `Old subscription`: separate collapsed blocks with copy and QR actions for Connect v2 and Connect v1.
-- `Whitelist`: open `/telegram-app/vless-wl?step=links`.
+- `Whitelist`: open `/vless-wl?step=links` on the standalone app.
 - `Home`: return to Home.
 
 Notes:

@@ -8,6 +8,7 @@ This document defines standards for new and actively changed code. It is not a c
 
 - Backend: Laravel.
 - Admin frontend: Inertia + Vue 3.
+- Telegram mini-app frontend: standalone Vue SPA in `../oksana-vpn-ui`; Laravel retains its mini-app API routes and redirects legacy page URLs to the SPA.
 - Important domain logic belongs in `app/Services/*`, `app/Services/Crud/*`, and `app/Services/Api/*`.
 - Use explicit DTOs, services, repositories, and resources for complex operations.
 

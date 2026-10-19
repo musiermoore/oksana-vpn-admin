@@ -38,6 +38,7 @@ return [
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'bot_username' => env('TELEGRAM_BOT_USERNAME'),
+        'mini_app_url' => env('TELEGRAM_MINI_APP_URL', 'https://public.oksana1984.ru'),
         'dev_chat_id' => env('TELEGRAM_DEV_CHAT_ID'),
         'incy_links' => [
             'bot' => env('TELEGRAM_INCY_BOT_URL', 'https://t.me/OksanaVpnBot'),

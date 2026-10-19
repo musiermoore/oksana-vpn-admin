@@ -5,72 +5,80 @@ declare(strict_types=1);
 namespace App\Http\Controllers\TelegramApp;
 
 use App\Http\Controllers\Controller;
-use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
 
 class PageController extends Controller
 {
-    public function login(): Response
+    public function login(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Login');
+        return $this->redirectTo('login');
     }
 
-    public function register(): Response
+    public function register(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Register');
+        return $this->redirectTo('register');
     }
 
-    public function home(): Response
+    public function home(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Home');
+        return $this->redirectTo('');
     }
 
-    public function payments(): Response
+    public function payments(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Payments');
+        return $this->redirectTo('payments');
     }
 
-    public function wireGuard(): Response
+    public function wireGuard(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/WireGuard');
+        return $this->redirectTo('wireguard');
     }
 
-    public function vless(): Response
+    public function vless(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Vless');
+        return $this->redirectTo('vless');
     }
 
-    public function vlessWhiteList(): Response
+    public function vlessWhiteList(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/VlessWhiteList');
+        return $this->redirectTo('vless-wl');
     }
 
-    public function help(): Response
+    public function help(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Help');
+        return $this->redirectTo('help');
     }
 
-    public function chats(): Response
+    public function chats(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Chats');
+        return $this->redirectTo('chats');
     }
 
-    public function support(): Response
+    public function support(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Support');
+        return $this->redirectTo('support');
     }
 
-    public function giveaway(): Response
+    public function giveaway(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Giveaway');
+        return $this->redirectTo('giveaway');
     }
 
-    public function referrals(): Response
+    public function referrals(): RedirectResponse
     {
-        return $this->inertia('TelegramApp/Referrals');
+        return $this->redirectTo('referrals');
     }
 
-    public function supportShow(int $ticketId): Response
+    public function supportShow(int $ticketId): RedirectResponse
     {
-        return $this->inertia('TelegramApp/SupportShow');
+        return $this->redirectTo("support/{$ticketId}");
+    }
+
+    private function redirectTo(string $path): RedirectResponse
+    {
+        $url = rtrim((string) config('services.telegram.mini_app_url'), '/').'/'.ltrim($path, '/');
+        $query = request()->getQueryString();
+
+        return redirect()->away($query ? "{$url}?{$query}" : $url);
     }
 }

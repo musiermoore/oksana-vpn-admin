@@ -243,7 +243,7 @@ onMounted(async () => {
                         <AppIcon :name="user?.has_active_access ? 'bolt' : 'receipt'" />
                         <span>{{ primaryActionLabel }}</span>
                     </Link>
-                    <Link :href="routes?.help" class="tg-button tg-button--secondary">
+                    <Link :href="telegramMiniAppRoutes.help" class="tg-button tg-button--secondary">
                         <AppIcon name="circleQuestion" />
                         <span>Нужна помощь?</span>
                     </Link>
@@ -324,7 +324,7 @@ onMounted(async () => {
                         </button>
                     </div>
 
-                    <Link :href="routes?.referrals" class="tg-button tg-button--secondary">
+                    <Link :href="telegramMiniAppRoutes.referrals" class="tg-button tg-button--secondary">
                         <AppIcon name="gift" />
                         <span>Правила и условия</span>
                     </Link>

@@ -37,6 +37,7 @@ Primary actions:
 - `Subscription`: open `Payments`.
 - `Help`: open help menu.
 - `Giveaway`: open current giveaway.
+- `Referral program -> Правила и условия`: open the referral program details page.
 - Bottom navigation: `Home`, `Payments`, `Chats`.
 
 Notes:

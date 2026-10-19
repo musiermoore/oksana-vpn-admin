@@ -20,6 +20,7 @@ Code status as of `2026-06-28`:
 ### Main User Screens
 
 - `HOME`: main menu and bottom navigation.
+- `REFERRALS`: referral link, discount status, and referral program rules.
 - `WIREGUARD_CONFIGS`: list Amnezia/WireGuard configs.
 - `WIREGUARD_CONFIG_ACTIONS`: selected config actions.
 - `WIREGUARD_QR_RESULT`: QR result for selected config.
@@ -66,6 +67,8 @@ Code status as of `2026-06-28`:
 | `HOME` | Subscription | Open subscription overview | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
 | `HOME` | Help | Open help menu | none | `HELP_MENU` | none |
 | `HOME` | Giveaway | Open giveaway | `GET /telegram-app/giveaway/current` | `GIVEAWAY` | `APP_INIT_ERROR` |
+| `HOME` | Правила и условия | Open referral program details | local route `/telegram-app/referrals` | `REFERRALS` | none |
+| `REFERRALS` | На главную | Return home | local route `/telegram-app` | `HOME` | none |
 | `WIREGUARD_CONFIGS` | auto | Load configs | `GET /api/users/{telegramId}/wireguard/configs` | `WIREGUARD_CONFIGS` | `ACCESS_DENIED_DEBT`, generic error |
 | `WIREGUARD_CONFIGS` | Config item | Select config locally | none | `WIREGUARD_CONFIG_ACTIONS` | next action may fail if config disappeared |
 | `WIREGUARD_CONFIGS` | Home | Return home | none | `HOME` | none |

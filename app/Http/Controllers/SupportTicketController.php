@@ -15,6 +15,7 @@ use App\Services\VlessDeepLinkService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SupportTicketController extends Controller
 {
@@ -143,5 +144,31 @@ class SupportTicketController extends Controller
         abort_unless(is_array($attachment) && Storage::disk('local')->exists($attachment['path'] ?? ''), 404);
 
         return Storage::disk('local')->download($attachment['path'], $attachment['name'] ?? 'attachment');
+    }
+
+    public function previewAttachment(int $ticketId, int $messageId, int $attachmentIndex): StreamedResponse
+    {
+        $ticket = $this->support->findForAdmin($ticketId);
+        abort_unless($ticket, 404);
+
+        $message = $ticket->messages->firstWhere('id', $messageId);
+        $attachment = $message?->attachments[$attachmentIndex] ?? null;
+        abort_unless(
+            is_array($attachment)
+            && str_starts_with((string) ($attachment['mime_type'] ?? ''), 'image/')
+            && ($attachment['mime_type'] ?? null) !== 'image/svg+xml'
+            && Storage::disk('local')->exists($attachment['path'] ?? ''),
+            404,
+        );
+
+        return Storage::disk('local')->response(
+            $attachment['path'],
+            $attachment['name'] ?? 'image',
+            [
+                'Content-Type' => $attachment['mime_type'],
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+            'inline',
+        );
     }
 }

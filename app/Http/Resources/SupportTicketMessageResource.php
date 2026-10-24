@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use App\Enums\SupportTicketSenderType;
@@ -19,6 +21,14 @@ class SupportTicketMessageResource extends JsonResource
                     'attachmentIndex' => $index,
                 ])
                 : '/'.$routePrefix.'/support/tickets/'.$this->support_ticket_id.'/attachments/'.$this->id.'/'.$index;
+
+            if ($request->is('support-tickets/*') && str_starts_with((string) ($attachment['mime_type'] ?? ''), 'image/')) {
+                $attachment['preview_url'] = route('support-tickets.attachments.preview', [
+                    'ticketId' => $this->support_ticket_id,
+                    'messageId' => $this->id,
+                    'attachmentIndex' => $index,
+                ]);
+            }
 
             unset($attachment['path']);
 

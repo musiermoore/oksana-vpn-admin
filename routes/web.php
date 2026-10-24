@@ -162,6 +162,8 @@ Route::middleware('auth')->group(function () {
     Route::get('support-tickets/{ticketId}', [SupportTicketController::class, 'show'])->name('support-tickets.show');
     Route::post('support-tickets/{ticketId}/reply', [SupportTicketController::class, 'reply'])->name('support-tickets.reply');
     Route::post('support-tickets/{ticketId}/close', [SupportTicketController::class, 'close'])->name('support-tickets.close');
+    Route::get('support-tickets/{ticketId}/attachments/{messageId}/{attachmentIndex}/preview', [SupportTicketController::class, 'previewAttachment'])
+        ->name('support-tickets.attachments.preview');
     Route::get('support-tickets/{ticketId}/attachments/{messageId}/{attachmentIndex}', [SupportTicketController::class, 'downloadAttachment'])
         ->name('support-tickets.attachments.download');
 

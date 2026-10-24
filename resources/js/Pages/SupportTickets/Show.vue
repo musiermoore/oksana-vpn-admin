@@ -1,6 +1,6 @@
 <script setup>
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 defineOptions({ layout: AppLayout });
@@ -14,7 +14,47 @@ const form = useForm({
     message: '',
 });
 const copiedLink = ref('');
+const activeGalleryIndex = ref(null);
 let copyResetTimer = null;
+
+const galleryImages = computed(() => props.ticket.messages.flatMap((message) =>
+    (message.attachments || [])
+        .filter((file) => file.preview_url)
+        .map((file) => ({ ...file, messageId: message.id, senderName: message.sender_name || message.sender_type })),
+));
+
+const openGallery = (image) => {
+    activeGalleryIndex.value = galleryImages.value.findIndex((item) => item.preview_url === image.preview_url);
+};
+
+const closeGallery = () => {
+    activeGalleryIndex.value = null;
+};
+
+const showPreviousImage = () => {
+    if (activeGalleryIndex.value !== null) {
+        activeGalleryIndex.value = (activeGalleryIndex.value - 1 + galleryImages.value.length) % galleryImages.value.length;
+    }
+};
+
+const showNextImage = () => {
+    if (activeGalleryIndex.value !== null) {
+        activeGalleryIndex.value = (activeGalleryIndex.value + 1) % galleryImages.value.length;
+    }
+};
+
+const handleGalleryKeydown = (event) => {
+    if (activeGalleryIndex.value === null) return;
+    if (event.key === 'Escape') closeGallery();
+    if (event.key === 'ArrowLeft') showPreviousImage();
+    if (event.key === 'ArrowRight') showNextImage();
+};
+
+onMounted(() => window.addEventListener('keydown', handleGalleryKeydown));
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', handleGalleryKeydown);
+    window.clearTimeout(copyResetTimer);
+});
 
 const submit = () => {
     form.post(`/support-tickets/${props.ticket.id}/reply`);
@@ -177,8 +217,24 @@ const formatDate = (value) => value ? new Date(value).toLocaleString('ru-RU') : 
             >
                 <strong>{{ message.sender_name || message.sender_type }}</strong>
                 <p style="white-space: pre-wrap">{{ message.message }}</p>
-                <div v-if="message.attachments?.length">
-                    <a v-for="file in message.attachments" :key="file.url" :href="file.url" target="_blank">{{ file.name }}</a>
+                <div v-if="message.attachments?.length" class="ticket-attachments">
+                    <button
+                        v-for="file in message.attachments.filter((attachment) => attachment.preview_url)"
+                        :key="file.url"
+                        class="ticket-image-thumb"
+                        type="button"
+                        :aria-label="`Открыть изображение ${file.name}`"
+                        @click="openGallery(file)"
+                    >
+                        <img :src="file.preview_url" :alt="file.name" loading="lazy">
+                    </button>
+                    <a
+                        v-for="file in message.attachments.filter((attachment) => !attachment.preview_url)"
+                        :key="file.url"
+                        :href="file.url"
+                        target="_blank"
+                        rel="noopener"
+                    >{{ file.name }}</a>
                 </div>
                 <small>{{ message.created_at }}</small>
             </article>
@@ -199,4 +255,141 @@ const formatDate = (value) => value ? new Date(value).toLocaleString('ru-RU') : 
             </div>
         </form>
     </section>
+
+    <div v-if="activeGalleryIndex !== null && galleryImages[activeGalleryIndex]" class="ticket-gallery" @click.self="closeGallery">
+        <button class="ticket-gallery__close" type="button" aria-label="Закрыть галерею" @click="closeGallery">×</button>
+        <button
+            v-if="galleryImages.length > 1"
+            class="ticket-gallery__nav ticket-gallery__nav--previous"
+            type="button"
+            aria-label="Предыдущее изображение"
+            @click="showPreviousImage"
+        >‹</button>
+        <figure class="ticket-gallery__figure">
+            <img :src="galleryImages[activeGalleryIndex].preview_url" :alt="galleryImages[activeGalleryIndex].name">
+            <figcaption>
+                {{ galleryImages[activeGalleryIndex].name }}
+                <span>{{ galleryImages[activeGalleryIndex].senderName }} · {{ activeGalleryIndex + 1 }} / {{ galleryImages.length }}</span>
+            </figcaption>
+        </figure>
+        <button
+            v-if="galleryImages.length > 1"
+            class="ticket-gallery__nav ticket-gallery__nav--next"
+            type="button"
+            aria-label="Следующее изображение"
+            @click="showNextImage"
+        >›</button>
+    </div>
 </template>
+
+<style scoped>
+.ticket-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.ticket-image-thumb {
+    width: 76px;
+    height: 76px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-color, #d0d7de);
+    border-radius: 8px;
+    background: transparent;
+    cursor: zoom-in;
+}
+
+.ticket-image-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ticket-gallery {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 5rem;
+    background: rgb(0 0 0 / 88%);
+}
+
+.ticket-gallery__figure {
+    display: flex;
+    max-width: min(100%, 1200px);
+    max-height: 100%;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+}
+
+.ticket-gallery__figure img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100vh - 9rem);
+    object-fit: contain;
+}
+
+.ticket-gallery__figure figcaption {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.75rem;
+    color: white;
+    overflow-wrap: anywhere;
+}
+
+.ticket-gallery__figure figcaption span {
+    flex-shrink: 0;
+    color: rgb(255 255 255 / 70%);
+}
+
+.ticket-gallery__close,
+.ticket-gallery__nav {
+    position: absolute;
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 16%);
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+.ticket-gallery__close {
+    top: 1rem;
+    right: 1rem;
+}
+
+.ticket-gallery__nav--previous {
+    left: 1rem;
+}
+
+.ticket-gallery__nav--next {
+    right: 1rem;
+}
+
+@media (max-width: 640px) {
+    .ticket-gallery {
+        padding: 3.5rem 1rem;
+    }
+
+    .ticket-gallery__nav--previous {
+        left: 0.5rem;
+    }
+
+    .ticket-gallery__nav--next {
+        right: 0.5rem;
+    }
+}
+</style>

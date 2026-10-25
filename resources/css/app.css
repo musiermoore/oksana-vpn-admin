@@ -1303,12 +1303,17 @@ body,
 }
 
 .shell--app {
-    grid-template-columns: 256px minmax(0, 1fr);
     background: transparent;
 }
 
-.shell--sidebar-collapsed {
-    grid-template-columns: 72px minmax(0, 1fr);
+@media (min-width: 992px) {
+    .shell--app {
+        grid-template-columns: 256px minmax(0, 1fr);
+    }
+
+    .shell--sidebar-collapsed {
+        grid-template-columns: 72px minmax(0, 1fr);
+    }
 }
 
 .shell__sidebar {

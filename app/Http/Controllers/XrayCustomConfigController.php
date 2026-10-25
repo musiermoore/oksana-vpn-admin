@@ -25,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 
 class XrayCustomConfigController extends Controller
 {
@@ -32,7 +33,7 @@ class XrayCustomConfigController extends Controller
     {
         return $this->inertia('XrayCustomConfigs/Index', [
             'create_page_url' => route('xray-custom-configs.create'),
-            'configs' => XrayCustomConfig::query()->with(['dnsSettings', 'geodata', 'clientGeodata'])->latest('id')->get()->map(
+            'configs' => XrayCustomConfig::query()->with(['dnsSettings', 'geodata', 'clientGeodata', 'userAssignments'])->latest('id')->get()->map(
                 fn (XrayCustomConfig $config): array => $this->payload($config)
             )->values(),
         ]);
@@ -45,7 +46,12 @@ class XrayCustomConfigController extends Controller
             'mode' => 'create',
             'submit_url' => route('xray-custom-configs.store'),
             'method' => 'post',
-            'config' => ['sort_order' => (int) XrayCustomConfig::query()->max('sort_order') + 1],
+            'config' => [
+                'sort_order' => (int) XrayCustomConfig::query()->max('sort_order') + 1,
+                'is_active' => true,
+                'is_public' => true,
+                'user_ids' => [],
+            ],
             'create_dns_url' => route('xray-dns-settings.store'),
             'create_geodata_url' => route('xray-geodata.store'),
         ]);
@@ -55,7 +61,12 @@ class XrayCustomConfigController extends Controller
     {
         /** @var XrayCustomConfigData $data */
         $data = $request->toDto();
-        $config = XrayCustomConfig::query()->create($data->toArray());
+        $attributes = $data->toArray();
+        $userIds = $attributes['user_ids'];
+        unset($attributes['user_ids']);
+
+        $config = XrayCustomConfig::query()->create($attributes);
+        $this->syncUserAssignments($config, $userIds);
         $this->syncGroupsAndRoutes($config, $data);
 
         return redirect()->route('xray-custom-configs.edit', $config)->with('success', 'Xray custom config created.');
@@ -63,7 +74,7 @@ class XrayCustomConfigController extends Controller
 
     public function edit(XrayCustomConfig $xrayCustomConfig)
     {
-        $xrayCustomConfig->load(['outboundGroups.fallbackGroup', 'routes', 'clientGeodata']);
+        $xrayCustomConfig->load(['outboundGroups.fallbackGroup', 'routes', 'clientGeodata', 'userAssignments']);
 
         return $this->inertia('XrayCustomConfigs/Form', [
             ...$this->formProps(),
@@ -80,7 +91,12 @@ class XrayCustomConfigController extends Controller
     {
         /** @var XrayCustomConfigData $data */
         $data = $request->toDto();
-        $xrayCustomConfig->update($data->toArray());
+        $attributes = $data->toArray();
+        $userIds = $attributes['user_ids'];
+        unset($attributes['user_ids']);
+
+        $xrayCustomConfig->update($attributes);
+        $this->syncUserAssignments($xrayCustomConfig, $userIds);
         $this->syncGroupsAndRoutes($xrayCustomConfig, $data);
 
         return redirect()->back()->with('success', 'Xray custom config updated.');
@@ -107,7 +123,9 @@ class XrayCustomConfigController extends Controller
     ): JsonResponse {
         /** @var XrayCustomConfigData $data */
         $data = $request->toDto();
-        $config = new XrayCustomConfig($data->toArray());
+        $attributes = $data->toArray();
+        unset($attributes['user_ids']);
+        $config = new XrayCustomConfig($attributes);
         $this->setDraftGroupsAndRoutes($config, $data);
         $config->setRelation('clientGeodata', collect($data->geodata_by_client)
             ->filter(static fn (mixed $id): bool => $id !== null)
@@ -148,7 +166,7 @@ class XrayCustomConfigController extends Controller
         }
 
         if (! $user->is_health_check_user
-            && $xrayCustomConfig->userAssignments()->exists()
+            && ! $xrayCustomConfig->is_public
             && ! $xrayCustomConfig->userAssignments()->where('user_id', $user->id)->exists()) {
             abort(404);
         }
@@ -257,7 +275,7 @@ class XrayCustomConfigController extends Controller
                 ->values(),
             'geodata' => XrayRoutingGeodata::query()->active()->latest('id')->get(['id', 'name']),
             'users' => User::query()
-                ->where('is_active', true)
+                ->whereNull('is_health_check_user')
                 ->orderBy('id')
                 ->get(['id', 'name', 'telegram', 'telegram_id'])
                 ->map(fn (User $user): array => [
@@ -333,6 +351,10 @@ class XrayCustomConfigController extends Controller
                 ])->values()->all()
                 : [],
             'is_active' => $config->is_active,
+            'is_public' => $config->is_public,
+            'user_ids' => $config->relationLoaded('userAssignments')
+                ? $config->userAssignments->pluck('user_id')->map(static fn ($id): int => (int) $id)->all()
+                : [],
             'sort_order' => $config->sort_order,
             'dns_settings' => $config->relationLoaded('dnsSettings') && $config->dnsSettings !== null
                 ? ['id' => $config->dnsSettings->id, 'name' => $config->dnsSettings->name]
@@ -343,6 +365,44 @@ class XrayCustomConfigController extends Controller
             'connect_url' => route('vless.custom-connect', $config),
             'links' => ['edit' => route('xray-custom-configs.edit', $config)],
         ];
+    }
+
+
+    /** @param array<int, int> $userIds */
+    private function syncUserAssignments(XrayCustomConfig $config, array $userIds): void
+    {
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+
+        $assignments = $config->userAssignments();
+        if ($userIds === []) {
+            $assignments->delete();
+
+            return;
+        }
+
+        $assignments->whereNotIn('user_id', $userIds)->delete();
+
+        $existingUserIds = $config->userAssignments()
+            ->whereIn('user_id', $userIds)
+            ->pluck('user_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->all();
+        $missingUserIds = array_values(array_diff($userIds, $existingUserIds));
+
+        if ($missingUserIds === []) {
+            return;
+        }
+
+        $timestamp = now();
+        DB::table('xray_custom_config_user')->insertOrIgnore(array_map(
+            static fn (int $userId): array => [
+                'xray_custom_config_id' => $config->id,
+                'user_id' => $userId,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ],
+            $missingUserIds,
+        ));
     }
 
     /** @return array{tg:string,id:int}|null */

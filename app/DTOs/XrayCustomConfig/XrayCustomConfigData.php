@@ -17,6 +17,7 @@ class XrayCustomConfigData extends Data
      * @param  array<string, mixed>  $base_settings
      * @param  array<int, array<string, mixed>>  $outbound_groups
      * @param  array<int, array<string, mixed>>  $routes
+     * @param  array<int, int>  $user_ids
      */
     public function __construct(
         public string $name,
@@ -34,7 +35,9 @@ class XrayCustomConfigData extends Data
         public array $base_settings,
         public array $outbound_groups,
         public array $routes,
+        public array $user_ids,
         public bool $is_active,
+        public bool $is_public,
         public int $sort_order,
     ) {}
 }

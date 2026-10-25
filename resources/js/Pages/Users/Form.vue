@@ -76,6 +76,7 @@ const submit = () => {
 const toggleConfig = (config) => router.post(config.is_active ? config.links.disable : config.links.enable);
 const destroyConfig = (config) => confirm(`Удалить конфиг ${config.name}?`) && router.delete(config.links.destroy);
 const unlinkXrayConfig = (config) => confirm(`Отвязать Xray-конфиг ${config.name}?`) && router.delete(config.links.destroy);
+const unlinkPersonalXrayConfig = (assignment) => confirm(`Снять назначение ${assignment.config.name}? История цен этого назначения тоже будет удалена.`) && router.delete(assignment.destroy_url, { preserveScroll: true });
 const toggleXrayConfig = (config) => {
     if (!config.supports_toggle) {
         return;
@@ -120,12 +121,11 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
 <template>
     <Head :title="mode === 'edit' ? 'Редактирование участника' : 'Создание участника'" />
 
-    <section class="page-card stack">
-        <div class="page-header">
-            <div>
-                <h1>{{ mode === 'edit' ? 'Редактирование участника' : 'Создание участника' }}</h1>
-            </div>
-        </div>
+    <details class="page-card stack user-collapsible" open>
+        <summary class="user-collapsible__summary">
+            <h1>{{ mode === 'edit' ? 'Редактирование участника' : 'Создание участника' }}</h1>
+            <span aria-hidden="true">⌄</span>
+        </summary>
 
         <div v-if="mode === 'edit' && subscription_links" class="grid grid--two">
             <label class="field">
@@ -204,21 +204,15 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
                 <AppButton variant="secondary" href="/users">Назад</AppButton>
             </div>
         </form>
-    </section>
+    </details>
 
     <template v-if="mode === 'edit' && user">
-        <section class="page-card stack">
-            <div class="page-header">
-                <div>
-                    <h2 class="section-title">Конфиги</h2>
-                    <p v-if="user.subscription_expires_at">
-                        Подписка активна до {{ new Date(user.subscription_expires_at).toLocaleString() }}
-                    </p>
-                </div>
-                <div class="actions">
-                    <AppButton href="/configs/create">Создать</AppButton>
-                </div>
-            </div>
+        <details class="page-card stack user-collapsible">
+            <summary class="user-collapsible__summary">
+                <div><h2 class="section-title">Конфиги</h2><p v-if="user.subscription_expires_at">Подписка активна до {{ new Date(user.subscription_expires_at).toLocaleString() }}</p></div>
+                <span aria-hidden="true">⌄</span>
+            </summary>
+            <div class="actions"><AppButton href="/configs/create">Создать</AppButton></div>
 
             <div v-if="user.configs.length" class="list">
                 <div v-for="config in user.configs" :key="config.id" class="item-row">
@@ -237,17 +231,11 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
                 </div>
             </div>
             <div v-else class="empty-state">У пользователя пока нет конфигов.</div>
-        </section>
+        </details>
 
-        <section class="page-card stack">
-            <div class="page-header">
-                <div>
-                    <h2 class="section-title">Xray конфиги</h2>
-                </div>
-                <div class="actions">
-                    <AppButton :href="`/xray-configs/create?user_id=${user.id}`">Создать</AppButton>
-                </div>
-            </div>
+        <details class="page-card stack user-collapsible">
+            <summary class="user-collapsible__summary"><h2 class="section-title">Xray конфиги</h2><span aria-hidden="true">⌄</span></summary>
+            <div class="actions"><AppButton :href="`/xray-configs/create?user_id=${user.id}`">Создать</AppButton></div>
 
             <div v-if="user.xray_configs?.length" class="list">
                 <div v-for="config in user.xray_configs" :key="`${config.protocol}-${config.id}`" class="item-row">
@@ -270,15 +258,13 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
                 </div>
             </div>
             <div v-else class="empty-state">У пользователя пока нет Xray-конфигов.</div>
-        </section>
+        </details>
 
-        <section class="page-card stack">
-            <div class="page-header">
-                <div>
-                    <h2 class="section-title">Персональные Xray JSON конфиги</h2>
-                    <p>Добавьте конфиг пользователю и укажите его разовую цену. Новая дата добавит запись в историю цен; сохранение цены не списывает баланс.</p>
-                </div>
-            </div>
+        <details class="page-card stack user-collapsible" open>
+            <summary class="user-collapsible__summary">
+                <div><h2 class="section-title">Персональные Xray JSON конфиги</h2><p>Добавьте конфиг пользователю и укажите его разовую цену. Новая дата добавит запись в историю цен; сохранение цены не списывает баланс.</p></div>
+                <span aria-hidden="true">⌄</span>
+            </summary>
 
             <form v-if="available_xray_custom_configs.length" class="grid grid--two" @submit.prevent="saveXrayCustomConfigPrice">
                 <label class="field">
@@ -320,20 +306,15 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
                         </div>
                         <div v-else class="muted">Цена пока не задана.</div>
                     </div>
+                    <AppButton variant="danger" type="button" @click="unlinkPersonalXrayConfig(assignment)">Снять назначение</AppButton>
                 </div>
             </div>
             <div v-else class="empty-state">У пользователя пока нет персональных Xray JSON конфигов.</div>
-        </section>
+        </details>
 
-        <section class="page-card stack">
-            <div class="page-header">
-                <div>
-                    <h2 class="section-title">Транзакции</h2>
-                </div>
-                <div class="actions">
-                    <AppButton href="/transactions/create">Создать</AppButton>
-                </div>
-            </div>
+        <details class="page-card stack user-collapsible">
+            <summary class="user-collapsible__summary"><h2 class="section-title">Транзакции</h2><span aria-hidden="true">⌄</span></summary>
+            <div class="actions"><AppButton href="/transactions/create">Создать</AppButton></div>
 
             <div v-if="user.transactions.length" class="table-wrap">
                 <table>
@@ -365,6 +346,31 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
                 </table>
             </div>
             <div v-else class="empty-state">Транзакций пока нет.</div>
-        </section>
+        </details>
     </template>
 </template>
+
+<style scoped>
+.user-collapsible__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.user-collapsible__summary::-webkit-details-marker {
+    display: none;
+}
+
+.user-collapsible__summary > span {
+    color: var(--muted);
+    font-size: 1.25rem;
+    transition: transform 150ms ease;
+}
+
+.user-collapsible:not([open]) .user-collapsible__summary > span {
+    transform: rotate(-90deg);
+}
+</style>

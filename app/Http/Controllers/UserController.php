@@ -14,6 +14,7 @@ use App\Models\CurrentPayment;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Models\XrayCustomConfig;
+use App\Models\XrayCustomConfigUser;
 use App\Services\Crud\UserCrudService;
 use App\Services\XrayCustomConfigUserPriceService;
 use App\Services\VlessDeepLinkService;
@@ -101,6 +102,7 @@ class UserController extends Controller
                     'price' => (float) $price->price,
                     'effective_from' => $price->effective_from->format('Y-m-d'),
                 ])->values(),
+                'destroy_url' => route('users.xray-custom-config-assignments.destroy', [$user, $assignment]),
             ])->values();
 
         return $this->inertia('Users/Form', [
@@ -136,6 +138,17 @@ class UserController extends Controller
 
         return redirect()->route('users.edit', $user)
             ->with('success', 'Personal Xray config price saved.');
+    }
+
+    public function destroyXrayCustomConfigAssignment(User $user, XrayCustomConfigUser $assignment): RedirectResponse
+    {
+        $user->xrayCustomConfigAssignments()
+            ->whereKey($assignment->getKey())
+            ->firstOrFail()
+            ->delete();
+
+        return redirect()->route('users.edit', $user)
+            ->with('success', 'Personal Xray config assignment removed.');
     }
 
     public function update(UpdateUserRequest $request, User $user)

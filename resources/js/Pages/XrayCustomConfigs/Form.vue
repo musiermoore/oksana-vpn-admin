@@ -25,7 +25,8 @@ const form = useForm({
     name: initial.name || '', slug: initial.slug || slugify(initial.name), description: initial.description || '',
     dns_settings_id: initial.dns_settings_id || '', geodata_id: initial.geodata_id || '', geodata_by_client: initial.geodata_by_client || { incy: null, happ: null, v2raytun: null, other: null },
     xray_inbound_ids: initial.xray_inbound_ids || [], external_subscription_config_ids: initial.external_subscription_config_ids || [], external_subscription_ids: initial.external_subscription_ids || [],
-    proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], is_active: initial.is_active ?? true, sort_order: initial.sort_order ?? 0,
+    proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], user_ids: initial.user_ids || [],
+    is_active: initial.is_active ?? true, is_public: initial.is_public ?? true, sort_order: initial.sort_order ?? 0,
 });
 const slugManuallyEdited = ref(Boolean(initial.slug && initial.slug !== slugify(initial.name)));
 watch(() => form.name, (name) => {
@@ -144,6 +145,12 @@ const ids = (field) => (form[field] || []).map(Number);
 const checked = (field, id) => ids(field).includes(Number(id));
 const toggle = (field, id, value) => { const current = ids(field); form[field] = value ? [...new Set([...current, Number(id)])] : current.filter((item) => item !== Number(id)); };
 const normalized = (value) => String(value || '').toLocaleLowerCase();
+const userSearch = ref('');
+const visibleUsers = computed(() => {
+    const query = normalized(userSearch.value).trim();
+
+    return props.users.filter((user) => !query || normalized(`${user.full_name || ''} ${user.telegram_id || ''}`).includes(query));
+});
 const inboundLabel = (inbound) => [
     `Inbound #${inbound.external_id}`,
     inbound.protocol,
@@ -474,6 +481,8 @@ const resourcesJson = computed({
 });
 const requestPayload = (baseSettings = buildBaseSettings()) => ({
     is_active: Boolean(form.is_active),
+    is_public: Boolean(form.is_public),
+    user_ids: ids('user_ids'),
     external_subscription_config_ids: [],
     base_settings_json: JSON.stringify(baseSettings || {}),
     outbound_groups_json: JSON.stringify(buildGroups()),
@@ -563,7 +572,23 @@ const saveResource = async () => {
                     <label class="field"><span>Order in /connect JSON</span><AppInput v-model="form.sort_order" type="number" min="0" /></label>
                     <label class="field basic-description"><span>Description</span><AppTextarea v-model="form.description" rows="3" /></label>
                     <label class="field basic-status"><span>Status</span><AppCheckbox v-model="form.is_active" /> <small>{{ form.is_active ? 'Enabled' : 'Disabled' }}</small></label>
+                    <label class="field basic-status"><span>Public</span><AppCheckbox v-model="form.is_public" /> <small>{{ form.is_public ? 'Visible to all users' : 'Visible only to selected users' }}</small></label>
                 </div>
+            </div>
+            <div v-if="!form.is_public" class="source-section user-assignment-section">
+                <div class="source-section__header">
+                    <div><h2>Назначенные пользователи</h2><p>Закрытая конфигурация появится только в подписках выбранных пользователей.</p></div>
+                    <strong>{{ ids('user_ids').length }} выбрано</strong>
+                </div>
+                <AppInput v-model="userSearch" placeholder="Найти пользователя по имени или Telegram ID" />
+                <div class="user-assignment-list">
+                    <label v-for="user in visibleUsers" :key="user.id" class="user-assignment-row">
+                        <input type="checkbox" :checked="checked('user_ids', user.id)" @change="toggle('user_ids', user.id, $event.target.checked)">
+                        <span><strong>{{ user.full_name || user.telegram_id }}</strong><small>Telegram ID: {{ user.telegram_id || '—' }}</small></span>
+                    </label>
+                    <p v-if="visibleUsers.length === 0" class="source-empty">Нет пользователей, подходящих под поиск.</p>
+                </div>
+                <small v-if="form.errors.user_ids" class="field-error">{{ form.errors.user_ids }}</small>
             </div>
             <JsonSectionEditor v-model="resourcesJson" title="Ресурсы" description="Выберите DNS и геоданные для этой конфигурации." :json-editable="false">
                 <div class="grid grid--two">
@@ -724,6 +749,39 @@ const saveResource = async () => {
 .form-hint {
     display: block;
     margin-top: 0.75rem;
+    color: var(--muted);
+}
+
+.user-assignment-section {
+    display: grid;
+    gap: 1rem;
+}
+
+.user-assignment-list {
+    display: grid;
+    gap: 0.5rem;
+    max-height: 22rem;
+    overflow: auto;
+    padding: 0.5rem;
+    border: 1px solid var(--border, rgba(184, 199, 219, 0.55));
+    border-radius: 14px;
+}
+
+.user-assignment-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem;
+    border-radius: 10px;
+    background: var(--surface, #fff);
+}
+
+.user-assignment-row > span {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.user-assignment-row small {
     color: var(--muted);
 }
 

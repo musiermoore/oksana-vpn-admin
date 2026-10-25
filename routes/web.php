@@ -84,6 +84,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', UserController::class);
     Route::post('users/{user}/xray-custom-config-prices', [UserController::class, 'storeXrayCustomConfigPrice'])
         ->name('users.xray-custom-config-prices.store');
+    Route::delete('users/{user}/xray-custom-config-assignments/{assignment}', [UserController::class, 'destroyXrayCustomConfigAssignment'])
+        ->name('users.xray-custom-config-assignments.destroy');
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);
     Route::get('notifications/create', [NotificationController::class, 'create'])
         ->name('notifications.create');

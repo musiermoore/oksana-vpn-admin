@@ -28,7 +28,7 @@ final class ConnectJsonProfileOrderer
         $customConfigs = XrayCustomConfig::query()
             ->active()
             ->when(! $user->is_health_check_user, fn ($query) => $query->where(function ($configQuery) use ($user): void {
-                $configQuery->whereDoesntHave('userAssignments')
+                $configQuery->where('is_public', true)
                     ->orWhereHas('userAssignments', fn ($assignmentQuery) => $assignmentQuery->where('user_id', $user->id));
             }))
             ->ordered()

@@ -42,7 +42,10 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'base_settings_json' => ['required', 'string', 'json'],
             'outbound_groups_json' => ['required', 'string', 'json'],
             'routes_json' => ['required', 'string', 'json'],
+            'user_ids' => ['sometimes', 'array'],
+            'user_ids.*' => ['integer', Rule::exists('users', 'id')],
             'is_active' => ['required', 'boolean'],
+            'is_public' => ['sometimes', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
         ];
     }
@@ -101,7 +104,13 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'base_settings' => json_decode((string) $validated['base_settings_json'], true, 512, JSON_THROW_ON_ERROR),
             'outbound_groups' => json_decode((string) $validated['outbound_groups_json'], true, 512, JSON_THROW_ON_ERROR),
             'routes' => json_decode((string) $validated['routes_json'], true, 512, JSON_THROW_ON_ERROR),
+            'user_ids' => array_key_exists('user_ids', $validated)
+                ? $this->ids($validated['user_ids'])
+                : $this->existingUserIds(),
             'is_active' => (bool) $validated['is_active'],
+            'is_public' => array_key_exists('is_public', $validated)
+                ? (bool) $validated['is_public']
+                : (bool) ($this->route('xrayCustomConfig')?->is_public ?? true),
             'sort_order' => (int) $validated['sort_order'],
         ];
     }
@@ -109,5 +118,15 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
     private function ids(array $ids): array
     {
         return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /** @return array<int, int> */
+    private function existingUserIds(): array
+    {
+        $config = $this->route('xrayCustomConfig');
+
+        return $config instanceof \App\Models\XrayCustomConfig
+            ? $config->userAssignments()->pluck('user_id')->map(static fn ($id): int => (int) $id)->all()
+            : [];
     }
 }

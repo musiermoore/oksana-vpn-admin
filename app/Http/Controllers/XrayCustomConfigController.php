@@ -147,6 +147,12 @@ class XrayCustomConfigController extends Controller
             return null;
         }
 
+        if (! $user->is_health_check_user
+            && $xrayCustomConfig->userAssignments()->exists()
+            && ! $xrayCustomConfig->userAssignments()->where('user_id', $user->id)->exists()) {
+            abort(404);
+        }
+
         $result = $service->build($user, $xrayCustomConfig, $this->clientKey($request->query('app')));
         $response = response($request->boolean('base64') ? base64_encode($result->content) : $result->content);
 

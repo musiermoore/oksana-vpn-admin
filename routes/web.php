@@ -82,6 +82,8 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('tasks', TaskController::class)->except(['show']);
     Route::resource('users', UserController::class);
+    Route::post('users/{user}/xray-custom-config-prices', [UserController::class, 'storeXrayCustomConfigPrice'])
+        ->name('users.xray-custom-config-prices.store');
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);
     Route::get('notifications/create', [NotificationController::class, 'create'])
         ->name('notifications.create');

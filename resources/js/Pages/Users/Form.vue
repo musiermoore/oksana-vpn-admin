@@ -11,6 +11,9 @@ const props = defineProps({
     user: Object,
     payments: Array,
     subscription_links: Object,
+    xray_custom_config_assignments: { type: Array, default: () => [] },
+    available_xray_custom_configs: { type: Array, default: () => [] },
+    xray_custom_config_price_store_url: String,
 });
 
 const copiedSubscriptionLink = ref('');
@@ -87,6 +90,31 @@ const joinAtOptions = props.payments.map((payment) => ({
     label: `${payment.formatted_start_date} (${payment.amount}₽)`,
     value: payment.start_date,
 }));
+const xrayCustomConfigOptions = props.available_xray_custom_configs.map((config) => ({
+    label: `${config.name} (${config.slug})`,
+    value: config.id,
+}));
+
+const localDate = () => {
+    const date = new Date();
+    const pad = (part) => String(part).padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const xrayPriceForm = useForm({
+    xray_custom_config_id: props.available_xray_custom_configs[0]?.id ?? '',
+    price: '',
+    effective_from: localDate(),
+});
+
+const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_config_price_store_url, {
+    preserveScroll: true,
+    onSuccess: () => {
+        xrayPriceForm.price = '';
+        xrayPriceForm.effective_from = localDate();
+    },
+});
 </script>
 
 <template>
@@ -242,6 +270,59 @@ const joinAtOptions = props.payments.map((payment) => ({
                 </div>
             </div>
             <div v-else class="empty-state">У пользователя пока нет Xray-конфигов.</div>
+        </section>
+
+        <section class="page-card stack">
+            <div class="page-header">
+                <div>
+                    <h2 class="section-title">Персональные Xray JSON конфиги</h2>
+                    <p>Добавьте конфиг пользователю и укажите его разовую цену. Новая дата добавит запись в историю цен; сохранение цены не списывает баланс.</p>
+                </div>
+            </div>
+
+            <form v-if="available_xray_custom_configs.length" class="grid grid--two" @submit.prevent="saveXrayCustomConfigPrice">
+                <label class="field">
+                    <span>Конфиг</span>
+                    <AppSelect
+                        v-model="xrayPriceForm.xray_custom_config_id"
+                        :options="xrayCustomConfigOptions"
+                    />
+                    <small v-if="xrayPriceForm.errors.xray_custom_config_id" class="field-error">{{ xrayPriceForm.errors.xray_custom_config_id }}</small>
+                </label>
+
+                <label class="field">
+                    <span>Разовая цена</span>
+                    <AppInput v-model="xrayPriceForm.price" type="number" min="0" step="0.01" required />
+                    <small v-if="xrayPriceForm.errors.price" class="field-error">{{ xrayPriceForm.errors.price }}</small>
+                </label>
+
+                <label class="field">
+                    <span>Действует с</span>
+                    <AppInput v-model="xrayPriceForm.effective_from" type="date" required />
+                    <small v-if="xrayPriceForm.errors.effective_from" class="field-error">{{ xrayPriceForm.errors.effective_from }}</small>
+                </label>
+
+                <div class="actions" style="grid-column: 1 / -1;">
+                    <AppButton type="submit" :disabled="xrayPriceForm.processing">Сохранить цену</AppButton>
+                </div>
+            </form>
+            <div v-else class="empty-state">Сначала создайте Xray custom config.</div>
+
+            <div v-if="xray_custom_config_assignments.length" class="list">
+                <div v-for="assignment in xray_custom_config_assignments" :key="assignment.id" class="item-row">
+                    <div>
+                        <strong>{{ assignment.config.name }}</strong>
+                        <span> · {{ assignment.config.slug }}</span>
+                        <div v-if="assignment.prices.length" class="muted">
+                            <div v-for="price in assignment.prices" :key="price.id">
+                                {{ price.price }} ₽ с {{ price.effective_from }}
+                            </div>
+                        </div>
+                        <div v-else class="muted">Цена пока не задана.</div>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="empty-state">У пользователя пока нет персональных Xray JSON конфигов.</div>
         </section>
 
         <section class="page-card stack">

@@ -164,7 +164,7 @@ Main `/connect`:
 - `skip_connection=true` disables device tracking for admin requests.
 - Output includes regular user VLESS nodes and external subscriptions with `include_in_main_subscription`.
 - Ordering is explicit: `servers.sort_order`, `vless_external_subscriptions.sort_order`, `xray_custom_configs.sort_order`, `xray_inbounds.sort_order`, and `proxies.sort_order`.
-- Active Xray custom JSON profiles use the same shared connect-group order and are not appended unconditionally at the end of JSON output.
+- Active Xray custom JSON profiles use the same shared connect-group order and are not appended unconditionally at the end of JSON output. Unassigned profiles remain shared; profiles assigned through `xray_custom_config_user` are emitted only for users with that assignment. The technical health-check user can inspect all active custom profiles.
 - `proxies.server_id` makes proxy variants part of one server. `hide_main_node_name` makes the proxy display name stand alone.
 - Soft-deleted servers are excluded.
 - INCY requests receive Telegram links through `Support-Url`, `Profile-Web-Page-Url`, and `Announce-Url`: bot, news channel, and community chat.
@@ -235,6 +235,7 @@ JSON output:
 Custom Xray JSON configurations:
 
 - `xray_custom_configs` stores reusable JSON profile definitions and builds the final profile per user request.
+- An assignment in `xray_custom_config_user` makes a profile personal: only assigned users receive it in combined JSON subscriptions and through `connect-custom/{slug}`. Unassigned profiles remain globally shared. One-time prices are maintained in the admin user edit page and do not alter subscription renewal billing.
 - A custom profile can select local Xray inbounds, external subscriptions, proxies, and explicit `xray_routings`.
 - External subscriptions are stored by subscription ID. Every current config belonging to a selected subscription is loaded when the profile is built, so sync changes are reflected automatically without editing the custom profile.
 - Selected local and external nodes are still filtered through the requesting user's active/visible configs; the profile does not grant access to another user's configs.

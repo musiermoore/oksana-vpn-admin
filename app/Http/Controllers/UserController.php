@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Resources\CurrentPaymentResource;
@@ -7,11 +9,15 @@ use App\Http\Resources\UserResource;
 use App\Http\Resources\UserTokenResource;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
+use App\Http\Requests\XrayCustomConfig\StoreXrayCustomConfigUserPriceRequest;
 use App\Models\CurrentPayment;
 use App\Models\User;
 use App\Models\UserToken;
+use App\Models\XrayCustomConfig;
 use App\Services\Crud\UserCrudService;
+use App\Services\XrayCustomConfigUserPriceService;
 use App\Services\VlessDeepLinkService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
@@ -81,17 +87,55 @@ class UserController extends Controller
             'vlessConfigs.user',
         ]);
 
+        $xrayCustomConfigAssignments = $user->xrayCustomConfigAssignments()
+            ->with(['xrayCustomConfig', 'prices'])
+            ->get()
+            ->map(fn ($assignment): array => [
+                'id' => (int) $assignment->id,
+                'config' => [
+                    'name' => $assignment->xrayCustomConfig->name,
+                    'slug' => $assignment->xrayCustomConfig->slug,
+                ],
+                'prices' => $assignment->prices->map(fn ($price): array => [
+                    'id' => (int) $price->id,
+                    'price' => (float) $price->price,
+                    'effective_from' => $price->effective_from->format('Y-m-d'),
+                ])->values(),
+            ])->values();
+
         return $this->inertia('Users/Form', [
             'mode' => 'edit',
             'submit_url' => route('users.update', $user),
             'user' => (new UserResource($user))->toArray($request),
             'payments' => CurrentPaymentResource::collection($payments)->toArray($request),
+            'xray_custom_config_assignments' => $xrayCustomConfigAssignments,
+            'available_xray_custom_configs' => XrayCustomConfig::query()
+                ->ordered()
+                ->get(['id', 'name', 'slug'])
+                ->map(fn (XrayCustomConfig $config): array => [
+                    'id' => (int) $config->id,
+                    'name' => $config->name,
+                    'slug' => $config->slug,
+                ])
+                ->values(),
+            'xray_custom_config_price_store_url' => route('users.xray-custom-config-prices.store', $user),
             'subscription_links' => [
                 'standard' => $this->vlessDeepLinks->getConnectUrl($user),
                 'connect_v2' => $this->vlessDeepLinks->getConnectV2Url($user),
                 'whitelist' => $this->vlessDeepLinks->getConnectUrlForRoute($user, 'vless.connect-wl'),
             ],
         ]);
+    }
+
+    public function storeXrayCustomConfigPrice(
+        StoreXrayCustomConfigUserPriceRequest $request,
+        User $user,
+        XrayCustomConfigUserPriceService $service,
+    ): RedirectResponse {
+        $service->store($user, $request->toData());
+
+        return redirect()->route('users.edit', $user)
+            ->with('success', 'Personal Xray config price saved.');
     }
 
     public function update(UpdateUserRequest $request, User $user)

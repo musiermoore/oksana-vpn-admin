@@ -132,6 +132,7 @@ class UserSubscriptionService
             $this->connectJsonBuilder,
             $nodes,
             $customNodes,
+            $user,
             $client,
             $subscriptionType,
         );

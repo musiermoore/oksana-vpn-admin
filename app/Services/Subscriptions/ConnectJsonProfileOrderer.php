@@ -6,6 +6,7 @@ namespace App\Services\Subscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\DTOs\Subscription\SubscriptionBuildResult;
+use App\Models\User;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayRouting;
 use App\Services\Subscriptions\Builders\ConnectJsonBuilder;
@@ -20,11 +21,16 @@ final class ConnectJsonProfileOrderer
         ConnectJsonBuilder $builder,
         array $nodes,
         array $customNodes,
+        User $user,
         ?string $client = null,
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
     ): SubscriptionBuildResult {
         $customConfigs = XrayCustomConfig::query()
             ->active()
+            ->when(! $user->is_health_check_user, fn ($query) => $query->where(function ($configQuery) use ($user): void {
+                $configQuery->whereDoesntHave('userAssignments')
+                    ->orWhereHas('userAssignments', fn ($assignmentQuery) => $assignmentQuery->where('user_id', $user->id));
+            }))
             ->ordered()
             ->with(['dnsSettings', 'geodata', 'clientGeodata', 'outboundGroups.fallbackGroup', 'routes'])
             ->get();

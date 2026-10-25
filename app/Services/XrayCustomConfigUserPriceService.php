@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\XrayCustomConfig\XrayCustomConfigUserPriceData;
+use App\DTOs\XrayCustomConfig\UpdateXrayCustomConfigUserPriceData;
 use App\Models\User;
 use App\Models\XrayCustomConfigUserPrice;
 use Carbon\CarbonImmutable;
@@ -24,5 +25,17 @@ class XrayCustomConfigUserPriceService
                 'effective_from' => CarbonImmutable::createFromFormat('!Y-m-d', $data->effectiveFrom),
             ]);
         });
+    }
+
+    public function update(
+        XrayCustomConfigUserPrice $price,
+        UpdateXrayCustomConfigUserPriceData $data,
+    ): XrayCustomConfigUserPrice {
+        $price->update([
+            'price' => $data->price,
+            'effective_from' => CarbonImmutable::createFromFormat('!Y-m-d', $data->effectiveFrom),
+        ]);
+
+        return $price->refresh();
     }
 }

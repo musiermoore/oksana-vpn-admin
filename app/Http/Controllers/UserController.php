@@ -10,11 +10,13 @@ use App\Http\Resources\UserTokenResource;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\XrayCustomConfig\StoreXrayCustomConfigUserPriceRequest;
+use App\Http\Requests\XrayCustomConfig\UpdateXrayCustomConfigUserPriceRequest;
 use App\Models\CurrentPayment;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Models\XrayCustomConfig;
 use App\Models\XrayCustomConfigUser;
+use App\Models\XrayCustomConfigUserPrice;
 use App\Services\Crud\UserCrudService;
 use App\Services\XrayCustomConfigUserPriceService;
 use App\Services\VlessDeepLinkService;
@@ -94,6 +96,7 @@ class UserController extends Controller
             ->map(fn ($assignment): array => [
                 'id' => (int) $assignment->id,
                 'config' => [
+                    'id' => (int) $assignment->xrayCustomConfig->id,
                     'name' => $assignment->xrayCustomConfig->name,
                     'slug' => $assignment->xrayCustomConfig->slug,
                 ],
@@ -101,6 +104,7 @@ class UserController extends Controller
                     'id' => (int) $price->id,
                     'price' => (float) $price->price,
                     'effective_from' => $price->effective_from->format('Y-m-d'),
+                    'update_url' => route('users.xray-custom-config-prices.update', [$user, $assignment, $price]),
                 ])->values(),
                 'destroy_url' => route('users.xray-custom-config-assignments.destroy', [$user, $assignment]),
             ])->values();
@@ -138,6 +142,26 @@ class UserController extends Controller
 
         return redirect()->route('users.edit', $user)
             ->with('success', 'Personal Xray config price saved.');
+    }
+
+    public function updateXrayCustomConfigPrice(
+        UpdateXrayCustomConfigUserPriceRequest $request,
+        User $user,
+        XrayCustomConfigUser $assignment,
+        XrayCustomConfigUserPrice $price,
+        XrayCustomConfigUserPriceService $service,
+    ): RedirectResponse {
+        $assignment = $user->xrayCustomConfigAssignments()
+            ->whereKey($assignment->getKey())
+            ->firstOrFail();
+        $price = $assignment->prices()
+            ->whereKey($price->getKey())
+            ->firstOrFail();
+
+        $service->update($price, $request->toData());
+
+        return redirect()->route('users.edit', $user)
+            ->with('success', 'Personal Xray config price updated.');
     }
 
     public function destroyXrayCustomConfigAssignment(User $user, XrayCustomConfigUser $assignment): RedirectResponse

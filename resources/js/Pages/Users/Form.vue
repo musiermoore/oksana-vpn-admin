@@ -108,6 +108,8 @@ const xrayPriceForm = useForm({
     price: '',
     effective_from: localDate(),
 });
+const editingXrayPriceId = ref(null);
+const xrayPriceEditForm = useForm({ price: '', effective_from: '' });
 
 const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_config_price_store_url, {
     preserveScroll: true,
@@ -116,6 +118,20 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
         xrayPriceForm.effective_from = localDate();
     },
 });
+const editXrayCustomConfigPrice = (price) => {
+    editingXrayPriceId.value = price.id;
+    xrayPriceEditForm.price = price.price;
+    xrayPriceEditForm.effective_from = price.effective_from;
+    xrayPriceEditForm.clearErrors();
+};
+const saveXrayCustomConfigPriceEdit = (price) => xrayPriceEditForm.put(price.update_url, {
+    preserveScroll: true,
+    onSuccess: () => { editingXrayPriceId.value = null; },
+});
+const setPriceForAssignment = (assignment) => {
+    xrayPriceForm.xray_custom_config_id = assignment.config.id;
+    document.getElementById('xray-custom-config-price-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
 </script>
 
 <template>
@@ -266,7 +282,7 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
                 <span aria-hidden="true">⌄</span>
             </summary>
 
-            <form v-if="available_xray_custom_configs.length" class="grid grid--two" @submit.prevent="saveXrayCustomConfigPrice">
+            <form v-if="available_xray_custom_configs.length" id="xray-custom-config-price-form" class="grid grid--two" @submit.prevent="saveXrayCustomConfigPrice">
                 <label class="field">
                     <span>Конфиг</span>
                     <AppSelect
@@ -300,11 +316,27 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
                         <strong>{{ assignment.config.name }}</strong>
                         <span> · {{ assignment.config.slug }}</span>
                         <div v-if="assignment.prices.length" class="muted">
-                            <div v-for="price in assignment.prices" :key="price.id">
-                                {{ price.price }} ₽ с {{ price.effective_from }}
+                            <div v-for="price in assignment.prices" :key="price.id" class="xray-price-row">
+                                <form v-if="editingXrayPriceId === price.id" class="xray-price-edit" @submit.prevent="saveXrayCustomConfigPriceEdit(price)">
+                                    <label class="field"><span>Разовая цена</span><AppInput v-model="xrayPriceEditForm.price" type="number" min="0" step="0.01" required /></label>
+                                    <label class="field"><span>Действует с</span><AppInput v-model="xrayPriceEditForm.effective_from" type="date" required /></label>
+                                    <small v-if="xrayPriceEditForm.errors.price" class="field-error">{{ xrayPriceEditForm.errors.price }}</small>
+                                    <small v-if="xrayPriceEditForm.errors.effective_from" class="field-error">{{ xrayPriceEditForm.errors.effective_from }}</small>
+                                    <div class="actions">
+                                        <AppButton type="submit" :disabled="xrayPriceEditForm.processing">Сохранить</AppButton>
+                                        <AppButton variant="secondary" type="button" @click="editingXrayPriceId = null">Отмена</AppButton>
+                                    </div>
+                                </form>
+                                <template v-else>
+                                    <span>{{ price.price }} ₽ с {{ price.effective_from }}</span>
+                                    <AppButton variant="secondary" type="button" @click="editXrayCustomConfigPrice(price)">Изменить</AppButton>
+                                </template>
                             </div>
                         </div>
-                        <div v-else class="muted">Цена пока не задана.</div>
+                        <div v-else class="muted xray-price-row">
+                            <span>Цена пока не задана.</span>
+                            <AppButton variant="secondary" type="button" @click="setPriceForAssignment(assignment)">Задать цену</AppButton>
+                        </div>
                     </div>
                     <AppButton variant="danger" type="button" @click="unlinkPersonalXrayConfig(assignment)">Снять назначение</AppButton>
                 </div>
@@ -372,5 +404,26 @@ const saveXrayCustomConfigPrice = () => xrayPriceForm.post(props.xray_custom_con
 
 .user-collapsible:not([open]) .user-collapsible__summary > span {
     transform: rotate(-90deg);
+}
+
+.xray-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.5rem;
+}
+
+.xray-price-edit {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    width: min(100%, 42rem);
+    padding: 0.75rem 0;
+}
+
+.xray-price-edit .actions,
+.xray-price-edit .field-error {
+    grid-column: 1 / -1;
 }
 </style>

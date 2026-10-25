@@ -115,6 +115,11 @@ class User extends Authenticatable
         return $this->hasMany(VlessConfig::class);
     }
 
+    public function xrayCustomConfigAssignments(): HasMany
+    {
+        return $this->hasMany(XrayCustomConfigUser::class);
+    }
+
     public function activeVlessConfigs()
     {
         return $this->vlessConfigs()

@@ -27,6 +27,9 @@ const form = useForm({
     app_path: props.server?.app_path ?? '',
     ssh_private_key: '',
     ssh_public_key: props.server?.ssh_public_key ?? '',
+    ssh_username: props.server?.ssh_username ?? 'root',
+    ssh_port: props.server?.ssh_port ?? 22,
+    ssh_password: '',
     is_active: props.server?.is_active ?? true,
     is_ready: props.server?.is_ready ?? false,
     hide_configs_for_non_admins: props.server?.hide_configs_for_non_admins ?? false,
@@ -141,6 +144,9 @@ const removePriceRow = (index) => {
             <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><AppInput v-model="form.app_path" required /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><AppTextarea v-model="form.ssh_private_key"  /></label>
             <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><AppTextarea v-model="form.ssh_public_key"  /></label>
+            <label class="field"><span>SSH Username</span><AppInput v-model="form.ssh_username" required /></label>
+            <label class="field"><span>SSH Port</span><AppInput v-model="form.ssh_port" type="number" min="1" max="65535" required /></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>SSH Password {{ server?.ssh_password_configured ? '(leave blank to keep current)' : '' }}</span><AppInput v-model="form.ssh_password" type="password" autocomplete="new-password" /></label>
             <label class="field"><span>Is Active</span><AppCheckbox v-model="form.is_active" /></label>
             <label class="field"><span>Is Ready</span><AppCheckbox v-model="form.is_ready" /></label>
             <label class="field"><span>Hide configs for non-admins</span><AppCheckbox v-model="form.hide_configs_for_non_admins" /></label>

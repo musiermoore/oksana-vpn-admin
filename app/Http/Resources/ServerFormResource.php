@@ -13,6 +13,7 @@ class ServerFormResource extends ServerResource
         return [
             ...parent::toArray($request),
             'panel_password' => $this->panel_password,
+            'ssh_password_configured' => filled($this->ssh_password),
             'prices' => $this->whenLoaded('prices', fn () => $this->prices
                 ->map(fn ($price) => [
                     'id' => (int) $price->id,

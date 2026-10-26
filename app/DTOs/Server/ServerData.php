@@ -26,6 +26,9 @@ class ServerData extends Data
         public ?string $panelPassword = null,
         public ?string $sshPrivateKey = null,
         public ?string $sshPublicKey = null,
+        public string $sshUsername = 'root',
+        public int $sshPort = 22,
+        public ?string $sshPassword = null,
         /** @var array<int, array{id:int, sort_order?:int, is_active:bool, is_public:bool, is_visible_in_connect?:bool, is_visible_in_connect_v2?:bool}> */
         public array $inbounds = [],
         /** @var array<int, array{type:string,id:int}> */
@@ -50,6 +53,9 @@ class ServerData extends Data
             'app_path' => $this->appPath,
             'ssh_private_key' => $this->sshPrivateKey,
             'ssh_public_key' => $this->sshPublicKey,
+            'ssh_username' => $this->sshUsername,
+            'ssh_port' => $this->sshPort,
+            'ssh_password' => $this->sshPassword,
             'is_active' => $this->isActive,
             'is_ready' => $this->isReady,
             'hide_configs_for_non_admins' => $this->hideConfigsForNonAdmins,

@@ -151,6 +151,17 @@ Each price row has:
 
 This keeps price history editable from the admin UI without replacing a whole JSON blob.
 
+### Server Command Templates
+
+Reusable server command templates are stored in `server_command_templates` and managed from the admin panel. Each template has a name, optional description, execution timeout, and one of two content formats:
+
+- `script` stores a raw shell script.
+- `blocks` stores JSON command blocks. A block can include a command, an optional timeout, and prompt rules with a scan pattern, answer text, and send mode.
+
+The project uses Laravel Reverb for WebSocket transport. In Docker, the app's Caddy listener proxies `/app/*` WebSocket connections to the Reverb service; Laravel broadcasts to Reverb on the internal Compose network.
+
+Each server has an SSH username, port, and optional encrypted password in addition to its private/public keys. The `/servers/{id}/console` admin page opens an xterm.js PTY session over phpseclib; terminal input, output, control keys, and resize events use authenticated HTTP endpoints and a user-authorized private Reverb output channel. A dedicated Redis queue worker (or Horizon supervisor in production) owns each connection for up to 15 minutes. A session accepts one queued command at a time, detects shell completion from its prompt marker, interrupts commands at their timeout, and can run saved script or block templates. Template prompt rules send their configured answer once the matching scan text appears in terminal output. Raw scripts also accept `# [{ANSWER: "y", SCAN: "y/n"}]` lines to register a prompt answer.
+
 ### Subscription Output
 
 The main `/connect` subscription is built from normalized local and external nodes.

@@ -17,6 +17,8 @@ use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ServerController;
+use App\Http\Controllers\ServerConsoleController;
+use App\Http\Controllers\ServerCommandTemplateController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaxDebugController;
@@ -105,6 +107,14 @@ Route::middleware('auth')->group(function () {
     Route::get('servers/connect-order', [ServerController::class, 'connectOrder'])
         ->name('servers.connect-order');
     Route::resource('servers', ServerController::class);
+    Route::get('servers/{server}/console', [ServerConsoleController::class, 'show'])->name('servers.console.show');
+    Route::post('servers/{server}/console-sessions', [ServerConsoleController::class, 'start'])->name('servers.console-sessions.store');
+    Route::post('server-console-sessions/{sessionUuid}/commands', [ServerConsoleController::class, 'command'])->name('servers.console-sessions.commands');
+    Route::post('server-console-sessions/{sessionUuid}/input', [ServerConsoleController::class, 'input'])->middleware('throttle:1200,1')->name('servers.console-sessions.input');
+    Route::post('server-console-sessions/{sessionUuid}/resize', [ServerConsoleController::class, 'resize'])->middleware('throttle:60,1')->name('servers.console-sessions.resize');
+    Route::delete('server-console-sessions/{sessionUuid}', [ServerConsoleController::class, 'close'])->name('servers.console-sessions.close');
+    Route::resource('server-command-templates', ServerCommandTemplateController::class)
+        ->except(['show']);
     Route::post('servers/connect-groups/sort', [ServerController::class, 'sortConnectGroups'])
         ->name('servers.sort-connect-groups');
     Route::post('servers/{server}/connect-items/sort', [ServerController::class, 'sortConnectItems'])

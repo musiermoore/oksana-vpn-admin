@@ -83,6 +83,18 @@ return [
             'timeout' => 120,
             'nice' => 0,
         ],
+        'supervisor-server-console' => [
+            'connection' => 'redis',
+            'queue' => ['server-console'],
+            'balance' => 'simple',
+            'maxProcesses' => 2,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 1,
+            'timeout' => 930,
+            'nice' => 0,
+        ],
     ],
     'environments' => [
         'production' => [
@@ -113,6 +125,12 @@ return [
                 'balanceCooldown' => 3,
                 'timeout' => 120,
             ],
+            'supervisor-server-console' => [
+                'queue' => ['server-console'],
+                'maxProcesses' => 3,
+                'timeout' => 930,
+                'tries' => 1,
+            ],
         ],
         'local' => [
             'supervisor-default' => [
@@ -126,6 +144,12 @@ return [
             'supervisor-tax' => [
                 'queue' => ['tax'],
                 'maxProcesses' => 1,
+            ],
+            'supervisor-server-console' => [
+                'queue' => ['server-console'],
+                'maxProcesses' => 2,
+                'timeout' => 930,
+                'tries' => 1,
             ],
         ],
     ],

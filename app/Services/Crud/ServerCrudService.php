@@ -47,6 +47,10 @@ class ServerCrudService
                 unset($attributes['ssh_private_key']);
             }
 
+            if (blank($attributes['ssh_password'])) {
+                unset($attributes['ssh_password']);
+            }
+
             $updatedServer = $this->servers->update($server, $attributes);
             $this->syncPrices($updatedServer, $data->prices);
             $this->syncXrayInbounds($updatedServer, $data->inbounds);

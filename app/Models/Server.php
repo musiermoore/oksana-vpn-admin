@@ -36,6 +36,9 @@ class Server extends Model
         'app_path',
         'ssh_private_key',
         'ssh_public_key',
+        'ssh_username',
+        'ssh_port',
+        'ssh_password',
         'type',
         'is_vless',
         'is_active',
@@ -47,6 +50,8 @@ class Server extends Model
     {
         return [
             'panel_password' => 'encrypted',
+            'ssh_password' => 'encrypted',
+            'ssh_port' => 'integer',
             'is_https' => 'boolean',
             'is_vless' => 'boolean',
             'is_active' => 'boolean',

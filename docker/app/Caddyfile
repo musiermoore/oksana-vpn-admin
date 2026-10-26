@@ -8,5 +8,7 @@
     root * /var/www/html/public
     encode zstd gzip
 
+    reverse_proxy /app/* reverb:8080
+
     php_server
 }

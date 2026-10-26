@@ -1,5 +1,8 @@
 FROM node:20-bookworm-slim AS frontend
 
+ARG VITE_REVERB_APP_KEY
+ENV VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY}
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -19,7 +22,7 @@ FROM musiermoore/oksana-vpn-app:latest
 WORKDIR /var/www/html
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -fsS -o /dev/null http://127.0.0.1:8000/ || exit 1
+    CMD curl -fsS -o /dev/null http://127.0.0.1:8000/up || exit 1
 
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts

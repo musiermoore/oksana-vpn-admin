@@ -8,6 +8,8 @@ services:
         build:
             context: .
             dockerfile: docker/app/Dockerfile.prod
+            args:
+                VITE_REVERB_APP_KEY: '${REVERB_APP_KEY}'
         restart: unless-stopped
         command: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
         expose:
@@ -39,6 +41,33 @@ services:
         networks:
             - app
             - oksana-vpn
+        depends_on:
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+
+    reverb:
+        container_name: wireguard_reverb_prod
+        env_file:
+            - .env
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        build:
+            context: .
+            dockerfile: docker/app/Dockerfile.prod
+        restart: unless-stopped
+        command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+        healthcheck:
+            test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);"]
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        volumes:
+            - './storage:/var/www/html/storage'
+        networks:
+            - app
         depends_on:
             mysql:
                 condition: service_healthy

@@ -14,6 +14,12 @@ services:
         command: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
         ports:
             - '${APP_PORT:-8000}:8000'
+        healthcheck:
+            test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:8000/up || exit 1"]
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
         volumes:
             - '.:/var/www/html'
         networks:
@@ -49,6 +55,50 @@ services:
             - app
         depends_on:
             - app
+
+    reverb:
+        container_name: wireguard_reverb
+        env_file:
+            - .env
+        build:
+            context: .
+            dockerfile: docker/app/Dockerfile
+        working_dir: /var/www/html
+        command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+        healthcheck:
+            test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);"]
+            interval: 30s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - app
+        depends_on:
+            - app
+
+    console-worker:
+        container_name: wireguard_console_worker
+        env_file:
+            - .env
+        build:
+            context: .
+            dockerfile: docker/app/Dockerfile
+        working_dir: /var/www/html
+        command: ["php", "artisan", "queue:work", "redis", "--queue=server-console", "--sleep=1", "--tries=1", "--timeout=930"]
+        healthcheck:
+            disable: true
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - app
+            - oksana-vpn
+        depends_on:
+            app:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
 
     mysql:
         container_name: wireguard_mysql

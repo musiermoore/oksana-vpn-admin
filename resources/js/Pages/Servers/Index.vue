@@ -2,6 +2,7 @@
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import AppPageHeader from '../../Shared/AppPageHeader.vue';
+import AppIcon from '../../Shared/AppIcon.vue';
 
 defineOptions({ layout: AppLayout });
 
@@ -104,6 +105,7 @@ const destroyServer = (server) => {
                         <td>{{ server.is_ready ? 'Да' : 'Нет' }}</td>
                         <td>
                             <div class="actions">
+                                <AppButton v-if="server.links?.console" variant="secondary" :href="server.links.console" title="Open server console" aria-label="Open server console"><AppIcon name="terminal" /> Console</AppButton>
                                 <AppButton v-if="server.links?.edit" variant="secondary" :href="server.links.edit">Открыть</AppButton>
                                 <AppButton
                                     :variant="server.is_active ? 'danger' : 'success'"

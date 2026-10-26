@@ -16,7 +16,18 @@ class StoreServerConsoleInputRequest extends DataFormRequest
 
     public function rules(): array
     {
-        return ['input' => ['required', 'string', 'max:4096']];
+        return ['input' => ['present', 'string', 'min:1', 'max:4096']];
+    }
+
+    public function validationData(): array
+    {
+        $payload = json_decode($this->getContent(), true);
+
+        if (is_array($payload) && array_key_exists('input', $payload)) {
+            return ['input' => $payload['input']];
+        }
+
+        return parent::validationData();
     }
 
     protected function laravelData(): string

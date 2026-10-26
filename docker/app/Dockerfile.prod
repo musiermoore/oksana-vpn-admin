@@ -38,4 +38,4 @@ RUN mkdir -p storage/framework/views storage/framework/cache storage/framework/s
     && chmod -R 775 storage bootstrap/cache
 
 RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/config.php bootstrap/cache/routes*.php bootstrap/cache/events.php \
-    && php artisan package:discover --ansi
+    && BROADCAST_CONNECTION=log php artisan package:discover --ansi

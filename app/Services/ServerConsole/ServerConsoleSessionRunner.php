@@ -8,9 +8,9 @@ use App\Events\ServerConsoleOutput;
 use App\Models\Server;
 use App\Models\ServerConsoleSession;
 use Illuminate\Support\Facades\Redis;
-use phpseclib3\Crypt\PublicKeyLoader;
-use phpseclib3\Net\SFTP;
-use phpseclib3\Net\SSH2;
+use phpseclib4\Crypt\PublicKeyLoader;
+use phpseclib4\Net\SFTP;
+use phpseclib4\Net\SSH2;
 use RuntimeException;
 use Throwable;
 

@@ -40,6 +40,7 @@ const destroyServer = (server) => {
     >
         <template #actions>
             <AppButton variant="secondary" href="/servers/connect-order">Порядок connect</AppButton>
+            <AppButton variant="secondary" href="/server-command-templates">Шаблоны команд</AppButton>
             <AppButton variant="secondary" href="/xui-debug">3x-ui Debug</AppButton>
             <AppButton href="/servers/create">Добавить сервер</AppButton>
         </template>

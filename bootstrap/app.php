@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(at: '*');
+        $middleware->trimStrings(except: [
+            fn (Request $request): bool => $request->is('server-console-sessions/*/input'),
+        ]);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,

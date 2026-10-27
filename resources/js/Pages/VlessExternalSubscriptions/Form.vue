@@ -95,16 +95,16 @@ const loadPreview = async () => {
                 <AppTextarea v-model="form.source_url" required  />
             </label>
 
-            <div class="field">
+            <div class="field regex-pattern-field">
                 <span>Регулярное выражение для имени</span>
-                <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия|Франция" style="width: 100%" />
+                <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия|Франция" />
                 <small>Проверяется без учёта регистра. Пустое поле включает все конфиги.</small>
                 <AppButton variant="secondary" type="button" @click="regexHelpOpen = true">Примеры regexp</AppButton>
             </div>
 
-            <label class="field">
+            <label class="field regex-pattern-field">
                 <span>Исключить по регулярному выражению</span>
-                <AppInput v-model="form.except_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: тест|резерв" style="width: 100%" />
+                <AppInput v-model="form.except_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: тест|резерв" />
                 <small>Совпавшие имена будут исключены из результата.</small>
             </label>
 
@@ -223,6 +223,14 @@ const loadPreview = async () => {
 </template>
 
 <style scoped>
+.regex-pattern-field {
+    grid-column: 1 / -1;
+}
+
+.regex-pattern-field :deep(input) {
+    width: 100%;
+}
+
 .regex-help-modal {
     position: fixed;
     inset: 0;

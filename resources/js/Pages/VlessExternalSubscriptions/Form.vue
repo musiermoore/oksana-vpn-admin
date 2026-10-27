@@ -34,6 +34,7 @@ const form = useForm({
 const preview = ref(null);
 const previewError = ref('');
 const previewLoading = ref(false);
+const regexHelpOpen = ref(false);
 const typeOptions = props.types;
 const sourceFormatOptions = props.source_formats;
 
@@ -93,10 +94,12 @@ const loadPreview = async () => {
                 <AppTextarea v-model="form.source_url" required  />
             </label>
 
-            <label class="field">
-                <span>Паттерн</span>
-                <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия" />
-            </label>
+            <div class="field">
+                <span>Регулярное выражение для имени</span>
+                <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия|Франция" />
+                <small>Проверяется без учёта регистра. Пустое поле включает все конфиги.</small>
+                <AppButton variant="secondary" type="button" @click="regexHelpOpen = true">Примеры regexp</AppButton>
+            </div>
 
             <label class="field">
                 <span>Название в connect-wl</span>
@@ -148,6 +151,29 @@ const loadPreview = async () => {
         </form>
     </section>
 
+    <div v-if="regexHelpOpen" class="regex-help-modal" @click.self="regexHelpOpen = false" @keydown.esc="regexHelpOpen = false">
+        <section class="page-card stack regex-help-modal__card" role="dialog" aria-modal="true" aria-labelledby="regex-help-title">
+            <div class="page-header">
+                <div>
+                    <h2 id="regex-help-title">Примеры регулярных выражений</h2>
+                    <p>Введите выражение без слешей вокруг. Совпадение проверяется без учёта регистра.</p>
+                </div>
+                <button type="button" class="regex-help-modal__close" aria-label="Закрыть" @click="regexHelpOpen = false">×</button>
+            </div>
+
+            <div class="regex-help-modal__examples">
+                <div><code>Германия|Франция</code><span>Имя содержит «Германия» или «Франция».</span></div>
+                <div><code>^(DE|FR)\b</code><span>Имя начинается с кода DE или FR.</span></div>
+                <div><code>\d+$</code><span>Имя заканчивается цифрами, например «Сервер 12».</span></div>
+                <div><code>^(?!.*(тест|резерв)).+$</code><span>Имя не содержит «тест» или «резерв».</span></div>
+            </div>
+
+            <div class="actions">
+                <AppButton variant="secondary" type="button" @click="regexHelpOpen = false">Закрыть</AppButton>
+            </div>
+        </section>
+    </div>
+
     <section v-if="previewError" class="page-card stack">
         <p class="field-error">{{ previewError }}</p>
     </section>
@@ -186,3 +212,45 @@ const loadPreview = async () => {
         </ul>
     </section>
 </template>
+
+<style scoped>
+.regex-help-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgb(0 0 0 / 45%);
+}
+
+.regex-help-modal__card {
+    width: min(38rem, 100%);
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.regex-help-modal__close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.regex-help-modal__examples {
+    display: grid;
+    gap: 1rem;
+}
+
+.regex-help-modal__examples > div {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.regex-help-modal__examples code {
+    overflow-wrap: anywhere;
+    font-size: 0.95rem;
+}
+</style>

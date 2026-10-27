@@ -40,7 +40,9 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
         Http::fake([
             self::KEYMAT_URL => Http::response($this->keymatSource()),
             self::DECODED_SUBSCRIPTION_URL => Http::response(base64_encode(
-                "vless://uuid-1@de.example.com:443?type=tcp&security=reality#Germany 1\n"
+                "vless://uuid-1@de.example.com:443?type=tcp&security=reality#Germany 1\n".
+                "vless://uuid-2@fr.example.com:443?type=tcp&security=reality#France 2\n".
+                "vless://uuid-3@es.example.com:443?type=tcp&security=reality#Spain 3\n"
             )),
         ]);
 
@@ -49,15 +51,16 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
             'type' => VlessExternalSubscription::TYPE_SUBSCRIPTION,
             'source_format' => ExternalSubscriptionSourceFormat::Incy->value,
             'source_url' => self::INCY_LINK,
-            'filter_pattern' => 'germany',
+            'filter_pattern' => '^(germany|france) \\d+$',
             'is_active' => true,
             'is_ready' => true,
         ]);
 
         $result = app(VlessExternalSubscriptionSyncService::class)->sync($subscription);
 
-        $this->assertCount(1, $result->configs);
+        $this->assertCount(2, $result->configs);
         $this->assertSame('Germany 1', $result->configs[0]->name);
+        $this->assertSame('France 2', $result->configs[1]->name);
         $this->assertSame(
             'vless://uuid-1@de.example.com:443?type=tcp&security=reality#Germany 1',
             $result->configs[0]->url

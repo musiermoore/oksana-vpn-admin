@@ -175,13 +175,16 @@ class VlessExternalSubscriptionSyncService
             ->filter()
             ->values();
 
-        $normalizedPattern = $type === VlessExternalSubscription::TYPE_SUBSCRIPTION
-            ? mb_strtolower(trim((string) $filterPattern))
+        $pattern = $type === VlessExternalSubscription::TYPE_SUBSCRIPTION
+            ? trim((string) $filterPattern)
             : '';
 
-        $filtered = $normalizedPattern === ''
+        $filtered = $pattern === ''
             ? $full
-            : $full->filter(fn (array $item) => str_contains((string) $item['normalized_name'], $normalizedPattern))
+            : $full->filter(fn (array $item) => ExternalSubscriptionNameFilter::matches(
+                (string) $item['name'],
+                $pattern,
+            ))
                 ->values();
 
         return [

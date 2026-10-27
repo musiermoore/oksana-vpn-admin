@@ -197,6 +197,8 @@ External VLESS subscription visibility is controlled independently per output:
 - `include_in_whitelist` controls whitelist output
 - `include_in_connect_v2` controls `/connect-v2`
 
+For subscription-type sources, `filter_pattern` is a case-insensitive Unicode regular expression matched against each config name. An empty pattern includes all configs, and invalid expressions are rejected by the admin preview and save requests.
+
 Important WireGuard/AmneziaWG rules:
 
 - WireGuard URIs are normalized before output

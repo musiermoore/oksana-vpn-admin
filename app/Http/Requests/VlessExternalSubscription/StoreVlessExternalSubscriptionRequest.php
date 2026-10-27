@@ -8,6 +8,7 @@ use App\DTOs\VlessExternalSubscription\VlessExternalSubscriptionData;
 use App\Enums\ExternalSubscriptionSourceFormat;
 use App\Http\Requests\DataFormRequest;
 use App\Models\VlessExternalSubscription;
+use App\Services\ExternalSubscriptions\ExternalSubscriptionNameFilter;
 use Illuminate\Validation\Rule;
 
 class StoreVlessExternalSubscriptionRequest extends DataFormRequest
@@ -28,7 +29,16 @@ class StoreVlessExternalSubscriptionRequest extends DataFormRequest
             ])],
             'source_format' => ['required', Rule::enum(ExternalSubscriptionSourceFormat::class)],
             'source_url' => ['required', 'string'],
-            'filter_pattern' => ['nullable', 'string', 'max:255'],
+            'filter_pattern' => [
+                'nullable',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (is_string($value) && ! ExternalSubscriptionNameFilter::isValid($value)) {
+                        $fail('The filter pattern must be a valid regular expression.');
+                    }
+                },
+            ],
             'connect_name_prefix' => ['nullable', 'string', 'max:255'],
             'include_in_main_subscription' => ['required', 'boolean'],
             'include_in_whitelist' => ['required', 'boolean'],

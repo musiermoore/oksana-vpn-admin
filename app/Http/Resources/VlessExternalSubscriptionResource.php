@@ -20,6 +20,7 @@ class VlessExternalSubscriptionResource extends JsonResource
             'source_format' => $this->source_format?->value ?? $this->source_format,
             'source_url' => $this->source_url,
             'filter_pattern' => $this->filter_pattern,
+            'except_pattern' => $this->except_pattern,
             'connect_name_prefix' => $this->connect_name_prefix,
             'include_in_main_subscription' => (bool) $this->include_in_main_subscription,
             'include_in_whitelist' => (bool) $this->include_in_whitelist,

@@ -80,6 +80,33 @@ class IncyExternalSubscriptionSyncServiceTest extends TestCase
         $this->assertSame('Oksana VPN v2', $decoded['name']);
     }
 
+    public function test_sync_excludes_names_matching_the_exclusion_pattern(): void
+    {
+        Http::fake([
+            'https://subscription.example.com/list' => Http::response(base64_encode(
+                "vless://uuid-1@de.example.com:443?type=tcp&security=reality#Germany 1\n".
+                "vless://uuid-2@fr.example.com:443?type=tcp&security=reality#France 2\n".
+                "vless://uuid-3@es.example.com:443?type=tcp&security=reality#Spain 3\n"
+            )),
+        ]);
+
+        $subscription = VlessExternalSubscription::query()->create([
+            'name' => 'Filtered subscription',
+            'type' => VlessExternalSubscription::TYPE_SUBSCRIPTION,
+            'source_format' => ExternalSubscriptionSourceFormat::Direct->value,
+            'source_url' => 'https://subscription.example.com/list',
+            'filter_pattern' => 'Germany|France',
+            'except_pattern' => 'France',
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+
+        $result = app(VlessExternalSubscriptionSyncService::class)->sync($subscription);
+
+        $this->assertCount(1, $result->configs);
+        $this->assertSame('Germany 1', $result->configs[0]->name);
+    }
+
     public function test_sync_sends_incy_client_headers_when_fetching_subscription_url(): void
     {
         Http::fake([

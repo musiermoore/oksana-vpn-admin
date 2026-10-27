@@ -45,6 +45,7 @@ class VlessExternalSubscriptionSyncService
                 ),
             sourceUrl: (string) ($attributes['source_url'] ?? ''),
             filterPattern: $attributes['filter_pattern'] ?? null,
+            exceptPattern: $attributes['except_pattern'] ?? null,
         );
     }
 
@@ -59,6 +60,7 @@ class VlessExternalSubscriptionSyncService
                 ),
             sourceUrl: (string) $subscription->source_url,
             filterPattern: $subscription->filter_pattern,
+            exceptPattern: $subscription->except_pattern,
         );
 
         DB::transaction(function () use ($subscription, $result): void {
@@ -156,7 +158,8 @@ class VlessExternalSubscriptionSyncService
         string $type,
         ExternalSubscriptionSourceFormat $sourceFormat,
         string $sourceUrl,
-        ?string $filterPattern
+        ?string $filterPattern,
+        ?string $exceptPattern,
     ): array {
         $resolvedSourceUrl = $this->sourceUrlResolver->resolve($sourceUrl, $sourceFormat);
 
@@ -184,8 +187,20 @@ class VlessExternalSubscriptionSyncService
             : $full->filter(fn (array $item) => ExternalSubscriptionNameFilter::matches(
                 (string) $item['name'],
                 $pattern,
-            ))
-                ->values();
+            ));
+
+        $exclusionPattern = $type === VlessExternalSubscription::TYPE_SUBSCRIPTION
+            ? trim((string) $exceptPattern)
+            : '';
+
+        if ($exclusionPattern !== '') {
+            $filtered = $filtered->reject(fn (array $item) => ExternalSubscriptionNameFilter::matches(
+                (string) $item['name'],
+                $exclusionPattern,
+            ));
+        }
+
+        $filtered = $filtered->values();
 
         return [
             'full' => $full->all(),

@@ -39,6 +39,16 @@ class StoreVlessExternalSubscriptionRequest extends DataFormRequest
                     }
                 },
             ],
+            'except_pattern' => [
+                'nullable',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (is_string($value) && ! ExternalSubscriptionNameFilter::isValid($value)) {
+                        $fail('The exclusion pattern must be a valid regular expression.');
+                    }
+                },
+            ],
             'connect_name_prefix' => ['nullable', 'string', 'max:255'],
             'include_in_main_subscription' => ['required', 'boolean'],
             'include_in_whitelist' => ['required', 'boolean'],

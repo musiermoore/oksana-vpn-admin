@@ -22,6 +22,7 @@ class VlessExternalSubscription extends Model
         'source_format',
         'source_url',
         'filter_pattern',
+        'except_pattern',
         'connect_name_prefix',
         'include_in_main_subscription',
         'include_in_whitelist',

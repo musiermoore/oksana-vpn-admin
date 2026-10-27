@@ -163,7 +163,7 @@ Main `/connect`:
 - Successful requests update `user_connected_devices` by user, `User-Agent`, and route `connect`.
 - `skip_connection=true` disables device tracking for admin requests.
 - Output includes regular user VLESS nodes and external subscriptions with `include_in_main_subscription`.
-- External subscription `filter_pattern` is a case-insensitive Unicode regular expression matched against config names. An empty pattern includes every config; invalid expressions are rejected during preview and save.
+- External subscription `filter_pattern` includes names matching its case-insensitive Unicode regular expression, then `except_pattern` excludes matching names. Both fields are optional; invalid expressions are rejected during preview and save.
 - Ordering is explicit: `servers.sort_order`, `vless_external_subscriptions.sort_order`, `xray_custom_configs.sort_order`, `xray_inbounds.sort_order`, and `proxies.sort_order`.
 - Active Xray custom JSON profiles use the same shared connect-group order and are not appended unconditionally at the end of JSON output. Public profiles are emitted for every user; private profiles (`is_public=false`) are emitted only for assigned users. The technical health-check user can inspect all active custom profiles.
 - `proxies.server_id` makes proxy variants part of one server. `hide_main_node_name` makes the proxy display name stand alone.

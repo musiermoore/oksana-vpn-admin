@@ -22,6 +22,7 @@ const form = useForm({
     source_format: props.subscription?.source_format ?? 'direct',
     source_url: props.subscription?.source_url ?? '',
     filter_pattern: props.subscription?.filter_pattern ?? '',
+    except_pattern: props.subscription?.except_pattern ?? '',
     connect_name_prefix: props.subscription?.connect_name_prefix ?? '',
     include_in_main_subscription: props.subscription?.include_in_main_subscription ?? false,
     include_in_whitelist: props.subscription?.include_in_whitelist ?? true,
@@ -96,10 +97,16 @@ const loadPreview = async () => {
 
             <div class="field">
                 <span>Регулярное выражение для имени</span>
-                <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия|Франция" />
+                <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия|Франция" style="width: 100%" />
                 <small>Проверяется без учёта регистра. Пустое поле включает все конфиги.</small>
                 <AppButton variant="secondary" type="button" @click="regexHelpOpen = true">Примеры regexp</AppButton>
             </div>
+
+            <label class="field">
+                <span>Исключить по регулярному выражению</span>
+                <AppInput v-model="form.except_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: тест|резерв" style="width: 100%" />
+                <small>Совпавшие имена будут исключены из результата.</small>
+            </label>
 
             <label class="field">
                 <span>Название в connect-wl</span>
@@ -162,10 +169,12 @@ const loadPreview = async () => {
             </div>
 
             <div class="regex-help-modal__examples">
+                <strong>Включить</strong>
                 <div><code>Германия|Франция</code><span>Имя содержит «Германия» или «Франция».</span></div>
                 <div><code>^(DE|FR)\b</code><span>Имя начинается с кода DE или FR.</span></div>
                 <div><code>\d+$</code><span>Имя заканчивается цифрами, например «Сервер 12».</span></div>
-                <div><code>^(?!.*(тест|резерв)).+$</code><span>Имя не содержит «тест» или «резерв».</span></div>
+                <strong>Исключить</strong>
+                <div><code>тест|резерв</code><span>Исключает имена, содержащие «тест» или «резерв».</span></div>
             </div>
 
             <div class="actions">

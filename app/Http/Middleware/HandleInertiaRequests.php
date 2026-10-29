@@ -86,13 +86,13 @@ class HandleInertiaRequests extends Middleware
                 'icon' => 'server',
                 'items' => [
                     ['label' => 'Сервера', 'href' => route('servers.index'), 'badge' => 'SV', 'icon' => 'server'],
-                    ['label' => 'Xray Configs', 'href' => route('xray-configs.index'), 'badge' => 'XR', 'icon' => 'nodes'],
+                    ['label' => 'Конфигурации Xray', 'href' => route('xray-configs.index'), 'badge' => 'XR', 'icon' => 'nodes'],
                     ['label' => 'Прокси', 'href' => route('proxies.index'), 'badge' => 'PX', 'icon' => 'link'],
                     ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index'), 'badge' => 'VS', 'icon' => 'spark'],
-                    ['label' => 'Xray Routing', 'href' => route('xray-routings.index'), 'badge' => 'RT', 'icon' => 'nodes'],
-                    ['label' => 'Inbound Health', 'href' => route('xray-inbound-health.index'), 'badge' => 'HC', 'icon' => 'activity'],
-                    ['label' => 'Global JSON settings', 'href' => route('xray-global-config.edit'), 'badge' => 'GS', 'icon' => 'nodes'],
-                    ['label' => 'Xray Custom Configs', 'href' => route('xray-custom-configs.index'), 'badge' => 'XC', 'icon' => 'nodes'],
+                    ['label' => 'Правила маршрутизации Xray', 'href' => route('xray-routings.index'), 'badge' => 'RT', 'icon' => 'nodes'],
+                    ['label' => 'Проверка узлов Xray', 'href' => route('xray-inbound-health.index'), 'badge' => 'HC', 'icon' => 'activity'],
+                    ['label' => 'Общие настройки JSON', 'href' => route('xray-global-config.edit'), 'badge' => 'GS', 'icon' => 'nodes'],
+                    ['label' => 'Пользовательские конфигурации Xray', 'href' => route('xray-custom-configs.index'), 'badge' => 'XC', 'icon' => 'nodes'],
                 ],
             ],
             [
@@ -123,7 +123,7 @@ class HandleInertiaRequests extends Middleware
                 'items' => [
                     ['label' => 'Задачи', 'href' => route('tasks.index'), 'badge' => 'TD', 'icon' => 'tasks'],
                     ['label' => 'Рассылка', 'href' => route('notifications.create'), 'badge' => 'NT', 'icon' => 'send'],
-                    ['label' => 'Welcome', 'href' => route('messages.welcome.edit'), 'badge' => 'WM', 'icon' => 'message'],
+                    ['label' => 'Приветственные сообщения', 'href' => route('messages.welcome.edit'), 'badge' => 'WM', 'icon' => 'message'],
                 ],
             ],
             [
@@ -131,9 +131,9 @@ class HandleInertiaRequests extends Middleware
                 'icon' => 'activity',
                 'items' => [
                     ['label' => 'API лог', 'href' => route('api-request-logs.index'), 'badge' => 'LG', 'icon' => 'log'],
-                    ['label' => '3x-ui Debug', 'href' => route('xui-debug.index'), 'badge' => 'XD', 'icon' => 'terminal'],
-                    ['label' => 'Tax Debug', 'href' => route('tax-debug.index'), 'badge' => 'TD', 'icon' => 'bug'],
-                    ['label' => 'Subscription Debug', 'href' => route('subscription-debug.index'), 'badge' => 'SD', 'icon' => 'link'],
+                    ['label' => 'Диагностика 3x-ui', 'href' => route('xui-debug.index'), 'badge' => 'XD', 'icon' => 'terminal'],
+                    ['label' => 'Диагностика налогов', 'href' => route('tax-debug.index'), 'badge' => 'TD', 'icon' => 'bug'],
+                    ['label' => 'Диагностика подписок', 'href' => route('subscription-debug.index'), 'badge' => 'SD', 'icon' => 'link'],
                 ],
             ],
         ];

@@ -42,12 +42,12 @@ const copyUrl = async () => {
 </script>
 
 <template>
-    <Head title="Subscription Debug" />
+    <Head title="Диагностика подписок" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Subscription Debug</h1>
+                <h1>Диагностика подписок</h1>
                 <p>Создайте временную публичную ссылку для произвольного JSON-профиля или списка URI.</p>
             </div>
         </div>
@@ -63,7 +63,7 @@ const copyUrl = async () => {
             </label>
 
             <label class="field">
-                <span>Body</span>
+                <span>Содержимое подписки</span>
                 <AppTextarea v-model="form.body" :placeholder="bodyPlaceholder" :auto-resize="false" rows="22" spellcheck="false" />
                 <small class="muted">Текст не сохраняется в базе данных или Redis.</small>
                 <small v-if="form.errors.body" class="form-error">{{ form.errors.body }}</small>
@@ -89,7 +89,7 @@ const copyUrl = async () => {
         </div>
 
         <div class="field">
-            <span>Public URL</span>
+            <span>Публичная ссылка</span>
             <div class="actions">
                 <InputText :model-value="created.url" readonly fluid />
                 <AppButton type="button" variant="secondary" @click="copyUrl">Копировать</AppButton>

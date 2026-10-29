@@ -60,7 +60,7 @@ const backToRequest = () => {
             </div>
 
             <label class="field">
-                <span>Telegram Username</span>
+                <span>Имя пользователя в Telegram</span>
                 <AppInput v-model="requestCodeForm.telegram" type="text" autocomplete="username" required />
                 <small style="color: gray">
                     c @ или без него
@@ -77,7 +77,7 @@ const backToRequest = () => {
 
         <form v-else class="page-card stack auth-form" @submit.prevent="login">
             <div class="auth-card__intro stack">
-                <span class="auth-card__eyebrow">VPN Admin</span>
+                <span class="auth-card__eyebrow">Панель управления VPN</span>
                 <h1>Авторизация</h1>
                 <p>Код отправлен. Он действует {{ expiresInMinutes }} минуты.</p>
             </div>
@@ -89,7 +89,7 @@ const backToRequest = () => {
             </div>
 
             <label class="field">
-                <span>Telegram username</span>
+                <span>Имя пользователя в Telegram</span>
                 <AppInput v-model="verifyForm.telegram" type="text" autocomplete="username" required />
                 <small v-if="verifyForm.errors.telegram" class="field-error">
                     {{ verifyForm.errors.telegram }}

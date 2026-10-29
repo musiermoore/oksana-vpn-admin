@@ -103,22 +103,22 @@ const removeHost = (index) => {
                     <AppButton variant="secondary" type="button" @click="addHost">Добавить host</AppButton>
                 </div>
                 <div v-for="(host, index) in form.hosts" :key="index" class="host-row">
-                    <label class="field"><span>{{ index === 0 ? 'Host' : `Cascade host ${index}` }}</span><AppInput v-model="host.host" required /></label>
-                    <label class="field"><span>Port</span><AppInput v-model="host.port" type="number" min="1" max="65535" required /></label>
+                    <label class="field"><span>{{ index === 0 ? 'Адрес узла' : `Адрес каскадного узла ${index}` }}</span><AppInput v-model="host.host" required /></label>
+                    <label class="field"><span>Порт</span><AppInput v-model="host.port" type="number" min="1" max="65535" required /></label>
                     <label class="field"><span>Порядок</span><AppInput v-model="host.sort" type="number" min="0" required /></label>
-                    <label class="field"><span>Active</span><AppCheckbox v-model="host.is_active" /></label>
+                    <label class="field"><span>Узел активен</span><AppCheckbox v-model="host.is_active" /></label>
                     <AppButton variant="danger" type="button" :disabled="form.hosts.length <= 1" @click="removeHost(index)">Удалить</AppButton>
                 </div>
             </div>
             <label class="field"><span>Сервер</span>
                 <AppSelect v-model="form.server_id" :options="serverOptions" required />
             </label>
-            <label class="field" style="grid-column: 1 / -1;"><span>Inbound</span>
+            <label class="field" style="grid-column: 1 / -1;"><span>Входящий узел</span>
                 <AppSelect v-model="form.inbound_id" :options="inboundOptions" :disabled="selectedServerId === null" />
             </label>
-            <label class="field"><span>HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
-            <label class="field"><span>Ready</span><AppCheckbox v-model="form.is_ready" /></label>
-            <label class="field"><span>Скрыть основную</span><AppCheckbox v-model="form.hide_main_node_name" /></label>
+            <label class="field"><span>Использовать HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
+            <label class="field"><span>Прокси готов<AppHelpTip text="Готовый прокси может использоваться в конфигурациях. Это состояние доступности, а не настройка видимости для пользователей." /></span><AppCheckbox v-model="form.is_ready" enabled-label="Готов" disabled-label="Не готов" /></label>
+            <label class="field"><span>Скрывать имя основного сервера<AppHelpTip text="В ссылке подключения будет показано только имя прокси, без имени основного сервера." /></span><AppCheckbox v-model="form.hide_main_node_name" enabled-label="Скрывать" disabled-label="Показывать" /></label>
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
                 <AppTextarea v-model="form.description"  />

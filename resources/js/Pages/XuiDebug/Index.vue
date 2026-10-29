@@ -119,26 +119,26 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
                 </label>
 
                 <label class="field">
-                    <span>Action</span>
+                    <span>Сценарий запроса</span>
                     <AppSelect v-model="form.preset" :options="presetOptions" />
                     <small v-if="form.errors.preset" class="field-error">{{ form.errors.preset }}</small>
                 </label>
 
                 <label class="field">
-                    <span>HTTP Method</span>
+                    <span>Метод HTTP</span>
                     <AppSelect v-model="form.method" :options="methodOptions" />
                     <small v-if="form.errors.method" class="field-error">{{ form.errors.method }}</small>
                 </label>
 
                 <label class="field">
-                    <span>Encoding</span>
+                    <span>Формат данных</span>
                     <AppSelect v-model="form.encoding" :options="encodingOptions" />
                     <small v-if="form.errors.encoding" class="field-error">{{ form.errors.encoding }}</small>
                 </label>
             </div>
 
             <label class="field">
-                <span>Endpoint</span>
+                <span>Адрес запроса</span>
                 <AppInput v-model="form.endpoint" type="text" placeholder="/panel/api/clients/onlines" />
                 <small class="muted">Можно указать относительный путь или полный URL этого же panel host.</small>
                 <small v-if="currentPreset?.value === 'client-ips'" class="muted">
@@ -151,7 +151,7 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
             </label>
 
             <label class="field">
-                <span>Payload JSON</span>
+                <span>Данные JSON</span>
                 <AppTextarea v-model="form.payload" rows="10" spellcheck="false" />
                 <small class="muted">Для GET обычно оставляйте `{}`. Для form-режима JSON должен быть объектом.</small>
                 <small v-if="form.errors.payload" class="field-error">{{ form.errors.payload }}</small>
@@ -178,23 +178,23 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
 
         <div class="grid grid--two">
             <article class="page-card stack">
-                <h3 class="section-title">Request</h3>
+                <h3 class="section-title">Запрос</h3>
                 <pre class="code-block">{{ stringify(result.request) }}</pre>
             </article>
 
             <article class="page-card stack">
-                <h3 class="section-title">Server</h3>
+                <h3 class="section-title">Ответ сервера</h3>
                 <pre class="code-block">{{ stringify(result.server) }}</pre>
             </article>
         </div>
 
         <article v-if="result.exception" class="page-card stack">
-            <h3 class="section-title">Exception</h3>
+            <h3 class="section-title">Ошибка</h3>
             <pre class="code-block">{{ stringify(result.exception) }}</pre>
         </article>
 
         <article class="page-card stack">
-            <h3 class="section-title">Headers</h3>
+            <h3 class="section-title">Заголовки</h3>
             <pre class="code-block">{{ stringify(result.headers) }}</pre>
         </article>
 
@@ -204,7 +204,7 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
         </article>
 
         <article class="page-card stack">
-            <h3 class="section-title">Raw Body</h3>
+            <h3 class="section-title">Исходное тело ответа</h3>
             <pre class="code-block">{{ result.body || '—' }}</pre>
         </article>
     </section>

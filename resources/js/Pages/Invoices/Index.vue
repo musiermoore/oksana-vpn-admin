@@ -48,12 +48,12 @@ const taxStatusLabel = (status) => ({
 </script>
 
 <template>
-    <Head title="Invoices" />
+    <Head title="Инвойсы" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Invoices</h1>
+                <h1>Инвойсы</h1>
                 <p>Все платежи с оплатой, налоговым статусом и быстрым переходом к деталям.</p>
             </div>
 

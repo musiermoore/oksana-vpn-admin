@@ -139,8 +139,8 @@ const loadPreview = async () => {
             </label>
 
             <label class="field">
-                <span>Ready</span>
-                <AppCheckbox v-model="form.is_ready" />
+                <span>Подписка готова<AppHelpTip text="Готовая подписка доступна всем пользователям. Если подписка не готова, её видят только администраторы." /></span>
+                <AppCheckbox v-model="form.is_ready" enabled-label="Все пользователи" disabled-label="Только администраторы" />
             </label>
 
             <label class="field" style="grid-column: 1 / -1;">

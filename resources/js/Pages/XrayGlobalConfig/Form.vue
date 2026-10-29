@@ -52,7 +52,7 @@ const updateRule = (index, value) => {
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Global JSON configuration</h1>
+                <h1>Общая конфигурация JSON</h1>
                 <p>DNS, routing strategy, and global rules for standard JSON profiles.</p>
             </div>
         </div>
@@ -60,12 +60,12 @@ const updateRule = (index, value) => {
         <form class="stack" @submit.prevent="form.put(props.submit_url)">
             <JsonSectionEditor
                 v-model="form.dns_json"
-                title="DNS"
+                title="Настройки DNS"
                 description="Used by standard JSON configurations."
                 :error="form.errors.dns_json"
             >
                 <label class="field">
-                    <span>Query strategy</span>
+                    <span>Стратегия DNS-запросов</span>
                     <AppSelect
                         :model-value="dns.queryStrategy || 'UseIPv4'"
                         :options="[
@@ -78,19 +78,19 @@ const updateRule = (index, value) => {
                     />
                 </label>
                 <label class="field">
-                    <span>Servers JSON</span>
+                    <span>Серверы DNS в формате JSON</span>
                     <AppTextarea :model-value="pretty(dns.servers || [])" rows="8" spellcheck="false" @update:model-value="updateSection('dns_json', { ...dns, servers: JSON.parse($event) })" />
                 </label>
             </JsonSectionEditor>
 
             <JsonSectionEditor
                 v-model="form.routing_json"
-                title="Routing"
+                title="Маршрутизация"
                 description="Controls domain resolution strategy for standard profiles."
                 :error="form.errors.routing_json"
             >
                 <label class="field">
-                    <span>Domain strategy</span>
+                    <span>Стратегия обработки доменов</span>
                     <AppSelect
                         :model-value="routing.domainStrategy || 'AsIs'"
                         :options="[
@@ -105,21 +105,21 @@ const updateRule = (index, value) => {
 
             <JsonSectionEditor
                 v-model="form.rules_json"
-                title="Global rules"
+                title="Общие правила"
                 description="These rules are applied to every standard JSON profile."
                 :error="form.errors.rules_json"
             >
                 <div class="stack">
                     <div v-for="(rule, index) in rules" :key="index" class="rule-editor">
                         <AppTextarea :model-value="ruleText(rule)" rows="6" spellcheck="false" @change="updateRule(index, $event.target.value)" />
-                        <AppButton variant="danger" type="button" @click="removeRule(index)">Remove rule</AppButton>
+                        <AppButton variant="danger" type="button" @click="removeRule(index)">Удалить правило</AppButton>
                     </div>
-                    <AppButton variant="secondary" type="button" @click="addRule">Add rule</AppButton>
+                    <AppButton variant="secondary" type="button" @click="addRule">Добавить правило</AppButton>
                 </div>
             </JsonSectionEditor>
 
             <div class="actions">
-                <AppButton type="submit" :disabled="form.processing">Save</AppButton>
+                <AppButton type="submit" :disabled="form.processing">Сохранить</AppButton>
             </div>
         </form>
     </section>

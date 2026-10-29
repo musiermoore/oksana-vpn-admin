@@ -181,7 +181,7 @@ const setPriceForAssignment = (assignment) => {
             </label>
 
             <label class="field">
-                <span>Telegram</span>
+                <span>Имя пользователя в Telegram</span>
                 <AppInput v-model="form.telegram" type="text" />
             </label>
 

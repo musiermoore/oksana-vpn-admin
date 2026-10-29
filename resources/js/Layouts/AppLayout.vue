@@ -153,7 +153,7 @@ watch(isMobile, () => {
                     <Link class="brand" href="/">
                         <span class="brand__copy">
                             <strong class="brand__label">{{ page.props.app.name }}</strong>
-                            <span class="brand__subline">Admin Panel</span>
+                            <span class="brand__subline">Панель управления</span>
                         </span>
                     </Link>
 
@@ -163,7 +163,7 @@ watch(isMobile, () => {
                             variant="text"
                             rounded
                             class="shell__icon-button shell__icon-button--sidebar"
-                            aria-label="Close navigation"
+                            aria-label="Закрыть меню"
                             @click="closeSidebar"
                         >
                             <AppIcon name="close" />
@@ -222,12 +222,12 @@ watch(isMobile, () => {
                                 href="/api-docs/telegram-mini-app"
                                 class="sidebar-nav__link"
                                 :class="{ 'is-active': isActive('/api-docs/telegram-mini-app') }"
-                                :title="isSidebarCollapsed ? 'Telegram Mini App API' : ''"
+                                :title="isSidebarCollapsed ? 'API Telegram-приложения' : ''"
                             >
                                 <span class="sidebar-nav__badge">
                                     <AppIcon name="link" class="sidebar-nav__badge-icon" />
                                 </span>
-                                <span class="sidebar-nav__label">Telegram Mini App API</span>
+                                <span class="sidebar-nav__label">API Telegram-приложения</span>
                             </Link>
                         </nav>
                     </section>
@@ -248,7 +248,7 @@ watch(isMobile, () => {
 
         <div class="shell__main">
             <header class="shell__topbar">
-                <Button type="button" variant="outlined" rounded class="shell__icon-button" aria-label="Toggle navigation" @click="toggleSidebar">
+                <Button type="button" variant="outlined" rounded class="shell__icon-button" aria-label="Переключить меню" @click="toggleSidebar">
                     <AppIcon name="bars" />
                 </Button>
 

@@ -72,18 +72,18 @@ const formatDate = (value) => {
 </script>
 
 <template>
-    <Head title="Tax Debug" />
+    <Head title="Диагностика налогов" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Tax Debug</h1>
-                <p>Очередной mini-Postman для Moy Nalog с пресетами `Auth`, `User`, `Income / Receipts`.</p>
+                <h1>Диагностика налогов</h1>
+                <p>Проверка запросов к сервису «Мой налог» с готовыми сценариями авторизации, пользователя и чеков.</p>
             </div>
 
             <div class="actions">
                 <AppButton variant="secondary" href="/tax-settings">Настройки</AppButton>
-                <AppButton href="/invoices">Invoices</AppButton>
+                <AppButton href="/invoices">Инвойсы</AppButton>
             </div>
         </div>
     </section>
@@ -99,12 +99,12 @@ const formatDate = (value) => {
         <form class="stack" @submit.prevent="submit">
             <div class="grid grid--two">
                 <label class="field">
-                    <span>Preset</span>
+                    <span>Сценарий</span>
                     <AppSelect v-model="form.preset" :options="presetOptions" />
                 </label>
 
                 <label class="field">
-                    <span>Invoice</span>
+                    <span>Инвойс</span>
                     <AppSelect v-model="form.invoice_id" :options="invoiceOptions" :disabled="form.preset !== 'income'" />
                     <small class="muted">Нужен только для `Income / Receipts`.</small>
                 </label>
@@ -139,14 +139,14 @@ const formatDate = (value) => {
 
                 <div class="grid grid--two">
                     <article class="page-card stack">
-                        <h4 class="section-title">Request</h4>
-                        <div class="muted">Queued: {{ formatDate(log.queued_at) }}</div>
+                        <h4 class="section-title">Запрос</h4>
+                        <div class="muted">В очереди: {{ formatDate(log.queued_at) }}</div>
                         <pre class="code-block">{{ stringify(log.request_payload) }}</pre>
                     </article>
 
                     <article class="page-card stack">
-                        <h4 class="section-title">Response</h4>
-                        <div class="muted">Done: {{ formatDate(log.completed_at || log.started_at) }}</div>
+                        <h4 class="section-title">Ответ</h4>
+                        <div class="muted">Завершён: {{ formatDate(log.completed_at || log.started_at) }}</div>
                         <pre class="code-block">{{ stringify(log.response_json || log.response_body || log.error_message) }}</pre>
                     </article>
                 </div>

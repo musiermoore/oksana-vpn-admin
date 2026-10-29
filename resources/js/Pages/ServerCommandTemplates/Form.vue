@@ -117,7 +117,7 @@ const submit = () => {
             </label>
 
             <label v-if="form.format === 'script'" class="field" style="grid-column: 1 / -1;">
-                <span>Shell script</span>
+                <span>Сценарий командной оболочки</span>
                 <AppTextarea
                     v-model="form.content"
                     rows="18"
@@ -131,7 +131,7 @@ const submit = () => {
             <div v-else class="command-builder" style="grid-column: 1 / -1;">
                 <div class="command-builder__intro">
                     <div>
-                        <h2>Commands</h2>
+                        <h2>Команды</h2>
                         <p>Commands run in order. The timeout above applies to the whole template.</p>
                     </div>
                     <AppButton type="button" variant="secondary" @click="addCommand">+ Add a command</AppButton>
@@ -140,11 +140,11 @@ const submit = () => {
                 <article v-for="(block, index) in commandBlocks" :key="block.key" class="command-card">
                     <div class="command-card__header">
                         <strong>Command {{ index + 1 }}</strong>
-                        <AppButton type="button" variant="danger" :disabled="commandBlocks.length === 1" @click="removeCommand(index)">Remove</AppButton>
+                        <AppButton type="button" variant="danger" :disabled="commandBlocks.length === 1" @click="removeCommand(index)">Удалить</AppButton>
                     </div>
 
                     <label class="field">
-                        <span>Command to run</span>
+                        <span>Выполняемая команда</span>
                         <AppTextarea v-model="block.command" rows="2" spellcheck="false" placeholder="sudo apt install nginx" />
                     </label>
 
@@ -152,19 +152,19 @@ const submit = () => {
                         <div v-for="(condition, conditionIndex) in block.answers" :key="condition.key" class="condition-card">
                             <div class="condition-card__header">
                                 <strong>Prompt answer {{ conditionIndex + 1 }}</strong>
-                                <AppButton type="button" variant="danger" @click="removeCondition(block, conditionIndex)">Remove</AppButton>
+                                <AppButton type="button" variant="danger" @click="removeCondition(block, conditionIndex)">Удалить</AppButton>
                             </div>
                             <label class="field">
-                                <span>When terminal output contains</span>
+                                <span>Если в выводе терминала появится</span>
                                 <AppInput v-model="condition.scan" placeholder="Continue? [Y/n]" />
                             </label>
                             <div class="condition-card__fields">
                                 <label class="field">
-                                    <span>Answer to send</span>
+                                    <span>Отправить ответ</span>
                                     <AppInput v-model="condition.answer" placeholder="y" />
                                 </label>
                                 <label class="field">
-                                    <span>After the answer</span>
+                                    <span>Когда отправлять ответ</span>
                                     <AppSelect v-model="condition.send" :options="sendOptions" />
                                 </label>
                             </div>

@@ -42,7 +42,7 @@ const submit = () => form.get(props.token.links.public_configs);
                 <div v-for="item in token.download_items" :key="item.id" class="item-row">
                     <div>{{ item.name }}</div>
                     <div class="actions">
-                        <a class="button button--secondary" :href="item.qr_code_url" target="_blank">QR-Code</a>
+                        <a class="button button--secondary" :href="item.qr_code_url" target="_blank">QR-код</a>
                         <a class="button" :href="item.download_url">Скачать</a>
                     </div>
                 </div>

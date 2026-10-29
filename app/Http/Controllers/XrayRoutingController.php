@@ -105,7 +105,7 @@ class XrayRoutingController extends Controller
 
         return redirect()
             ->route('xray-routings.index')
-            ->with('success', 'Xray routing created.');
+            ->with('success', 'Правило маршрутизации Xray создано.');
     }
 
     public function edit(XrayRouting $xrayRouting)
@@ -134,7 +134,7 @@ class XrayRoutingController extends Controller
 
         return redirect()
             ->route('xray-routings.index')
-            ->with('success', 'Xray routing settings imported.');
+            ->with('success', 'Настройки маршрутизации Xray импортированы.');
     }
 
     public function update(UpdateXrayRoutingRequest $request, XrayRouting $xrayRouting): RedirectResponse
@@ -158,7 +158,7 @@ class XrayRoutingController extends Controller
 
         return redirect()
             ->route('xray-routings.index')
-            ->with('success', 'Xray routing updated.');
+            ->with('success', 'Правило маршрутизации Xray обновлено.');
     }
 
     /**

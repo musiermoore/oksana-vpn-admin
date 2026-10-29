@@ -58,7 +58,7 @@ const taxStatusOptions = props.tax_status_options.map((status) => ({
                     <div class="kv-row"><span>Сумма</span><strong>{{ invoice.amount }} {{ invoice.currency }}</strong></div>
                     <div class="kv-row"><span>Оплата</span><strong>{{ invoice.paid ? 'Оплачен' : 'Не оплачен' }}</strong></div>
                     <div class="kv-row"><span>Текущий статус налоговой</span><strong>{{ taxStatusLabel(invoice.tax_status) }}</strong></div>
-                    <div class="kv-row"><span>Receipt UUID</span><strong>{{ invoice.tax_receipt_uuid || '—' }}</strong></div>
+                    <div class="kv-row"><span>Идентификатор чека</span><strong>{{ invoice.tax_receipt_uuid || '—' }}</strong></div>
                 </div>
             </article>
 

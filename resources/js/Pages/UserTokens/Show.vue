@@ -27,17 +27,17 @@ defineProps({
             </label>
 
             <label class="field">
-                <span>Token</span>
+                <span>Токен</span>
                 <AppInput :value="user_token.token" readonly />
             </label>
 
             <label class="field">
-                <span>Password</span>
+                <span>Пароль</span>
                 <AppInput :value="user_token.password" readonly />
             </label>
 
             <label class="field">
-                <span>Link</span>
+                <span>Ссылка</span>
                 <AppInput :value="user_token.links.public_configs" readonly />
             </label>
         </div>
@@ -46,7 +46,7 @@ defineProps({
             <div v-for="item in user_token.download_items" :key="item.id" class="item-row">
                 <div>{{ item.name }}</div>
                 <div class="actions">
-                    <AppButton variant="secondary" :href="item.qr_code_url" target="_blank">QR-Code</AppButton>
+                    <AppButton variant="secondary" :href="item.qr_code_url" target="_blank">QR-код</AppButton>
                     <AppButton :href="item.download_url">Скачать</AppButton>
                 </div>
             </div>

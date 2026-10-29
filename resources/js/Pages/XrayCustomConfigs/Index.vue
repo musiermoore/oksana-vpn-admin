@@ -18,7 +18,7 @@ const props = defineProps({
             <AppButton :href="props.create_page_url">Создать конфигурацию</AppButton>
         </div>
         <table>
-            <thead><tr><th>Название</th><th>Slug</th><th>Видимость</th><th>DNS</th><th>Геоданные</th><th>Статус</th><th></th></tr></thead>
+            <thead><tr><th>Название</th><th>Короткое имя</th><th>Видимость</th><th>DNS</th><th>Геоданные</th><th>Статус</th><th></th></tr></thead>
             <tbody>
                 <tr v-for="config in props.configs" :key="config.id">
                     <td>{{ config.name }}</td>

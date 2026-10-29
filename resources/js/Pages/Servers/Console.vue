@@ -165,27 +165,27 @@ onBeforeUnmount(() => {
     <Head :title="`Console · ${server.name}`" />
     <AppPageHeader :title="`Console · ${server.name}`" :description="`${server.ip} · SSH terminal session (up to 15 minutes)`">
         <template #actions>
-            <AppButton variant="secondary" :href="links.templates">Command templates</AppButton>
-            <AppButton variant="secondary" :href="links.servers">Back to servers</AppButton>
-            <AppButton variant="danger" type="button" @click="closeSession">Disconnect</AppButton>
+            <AppButton variant="secondary" :href="links.templates">Шаблоны команд</AppButton>
+            <AppButton variant="secondary" :href="links.servers">К списку серверов</AppButton>
+            <AppButton variant="danger" type="button" @click="closeSession">Отключиться</AppButton>
         </template>
     </AppPageHeader>
 
     <section class="section-block">
         <div class="section-block__header">
             <div class="section-block__title">
-                <h2>SSH session <span class="console-status">{{ status }}<span v-if="busy"> · command running</span></span></h2>
-                <p>Type directly in the terminal. Interactive prompts, control keys, ANSI output, and terminal resizing are supported.</p>
+                <h2>Сеанс SSH <span class="console-status">{{ status }}<span v-if="busy"> · выполняется команда</span></span></h2>
+                <p>Вводите команды в терминале. Поддерживаются интерактивные запросы, управляющие клавиши, ANSI-вывод и изменение размера терминала.</p>
             </div>
         </div>
-        <div ref="terminalElement" class="server-console-terminal" aria-label="SSH terminal" />
+        <div ref="terminalElement" class="server-console-terminal" aria-label="Терминал SSH" />
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <div v-if="templates.length" class="actions" style="margin-top: .75rem;">
             <select v-model="selectedTemplate" class="form-control" :disabled="!isActive || busy">
-                <option value="">Run a saved template…</option>
+                <option value="">Запустить сохранённый шаблон…</option>
                 <option v-for="template in templates" :key="template.id" :value="String(template.id)">{{ template.name }} · {{ template.format }}</option>
             </select>
-            <AppButton type="button" variant="secondary" :disabled="!isActive || busy || !selectedTemplate" @click="runTemplate">Run template</AppButton>
+            <AppButton type="button" variant="secondary" :disabled="!isActive || busy || !selectedTemplate" @click="runTemplate">Запустить шаблон</AppButton>
         </div>
     </section>
 </template>

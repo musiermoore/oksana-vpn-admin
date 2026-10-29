@@ -106,6 +106,6 @@ class XrayGlobalConfigController extends Controller
             XrayRouting::query()->insert($routingRows);
         }
 
-        return redirect()->back()->with('success', 'Global Xray JSON configuration updated.');
+        return redirect()->back()->with('success', 'Общая конфигурация JSON для Xray обновлена.');
     }
 }

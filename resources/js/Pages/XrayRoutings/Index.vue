@@ -82,12 +82,12 @@ const targetLabel = (routing) => {
 </script>
 
 <template>
-    <Head title="Xray Routing" />
+    <Head title="Правила маршрутизации Xray" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Xray Routing</h1>
+                <h1>Правила маршрутизации Xray</h1>
                 <p>JSON routing settings for connect subscriptions.</p>
             </div>
             <div class="actions">
@@ -99,7 +99,7 @@ const targetLabel = (routing) => {
 
     <section class="stack">
         <div class="page-card stack">
-            <h2>Active Settings</h2>
+            <h2>Активные настройки</h2>
             <div v-if="active_settings" class="stack">
                 <div>
                     <strong>{{ active_settings.name }}</strong>
@@ -117,19 +117,19 @@ const targetLabel = (routing) => {
         <div class="page-card stack">
             <div class="page-header">
                 <div>
-                    <h2>Routing Rules</h2>
+                    <h2>Правила маршрутизации</h2>
                 </div>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Order</th>
-                        <th>Name</th>
-                        <th>Outbound</th>
-                        <th>Subscriptions</th>
-                        <th>Targets</th>
-                        <th>Status</th>
-                        <th>Rules</th>
+                        <th>Порядок</th>
+                        <th>Название</th>
+                        <th>Направление</th>
+                        <th>Подписки</th>
+                        <th>Цели</th>
+                        <th>Статус</th>
+                        <th>Правила</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -184,7 +184,7 @@ const targetLabel = (routing) => {
 
             <form class="stack" @submit.prevent="submitImport">
                 <label class="field">
-                    <span>Settings JSON</span>
+                    <span>Файл настроек JSON</span>
                     <AppTextarea v-model="importForm.settings_json" rows="18" required />
                     <small v-if="importForm.errors.settings_json" class="field-error">{{ importForm.errors.settings_json }}</small>
                 </label>

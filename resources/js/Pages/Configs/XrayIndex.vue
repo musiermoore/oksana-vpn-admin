@@ -25,12 +25,12 @@ const toggleConfig = (config) => {
 </script>
 
 <template>
-    <Head title="Xray Configs" />
+    <Head title="Конфигурации Xray" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Xray Configs</h1>
+                <h1>Конфигурации Xray</h1>
                 <p>Управление VLESS и Shadowsocks-конфигами участников.</p>
             </div>
             <div class="actions">

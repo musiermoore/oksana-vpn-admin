@@ -121,15 +121,15 @@ const removePriceRow = (index) => {
             <label class="field"><span>Тип</span>
                 <AppSelect v-model="form.type" :options="serverTypeOptions" />
             </label>
-            <label class="field"><span>Is HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
-            <label class="field"><span>Link Host</span><AppInput v-model="form.link_host" /></label>
-            <label class="field"><span>Panel Link</span><AppInput v-model="form.panel_link" /></label>
-            <label class="field"><span>Panel Username</span><AppInput v-model="form.panel_username" /></label>
-            <label class="field"><span>Panel API Version</span>
+            <label class="field"><span>Использовать HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
+            <label class="field"><span>Домен подключения</span><AppInput v-model="form.link_host" /></label>
+            <label class="field"><span>Ссылка на панель</span><AppInput v-model="form.panel_link" /></label>
+            <label class="field"><span>Имя пользователя панели</span><AppInput v-model="form.panel_username" /></label>
+            <label class="field"><span>Версия API панели</span>
                 <AppSelect v-model="form.panel_api_version" :options="panelApiVersionOptions" />
             </label>
             <label class="field" style="grid-column: 1 / -1;">
-                <span>Panel Password</span>
+                <span>Пароль панели</span>
                 <div class="password-field">
                     <AppInput v-model="form.panel_password" :type="isPanelPasswordVisible ? 'text' : 'password'" />
                     <button
@@ -142,14 +142,14 @@ const removePriceRow = (index) => {
                 </div>
             </label>
             <label class="field" style="grid-column: 1 / -1;"><span>Путь до приложения</span><AppInput v-model="form.app_path" required /></label>
-            <label class="field" style="grid-column: 1 / -1;"><span>SSH Private Key</span><AppTextarea v-model="form.ssh_private_key"  /></label>
-            <label class="field" style="grid-column: 1 / -1;"><span>SSH Public Key</span><AppTextarea v-model="form.ssh_public_key"  /></label>
-            <label class="field"><span>SSH Username</span><AppInput v-model="form.ssh_username" required /></label>
-            <label class="field"><span>SSH Port</span><AppInput v-model="form.ssh_port" type="number" min="1" max="65535" required /></label>
-            <label class="field" style="grid-column: 1 / -1;"><span>SSH Password {{ server?.ssh_password_configured ? '(leave blank to keep current)' : '' }}</span><AppInput v-model="form.ssh_password" type="password" autocomplete="new-password" /></label>
-            <label class="field"><span>Is Active</span><AppCheckbox v-model="form.is_active" /></label>
-            <label class="field"><span>Is Ready</span><AppCheckbox v-model="form.is_ready" /></label>
-            <label class="field"><span>Hide configs for non-admins</span><AppCheckbox v-model="form.hide_configs_for_non_admins" /></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>Закрытый SSH-ключ</span><AppTextarea v-model="form.ssh_private_key"  /></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>Открытый SSH-ключ</span><AppTextarea v-model="form.ssh_public_key"  /></label>
+            <label class="field"><span>Имя пользователя SSH</span><AppInput v-model="form.ssh_username" required /></label>
+            <label class="field"><span>Порт SSH</span><AppInput v-model="form.ssh_port" type="number" min="1" max="65535" required /></label>
+            <label class="field" style="grid-column: 1 / -1;"><span>Пароль SSH {{ server?.ssh_password_configured ? '(оставьте пустым, чтобы не менять)' : '' }}</span><AppInput v-model="form.ssh_password" type="password" autocomplete="new-password" /></label>
+            <label class="field"><span>Сервер активен</span><AppCheckbox v-model="form.is_active" /></label>
+            <label class="field"><span>Сервер готов<AppHelpTip text="Готовый сервер участвует в создании конфигураций и проверках доступности." /></span><AppCheckbox v-model="form.is_ready" enabled-label="Готов" disabled-label="Не готов" /></label>
+            <label class="field"><span>Скрывать конфигурации от пользователей<AppHelpTip text="При включении конфигурации этого сервера видны только администраторам. Это отдельная настройка от готовности сервера." /></span><AppCheckbox v-model="form.hide_configs_for_non_admins" enabled-label="Только администраторы" disabled-label="Все пользователи" /></label>
 
             <div class="field" style="grid-column: 1 / -1;">
                 <div class="page-header">
@@ -216,7 +216,7 @@ const removePriceRow = (index) => {
             </div>
 
             <div class="field" style="grid-column: 1 / -1;">
-                <span>Inbounds</span>
+                <span>Входящие узлы</span>
                 <p class="hint">
                     `Connect Sort` это общий порядок элементов в подписке внутри сервера. Он делится между inbound и proxy,
                     поэтому номера inbound могут идти не подряд, если между ними есть proxy.
@@ -230,15 +230,15 @@ const removePriceRow = (index) => {
                     <thead>
                         <tr>
                             <th>Inbound #</th>
-                            <th>Connect Sort</th>
+                            <th>Порядок подключения</th>
                             <th>ID</th>
-                            <th>Remark</th>
-                            <th>Protocol</th>
-                            <th>Port</th>
-                            <th>Is Active</th>
-                            <th>Is Public</th>
-                            <th>Connect</th>
-                            <th>Connect v2</th>
+                            <th>Название</th>
+                            <th>Протокол</th>
+                            <th>Порт</th>
+                            <th>Активен</th>
+                            <th>Публичный<AppHelpTip text="Публичные узлы доступны всем пользователям. Если выключить, узел будет виден только администраторам." /></th>
+                            <th>Основная подписка</th>
+                            <th>Новая подписка</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -250,7 +250,7 @@ const removePriceRow = (index) => {
                             <td>{{ inbound.protocol || '—' }}</td>
                             <td>{{ inbound.port || '—' }}</td>
                             <td><AppCheckbox v-model="inbound.is_active" /></td>
-                            <td><AppCheckbox v-model="inbound.is_public" /></td>
+                            <td><AppCheckbox v-model="inbound.is_public" enabled-label="Все пользователи" disabled-label="Только администраторы" /></td>
                             <td><AppCheckbox v-model="inbound.is_visible_in_connect" /></td>
                             <td><AppCheckbox v-model="inbound.is_visible_in_connect_v2" /></td>
                         </tr>

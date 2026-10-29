@@ -98,7 +98,7 @@ const formatTimestamp = (isoString) => {
         return '—';
     }
 
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat('ru-RU', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -198,12 +198,12 @@ const endpointOptions = computed(() => [
             </div>
 
             <div class="field">
-                <label for="action">Action</label>
+                <label for="action">Действие</label>
                 <AppSelect id="action" v-model="form.action" :options="actionOptions" />
             </div>
 
             <div class="field">
-                <label for="endpoint">Endpoint</label>
+                <label for="endpoint">Адрес запроса</label>
                 <AppSelect id="endpoint" v-model="form.endpoint" :options="endpointOptions" />
             </div>
 
@@ -222,7 +222,7 @@ const endpointOptions = computed(() => [
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h2 class="section-title">Timezone</h2>
+                <h2 class="section-title">Часовой пояс</h2>
                 <p>Топ распределения по часовым поясам самих запросов. Времена ниже показаны в вашем часовом поясе.</p>
             </div>
         </div>
@@ -242,10 +242,10 @@ const endpointOptions = computed(() => [
                 <tr>
                     <th>Когда</th>
                     <th>Пользователь</th>
-                    <th>Action</th>
-                    <th>Endpoint</th>
-                    <th>Timezone запроса</th>
-                    <th>Params</th>
+                    <th>Действие</th>
+                    <th>Адрес запроса</th>
+                    <th>Часовой пояс запроса</th>
+                    <th>Параметры</th>
                 </tr>
             </thead>
             <tbody>

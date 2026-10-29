@@ -105,7 +105,7 @@ const destroyServer = (server) => {
                         <td>{{ server.is_ready ? 'Да' : 'Нет' }}</td>
                         <td>
                             <div class="actions">
-                                <AppButton v-if="server.links?.console" variant="secondary" :href="server.links.console" title="Open server console" aria-label="Open server console"><AppIcon name="terminal" /> Console</AppButton>
+                                <AppButton v-if="server.links?.console" variant="secondary" :href="server.links.console" title="Открыть консоль сервера" aria-label="Открыть консоль сервера"><AppIcon name="terminal" /> Консоль</AppButton>
                                 <AppButton v-if="server.links?.edit" variant="secondary" :href="server.links.edit">Открыть</AppButton>
                                 <AppButton
                                     :variant="server.is_active ? 'danger' : 'success'"

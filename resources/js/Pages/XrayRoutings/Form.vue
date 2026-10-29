@@ -128,7 +128,7 @@ const submit = () => {
         </label>
 
         <label class="field">
-            <span>Outbound</span>
+            <span>Направление трафика</span>
             <AppSelect v-model="form.outbound" :options="outboundOptions" required />
             <small v-if="form.errors.outbound" class="field-error">{{ form.errors.outbound }}</small>
         </label>
@@ -267,7 +267,7 @@ const submit = () => {
         </div>
 
         <label class="field" style="grid-column: 1 / -1;">
-            <span>Rules JSON</span>
+            <span>Правила в формате JSON</span>
             <AppTextarea v-model="form.rules_json" rows="10" required />
             <small v-if="form.errors.rules_json" class="field-error">{{ form.errors.rules_json }}</small>
         </label>

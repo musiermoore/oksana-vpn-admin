@@ -37,10 +37,10 @@ const destroyProxy = (proxy) => {
                     <th>Сервер</th>
                     <th>Порядок</th>
                     <th>Имя</th>
-                    <th>Host</th>
-                    <th>Port</th>
+                    <th>Адрес узла</th>
+                    <th>Порт</th>
                     <th>HTTPS</th>
-                    <th>Ready</th>
+                    <th>Готов</th>
                     <th>Действия</th>
                 </tr>
             </thead>

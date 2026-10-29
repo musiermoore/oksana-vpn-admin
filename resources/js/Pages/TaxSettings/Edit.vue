@@ -25,13 +25,13 @@ const submit = () => form.put('/tax-settings');
 </script>
 
 <template>
-    <Head title="Tax Settings" />
+    <Head title="Налоговые настройки" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Tax Settings</h1>
-                <p>Логин/пароль Moy Nalog и дефолтное имя услуги для `services.*.name`.</p>
+                <h1>Налоговые настройки</h1>
+                <p>Логин и пароль сервиса «Мой налог», а также название услуги по умолчанию.</p>
             </div>
         </div>
 
@@ -51,7 +51,7 @@ const submit = () => form.put('/tax-settings');
             <label class="field">
                 <span>Название услуги</span>
                 <AppInput v-model="form.service_name" type="text" />
-                <small class="muted">По умолчанию: `Настройка сетевой конфигурации`.</small>
+                <small class="muted">Название по умолчанию: «Настройка сетевой конфигурации».</small>
                 <small v-if="form.errors.service_name" class="field-error">{{ form.errors.service_name }}</small>
             </label>
 

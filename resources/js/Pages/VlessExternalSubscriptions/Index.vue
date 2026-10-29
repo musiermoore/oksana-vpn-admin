@@ -45,11 +45,11 @@ const syncSubscription = (subscription) => {
                     <th>Тип</th>
                     <th>Формат</th>
                     <th>В осн.</th>
-                    <th>В WL</th>
-                    <th>В connect-v2</th>
-                    <th>Free</th>
+                    <th>В белом списке</th>
+                    <th>В новом формате</th>
+                    <th>Бесплатная</th>
                     <th>Активна</th>
-                    <th>Ready</th>
+                    <th>Готова</th>
                     <th>Конфигов</th>
                     <th>Последняя синхронизация</th>
                     <th>Действия</th>
@@ -65,13 +65,13 @@ const syncSubscription = (subscription) => {
                         <div v-if="subscription.last_sync_error" class="field-error">{{ subscription.last_sync_error }}</div>
                     </td>
                     <td>{{ subscription.type === 'subscription' ? 'Подписка' : 'Прямая ссылка' }}</td>
-                    <td>{{ subscription.source_format === 'incy' ? 'INCY' : 'Direct' }}</td>
+                    <td>{{ subscription.source_format === 'incy' ? 'INCY' : 'Прямая ссылка' }}</td>
                     <td>{{ subscription.include_in_main_subscription ? 'Да' : 'Нет' }}</td>
                     <td>{{ subscription.include_in_whitelist ? 'Да' : 'Нет' }}</td>
                     <td>{{ subscription.include_in_connect_v2 ? 'Да' : 'Нет' }}</td>
                     <td>{{ subscription.is_free ? 'Да' : 'Нет' }}</td>
                     <td>{{ subscription.is_active ? 'Да' : 'Нет' }}</td>
-                    <td>{{ subscription.is_ready ? 'Да' : 'Только админ' }}</td>
+                    <td>{{ subscription.is_ready ? 'Все пользователи' : 'Только администраторы' }}</td>
                     <td>{{ subscription.configs_count ?? 0 }}</td>
                     <td>{{ subscription.last_synced_at || '—' }}</td>
                     <td>

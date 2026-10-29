@@ -2110,6 +2110,34 @@ body,
     color: var(--muted);
 }
 
+.app-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+}
+
+.app-toggle__state {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.app-help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    color: var(--muted);
+    cursor: help;
+    vertical-align: middle;
+}
+
+.app-help-tip:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+
 .grid-form {
     display: grid;
     gap: 16px;

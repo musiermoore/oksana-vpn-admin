@@ -22,7 +22,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Welcome Messages" />
+    <Head title="Приветственные сообщения" />
 
     <section class="page-card stack">
         <div class="page-header">
@@ -37,7 +37,7 @@ const submit = () => {
                 <div class="page-header">
                     <div>
                         <h2 class="section-title">Расширенное сообщение</h2>
-                        <p>Используется для первого показа и повторного показа спустя неделю после `welcome_text_seen_at`.</p>
+                        <p>Показывается при первой регистрации и повторно через неделю после предыдущего показа.</p>
                     </div>
                 </div>
 
@@ -53,7 +53,7 @@ const submit = () => {
                 <div class="page-header">
                     <div>
                         <h2 class="section-title">Базовое сообщение</h2>
-                        <p>Используется для всех остальных вызовов `/start`. Пустая строка допустима: тогда бот сам применит fallback.</p>
+                        <p>Показывается при остальных запусках бота. Если оставить поле пустым, бот использует стандартный текст.</p>
                     </div>
                 </div>
 

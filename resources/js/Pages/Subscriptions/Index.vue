@@ -32,7 +32,7 @@ defineProps({
             <thead>
                 <tr>
                     <th>Участник</th>
-                    <th>Telegram</th>
+                    <th>Пользователь Telegram</th>
                     <th>Период</th>
                     <th>Стоимость</th>
                     <th>Статус</th>

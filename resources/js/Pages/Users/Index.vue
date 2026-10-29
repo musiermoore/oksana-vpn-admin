@@ -65,7 +65,7 @@ const destroyUser = (user) => {
             <table>
                 <thead>
                     <tr>
-                        <th>Telegram</th>
+                        <th>Пользователь Telegram</th>
                         <th>Имя</th>
                         <th>Описание</th>
                         <th>Баланс</th>

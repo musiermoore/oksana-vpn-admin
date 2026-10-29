@@ -28,12 +28,12 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="Telegram Mini App API" />
+    <Head title="API Telegram-приложения" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Telegram Mini App API</h1>
+                <h1>API Telegram-приложения</h1>
                 <p>OpenAPI contract for the Laravel API and its Go replacement.</p>
             </div>
         </div>

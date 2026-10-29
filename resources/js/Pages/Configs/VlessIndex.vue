@@ -21,7 +21,7 @@ const toggleConfig = (config) => {
 </script>
 
 <template>
-    <Head title="VLESS конфиги" />
+    <Head title="Конфигурации VLESS" />
 
     <section class="page-card stack">
         <div class="page-header">

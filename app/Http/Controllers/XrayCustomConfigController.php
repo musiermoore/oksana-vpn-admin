@@ -69,7 +69,7 @@ class XrayCustomConfigController extends Controller
         $this->syncUserAssignments($config, $userIds);
         $this->syncGroupsAndRoutes($config, $data);
 
-        return redirect()->route('xray-custom-configs.edit', $config)->with('success', 'Xray custom config created.');
+        return redirect()->route('xray-custom-configs.edit', $config)->with('success', 'Пользовательская конфигурация Xray создана.');
     }
 
     public function edit(XrayCustomConfig $xrayCustomConfig)
@@ -99,7 +99,7 @@ class XrayCustomConfigController extends Controller
         $this->syncUserAssignments($xrayCustomConfig, $userIds);
         $this->syncGroupsAndRoutes($xrayCustomConfig, $data);
 
-        return redirect()->back()->with('success', 'Xray custom config updated.');
+        return redirect()->back()->with('success', 'Пользовательская конфигурация Xray обновлена.');
     }
 
     public function preview(

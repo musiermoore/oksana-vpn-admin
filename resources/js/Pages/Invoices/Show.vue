@@ -78,7 +78,7 @@ const taxStatusLabel = (status) => ({
                     <div class="kv-row"><span>Статус отправки</span><strong>{{ taxStatusLabel(invoice.tax_status) }}</strong></div>
                     <div class="kv-row"><span>Сервис</span><strong>{{ invoice.tax_service_name || '—' }}</strong></div>
                     <div class="kv-row"><span>Предположительная комиссия</span><strong>{{ invoice.tax_estimated_commission }} {{ invoice.currency }}</strong></div>
-                    <div class="kv-row"><span>Receipt UUID</span><strong>{{ invoice.tax_receipt_uuid || '—' }}</strong></div>
+                    <div class="kv-row"><span>Идентификатор чека</span><strong>{{ invoice.tax_receipt_uuid || '—' }}</strong></div>
                     <div class="kv-row"><span>Отправлен в</span><strong>{{ formatDate(invoice.tax_sent_at) }}</strong></div>
                 </div>
 

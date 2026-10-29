@@ -115,12 +115,12 @@ final class XrayInboundHealthController
     public function run(InboundHealthCheckScheduler $scheduler, InboundHealthCheckSettings $settings): RedirectResponse
     {
         if (! $settings->enabled()) {
-            return redirect()->route('xray-inbound-health.index')->with('success', 'Health checks are disabled. Enable them to queue a run.');
+            return redirect()->route('xray-inbound-health.index')->with('success', 'Проверки приостановлены. Возобновите их, чтобы запустить проверку.');
         }
 
         $scheduler->dispatch();
 
-        return redirect()->route('xray-inbound-health.index')->with('success', 'Health checks queued. Results will appear as the probes finish.');
+        return redirect()->route('xray-inbound-health.index')->with('success', 'Проверки добавлены в очередь. Результаты появятся после их выполнения.');
     }
 
     public function updateSettings(

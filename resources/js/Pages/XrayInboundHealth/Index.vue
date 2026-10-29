@@ -34,15 +34,15 @@ const refreshTimer = ref(null);
 const refreshAttempts = ref(0);
 
 const statusLabel = (status) => ({
-    healthy: 'Healthy',
-    warning: 'Warning',
-    unhealthy: 'Unhealthy',
-    unsupported: 'Unsupported',
-    pending: 'Queued',
-    unknown: 'Not checked',
-    included: 'Included',
-    hidden: 'Hidden by inbound settings',
-    'no-config': 'No active test client',
+    healthy: 'Доступен',
+    warning: 'Есть проблемы',
+    unhealthy: 'Недоступен',
+    unsupported: 'Не поддерживается',
+    pending: 'В очереди',
+    unknown: 'Не проверялся',
+    included: 'Включён',
+    hidden: 'Скрыт настройками узла',
+    'no-config': 'Нет активного тестового клиента',
 }[status] ?? status);
 
 const statusClass = (status) => `health-status health-status--${status}`;
@@ -50,13 +50,13 @@ const statusClass = (status) => `health-status health-status--${status}`;
 const flowLabel = (flow) => ({
     connect: '/connect',
     'connect-v2': '/connect-v2',
-    external: 'External subscription',
-    'external-source': 'External source sync',
-    'xray-custom': 'Xray custom subscription',
+    external: 'Внешняя подписка',
+    'external-source': 'Синхронизация внешнего источника',
+    'xray-custom': 'Пользовательская подписка Xray',
 }[flow] ?? flow);
 
 const formatDate = (value) => value
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+    ? new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
     : '—';
 
 const refreshResults = () => {
@@ -85,60 +85,60 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 </script>
 
 <template>
-    <Head title="Inbound Health" />
+    <Head title="Проверка узлов Xray" />
 
     <main class="page-stack inbound-health-page">
         <AppPageHeader
-            eyebrow="Network diagnostics"
-            title="Inbound health"
-            :description="`Direct inbound probes bypass app routing. Subscription probes run the technical user's emitted profiles through their generated rules and test Discord, Telegram, Google, ChatGPT, and YouTube. ${props.globalJsonSettings.applied_name ? `Latest active global JSON setting: ${props.globalJsonSettings.applied_name}.` : 'No active global JSON settings are applied.'}`"
+            eyebrow="Диагностика сети"
+            title="Проверка узлов Xray"
+            :description="`Проверка входящих узлов выполняется напрямую, без правил маршрутизации приложения. Также проверяются профили подписок и доступность Discord, Telegram, Google, ChatGPT и YouTube. ${props.globalJsonSettings.applied_name ? `Последняя активная общая настройка JSON: ${props.globalJsonSettings.applied_name}.` : 'Общие настройки JSON не применяются.'}`"
             :stats="[
-                { label: 'Active inbounds', value: summary.total },
-                { label: 'Healthy', value: summary.healthy },
-                { label: 'Warning', value: summary.warning },
-                { label: 'Unhealthy', value: summary.unhealthy },
-                { label: 'Unsupported', value: summary.unsupported },
-                { label: 'Not checked', value: summary.unknown },
-                { label: 'Active global JSON settings', value: props.globalJsonSettings.active },
+                { label: 'Активные узлы', value: summary.total },
+                { label: 'Доступны', value: summary.healthy },
+                { label: 'Есть проблемы', value: summary.warning },
+                { label: 'Недоступны', value: summary.unhealthy },
+                { label: 'Не поддерживаются', value: summary.unsupported },
+                { label: 'Не проверялись', value: summary.unknown },
+                { label: 'Активные общие настройки JSON', value: props.globalJsonSettings.active },
             ]"
         >
             <template #actions>
                 <AppButton variant="secondary" type="button" @click="toggleHealthChecks">
-                    {{ healthChecksEnabled ? 'Disable checks' : 'Enable checks' }}
+                    {{ healthChecksEnabled ? 'Приостановить проверки' : 'Возобновить проверки' }}
                 </AppButton>
-                <AppButton type="button" :disabled="!healthChecksEnabled" @click="runChecks">Run checks</AppButton>
+                <AppButton type="button" :disabled="!healthChecksEnabled" @click="runChecks">Запустить проверку</AppButton>
             </template>
         </AppPageHeader>
 
         <section class="panel-card health-check-setting" :class="{ 'health-check-setting--disabled': !healthChecksEnabled }">
-            <strong>{{ healthChecksEnabled ? 'Health checks are enabled' : 'Health checks are disabled' }}</strong>
-            <p>{{ healthChecksEnabled ? 'Scheduled and manually queued checks are running.' : 'Scheduled checks are paused. Existing results remain visible.' }}</p>
+            <strong>{{ healthChecksEnabled ? 'Проверки включены' : 'Проверки приостановлены' }}</strong>
+            <p>{{ healthChecksEnabled ? 'Проверки выполняются по расписанию и вручную.' : 'Плановые проверки приостановлены. Ранее полученные результаты сохранены.' }}</p>
         </section>
 
         <section class="panel-card">
             <header class="profile-health-header">
                 <div>
-                    <h2>Direct inbound</h2>
-                    <p>Uses a technical client on each inbound with app routing rules bypassed.</p>
+                    <h2>Входящие узлы</h2>
+                    <p>Для проверки используется технический клиент, правила маршрутизации приложения обходятся.</p>
                 </div>
             </header>
             <div v-if="!props.inbounds.length" class="empty-state">
-                <strong>No active inbounds</strong>
-                <p>Active inbounds on ready servers will appear here.</p>
+                <strong>Нет активных входящих узлов</strong>
+                <p>Здесь появятся активные узлы на готовых серверах.</p>
             </div>
 
             <div v-else class="table-scroll">
                 <table class="data-table inbound-health-table">
                     <thead>
                         <tr>
-                            <th>Server / inbound</th>
-                            <th>Protocol</th>
+                            <th>Сервер / узел</th>
+                            <th>Протокол</th>
                             <th>/connect</th>
                             <th>/connect-v2</th>
-                            <th>Status</th>
-                            <th>Destinations</th>
-                            <th>Last checked</th>
-                            <th>Details</th>
+                            <th>Состояние</th>
+                            <th>Сайты</th>
+                            <th>Время проверки</th>
+                            <th>Подробности</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -163,12 +163,12 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                             <td class="health-error">
                                 <span>{{ inbound.error || '—' }}</span>
                                 <details v-if="Object.keys(inbound.results).length" class="health-result-details">
-                                    <summary>Probe details</summary>
+                                    <summary>Результаты проверки</summary>
                                     <ul>
                                         <li v-for="(result, name) in inbound.results" :key="name">
                                             <strong>{{ name }}:</strong>
                                             <span v-if="result.ok">HTTP {{ result.status }}</span>
-                                            <span v-else>{{ result.error || `HTTP ${result.status ?? 'request failed'}` }}</span>
+                                            <span v-else>{{ result.error || `HTTP ${result.status ?? 'запрос не выполнен'}` }}</span>
                                         </li>
                                     </ul>
                                 </details>
@@ -182,7 +182,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
         <section class="panel-card">
             <header class="profile-health-header">
                 <div>
-                    <h2>Subscription profile health</h2>
+                    <h2>Проверка профилей подписок</h2>
                     <div>
                         <p>
                             Tests emitted profiles using {{ props.technicalUser?.name ?? '@OksanaVpnDebugBot' }}
@@ -195,26 +195,26 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                     </div>
                 </div>
                 <div class="profile-health-counts">
-                    <span>Healthy {{ profileSummary.healthy }}</span>
-                    <span>Warning {{ profileSummary.warning }}</span>
-                    <span>Unhealthy {{ profileSummary.unhealthy }}</span>
-                    <span>Unsupported {{ profileSummary.unsupported }}</span>
+                    <span>Доступны: {{ profileSummary.healthy }}</span>
+                    <span>Проблемы: {{ profileSummary.warning }}</span>
+                    <span>Недоступны: {{ profileSummary.unhealthy }}</span>
+                    <span>Не поддерживаются: {{ profileSummary.unsupported }}</span>
                 </div>
             </header>
             <div v-if="!props.profiles.length" class="empty-state">
-                <strong>Subscription profiles have not been checked yet</strong>
-                <p>Run checks to build and probe the technical user's subscriptions.</p>
+                <strong>Профили подписок ещё не проверялись</strong>
+                <p>Запустите проверку, чтобы сформировать и проверить подписки технического пользователя.</p>
             </div>
             <div v-else class="table-scroll">
                 <table class="data-table inbound-health-table">
                     <thead>
                         <tr>
-                            <th>Flow</th>
-                            <th>Profile</th>
-                            <th>Status</th>
-                            <th>Destinations</th>
-                            <th>Last checked</th>
-                            <th>Details</th>
+                            <th>Сценарий</th>
+                            <th>Профиль</th>
+                            <th>Состояние</th>
+                            <th>Сайты</th>
+                            <th>Время проверки</th>
+                            <th>Подробности</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -234,14 +234,14 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                             <td class="health-error">
                                 <span>{{ profile.error || '—' }}</span>
                                 <details v-if="Object.keys(profile.results).length" class="health-result-details">
-                                    <summary>Probe details</summary>
+                                    <summary>Результаты проверки</summary>
                                     <ul>
                                         <li v-for="(result, name) in profile.results" :key="name">
                                             <strong>{{ name }}:</strong>
                                             <span v-if="result.error">{{ result.error }}</span>
-                                            <span v-else-if="result.last_synced_at">Synced {{ formatDate(result.last_synced_at) }}</span>
+                                            <span v-else-if="result.last_synced_at">Синхронизировано {{ formatDate(result.last_synced_at) }}</span>
                                             <span v-else-if="result.ok">{{ result.status ? `HTTP ${result.status}` : 'OK' }}</span>
-                                            <span v-else>HTTP {{ result.status ?? 'request failed' }}</span>
+                                            <span v-else>HTTP {{ result.status ?? 'запрос не выполнен' }}</span>
                                         </li>
                                     </ul>
                                 </details>
@@ -253,9 +253,8 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
         </section>
 
         <p class="inbound-health-note">
-            Only the latest active global JSON setting is applied by generated profiles; {{ props.globalJsonSettings.active }} active global setting(s) are stored.
-            WireGuard and AmneziaWG full-tunnel checks are marked unsupported until the runner can safely establish those tunnel types.
-            An unsupported result does not mean the inbound is down.
+            В профилях применяется только последняя активная общая настройка JSON. Сохранено активных настроек: {{ props.globalJsonSettings.active }}.
+            Полная проверка туннелей WireGuard и AmneziaWG пока не поддерживается. Такой результат не означает, что узел недоступен.
         </p>
     </main>
 </template>

@@ -141,7 +141,7 @@ class UserController extends Controller
         $service->store($user, $request->toData());
 
         return redirect()->route('users.edit', $user)
-            ->with('success', 'Personal Xray config price saved.');
+            ->with('success', 'Цена личной конфигурации Xray сохранена.');
     }
 
     public function updateXrayCustomConfigPrice(
@@ -161,7 +161,7 @@ class UserController extends Controller
         $service->update($price, $request->toData());
 
         return redirect()->route('users.edit', $user)
-            ->with('success', 'Personal Xray config price updated.');
+            ->with('success', 'Цена личной конфигурации Xray обновлена.');
     }
 
     public function destroyXrayCustomConfigAssignment(User $user, XrayCustomConfigUser $assignment): RedirectResponse
@@ -172,7 +172,7 @@ class UserController extends Controller
             ->delete();
 
         return redirect()->route('users.edit', $user)
-            ->with('success', 'Personal Xray config assignment removed.');
+            ->with('success', 'Назначение личной конфигурации Xray удалено.');
     }
 
     public function update(UpdateUserRequest $request, User $user)

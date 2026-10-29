@@ -39,6 +39,7 @@ class ProxyFormPageTest extends TestCase
             'is_public' => true,
             'params' => [
                 'protocol' => 'vless',
+                'port' => 443,
                 'remark' => 'Reality TCP',
             ],
         ]);
@@ -49,7 +50,7 @@ class ProxyFormPageTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Proxies/Form')
                 ->where('inbound_options_by_server.'.$server->id.'.0.value', 101)
-                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Reality TCP')
+                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Reality TCP · vless · 443 (Inbound #101)')
             );
     }
 
@@ -76,20 +77,25 @@ class ProxyFormPageTest extends TestCase
             'is_public' => true,
             'params' => [
                 'protocol' => 'vless',
+                'port' => 443,
                 'remark' => 'Main inbound',
             ],
         ]);
 
         $proxy = Proxy::query()->create([
             'name' => 'Proxy One',
-            'host' => 'proxy.example.com',
-            'port' => 443,
             'server_id' => $server->id,
             'sort_order' => 0,
             'xray_inbound_id' => $inbound->id,
             'is_https' => true,
             'is_ready' => true,
             'hide_main_node_name' => false,
+        ]);
+        $proxy->hosts()->create([
+            'host' => 'proxy.example.com',
+            'port' => 443,
+            'sort' => 0,
+            'is_active' => true,
         ]);
 
         $this->actingAs($admin)
@@ -99,7 +105,8 @@ class ProxyFormPageTest extends TestCase
                 ->component('Proxies/Form')
                 ->where('proxy.inbound_id', 202)
                 ->where('inbound_options_by_server.'.$server->id.'.0.value', 202)
-                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Main inbound')
+                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Main inbound · vless · 443 (Inbound #202)')
+                ->where('proxy.hosts.0.host', 'proxy.example.com')
             );
     }
 }

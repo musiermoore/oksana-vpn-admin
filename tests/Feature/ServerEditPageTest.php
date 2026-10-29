@@ -77,15 +77,19 @@ class ServerEditPageTest extends TestCase
             ],
         ]);
 
-        Proxy::query()->create([
+        $proxy = Proxy::query()->create([
             'name' => 'Proxy One',
-            'host' => 'proxy.example.com',
-            'port' => 443,
             'server_id' => $server->id,
             'sort_order' => 2,
             'xray_inbound_id' => $inbound->id,
             'is_https' => true,
             'is_ready' => true,
+        ]);
+        $proxy->hosts()->create([
+            'host' => 'proxy.example.com',
+            'port' => 443,
+            'sort' => 0,
+            'is_active' => true,
         ]);
 
         $this->actingAs($admin)
@@ -130,13 +134,17 @@ class ServerEditPageTest extends TestCase
 
         $proxy = Proxy::query()->create([
             'name' => 'Proxy One',
-            'host' => 'proxy.example.com',
-            'port' => 443,
             'server_id' => $server->id,
             'sort_order' => 1,
             'xray_inbound_id' => $firstInbound->id,
             'is_https' => true,
             'is_ready' => true,
+        ]);
+        $proxy->hosts()->create([
+            'host' => 'proxy.example.com',
+            'port' => 443,
+            'sort' => 0,
+            'is_active' => true,
         ]);
 
         $secondInbound = XrayInbound::query()->create([

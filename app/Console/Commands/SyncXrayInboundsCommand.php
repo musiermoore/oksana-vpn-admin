@@ -117,7 +117,7 @@ class SyncXrayInboundsCommand extends Command
      */
     private function snapshotParams(array $inbound): array
     {
-        unset($inbound['configs']);
+        unset($inbound['configs'], $inbound['clientStats'], $inbound['client_stats']);
 
         $settings = $inbound['settings'] ?? null;
 

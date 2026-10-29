@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Models\ActiveConnection;
 use App\Models\User;
-use App\Models\UserServerStat;
+use App\Models\UserServerStatHistory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -115,10 +117,7 @@ class SubscriptionMetadataService
      */
     private function buildPayload(User $user): array
     {
-        $aggregate = UserServerStat::query()
-            ->where('user_id', $user->id)
-            ->selectRaw('COALESCE(SUM(upload_bytes), 0) as upload_total, COALESCE(SUM(download_bytes), 0) as download_total')
-            ->first();
+        $traffic = $this->monthlyTrafficTotals($user);
 
         $activeDevices = ActiveConnection::query()
             ->where('user_id', $user->id)
@@ -126,14 +125,66 @@ class SubscriptionMetadataService
             ->count();
 
         return [
-            'upload' => (int) ($aggregate->upload_total ?? 0),
-            'download' => (int) ($aggregate->download_total ?? 0),
+            'upload' => $traffic['upload'],
+            'download' => $traffic['download'],
             'total' => (int) ($user->traffic_limit_bytes ?? 0),
             'expire' => (int) optional($user->subscription_expires_at)->timestamp,
             'active_devices' => $activeDevices,
             'max_devices' => (int) ($user->max_devices ?? 0),
             'filename' => $this->buildFilename($user),
         ];
+    }
+
+    /** @return array{upload:int,download:int} */
+    private function monthlyTrafficTotals(User $user): array
+    {
+        $periodStart = now()->startOfMonth();
+        $baselineRows = UserServerStatHistory::query()
+            ->where('user_id', $user->id)
+            ->where('collected_at', '<', $periodStart)
+            ->whereRaw(
+                'collected_at = (select max(previous.collected_at) from user_server_stat_histories as previous where previous.user_id = user_server_stat_histories.user_id and previous.server_id = user_server_stat_histories.server_id and previous.collected_at < ?)',
+                [$periodStart],
+            )
+            ->get()
+            ->keyBy('server_id');
+
+        $previousByServer = $baselineRows->map(fn (UserServerStatHistory $row): array => [
+            'upload' => (int) $row->upload_bytes,
+            'download' => (int) $row->download_bytes,
+        ])->all();
+
+        $totals = ['upload' => 0, 'download' => 0];
+        $monthlyRows = UserServerStatHistory::query()
+            ->where('user_id', $user->id)
+            ->where('collected_at', '>=', $periodStart)
+            ->orderBy('server_id')
+            ->orderBy('collected_at')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($monthlyRows as $row) {
+            $serverId = (int) $row->server_id;
+            $current = [
+                'upload' => (int) $row->upload_bytes,
+                'download' => (int) $row->download_bytes,
+            ];
+            $previous = $previousByServer[$serverId] ?? null;
+
+            if ($previous !== null) {
+                $totals['upload'] += $this->trafficDelta($previous['upload'], $current['upload']);
+                $totals['download'] += $this->trafficDelta($previous['download'], $current['download']);
+            }
+
+            $previousByServer[$serverId] = $current;
+        }
+
+        return $totals;
+    }
+
+    private function trafficDelta(int $previous, int $current): int
+    {
+        return $current >= $previous ? $current - $previous : $current;
     }
 
     private function buildFilename(User $user): string

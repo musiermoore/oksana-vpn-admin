@@ -111,7 +111,7 @@ class SyncXrayInboundsCommandTest extends TestCase
             && $request->url() === 'https://panel.test/panel/api/inbounds/list');
     }
 
-    public function test_command_marks_deleted_or_empty_inbounds_as_inactive_and_does_not_save_them(): void
+    public function test_command_soft_deletes_deleted_or_empty_inbounds(): void
     {
         $server = Server::query()->create([
             'name' => 'Germany',
@@ -160,12 +160,13 @@ class SyncXrayInboundsCommandTest extends TestCase
         $this->artisan(SyncXrayInboundsCommand::class)
             ->assertSuccessful();
 
-        $this->assertDatabaseHas('xray_inbounds', [
-            'server_id' => $server->id,
-            'external_id' => 11,
-            'is_active' => false,
-            'params' => null,
-        ]);
+        $deletedInbound = XrayInbound::withTrashed()
+            ->where('server_id', $server->id)
+            ->where('external_id', 11)
+            ->firstOrFail();
+
+        $this->assertNotNull($deletedInbound->deleted_at);
+        $this->assertNull(XrayInbound::query()->whereKey($deletedInbound->id)->first());
     }
 
     public function test_command_is_scheduled_every_five_minutes(): void

@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\DTOs\Proxy\ProxyData;
+use App\DTOs\Proxy\ProxyHostData;
 use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\XrayInbound;
 use App\Services\Crud\ProxyCrudService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\LaravelData\DataCollection;
 use Tests\TestCase;
 
 class ProxyCrudServiceTest extends TestCase
@@ -30,8 +32,12 @@ class ProxyCrudServiceTest extends TestCase
 
         $proxy = $service->create(new ProxyData(
             name: 'Ru Proxy',
-            host: 'proxy.example.com',
-            port: 443,
+            hosts: new DataCollection(ProxyHostData::class, [new ProxyHostData(
+                host: 'proxy.example.com',
+                port: 443,
+                sort: 0,
+                isActive: true,
+            )]),
             isHttps: true,
             isReady: true,
             hideMainNodeName: true,
@@ -43,19 +49,30 @@ class ProxyCrudServiceTest extends TestCase
         $this->assertDatabaseHas('proxies', [
             'id' => $proxy->id,
             'name' => 'Ru Proxy',
-            'host' => 'proxy.example.com',
-            'port' => 443,
             'server_id' => $serverOne->id,
             'xray_inbound_id' => $inbound->id,
             'is_ready' => true,
             'hide_main_node_name' => true,
         ]);
+        $hostId = (int) $proxy->hosts->first()->id;
+        $this->assertDatabaseHas('proxy_hosts', [
+            'id' => $hostId,
+            'proxy_id' => $proxy->id,
+            'host' => 'proxy.example.com',
+            'port' => 443,
+            'sort' => 0,
+        ]);
         $this->assertSame($serverOne->id, $proxy->server?->id);
 
         $proxy = $service->update($proxy, new ProxyData(
             name: 'Ru Proxy',
-            host: 'proxy-updated.example.com',
-            port: 8443,
+            hosts: new DataCollection(ProxyHostData::class, [new ProxyHostData(
+                host: 'proxy-updated.example.com',
+                port: 8443,
+                sort: 2,
+                isActive: true,
+                id: $hostId,
+            )]),
             isHttps: false,
             isReady: false,
             hideMainNodeName: false,
@@ -65,10 +82,15 @@ class ProxyCrudServiceTest extends TestCase
         ));
 
         $this->assertSame($serverTwo->id, $proxy->server?->id);
-        $this->assertDatabaseHas('proxies', [
-            'id' => $proxy->id,
+        $this->assertDatabaseHas('proxy_hosts', [
+            'id' => $hostId,
+            'proxy_id' => $proxy->id,
             'host' => 'proxy-updated.example.com',
             'port' => 8443,
+            'sort' => 2,
+        ]);
+        $this->assertDatabaseHas('proxies', [
+            'id' => $proxy->id,
             'server_id' => $serverTwo->id,
             'xray_inbound_id' => null,
             'is_https' => false,
@@ -89,13 +111,17 @@ class ProxyCrudServiceTest extends TestCase
         ]);
         $proxy = Proxy::query()->create([
             'name' => 'Ru Proxy',
-            'host' => 'proxy.example.com',
-            'port' => 443,
             'server_id' => $server->id,
             'xray_inbound_id' => $inbound->id,
             'is_https' => true,
             'is_ready' => true,
             'hide_main_node_name' => false,
+        ]);
+        $proxy->hosts()->create([
+            'host' => 'proxy.example.com',
+            'port' => 443,
+            'sort' => 0,
+            'is_active' => true,
         ]);
 
         app(ProxyCrudService::class)->delete($proxy);

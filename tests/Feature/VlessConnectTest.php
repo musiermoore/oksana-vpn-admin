@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\XrayRoutingOutbound;
 use App\Models\Proxy;
+use App\Models\ProxyHost;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\UserConnectedDevice;
 use App\Models\UserServerStat;
+use App\Models\UserServerStatHistory;
 use App\Models\UserSubscription;
 use App\Models\VlessConfig;
 use App\Models\VlessExternalSubscription;
@@ -15,9 +17,11 @@ use App\Models\VlessExternalSubscriptionConfig;
 use App\Models\XrayInbound;
 use App\Models\XrayRouting;
 use App\Services\Subscriptions\UserSubscriptionService;
+use App\Services\SubscriptionMetadataService;
 use App\Services\WireGuardSubscriptionLinkService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use stdClass;
@@ -1209,15 +1213,19 @@ class VlessConnectTest extends TestCase
             'spx' => '/',
         ]);
 
-        Proxy::query()->create([
+        $proxy = Proxy::query()->create([
             'name' => 'Proxy First',
-            'host' => 'proxy.example.com',
-            'port' => 8443,
             'server_id' => $server->id,
             'sort_order' => 0,
             'xray_inbound_id' => $firstInbound->id,
             'is_https' => true,
             'is_ready' => true,
+        ]);
+        $proxy->hosts()->create([
+            'host' => 'proxy.example.com',
+            'port' => 8443,
+            'sort' => 0,
+            'is_active' => true,
         ]);
 
         $debugNodes = app(UserSubscriptionService::class)->buildDebug($user);
@@ -2309,6 +2317,22 @@ class VlessConnectTest extends TestCase
             'download_bytes' => 5368709120,
         ]);
 
+        UserServerStatHistory::query()->create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'upload_bytes' => 314572800,
+            'download_bytes' => 2147483648,
+            'collected_at' => now()->startOfMonth()->subMinute(),
+        ]);
+        UserServerStatHistory::query()->create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'upload_bytes' => 1073741824,
+            'download_bytes' => 5368709120,
+            'collected_at' => now(),
+        ]);
+        Cache::forget('subscription-metadata:'.$user->id);
+
         $response = $this->get(route('vless.connect', [
             'tg' => Crypt::encrypt('123456'),
             'i' => Crypt::encrypt((string) $user->id),
@@ -2332,9 +2356,43 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('must-revalidate', $cacheControl);
         $this->assertStringContainsString('max-age=0', $cacheControl);
         $this->assertNotNull($userinfo);
-        $this->assertStringContainsString('upload=1073741824', $userinfo);
-        $this->assertStringContainsString('download=5368709120', $userinfo);
+        $this->assertStringContainsString('upload=759169024', $userinfo);
+        $this->assertStringContainsString('download=3221225472', $userinfo);
         $this->assertStringContainsString('total=107374182400', $userinfo);
+    }
+
+    public function test_subscription_metadata_counts_monthly_usage_after_a_panel_counter_reset(): void
+    {
+        $user = $this->createActiveUser('Monthly Traffic User', '@monthly-traffic-user', '123457');
+        $server = $this->createServer('Латвия', 'LV', 'lv.monthly.example.com');
+        $monthStart = now()->startOfMonth();
+
+        UserServerStatHistory::query()->create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'upload_bytes' => 10737418240,
+            'download_bytes' => 21474836480,
+            'collected_at' => $monthStart->copy()->subMinute(),
+        ]);
+        UserServerStatHistory::query()->create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'upload_bytes' => 104857600,
+            'download_bytes' => 209715200,
+            'collected_at' => $monthStart->copy()->addMinute(),
+        ]);
+        UserServerStatHistory::query()->create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'upload_bytes' => 314572800,
+            'download_bytes' => 734003200,
+            'collected_at' => $monthStart->copy()->addMinutes(2),
+        ]);
+
+        $metadata = app(SubscriptionMetadataService::class);
+
+        $this->assertSame(314572800, $metadata->getUpload($user));
+        $this->assertSame(734003200, $metadata->getDownload($user));
     }
 
     public function test_connect_prefers_local_static_link_over_remote_subscription_source(): void
@@ -2692,13 +2750,18 @@ class VlessConnectTest extends TestCase
 
         $proxy = Proxy::query()->create([
             'name' => $name,
-            'host' => $host,
-            'port' => $port,
             'server_id' => $server->id,
             'xray_inbound_id' => $xrayInboundId,
             'is_https' => true,
             'is_ready' => $isReady,
             'hide_main_node_name' => $hideMainNodeName,
+        ]);
+
+        $proxy->hosts()->create([
+            'host' => $host,
+            'port' => $port,
+            'sort' => 0,
+            'is_active' => true,
         ]);
 
         return $proxy;

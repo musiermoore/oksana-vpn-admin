@@ -106,7 +106,7 @@ Each inbound record has:
 
 `external_id` is the inbound id from 3x-ui.
 
-`params` stores the inbound definition from 3x-ui without duplicated client or top-level `configs` lists, so app logic does not depend on a rigid local schema for inbound settings while avoiding redundant large payloads.
+`params` stores the inbound definition from 3x-ui without duplicated client lists, top-level `configs`, or `clientStats` payloads. Traffic summaries use live panel responses, so those large lists are not duplicated in the local snapshot.
 
 `sort_order` stores the explicit `/connect` order of inbounds inside a server.
 
@@ -166,6 +166,8 @@ Each server has an SSH username, port, and optional encrypted password in additi
 ### Subscription Output
 
 The main `/connect` subscription is built from normalized local and external nodes.
+
+`/connect` and `/connect-v2` report monthly upload and download usage in `Subscription-Userinfo`. Usage is calculated from consecutive `user_server_stat_histories` snapshots since the start of the current calendar month, with counter decreases treated as panel counter resets. The reported total remains the user's configured traffic limit.
 
 External VLESS subscriptions support multiple source formats:
 

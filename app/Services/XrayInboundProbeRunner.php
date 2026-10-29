@@ -44,7 +44,7 @@ final class XrayInboundProbeRunner
         $parsed = $this->uriParser->parse($uri);
 
         if (! is_array($parsed)) {
-            throw new RuntimeException('The inbound protocol could not be converted to a client URI.');
+            throw new RuntimeException('Не удалось преобразовать протокол входящего узла в ссылку клиента.');
         }
 
         $node = new NormalizedNode(
@@ -112,7 +112,7 @@ final class XrayInboundProbeRunner
     public function checkGeneratedProfile(array $profile): array
     {
         if (! is_array($profile['outbounds'] ?? null) || $profile['outbounds'] === []) {
-            throw new RuntimeException('Generated subscription profile has no Xray outbounds.');
+            throw new RuntimeException('В созданном профиле подписки нет исходящих подключений Xray.');
         }
 
         return $this->tunnelProbe->runProfile($profile, 5);
@@ -125,7 +125,7 @@ final class XrayInboundProbeRunner
         $uri = is_string($decoded) ? trim($decoded) : '';
 
         if ($uri === '' || str_contains($uri, "\n")) {
-            throw new RuntimeException('The /connect subscription builder did not produce one client link.');
+            throw new RuntimeException('Не удалось получить ссылку клиента из подписки /connect.');
         }
 
         return $uri;
@@ -153,7 +153,7 @@ final class XrayInboundProbeRunner
         $profile = is_array($profiles) ? ($profiles[0] ?? null) : null;
 
         if (! is_array($profile) || ! is_array($profile['outbounds'] ?? null) || ($profile['outbounds'][0] ?? null) === null) {
-            throw new RuntimeException('Generated subscription profile did not contain an Xray outbound.');
+            throw new RuntimeException('В созданном профиле подписки нет исходящего подключения Xray.');
         }
 
         return $profile;

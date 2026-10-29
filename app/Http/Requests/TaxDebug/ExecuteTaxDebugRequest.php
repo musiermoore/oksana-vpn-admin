@@ -30,7 +30,7 @@ class ExecuteTaxDebugRequest extends DataFormRequest
     {
         $validator->after(function (Validator $validator): void {
             if ((string) $this->input('preset') === 'income' && blank($this->input('invoice_id'))) {
-                $validator->errors()->add('invoice_id', 'Для Income / Receipts выберите invoice.');
+                $validator->errors()->add('invoice_id', 'Для создания чека выберите счёт.');
             }
         });
     }

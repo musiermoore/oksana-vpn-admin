@@ -121,7 +121,7 @@ class XuiDebugController extends Controller
         return [
             [
                 'value' => 'online-clients',
-                'label' => 'Online clients',
+                'label' => 'Клиенты в сети',
                 'method' => 'POST',
                 'endpoint' => '/panel/api/clients/onlines',
                 'encoding' => 'form',
@@ -129,7 +129,7 @@ class XuiDebugController extends Controller
             ],
             [
                 'value' => 'client-ips',
-                'label' => 'Client IPs by email',
+                'label' => 'IP-адреса клиента по электронной почте',
                 'method' => 'POST',
                 'endpoint' => '/panel/api/clients/ips/your_email_here',
                 'encoding' => 'form',
@@ -137,7 +137,7 @@ class XuiDebugController extends Controller
             ],
             [
                 'value' => 'client-list',
-                'label' => 'Clients list',
+                'label' => 'Список клиентов',
                 'method' => 'GET',
                 'endpoint' => '/panel/api/clients/list',
                 'encoding' => 'json',
@@ -145,7 +145,7 @@ class XuiDebugController extends Controller
             ],
             [
                 'value' => 'client-traffic',
-                'label' => 'Client traffic by email',
+                'label' => 'Трафик клиента по электронной почте',
                 'method' => 'GET',
                 'endpoint' => '/panel/api/clients/traffic/your_email_here',
                 'encoding' => 'json',
@@ -153,7 +153,7 @@ class XuiDebugController extends Controller
             ],
             [
                 'value' => 'inbounds-list',
-                'label' => 'Inbounds list',
+                'label' => 'Список входящих узлов',
                 'method' => 'GET',
                 'endpoint' => '/panel/api/inbounds/list',
                 'encoding' => 'json',
@@ -161,7 +161,7 @@ class XuiDebugController extends Controller
             ],
             [
                 'value' => 'other',
-                'label' => 'Other endpoint',
+                'label' => 'Другой адрес запроса',
                 'method' => 'GET',
                 'endpoint' => '/panel/api/',
                 'encoding' => 'json',

@@ -88,7 +88,7 @@ const loadPreview = async () => {
                 <span>
                     {{
                         form.source_format === 'incy'
-                            ? 'INCY ссылка или https redirect'
+                            ? 'Ссылка INCY или перенаправление по HTTPS'
                             : (form.type === 'subscription' ? 'URL подписки' : 'Прямая ссылка на конфиг')
                     }}
                 </span>
@@ -99,7 +99,7 @@ const loadPreview = async () => {
                 <span>Регулярное выражение для имени</span>
                 <AppInput v-model="form.filter_pattern" :disabled="form.type !== 'subscription'" placeholder="Например: Германия|Франция" />
                 <small>Проверяется без учёта регистра. Пустое поле включает все конфиги.</small>
-                <AppButton variant="secondary" type="button" @click="regexHelpOpen = true">Примеры regexp</AppButton>
+                <AppButton variant="secondary" type="button" @click="regexHelpOpen = true">Примеры регулярных выражений</AppButton>
             </div>
 
             <label class="field regex-pattern-field">
@@ -109,7 +109,7 @@ const loadPreview = async () => {
             </label>
 
             <label class="field">
-                <span>Название в connect-wl</span>
+                <span>Название в подписке белых списков</span>
                 <AppInput v-model="form.connect_name_prefix" placeholder="Например: Сервер" />
             </label>
 
@@ -124,7 +124,7 @@ const loadPreview = async () => {
             </label>
 
             <label class="field">
-                <span>Отображать в connect-v2</span>
+                <span>Отображать в новой подписке</span>
                 <AppCheckbox v-model="form.include_in_connect_v2" />
             </label>
 
@@ -194,7 +194,7 @@ const loadPreview = async () => {
             <ul class="stack">
                 <li v-for="item in preview.full" :key="item.config_key">
                     <strong>{{ item.name }}</strong>
-                    <div>{{ item.protocol || 'unknown' }}</div>
+                    <div>{{ item.protocol || 'неизвестный протокол' }}</div>
                 </li>
             </ul>
         </div>
@@ -205,7 +205,7 @@ const loadPreview = async () => {
             <ul class="stack">
                 <li v-for="item in preview.filtered" :key="item.config_key">
                     <strong>{{ item.name }}</strong>
-                    <div>{{ item.protocol || 'unknown' }}</div>
+                    <div>{{ item.protocol || 'неизвестный протокол' }}</div>
                 </li>
             </ul>
         </div>
@@ -216,7 +216,7 @@ const loadPreview = async () => {
         <ul class="stack">
             <li v-for="item in subscription.configs" :key="item.id">
                 <strong>{{ item.name }}</strong>
-                <div>{{ item.protocol || 'unknown' }}</div>
+                <div>{{ item.protocol || 'неизвестный протокол' }}</div>
             </li>
         </ul>
     </section>

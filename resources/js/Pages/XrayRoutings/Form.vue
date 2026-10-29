@@ -166,7 +166,7 @@ const submit = () => {
 
         <div class="field" style="grid-column: 1 / -1;">
             <div class="field-heading-row">
-                <span>Локальные xray inbounds</span>
+                <span>Входящие узлы Xray</span>
                 <AppButton
                     variant="secondary"
                     size="small"
@@ -180,7 +180,7 @@ const submit = () => {
                 <input v-model="form.is_global" type="checkbox">
                 <strong>Глобальное правило для всех простых JSON-конфигураций</strong>
             </label>
-            <small>Отключите эту опцию, чтобы применить правило только к выбранному серверу/inbound ниже.</small>
+            <small>Отключите эту опцию, чтобы применить правило только к выбранным ниже серверам и входящим узлам.</small>
             <div class="stack">
                 <div v-for="server in targetTree?.servers ?? []" :key="server.id" class="stack">
                     <label class="field-row">
@@ -232,7 +232,7 @@ const submit = () => {
                             :checked="containsId(form.external_subscription_config_ids, config.id)"
                             @change="toggleId('external_subscription_config_ids', config.id, $event.target.checked)"
                         >
-                        <span>{{ config.name }} · {{ config.protocol || 'unknown' }}</span>
+                        <span>{{ config.name }} · {{ config.protocol || 'неизвестный протокол' }}</span>
                     </label>
                 </div>
             </div>

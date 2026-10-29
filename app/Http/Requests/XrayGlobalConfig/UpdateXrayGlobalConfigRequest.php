@@ -27,12 +27,12 @@ class UpdateXrayGlobalConfigRequest extends DataFormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            foreach (['dns_json' => 'DNS', 'routing_json' => 'Routing', 'rules_json' => 'Rules'] as $field => $label) {
+            foreach (['dns_json' => 'DNS', 'routing_json' => 'Маршрутизация', 'rules_json' => 'Правила'] as $field => $label) {
                 $value = json_decode((string) $this->input($field), true);
                 $isRules = $field === 'rules_json';
 
                 if (! is_array($value) || ($isRules && ! array_is_list($value))) {
-                    $validator->errors()->add($field, $label.' JSON must be '.($isRules ? 'an array.' : 'an object.'));
+                    $validator->errors()->add($field, $label.' в формате JSON должны быть '.($isRules ? 'массивом.' : 'объектом.'));
                 }
             }
         });

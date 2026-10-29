@@ -60,7 +60,7 @@ const methodOptions = [
 ];
 const encodingOptions = [
     { label: 'JSON', value: 'json' },
-    { label: 'Form', value: 'form' },
+    { label: 'Данные формы', value: 'form' },
 ];
 
 watch(
@@ -89,13 +89,13 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
 </script>
 
 <template>
-    <Head title="3x-ui Debug" />
+    <Head title="Диагностика 3x-ui" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>3x-ui Debug</h1>
-                <p>Мини-Postman для панели 3x-ui c вашей авторизацией, cookie и CSRF из приложения.</p>
+                <h1>Диагностика 3x-ui</h1>
+                <p>Инструмент для отправки запросов к панели 3x-ui с авторизацией, данными cookie и CSRF-токеном из приложения.</p>
             </div>
         </div>
     </section>
@@ -140,7 +140,7 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
             <label class="field">
                 <span>Адрес запроса</span>
                 <AppInput v-model="form.endpoint" type="text" placeholder="/panel/api/clients/onlines" />
-                <small class="muted">Можно указать относительный путь или полный URL этого же panel host.</small>
+                <small class="muted">Можно указать относительный путь или полный адрес этой панели.</small>
                 <small v-if="currentPreset?.value === 'client-ips'" class="muted">
                     Замените `your_email_here` на email клиента из 3x-ui.
                 </small>
@@ -170,8 +170,8 @@ const stringify = (value) => JSON.stringify(value ?? null, null, 2);
                 <p>
                     <strong>{{ result.request?.method }}</strong>
                     {{ result.request?.path }}
-                    <template v-if="result.status !== null"> · status {{ result.status }}</template>
-                    <template v-if="result.ok !== undefined"> · {{ result.ok ? 'OK' : 'FAIL' }}</template>
+                <template v-if="result.status !== null"> · статус {{ result.status }}</template>
+                    <template v-if="result.ok !== undefined"> · {{ result.ok ? 'Успешно' : 'Ошибка' }}</template>
                 </p>
             </div>
         </div>

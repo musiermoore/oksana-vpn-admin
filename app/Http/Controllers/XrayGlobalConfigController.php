@@ -41,7 +41,7 @@ class XrayGlobalConfigController extends Controller
         $data = $request->toDto();
         $dnsSettings = XrayRoutingDnsSettings::query()->firstOrNew(['name' => 'Global JSON DNS']);
         $dnsSettings->fill([
-            'description' => 'Used by standard JSON configurations.',
+            'description' => 'Используется в стандартных JSON-конфигурациях.',
             'servers' => $data->dns['servers'] ?? [],
             'settings' => $data->dns,
             'query_strategy' => $data->dns['queryStrategy'] ?? 'UseIPv4',
@@ -53,8 +53,8 @@ class XrayGlobalConfigController extends Controller
 
         $settings = XrayJsonSetting::query()->firstOrNew(['source' => 'manual_global']);
         $settings->fill([
-            'name' => 'Global JSON configuration',
-            'description' => 'Managed through the global Xray JSON settings page.',
+            'name' => 'Общая конфигурация JSON',
+            'description' => 'Настраивается на странице общих параметров JSON для Xray.',
             'dns' => $data->dns,
             'routing' => $data->routing,
             'raw' => ['rules' => $data->rules],
@@ -79,8 +79,8 @@ class XrayGlobalConfigController extends Controller
             unset($rule['type'], $rule['outboundTag']);
 
             $routingRows[] = [
-                'name' => 'Global JSON rule #'.((int) $index + 1),
-                'description' => 'Managed by Global JSON configuration.',
+                'name' => 'Общее правило JSON №'.((int) $index + 1),
+                'description' => 'Создано в общей конфигурации JSON.',
                 'source' => 'manual_global',
                 'source_key' => (string) $index,
                 'outbound' => $outbound,

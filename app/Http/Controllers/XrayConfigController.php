@@ -44,7 +44,7 @@ class XrayConfigController extends Controller
             ])->values(),
             'tabs' => [
                 ['label' => 'WireGuard', 'href' => route('configs.index'), 'active' => false],
-                ['label' => 'Xray Configs', 'href' => route('xray-configs.index'), 'active' => true],
+                ['label' => 'Конфигурации Xray', 'href' => route('xray-configs.index'), 'active' => true],
             ],
         ]);
     }

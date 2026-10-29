@@ -53,7 +53,7 @@ final class SingBoxInboundProbeRunner
         $uri = $config->getStaticLink();
 
         if ($uri === '' || $this->uriParser->parse($uri) === null) {
-            throw new RuntimeException('The inbound protocol could not be converted to a probe client URI.');
+            throw new RuntimeException('Не удалось преобразовать протокол входящего узла в ссылку для проверки.');
         }
 
         $proxyPort = $this->allocateLocalPort();
@@ -87,7 +87,7 @@ final class SingBoxInboundProbeRunner
             ->first(fn (array $row): bool => ($row['tag'] ?? null) === 'inbound-health-check');
 
         if (! is_array($outbound)) {
-            throw new RuntimeException('sing-box could not build an outbound for this inbound.');
+            throw new RuntimeException('Не удалось создать исходящее подключение sing-box для этого узла.');
         }
 
         $profile['outbounds'] = [$outbound, ['type' => 'direct', 'tag' => 'direct'], ['type' => 'block', 'tag' => 'block']];
@@ -102,7 +102,7 @@ final class SingBoxInboundProbeRunner
         $path = tempnam(sys_get_temp_dir(), 'inbound-health-');
 
         if ($path === false) {
-            throw new RuntimeException('Unable to allocate a temporary sing-box config file.');
+            throw new RuntimeException('Не удалось создать временный файл конфигурации sing-box.');
         }
 
         file_put_contents($path, json_encode($profile, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
@@ -147,7 +147,7 @@ final class SingBoxInboundProbeRunner
     {
         for ($attempt = 0; $attempt < 30; $attempt++) {
             if (! $process->isRunning()) {
-                throw new RuntimeException('sing-box exited before opening the local proxy: '.trim($process->getErrorOutput()));
+                throw new RuntimeException('sing-box завершил работу до запуска локального прокси: '.trim($process->getErrorOutput()));
             }
 
             $socket = @fsockopen('127.0.0.1', $proxyPort, $errorCode, $errorMessage, 0.2);
@@ -161,7 +161,7 @@ final class SingBoxInboundProbeRunner
             usleep(100_000);
         }
 
-        throw new RuntimeException('sing-box did not open its local SOCKS proxy.');
+        throw new RuntimeException('sing-box не запустил локальный прокси SOCKS.');
     }
 
     /** @return array<string, mixed> */
@@ -183,7 +183,7 @@ final class SingBoxInboundProbeRunner
         $socket = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
 
         if ($socket === false) {
-            throw new RuntimeException('Unable to allocate a local SOCKS port: '.$errorMessage);
+            throw new RuntimeException('Не удалось выделить локальный порт SOCKS: '.$errorMessage);
         }
 
         $address = stream_socket_get_name($socket, false);

@@ -23,7 +23,7 @@ const form = useForm({
 
 const typeOptions = [
     { value: 'json', label: 'JSON' },
-    { value: 'url', label: 'URI list / plain text' },
+    { value: 'url', label: 'Список URI или обычный текст' },
 ];
 
 const bodyPlaceholder = computed(() => form.type === 'json'
@@ -48,7 +48,7 @@ const copyUrl = async () => {
         <div class="page-header">
             <div>
                 <h1>Диагностика подписок</h1>
-                <p>Создайте временную публичную ссылку для произвольного JSON-профиля или списка URI.</p>
+                <p>Создайте временную публичную ссылку для JSON-профиля или списка URI.</p>
             </div>
         </div>
     </section>
@@ -58,14 +58,14 @@ const copyUrl = async () => {
             <label class="field">
                 <span>Тип подписки</span>
                 <AppSelect v-model="form.type" :options="typeOptions" />
-                <small class="muted">Тип влияет на Content-Type публичного ответа.</small>
+                <small class="muted">От выбранного типа зависит заголовок Content-Type публичного ответа.</small>
                 <small v-if="form.errors.type" class="form-error">{{ form.errors.type }}</small>
             </label>
 
             <label class="field">
                 <span>Содержимое подписки</span>
                 <AppTextarea v-model="form.body" :placeholder="bodyPlaceholder" :auto-resize="false" rows="22" spellcheck="false" />
-                <small class="muted">Текст не сохраняется в базе данных или Redis.</small>
+                <small class="muted">Текст не сохраняется в базе данных и хранилище Redis.</small>
                 <small v-if="form.errors.body" class="form-error">{{ form.errors.body }}</small>
             </label>
 
@@ -84,7 +84,7 @@ const copyUrl = async () => {
         </div>
 
         <div class="field">
-            <span>UUID</span>
+            <span>Идентификатор UUID</span>
             <code class="code-block">{{ created.uuid }}</code>
         </div>
 

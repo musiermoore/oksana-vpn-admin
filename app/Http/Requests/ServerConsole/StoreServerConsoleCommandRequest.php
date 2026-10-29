@@ -29,7 +29,7 @@ class StoreServerConsoleCommandRequest extends DataFormRequest
             $hasCommand = trim((string) $this->input('command')) !== '';
             $hasTemplate = (int) $this->input('template_id', 0) > 0;
             if ($hasCommand === $hasTemplate) {
-                $validator->errors()->add('command', 'Provide either a command or a template.');
+                $validator->errors()->add('command', 'Укажите команду или выберите шаблон.');
             }
         });
     }

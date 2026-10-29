@@ -44,8 +44,8 @@ const existingBlocks = () => {
 
 const commandBlocks = ref(existingBlocks());
 const sendOptions = [
-    { value: 'enter', label: 'Send answer and press Enter' },
-    { value: 'raw', label: 'Send answer only' },
+    { value: 'enter', label: 'Отправить ответ и нажать Enter' },
+    { value: 'raw', label: 'Отправить только ответ' },
 ];
 
 const form = useForm({
@@ -87,7 +87,7 @@ const submit = () => {
         <div class="page-header">
             <div>
                 <h1>{{ template ? 'Редактировать шаблон' : 'Новый шаблон команд' }}</h1>
-                <p>Raw script выполняется как shell-файл. Для формата блоков добавьте команды и условия ответов на вопросы сервера.</p>
+                <p>Сценарий выполняется как файл командной оболочки. В блочном формате добавьте команды и правила ответов на запросы сервера.</p>
             </div>
         </div>
 
@@ -122,9 +122,9 @@ const submit = () => {
                     v-model="form.content"
                     rows="18"
                     spellcheck="false"
-                    placeholder="#!/usr/bin/env bash&#10;set -euo pipefail&#10;&#10;# Add commands here"
+                    placeholder="#!/usr/bin/env bash&#10;set -euo pipefail&#10;&#10;# Добавьте команды здесь"
                 />
-                <small class="muted">For an automatic answer, add a comment like: # [{ANSWER: &quot;y&quot;, SCAN: &quot;Continue? [Y/n]&quot;}]</small>
+                    <small class="muted">Чтобы отправлять ответы автоматически, добавьте комментарий вида: # [{ANSWER: &quot;y&quot;, SCAN: &quot;Продолжить? [Y/n]&quot;}]</small>
                 <small v-if="form.errors.content" class="field-error">{{ form.errors.content }}</small>
             </label>
 
@@ -132,14 +132,14 @@ const submit = () => {
                 <div class="command-builder__intro">
                     <div>
                         <h2>Команды</h2>
-                        <p>Commands run in order. The timeout above applies to the whole template.</p>
+                        <p>Команды выполняются по порядку. Указанный тайм-аут применяется ко всему шаблону.</p>
                     </div>
-                    <AppButton type="button" variant="secondary" @click="addCommand">+ Add a command</AppButton>
+                    <AppButton type="button" variant="secondary" @click="addCommand">+ Добавить команду</AppButton>
                 </div>
 
                 <article v-for="(block, index) in commandBlocks" :key="block.key" class="command-card">
                     <div class="command-card__header">
-                        <strong>Command {{ index + 1 }}</strong>
+                        <strong>Команда {{ index + 1 }}</strong>
                         <AppButton type="button" variant="danger" :disabled="commandBlocks.length === 1" @click="removeCommand(index)">Удалить</AppButton>
                     </div>
 
@@ -151,12 +151,12 @@ const submit = () => {
                     <div class="condition-list">
                         <div v-for="(condition, conditionIndex) in block.answers" :key="condition.key" class="condition-card">
                             <div class="condition-card__header">
-                                <strong>Prompt answer {{ conditionIndex + 1 }}</strong>
+                                <strong>Ответ на запрос {{ conditionIndex + 1 }}</strong>
                                 <AppButton type="button" variant="danger" @click="removeCondition(block, conditionIndex)">Удалить</AppButton>
                             </div>
                             <label class="field">
                                 <span>Если в выводе терминала появится</span>
-                                <AppInput v-model="condition.scan" placeholder="Continue? [Y/n]" />
+                                <AppInput v-model="condition.scan" placeholder="Продолжить? [Y/n]" />
                             </label>
                             <div class="condition-card__fields">
                                 <label class="field">
@@ -169,7 +169,7 @@ const submit = () => {
                                 </label>
                             </div>
                         </div>
-                        <AppButton type="button" variant="secondary" @click="addCondition(block)">+ Add a prompt condition</AppButton>
+                        <AppButton type="button" variant="secondary" @click="addCondition(block)">+ Добавить условие ответа</AppButton>
                     </div>
                 </article>
 

@@ -130,7 +130,7 @@ class HandleInertiaRequests extends Middleware
                 'section' => 'Диагностика',
                 'icon' => 'activity',
                 'items' => [
-                    ['label' => 'API лог', 'href' => route('api-request-logs.index'), 'badge' => 'LG', 'icon' => 'log'],
+                    ['label' => 'Журнал API-запросов', 'href' => route('api-request-logs.index'), 'badge' => 'LG', 'icon' => 'log'],
                     ['label' => 'Диагностика 3x-ui', 'href' => route('xui-debug.index'), 'badge' => 'XD', 'icon' => 'terminal'],
                     ['label' => 'Диагностика налогов', 'href' => route('tax-debug.index'), 'badge' => 'TD', 'icon' => 'bug'],
                     ['label' => 'Диагностика подписок', 'href' => route('subscription-debug.index'), 'badge' => 'SD', 'icon' => 'link'],

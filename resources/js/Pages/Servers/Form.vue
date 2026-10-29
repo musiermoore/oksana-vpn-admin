@@ -46,8 +46,8 @@ const sortForm = useForm({
 const dragKey = ref(null);
 const hasSortableItems = computed(() => sortItems.value.length > 0 && !!props.sort_connect_items_url);
 const serverTypeOptions = [
-    { label: 'WireGuard (legacy)', value: 'wireguard-old' },
-    { label: 'WireGuard Agent API', value: 'wireguard' },
+    { label: 'WireGuard (старый вариант)', value: 'wireguard-old' },
+    { label: 'WireGuard (API агента)', value: 'wireguard' },
     { label: 'VLESS', value: 'vless' },
 ];
 const panelApiVersionOptions = [
@@ -186,12 +186,12 @@ const removePriceRow = (index) => {
             <div v-if="hasSortableItems" class="field" style="grid-column: 1 / -1;">
                 <div class="page-header">
                     <div>
-                        <span>Порядок элементов в connect</span>
-                        <p class="hint">Перетаскивайте inbound'ы и proxy, чтобы поменять порядок внутри этого сервера.</p>
+                        <span>Порядок элементов в подписке</span>
+                        <p class="hint">Перетаскивайте входящие узлы и прокси, чтобы изменить порядок на этом сервере.</p>
                     </div>
                     <div class="actions">
                         <AppButton variant="secondary" type="button" :disabled="sortForm.processing" @click="saveConnectItemsOrder">
-                            Сохранить порядок connect
+                            Сохранить порядок подписки
                         </AppButton>
                     </div>
                 </div>
@@ -218,18 +218,18 @@ const removePriceRow = (index) => {
             <div class="field" style="grid-column: 1 / -1;">
                 <span>Входящие узлы</span>
                 <p class="hint">
-                    `Connect Sort` это общий порядок элементов в подписке внутри сервера. Он делится между inbound и proxy,
-                    поэтому номера inbound могут идти не подряд, если между ними есть proxy.
+                    Это общий порядок элементов в подписке на сервере: он включает входящие узлы и прокси.
+                    Поэтому номера входящих узлов могут идти не подряд, если между ними есть прокси.
                 </p>
 
                 <div v-if="form.inbounds.length === 0" class="hint">
-                    Для этого сервера пока нет синхронизированных inbound'ов. Сначала выполните sync с 3x-ui.
+                    Для этого сервера пока нет синхронизированных входящих узлов. Сначала выполните синхронизацию с 3x-ui.
                 </div>
 
                 <table v-else>
                     <thead>
                         <tr>
-                            <th>Inbound #</th>
+                            <th>№ узла</th>
                             <th>Порядок подключения</th>
                             <th>ID</th>
                             <th>Название</th>

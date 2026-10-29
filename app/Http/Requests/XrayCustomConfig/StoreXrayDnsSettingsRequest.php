@@ -46,19 +46,19 @@ class StoreXrayDnsSettingsRequest extends DataFormRequest
             foreach ((array) $this->input('servers', []) as $index => $server) {
                 if (is_string($server)) {
                     if (mb_strlen($server) > 255) {
-                        $validator->errors()->add("servers.{$index}", 'The DNS server must not be longer than 255 characters.');
+                        $validator->errors()->add("servers.{$index}", 'Адрес DNS-сервера не должен быть длиннее 255 символов.');
                     }
 
                     continue;
                 }
 
                 if (! is_array($server)) {
-                    $validator->errors()->add("servers.{$index}", 'The DNS server must be a string or object.');
+                    $validator->errors()->add("servers.{$index}", 'Укажите DNS-сервер строкой или объектом.');
                     continue;
                 }
 
                 if (! is_string($server['address'] ?? null) || trim($server['address']) === '') {
-                    $validator->errors()->add("servers.{$index}.address", 'The DNS server address is required.');
+                    $validator->errors()->add("servers.{$index}.address", 'Укажите адрес DNS-сервера.');
                 }
             }
         });

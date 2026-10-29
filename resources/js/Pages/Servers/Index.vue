@@ -40,9 +40,9 @@ const destroyServer = (server) => {
         ]"
     >
         <template #actions>
-            <AppButton variant="secondary" href="/servers/connect-order">Порядок connect</AppButton>
+            <AppButton variant="secondary" href="/servers/connect-order">Порядок выдачи</AppButton>
             <AppButton variant="secondary" href="/server-command-templates">Шаблоны команд</AppButton>
-            <AppButton variant="secondary" href="/xui-debug">3x-ui Debug</AppButton>
+            <AppButton variant="secondary" href="/xui-debug">Диагностика 3x-ui</AppButton>
             <AppButton href="/servers/create">Добавить сервер</AppButton>
         </template>
     </AppPageHeader>
@@ -58,7 +58,7 @@ const destroyServer = (server) => {
         <article class="stat-card stack">
             <div>
                 <h3>Порядок в подписке</h3>
-                <p class="muted">Отдельная страница “Порядок connect” позволяет настроить выдачу групп в `/connect` и debug-методах.</p>
+                <p class="muted">На отдельной странице «Порядок выдачи» можно настроить порядок групп в `/connect` и методах диагностики.</p>
             </div>
         </article>
 

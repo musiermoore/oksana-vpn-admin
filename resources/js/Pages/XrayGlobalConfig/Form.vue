@@ -53,7 +53,7 @@ const updateRule = (index, value) => {
         <div class="page-header">
             <div>
                 <h1>Общая конфигурация JSON</h1>
-                <p>DNS, routing strategy, and global rules for standard JSON profiles.</p>
+                <p>DNS, стратегия маршрутизации и общие правила для стандартных JSON-профилей.</p>
             </div>
         </div>
 
@@ -61,7 +61,7 @@ const updateRule = (index, value) => {
             <JsonSectionEditor
                 v-model="form.dns_json"
                 title="Настройки DNS"
-                description="Used by standard JSON configurations."
+                description="Используется в стандартных JSON-конфигурациях."
                 :error="form.errors.dns_json"
             >
                 <label class="field">
@@ -69,10 +69,10 @@ const updateRule = (index, value) => {
                     <AppSelect
                         :model-value="dns.queryStrategy || 'UseIPv4'"
                         :options="[
-                            { value: 'UseIPv4', label: 'Only IPv4' },
-                            { value: 'UseIPv6', label: 'Only IPv6' },
-                            { value: 'UseIP', label: 'IPv4 and IPv6' },
-                            { value: 'AsIs', label: 'As-is' },
+                            { value: 'UseIPv4', label: 'Только IPv4' },
+                            { value: 'UseIPv6', label: 'Только IPv6' },
+                            { value: 'UseIP', label: 'IPv4 и IPv6' },
+                            { value: 'AsIs', label: 'Без изменений' },
                         ]"
                         @update:model-value="setDnsStrategy"
                     />
@@ -86,7 +86,7 @@ const updateRule = (index, value) => {
             <JsonSectionEditor
                 v-model="form.routing_json"
                 title="Маршрутизация"
-                description="Controls domain resolution strategy for standard profiles."
+                description="Определяет, когда разрешать домены в IP-адреса для стандартных профилей."
                 :error="form.errors.routing_json"
             >
                 <label class="field">
@@ -94,9 +94,9 @@ const updateRule = (index, value) => {
                     <AppSelect
                         :model-value="routing.domainStrategy || 'AsIs'"
                         :options="[
-                            { value: 'AsIs', label: 'AsIs' },
-                            { value: 'IPIfNonMatch', label: 'IPIfNonMatch' },
-                            { value: 'IPOnDemand', label: 'IPOnDemand' },
+                            { value: 'AsIs', label: 'AsIs — без изменения' },
+                            { value: 'IPIfNonMatch', label: 'IPIfNonMatch — определять IP, если правила не совпали' },
+                            { value: 'IPOnDemand', label: 'IPOnDemand — определять IP по запросу' },
                         ]"
                         @update:model-value="setRoutingStrategy"
                     />
@@ -106,7 +106,7 @@ const updateRule = (index, value) => {
             <JsonSectionEditor
                 v-model="form.rules_json"
                 title="Общие правила"
-                description="These rules are applied to every standard JSON profile."
+                description="Эти правила применяются ко всем стандартным JSON-профилям."
                 :error="form.errors.rules_json"
             >
                 <div class="stack">

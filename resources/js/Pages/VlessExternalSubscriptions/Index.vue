@@ -26,7 +26,7 @@ const syncSubscription = (subscription) => {
         <div class="page-header">
             <div>
                 <h1>Внешние подписки</h1>
-                <p>Внешние подписки и прямые конфиги для выдачи в connect.</p>
+                <p>Внешние подписки и прямые конфигурации для выдачи пользователям.</p>
             </div>
 
             <div class="actions">

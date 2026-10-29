@@ -69,7 +69,7 @@ final class SubscriptionProfileHealthRecorder
             $this->record($flow, $key, $name, [
                 'status' => SubscriptionProfileHealthCheck::STATUS_PENDING,
                 'results' => [],
-                'error' => 'Waiting for a probe worker.',
+                'error' => 'Ожидает выполнения проверки.',
             ]);
         }
 
@@ -107,7 +107,7 @@ final class SubscriptionProfileHealthRecorder
         $this->record($flow, 'no-profiles', 'No eligible profiles', [
             'status' => SubscriptionProfileHealthCheck::STATUS_UNKNOWN,
             'results' => [],
-            'error' => 'The technical user currently receives no profiles for this flow.',
+            'error' => 'Технический пользователь пока не получает профили для этого типа подписки.',
         ]);
     }
 

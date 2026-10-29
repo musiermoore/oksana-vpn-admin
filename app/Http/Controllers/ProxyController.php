@@ -149,9 +149,9 @@ class ProxyController extends Controller
         $label = implode(' · ', array_filter([$remark, $protocol, is_numeric($port) ? (string) $port : '']));
 
         if ($label !== '') {
-            return sprintf('%s (Inbound #%d)', $label, (int) $inbound->external_id);
+            return sprintf('%s (узел №%d)', $label, (int) $inbound->external_id);
         }
 
-        return sprintf('Inbound #%d', (int) $inbound->external_id);
+        return sprintf('Узел №%d', (int) $inbound->external_id);
     }
 }

@@ -16,13 +16,13 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Создание правила Xray Routing" />
+    <Head title="Создание правила маршрутизации Xray" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
                 <h1>Создание правила</h1>
-                <p>Добавьте routing rule для connect JSON subscriptions.</p>
+                <p>Добавьте правило маршрутизации для JSON-подписок подключения.</p>
             </div>
         </div>
 

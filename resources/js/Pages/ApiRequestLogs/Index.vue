@@ -126,12 +126,12 @@ const endpointOptions = computed(() => [
 </script>
 
 <template>
-    <Head title="API лог" />
+    <Head title="Журнал API-запросов" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>API лог</h1>
+                <h1>Журнал API-запросов</h1>
                 <p>Запросы по всем маршрутам из API с параметрами, пользователями и часовыми поясами.</p>
             </div>
         </div>
@@ -146,7 +146,7 @@ const endpointOptions = computed(() => [
                 <h3>{{ overview.unique_users }}</h3>
             </article>
             <article class="stat-card stack">
-                <p class="muted">Уникальных timezone запросов</p>
+                <p class="muted">Уникальных часовых поясов</p>
                 <h3>{{ overview.timezone_count }}</h3>
             </article>
         </div>
@@ -189,7 +189,7 @@ const endpointOptions = computed(() => [
         <div class="grid grid--filters">
             <div class="field">
                 <label for="search">Поиск</label>
-                <AppInput id="search" v-model="form.search" type="text" placeholder="user_id, telegram, action..." @keyup.enter="applyFilters" />
+                <AppInput id="search" v-model="form.search" type="text" placeholder="ID пользователя, Telegram, действие…" @keyup.enter="applyFilters" />
             </div>
 
             <div class="field">

@@ -41,7 +41,7 @@ const deleteTemplate = () => {
         <div class="page-header">
             <div>
                 <h1>Шаблоны команд</h1>
-                <p>Переиспользуемые shell-скрипты и последовательности команд для серверной консоли.</p>
+                <p>Повторно используемые сценарии и последовательности команд для серверной консоли.</p>
             </div>
             <div class="actions">
                 <AppButton href="/servers">К серверам</AppButton>
@@ -50,7 +50,7 @@ const deleteTemplate = () => {
         </div>
 
         <div v-if="!templates.length" class="empty-state">
-            Шаблонов пока нет. Создайте raw shell script или шаблон с командами и интерактивными ответами.
+            Шаблонов пока нет. Создайте сценарий командной оболочки или шаблон с командами и автоматическими ответами.
         </div>
 
         <div v-else class="table-wrap">
@@ -67,7 +67,7 @@ const deleteTemplate = () => {
                 <tbody>
                     <tr v-for="template in templates" :key="template.id">
                         <td><strong>{{ template.name }}</strong></td>
-                        <td>{{ template.format === 'script' ? 'Raw shell script' : 'Command blocks' }}</td>
+                        <td>{{ template.format === 'script' ? 'Сценарий командной оболочки' : 'Блоки команд' }}</td>
                         <td>{{ template.timeout_seconds }} сек.</td>
                         <td>{{ template.description || '—' }}</td>
                         <td>

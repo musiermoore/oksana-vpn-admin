@@ -104,9 +104,9 @@ const formatDate = (value) => {
                 </label>
 
                 <label class="field">
-                    <span>Инвойс</span>
+                    <span>Счёт</span>
                     <AppSelect v-model="form.invoice_id" :options="invoiceOptions" :disabled="form.preset !== 'income'" />
-                    <small class="muted">Нужен только для `Income / Receipts`.</small>
+                    <small class="muted">Нужен только для формирования чеков.</small>
                 </label>
             </div>
 
@@ -120,7 +120,7 @@ const formatDate = (value) => {
         <div class="page-header">
             <div>
                 <h2 class="section-title">Последние результаты</h2>
-                <p>Статусы и ответы фоновых запросов к Moy Nalog.</p>
+                <p>Статусы и ответы фоновых запросов к сервису «Мой налог».</p>
             </div>
         </div>
 
@@ -132,7 +132,7 @@ const formatDate = (value) => {
                         <p>
                             {{ log.method }} {{ log.endpoint }} · {{ log.status }}
                             <template v-if="log.response_status"> · HTTP {{ log.response_status }}</template>
-                            <template v-if="log.invoice?.show_url"> · <Link :href="log.invoice.show_url">Invoice #{{ log.invoice.id }}</Link></template>
+                            <template v-if="log.invoice?.show_url"> · <Link :href="log.invoice.show_url">Счёт №{{ log.invoice.id }}</Link></template>
                         </p>
                     </div>
                 </div>

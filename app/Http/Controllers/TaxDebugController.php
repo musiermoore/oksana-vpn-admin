@@ -31,9 +31,9 @@ class TaxDebugController extends Controller
 
         return $this->inertia('TaxDebug/Index', [
             'presets' => [
-                ['value' => 'auth', 'label' => 'Auth', 'action' => 'Auth by INN/password', 'method' => 'POST', 'endpoint' => '/auth/lkfl'],
-                ['value' => 'user', 'label' => 'User', 'action' => 'Get current user', 'method' => 'GET', 'endpoint' => '/user'],
-                ['value' => 'income', 'label' => 'Income / Receipts', 'action' => 'Create income receipt - individual', 'method' => 'POST', 'endpoint' => '/income'],
+                ['value' => 'auth', 'label' => 'Авторизация', 'action' => 'Авторизация по ИНН и паролю', 'method' => 'POST', 'endpoint' => '/auth/lkfl'],
+                ['value' => 'user', 'label' => 'Пользователь', 'action' => 'Получение данных текущего пользователя', 'method' => 'GET', 'endpoint' => '/user'],
+                ['value' => 'income', 'label' => 'Доходы и чеки', 'action' => 'Создание чека о доходе для физического лица', 'method' => 'POST', 'endpoint' => '/income'],
             ],
             'initial_form' => [
                 'preset' => old('preset', 'auth'),
@@ -46,7 +46,20 @@ class TaxDebugController extends Controller
                 ->get(['id', 'amount', 'paid', 'tax_status'])
                 ->map(fn (Invoice $invoice) => [
                     'id' => $invoice->id,
-                    'label' => sprintf('#%d · %.2f ₽ · %s · tax:%s', $invoice->id, (float) $invoice->amount, $invoice->paid ? 'paid' : 'unpaid', $invoice->tax_status),
+                    'label' => sprintf(
+                        '№%d · %.2f ₽ · %s · налоговый статус: %s',
+                        $invoice->id,
+                        (float) $invoice->amount,
+                        $invoice->paid ? 'оплачен' : 'не оплачен',
+                        match ($invoice->tax_status) {
+                            Invoice::TAX_STATUS_NOT_SENT => 'не отправлен',
+                            Invoice::TAX_STATUS_QUEUED => 'в очереди',
+                            Invoice::TAX_STATUS_SENDING => 'отправляется',
+                            Invoice::TAX_STATUS_SENT => 'отправлен',
+                            Invoice::TAX_STATUS_FAILED => 'ошибка',
+                            default => 'неизвестен',
+                        },
+                    ),
                 ])
                 ->values()
                 ->all(),
@@ -59,6 +72,6 @@ class TaxDebugController extends Controller
 
         return redirect()
             ->route('tax-debug.index')
-            ->with('success', 'Налоговый debug-запрос поставлен в очередь.');
+            ->with('success', 'Запрос для диагностики налога поставлен в очередь.');
     }
 }

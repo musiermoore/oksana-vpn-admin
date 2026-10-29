@@ -155,7 +155,7 @@ const formatDate = (value) => value ? new Date(value).toLocaleString('ru-RU') : 
             </div>
         </div>
         <div>
-            <span class="field-label">Конфиги Amnezia</span>
+            <span class="field-label">Конфигурации Amnezia</span>
             <p v-if="!supportUser.amnezia_configs.length">Нет конфигов</p>
             <div v-for="config in supportUser.amnezia_configs" :key="config.url" class="support-link-row">
                 <a :href="config.url">{{ config.label }}</a>

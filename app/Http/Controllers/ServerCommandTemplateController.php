@@ -75,8 +75,8 @@ class ServerCommandTemplateController extends Controller
     private function formats(): array
     {
         return [
-            ['value' => ServerCommandTemplate::FORMAT_SCRIPT, 'label' => 'Raw shell script'],
-            ['value' => ServerCommandTemplate::FORMAT_BLOCKS, 'label' => 'Command blocks (JSON)'],
+            ['value' => ServerCommandTemplate::FORMAT_SCRIPT, 'label' => 'Сценарий командной оболочки'],
+            ['value' => ServerCommandTemplate::FORMAT_BLOCKS, 'label' => 'Блоки команд (JSON)'],
         ];
     }
 }

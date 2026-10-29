@@ -139,7 +139,7 @@ class AdminDashboardService
     private function networkSection(int $activeServers, int $serverWarnings): array
     {
         return ['label' => 'Сеть', 'icon' => 'server', 'description' => 'Серверы, Xray-конфигурации, прокси и внешние подписки.', 'links' => [
-            ['label' => 'Серверы', 'href' => route('servers.index')], ['label' => 'Xray Configs', 'href' => route('xray-configs.index')], ['label' => 'Прокси', 'href' => route('proxies.index')], ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index')],
+            ['label' => 'Серверы', 'href' => route('servers.index')], ['label' => 'Конфигурации Xray', 'href' => route('xray-configs.index')], ['label' => 'Прокси', 'href' => route('proxies.index')], ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index')],
         ], 'highlights' => [sprintf('%d активных серверов', $activeServers), sprintf('%d серверов с предупреждениями', $serverWarnings), sprintf('%d активных внешних подписок', VlessExternalSubscription::query()->where('is_active', true)->count())]];
     }
 
@@ -154,16 +154,16 @@ class AdminDashboardService
     /** @return array<string, mixed> */
     private function billingSection(int $pendingTransactions): array
     {
-        return ['label' => 'Биллинг', 'icon' => 'wallet', 'description' => 'Транзакции, подписки, инвойсы и налоговые операции.', 'links' => [
+        return ['label' => 'Биллинг', 'icon' => 'wallet', 'description' => 'Транзакции, подписки, счета и налоговые операции.', 'links' => [
             ['label' => 'Транзакции', 'href' => route('transactions.index')], ['label' => 'Инвойсы', 'href' => route('invoices.index')], ['label' => 'Подписки', 'href' => route('subscriptions.index')], ['label' => 'Периоды оплаты', 'href' => route('current-payments.index')], ['label' => 'Налоги', 'href' => route('tax-settings.edit')],
-        ], 'highlights' => [sprintf('%d транзакций на рассмотрении', $pendingTransactions), sprintf('%d tax-ошибок по инвойсам', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count())]];
+        ], 'highlights' => [sprintf('%d транзакций на рассмотрении', $pendingTransactions), sprintf('%d ошибок налоговой отправки по счетам', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count())]];
     }
 
     /** @return array<string, mixed> */
     private function operationsSection(int $tasksInProgress): array
     {
-        return ['label' => 'Операции', 'icon' => 'tasks', 'description' => 'Задачи, массовые коммуникации и welcome-контент.', 'links' => [
-            ['label' => 'Задачи', 'href' => route('tasks.index')], ['label' => 'Рассылка', 'href' => route('notifications.create')], ['label' => 'Welcome', 'href' => route('messages.welcome.edit')],
+        return ['label' => 'Операции', 'icon' => 'tasks', 'description' => 'Задачи, массовые рассылки и приветственные сообщения.', 'links' => [
+            ['label' => 'Задачи', 'href' => route('tasks.index')], ['label' => 'Рассылка', 'href' => route('notifications.create')], ['label' => 'Приветствие', 'href' => route('messages.welcome.edit')],
         ], 'highlights' => [sprintf('%d задач в работе', $tasksInProgress), sprintf('%d задач ждут старта', Task::query()->where('status', Task::STATUS_TODO)->count())]];
     }
 
@@ -171,8 +171,8 @@ class AdminDashboardService
     private function diagnosticsSection(int $integrationErrors): array
     {
         return ['label' => 'Диагностика', 'icon' => 'activity', 'description' => 'Технические логи, запросы интеграций и инструменты отладки.', 'links' => [
-            ['label' => 'API лог', 'href' => route('api-request-logs.index')], ['label' => '3x-ui Debug', 'href' => route('xui-debug.index')], ['label' => 'Tax Debug', 'href' => route('tax-debug.index')],
-        ], 'highlights' => [sprintf('%d ошибок API за сутки', $integrationErrors), sprintf('%d ошибок tax-отправки', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count())]];
+            ['label' => 'Журнал API-запросов', 'href' => route('api-request-logs.index')], ['label' => 'Диагностика 3x-ui', 'href' => route('xui-debug.index')], ['label' => 'Диагностика налога', 'href' => route('tax-debug.index')],
+        ], 'highlights' => [sprintf('%d ошибок API за сутки', $integrationErrors), sprintf('%d ошибок отправки данных в налоговую', Invoice::query()->where('tax_status', Invoice::TAX_STATUS_FAILED)->count())]];
     }
 
     /**

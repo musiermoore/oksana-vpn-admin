@@ -50,18 +50,18 @@ const subscriptionsLabel = (routing) => {
     const types = routing.subscription_types ?? [];
 
     if (types.includes('connect') && types.includes('connect_wl')) {
-        return 'connect + connect-wl';
+        return 'Стандартная подписка и подписка белых списков';
     }
 
     if (types.includes('connect')) {
-        return 'connect';
+        return 'Стандартная подписка';
     }
 
     if (types.includes('connect_wl')) {
-        return 'connect-wl';
+        return 'Подписка белых списков';
     }
 
-    return 'all';
+        return 'Все подписки';
 };
 
 const targetLabel = (routing) => {
@@ -70,13 +70,13 @@ const targetLabel = (routing) => {
     const proxyCount = routing.proxy_ids?.length ?? 0;
 
     if (localCount === 0 && externalCount === 0 && proxyCount === 0) {
-        return 'nowhere';
+        return 'Не выбраны';
     }
 
     return [
-        localCount > 0 ? `${localCount} inbound` : '',
-        externalCount > 0 ? `${externalCount} external` : '',
-        proxyCount > 0 ? `${proxyCount} proxy` : '',
+        localCount > 0 ? `Входящие узлы: ${localCount}` : '',
+        externalCount > 0 ? `Внешние конфигурации: ${externalCount}` : '',
+        proxyCount > 0 ? `Прокси: ${proxyCount}` : '',
     ].filter(Boolean).join(', ');
 };
 </script>
@@ -88,7 +88,7 @@ const targetLabel = (routing) => {
         <div class="page-header">
             <div>
                 <h1>Правила маршрутизации Xray</h1>
-                <p>JSON routing settings for connect subscriptions.</p>
+                <p>Правила маршрутизации JSON-конфигураций, выдаваемых в подписках.</p>
             </div>
             <div class="actions">
                 <AppButton variant="secondary" type="button" @click="openImportModal">Импорт</AppButton>
@@ -111,7 +111,7 @@ const targetLabel = (routing) => {
                     geodata: active_settings.geodata,
                 }) }}</pre>
             </div>
-            <p v-else>No active settings.</p>
+            <p v-else>Нет активных настроек.</p>
         </div>
 
         <div class="page-card stack">
@@ -140,7 +140,7 @@ const targetLabel = (routing) => {
                         <td>{{ routing.outbound }}</td>
                         <td>{{ subscriptionsLabel(routing) }}</td>
                         <td>{{ targetLabel(routing) }}</td>
-                        <td>{{ routing.is_active ? 'Active' : 'Disabled' }}</td>
+                        <td>{{ routing.is_active ? 'Активно' : 'Отключено' }}</td>
                         <td><pre>{{ pretty(routing.rules) }}</pre></td>
                         <td>
                             <AppButton variant="secondary" :href="routing.links.edit">Изменить</AppButton>
@@ -177,7 +177,7 @@ const targetLabel = (routing) => {
             <div class="page-header">
                 <div>
                     <h2>Импорт настроек</h2>
-                    <p>Вставьте JSON routing settings для connect subscriptions.</p>
+                    <p>Вставьте настройки маршрутизации в формате JSON для подписок.</p>
                 </div>
                 <AppButton variant="secondary" type="button" @click="closeImportModal">Закрыть</AppButton>
             </div>

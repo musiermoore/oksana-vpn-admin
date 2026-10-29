@@ -84,7 +84,7 @@ const backToRequest = () => {
 
             <div class="page-header">
                 <div>
-                    <p>Введите Telegram username и одноразовый код из сообщения.</p>
+                    <p>Введите имя пользователя Telegram и одноразовый код из сообщения.</p>
                 </div>
             </div>
 
@@ -113,7 +113,7 @@ const backToRequest = () => {
 
             <div class="actions">
                 <AppButton type="submit" :disabled="verifyForm.processing">Войти</AppButton>
-                <AppButton variant="ghost" type="button" @click="backToRequest">Изменить username</AppButton>
+                <AppButton variant="ghost" type="button" @click="backToRequest">Изменить имя пользователя</AppButton>
             </div>
         </form>
     </section>

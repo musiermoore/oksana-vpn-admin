@@ -27,7 +27,7 @@ const toggleConfig = (config) => {
         <div class="page-header">
             <div>
                 <h1>Конфиги</h1>
-                <p>WireGuard-конфиги по участникам и серверам.</p>
+                <p>Конфигурации WireGuard по участникам и серверам.</p>
             </div>
             <div class="actions">
                 <AppButton variant="secondary" href="/configs/create-bulk">Массовое создание</AppButton>

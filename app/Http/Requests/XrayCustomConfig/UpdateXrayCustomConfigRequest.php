@@ -54,11 +54,11 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
     {
         $validator->after(function (Validator $validator): void {
             if (! is_array(json_decode((string) $this->input('base_settings_json'), true))) {
-                $validator->errors()->add('base_settings_json', 'Base settings must decode to a JSON object.');
+                $validator->errors()->add('base_settings_json', 'Основные настройки должны быть объектом JSON.');
             }
             foreach (['outbound_groups_json', 'routes_json'] as $field) {
                 if (! is_array(json_decode((string) $this->input($field), true))) {
-                    $validator->errors()->add($field, 'Value must decode to a JSON array.');
+                    $validator->errors()->add($field, 'Значение должно быть массивом JSON.');
                 }
             }
 
@@ -69,14 +69,14 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
                     array_map(static fn (XrayBalancerStrategy $strategy): string => $strategy->value, XrayBalancerStrategy::cases()),
                     true,
                 )) {
-                    $validator->errors()->add("outbound_groups_json.{$index}", 'Each group must use a supported balancer strategy.');
+                    $validator->errors()->add("outbound_groups_json.{$index}", 'Для каждой группы выберите поддерживаемую стратегию балансировки.');
                 }
             }
 
             $routes = json_decode((string) $this->input('routes_json'), true);
             foreach (is_array($routes) ? $routes : [] as $index => $route) {
                 if (! is_array($route) || ! in_array($route['target_type'] ?? null, ['direct', 'block', 'blocked', 'outbound', 'balancer'], true)) {
-                    $validator->errors()->add("routes_json.{$index}", 'Each route must use a supported target type.');
+                    $validator->errors()->add("routes_json.{$index}", 'Для каждого маршрута укажите поддерживаемый тип назначения.');
                 }
             }
         });

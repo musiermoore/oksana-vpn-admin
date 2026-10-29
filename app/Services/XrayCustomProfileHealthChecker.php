@@ -36,7 +36,7 @@ final class XrayCustomProfileHealthChecker
                 $this->recorder->record('xray-custom', 'custom-'.$config->id, $config->name, [
                     'status' => SubscriptionProfileHealthCheck::STATUS_UNSUPPORTED,
                     'results' => [],
-                    'error' => 'No technical-user configs match this custom subscription.',
+                    'error' => 'Для этой пользовательской подписки не найдены конфигурации технического пользователя.',
                 ]);
 
                 continue;

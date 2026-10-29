@@ -31,12 +31,12 @@ class WelcomeMessageService
     public function updateWelcomeMessages(WelcomeMessagesData $data): void
     {
         $this->messages->updateOrCreateBySlug(Message::SLUG_WELCOME_BASIC, [
-            'name' => 'Welcome Basic',
+            'name' => 'Обычное приветствие',
             'text' => $data->basicText,
         ]);
 
         $this->messages->updateOrCreateBySlug(Message::SLUG_WELCOME_EXTENDED, [
-            'name' => 'Welcome Extended',
+            'name' => 'Расширенное приветствие',
             'text' => $data->extendedText,
         ]);
     }

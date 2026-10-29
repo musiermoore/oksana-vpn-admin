@@ -88,11 +88,11 @@ const submit = () => {
 </script>
 
 <template>
-    <Head :title="mode === 'edit' ? 'Редактирование Xray-конфига' : 'Создать Xray-конфиг'" />
+    <Head :title="mode === 'edit' ? 'Редактирование конфигурации Xray' : 'Создание конфигурации Xray'" />
 
     <section class="page-card stack">
         <div class="page-header">
-            <div><h1>{{ mode === 'edit' ? 'Редактирование Xray-конфига' : 'Создать Xray-конфиг' }}</h1></div>
+            <div><h1>{{ mode === 'edit' ? 'Редактирование конфигурации Xray' : 'Создание конфигурации Xray' }}</h1></div>
         </div>
 
         <form class="grid grid--two" @submit.prevent="submit">

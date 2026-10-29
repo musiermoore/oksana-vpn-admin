@@ -16,7 +16,7 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Редактирование правила Xray Routing" />
+    <Head title="Редактирование правила маршрутизации Xray" />
 
     <section class="page-card stack">
         <div class="page-header">

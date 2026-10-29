@@ -36,12 +36,12 @@ const taxStatusOptions = props.tax_status_options.map((status) => ({
 </script>
 
 <template>
-    <Head :title="`Edit Invoice #${invoice.id}`" />
+    <Head :title="`Редактирование счёта №${invoice.id}`" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Редактирование Invoice #{{ invoice.id }}</h1>
+                <h1>Редактирование счёта №{{ invoice.id }}</h1>
                 <p>Здесь можно вручную скорректировать статус налоговой, если чек уже был создан вне системы или статус сохранился некорректно.</p>
             </div>
 

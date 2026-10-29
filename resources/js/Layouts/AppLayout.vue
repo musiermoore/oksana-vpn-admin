@@ -262,7 +262,7 @@ watch(isMobile, () => {
                         v-model="searchQuery"
                         type="search"
                         fluid
-                        :placeholder="isMobile ? 'Поиск по панели' : 'Поиск по ID, username, UUID, IP или транзакции'"
+                        :placeholder="isMobile ? 'Поиск по панели' : 'Поиск по ID, имени пользователя в Telegram, UUID, IP или транзакции'"
                         aria-label="Глобальный поиск"
                     />
                 </form>

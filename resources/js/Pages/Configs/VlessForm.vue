@@ -52,11 +52,11 @@ const submit = () => {
 </script>
 
 <template>
-    <Head :title="mode === 'edit' ? 'Редактирование VLESS-конфига' : 'Создать VLESS-конфиг'" />
+    <Head :title="mode === 'edit' ? 'Редактирование конфигурации VLESS' : 'Создание конфигурации VLESS'" />
 
     <section class="page-card stack">
         <div class="page-header">
-            <div><h1>{{ mode === 'edit' ? 'Редактирование VLESS-конфига' : 'Создать VLESS-конфиг' }}</h1></div>
+            <div><h1>{{ mode === 'edit' ? 'Редактирование конфигурации VLESS' : 'Создание конфигурации VLESS' }}</h1></div>
         </div>
 
         <form class="grid grid--two" @submit.prevent="submit">

@@ -52,7 +52,7 @@ const inboundOptions = computed(() => {
     }
 
     return [
-        { label: 'Все inbound', value: '' },
+        { label: 'Все входящие узлы', value: '' },
         ...(props.inbound_options_by_server?.[selectedServerId.value] ?? []),
     ];
 });
@@ -97,10 +97,10 @@ const removeHost = (index) => {
             <div class="field" style="grid-column: 1 / -1;">
                 <div class="page-header">
                     <div>
-                        <span>Цепочка proxy hosts</span>
-                        <p class="hint">Первый активный host используется для подключения пользователей. Остальные сохранены для настройки каскада.</p>
+                        <span>Цепочка узлов прокси</span>
+                        <p class="hint">Первый активный узел используется для подключения пользователей. Остальные сохранены для настройки каскада.</p>
                     </div>
-                    <AppButton variant="secondary" type="button" @click="addHost">Добавить host</AppButton>
+                    <AppButton variant="secondary" type="button" @click="addHost">Добавить узел</AppButton>
                 </div>
                 <div v-for="(host, index) in form.hosts" :key="index" class="host-row">
                     <label class="field"><span>{{ index === 0 ? 'Адрес узла' : `Адрес каскадного узла ${index}` }}</span><AppInput v-model="host.host" required /></label>

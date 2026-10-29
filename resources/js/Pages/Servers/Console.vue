@@ -162,8 +162,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head :title="`Console · ${server.name}`" />
-    <AppPageHeader :title="`Console · ${server.name}`" :description="`${server.ip} · SSH terminal session (up to 15 minutes)`">
+    <Head :title="`Консоль · ${server.name}`" />
+    <AppPageHeader :title="`Консоль · ${server.name}`" :description="`${server.ip} · Сеанс SSH (до 15 минут)`">
         <template #actions>
             <AppButton variant="secondary" :href="links.templates">Шаблоны команд</AppButton>
             <AppButton variant="secondary" :href="links.servers">К списку серверов</AppButton>

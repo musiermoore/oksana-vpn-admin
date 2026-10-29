@@ -63,19 +63,19 @@ final class XrayTunnelProbeRunner
         $temporaryPath = tempnam(sys_get_temp_dir(), 'inbound-health-xray-');
 
         if ($temporaryPath === false) {
-            throw new RuntimeException('Unable to allocate a temporary Xray config file.');
+            throw new RuntimeException('Не удалось создать временный файл конфигурации Xray.');
         }
 
         $path = $temporaryPath.'.json';
 
         if (! rename($temporaryPath, $path)) {
             @unlink($temporaryPath);
-            throw new RuntimeException('Unable to name the temporary Xray config as JSON.');
+            throw new RuntimeException('Не удалось задать временному файлу формат JSON.');
         }
 
         if (file_put_contents($path, json_encode($profile, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)) === false) {
             @unlink($path);
-            throw new RuntimeException('Unable to write the temporary Xray config file.');
+            throw new RuntimeException('Не удалось записать временный файл конфигурации Xray.');
         }
 
         return $path;
@@ -134,7 +134,7 @@ final class XrayTunnelProbeRunner
     {
         for ($attempt = 0; $attempt < 30; $attempt++) {
             if (! $process->isRunning()) {
-                throw new RuntimeException('Xray exited before opening the local proxy: '.Str::limit(trim($process->getErrorOutput()), 500));
+                throw new RuntimeException('Xray завершил работу до запуска локального прокси: '.Str::limit(trim($process->getErrorOutput()), 500));
             }
 
             $socket = @fsockopen('127.0.0.1', $proxyPort, $errorCode, $errorMessage, 0.2);
@@ -148,7 +148,7 @@ final class XrayTunnelProbeRunner
             usleep(100_000);
         }
 
-        throw new RuntimeException('Xray did not open its local SOCKS proxy.');
+        throw new RuntimeException('Xray не запустил локальный прокси SOCKS.');
     }
 
     /** @return array<string, mixed> */
@@ -170,7 +170,7 @@ final class XrayTunnelProbeRunner
         $socket = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
 
         if ($socket === false) {
-            throw new RuntimeException('Unable to allocate a local SOCKS port: '.$errorMessage);
+            throw new RuntimeException('Не удалось выделить локальный порт SOCKS: '.$errorMessage);
         }
 
         $address = stream_socket_get_name($socket, false);

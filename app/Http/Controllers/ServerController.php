@@ -185,7 +185,7 @@ class ServerController extends Controller
                 'sort_order' => (int) $config->sort_order,
                 'name' => (string) $config->name,
                 'code' => 'XRAY',
-                'label' => 'Xray custom config',
+                'label' => 'Пользовательская конфигурация Xray',
             ])->all(),
         ])
             ->sort(fn (array $left, array $right): int => [

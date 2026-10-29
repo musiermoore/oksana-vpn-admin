@@ -79,7 +79,7 @@ class ServerConnectSortService
             ->update(['sort_order' => $sortOrder]);
 
         if ($updated === 0) {
-            throw new RuntimeException('Xray custom config для сортировки не найден.');
+            throw new RuntimeException('Пользовательская конфигурация Xray для сортировки не найдена.');
         }
     }
 
@@ -91,7 +91,7 @@ class ServerConnectSortService
             ->update(['sort_order' => $sortOrder]);
 
         if ($updated === 0) {
-            throw new RuntimeException('Inbound не найден у выбранного сервера.');
+            throw new RuntimeException('Входящий узел не найден на выбранном сервере.');
         }
     }
 
@@ -103,7 +103,7 @@ class ServerConnectSortService
             ->update(['sort_order' => $sortOrder]);
 
         if ($updated === 0) {
-            throw new RuntimeException('Proxy не найден у выбранного сервера.');
+            throw new RuntimeException('Прокси не найден на выбранном сервере.');
         }
     }
 }

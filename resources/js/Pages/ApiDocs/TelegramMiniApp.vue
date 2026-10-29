@@ -34,7 +34,7 @@ onMounted(() => {
         <div class="page-header">
             <div>
                 <h1>API Telegram-приложения</h1>
-                <p>OpenAPI contract for the Laravel API and its Go replacement.</p>
+                <p>Описание контракта OpenAPI для API на Laravel и его реализации на Go.</p>
             </div>
         </div>
     </section>

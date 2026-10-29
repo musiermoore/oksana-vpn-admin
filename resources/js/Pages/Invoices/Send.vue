@@ -24,12 +24,12 @@ const taxStatusLabel = (status) => ({
 </script>
 
 <template>
-    <Head :title="`Send Invoice #${invoice.id}`" />
+    <Head :title="`Отправка счёта №${invoice.id}`" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Отправить Invoice #{{ invoice.id }} в налоговую</h1>
+                <h1>Отправить счёт №{{ invoice.id }} в налоговую</h1>
                 <p>Проверьте сумму, транзакции и текущий статус перед постановкой в очередь.</p>
             </div>
 

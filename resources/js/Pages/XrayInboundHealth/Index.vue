@@ -185,12 +185,12 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                     <h2>Проверка профилей подписок</h2>
                     <div>
                         <p>
-                            Tests emitted profiles using {{ props.technicalUser?.name ?? '@OksanaVpnDebugBot' }}
+                            Проверка сформированных профилей для пользователя {{ props.technicalUser?.name ?? '@OksanaVpnDebugBot' }}
                             (Telegram ID {{ props.technicalUser?.telegram_id ?? '000000000' }}).
                         </p>
                         <p class="flow-coverage">
-                            /connect: {{ profileFlowSummary.connect }} profiles ·
-                            /connect-v2: {{ profileFlowSummary.connectV2 }} profiles
+                            /connect: {{ profileFlowSummary.connect }} профилей ·
+                            /connect-v2: {{ profileFlowSummary.connectV2 }} профилей
                         </p>
                     </div>
                 </div>

@@ -26,8 +26,8 @@ const toggleConfig = (config) => {
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>VLESS конфиги</h1>
-                <p>Привязка существующих VLESS-конфигов к участникам.</p>
+                <h1>Конфигурации VLESS</h1>
+                <p>Привязка существующих конфигураций VLESS к участникам.</p>
             </div>
             <div class="actions">
                 <AppButton href="/vless-configs/create">Создать</AppButton>

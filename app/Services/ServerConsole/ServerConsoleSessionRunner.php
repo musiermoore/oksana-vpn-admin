@@ -78,7 +78,7 @@ class ServerConsoleSessionRunner
         }
 
         if (! $authenticated) {
-            throw new RuntimeException('SSH authentication failed. Check the server credentials.');
+            throw new RuntimeException('Не удалось войти по SSH. Проверьте учётные данные сервера.');
         }
     }
 
@@ -280,7 +280,7 @@ class ServerConsoleSessionRunner
         }
 
         if (! $ssh->isShellOpen() || ! $ssh->isConnected()) {
-            throw new RuntimeException('The remote SSH session was closed.');
+            throw new RuntimeException('Удалённый сеанс SSH был закрыт.');
         }
 
         return '';

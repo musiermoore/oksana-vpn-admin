@@ -23,7 +23,7 @@ const statusLabel = (status) => ({
         <div class="page-header">
             <div>
                 <h1>Тикеты поддержки</h1>
-                <p>Обращения из Telegram mini-app с быстрым переходом в чат пользователя.</p>
+                <p>Обращения из мини-приложения Telegram с быстрым переходом в чат пользователя.</p>
             </div>
         </div>
 

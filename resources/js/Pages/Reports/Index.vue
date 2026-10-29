@@ -325,7 +325,7 @@ const highlightCards = computed(() => [
                         <strong>{{ server.name }}</strong>
                         <p>
                             {{ server.code }}
-                            <span v-if="server.is_deleted" class="server-list__deleted">soft deleted</span>
+                            <span v-if="server.is_deleted" class="server-list__deleted">Помечен удалённым</span>
                         </p>
                     </div>
                     <div class="server-list__value">

@@ -57,7 +57,7 @@ class ServerFormResource extends ServerResource
             'type' => 'inbound',
             'entity_id' => (int) $inbound->id,
             'sort_order' => (int) $inbound->sort_order,
-            'title' => 'Inbound #'.(int) $inbound->external_id,
+            'title' => 'Узел №'.(int) $inbound->external_id,
             'subtitle' => trim(implode(' · ', array_filter([
                 (string) data_get($inbound->params, 'protocol', ''),
                 (string) data_get($inbound->params, 'port', ''),
@@ -70,10 +70,10 @@ class ServerFormResource extends ServerResource
             'type' => 'proxy',
             'entity_id' => (int) $proxy->id,
             'sort_order' => (int) $proxy->sort_order,
-            'title' => 'Proxy '.$proxy->name,
+            'title' => 'Прокси '.$proxy->name,
             'subtitle' => trim(implode(' · ', array_filter([
                 trim((string) $proxy->host) !== '' ? $proxy->host.':'.$proxy->port : '',
-                $proxy->inbound_id ? 'Inbound #'.$proxy->inbound_id : 'Все inbound',
+                $proxy->inbound_id ? 'Узел №'.$proxy->inbound_id : 'Все входящие узлы',
             ]))) ?: null,
         ]);
 

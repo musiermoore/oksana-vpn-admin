@@ -152,7 +152,7 @@ const visibleUsers = computed(() => {
     return props.users.filter((user) => !query || normalized(`${user.full_name || ''} ${user.telegram_id || ''}`).includes(query));
 });
 const inboundLabel = (inbound) => [
-    `Inbound #${inbound.external_id}`,
+    `Узел №${inbound.external_id}`,
     inbound.protocol,
     inbound.remark,
 ].map((value) => String(value || '').trim()).filter(Boolean).join(' · ');
@@ -417,7 +417,7 @@ const normalizeRouteFromEditor = (route, index) => {
     const target = String(balancerTag || outboundTag || 'direct');
     const targetType = balancerTag ? 'balancer' : (['direct', 'block'].includes(target) ? target : 'balancer');
     return normalizeRoute({
-        name: `Route ${index + 1}`,
+        name: `Маршрут ${index + 1}`,
         rules: normalizeMatchRules(rules),
         target_type: targetType,
         target_tag: targetType === 'balancer' ? target : '',
@@ -580,11 +580,11 @@ const saveResource = async () => {
                     <div><h2>Назначенные пользователи</h2><p>Закрытая конфигурация появится только в подписках выбранных пользователей.</p></div>
                     <strong>{{ ids('user_ids').length }} выбрано</strong>
                 </div>
-                <AppInput v-model="userSearch" placeholder="Найти пользователя по имени или Telegram ID" />
+                <AppInput v-model="userSearch" placeholder="Найти пользователя по имени или ID в Telegram" />
                 <div class="user-assignment-list">
                     <label v-for="user in visibleUsers" :key="user.id" class="user-assignment-row">
                         <input type="checkbox" :checked="checked('user_ids', user.id)" @change="toggle('user_ids', user.id, $event.target.checked)">
-                        <span><strong>{{ user.full_name || user.telegram_id }}</strong><small>Telegram ID: {{ user.telegram_id || '—' }}</small></span>
+                    <span><strong>{{ user.full_name || user.telegram_id }}</strong><small>ID в Telegram: {{ user.telegram_id || '—' }}</small></span>
                     </label>
                     <p v-if="visibleUsers.length === 0" class="source-empty">Нет пользователей, подходящих под поиск.</p>
                 </div>
@@ -610,7 +610,7 @@ const saveResource = async () => {
             <div class="source-section">
                 <div class="source-section__header"><div><h2>Источники</h2><p>Выберите источники исходящих подключений для этой конфигурации.</p></div><strong>{{ totalSourcesSelected }} выбрано</strong></div>
                 <div class="source-picker">
-                    <div class="source-picker__header"><h3>Локальные серверы и входящие узлы</h3><strong>{{ localSelectedCount }} selected</strong></div>
+                    <div class="source-picker__header"><h3>Локальные серверы и входящие узлы</h3><strong>{{ localSelectedCount }} выбрано</strong></div>
                     <div class="source-toolbar"><AppInput v-model="localSearch" placeholder="Поиск серверов или входящих узлов…" /><AppSelect v-model="localCountry" :options="countries.map((country) => ({ value: country, label: country }))" placeholder="Страна" /></div>
                     <div class="source-actions"><label class="field-row"><input type="checkbox" :checked="visibleServers.length > 0 && visibleServers.every((server) => visibleInbounds(server).length > 0 && visibleInbounds(server).every((inbound) => checked('xray_inbound_ids', inbound.id)))" @change="selectVisibleInbounds($event.target.checked)"> Выбрать все видимые</label><button type="button" class="picker-text-button" @click="selectVisibleInbounds(false)">Снять выделение</button></div>
                     <div class="source-list">
@@ -632,7 +632,7 @@ const saveResource = async () => {
                         <div v-for="subscription in visibleSubscriptions" :key="subscription.id" class="source-group">
                             <div class="source-parent-row">
                                 <input type="checkbox" :checked="subscriptionState(subscription).checked" :indeterminate="subscriptionState(subscription).indeterminate" @change="toggleSubscription(subscription, $event.target.checked)">
-                                <button type="button" class="source-expand" :aria-expanded="isSubscriptionExpanded(subscription.id)" @click="toggleSubscriptionExpanded(subscription.id)"><span>{{ subscription.name }}</span><span class="source-count">{{ subscriptionState(subscription).selected }} / {{ subscriptionState(subscription).total }} configs selected</span><span class="source-chevron">{{ isSubscriptionExpanded(subscription.id) ? '⌄' : '›' }}</span></button>
+                                <button type="button" class="source-expand" :aria-expanded="isSubscriptionExpanded(subscription.id)" @click="toggleSubscriptionExpanded(subscription.id)"><span>{{ subscription.name }}</span><span class="source-count">{{ subscriptionState(subscription).selected }} / {{ subscriptionState(subscription).total }} конфигураций выбрано</span><span class="source-chevron">{{ isSubscriptionExpanded(subscription.id) ? '⌄' : '›' }}</span></button>
                             </div>
                             <div v-if="isSubscriptionExpanded(subscription.id)" class="source-children"><span v-for="config in visibleConfigs(subscription)" :key="config.id" class="source-child-row">{{ config.name }}</span></div>
                         </div>
@@ -647,7 +647,7 @@ const saveResource = async () => {
                 </div>
             </div>
             <JsonSectionEditor v-model="routingTemplatesJson" title="Шаблоны правил маршрутизации" description="Необязательные правила, которые будут включены в эту конфигурацию." :json-editable="false">
-                <div class="routing-list"><label v-for="routing in props.targets.routings || []" :key="routing.id" class="routing-row"><input type="checkbox" :checked="checked('xray_routing_ids', routing.id)" @change="toggle('xray_routing_ids', routing.id, $event.target.checked)"><span><strong>{{ routing.name }}</strong><small>{{ routing.description || 'Reusable routing rule template.' }}{{ routing.is_active ? '' : ' · Inactive' }}</small></span></label><p v-if="!(props.targets.routings || []).length" class="source-empty">No routing rule templates available.</p></div>
+                <div class="routing-list"><label v-for="routing in props.targets.routings || []" :key="routing.id" class="routing-row"><input type="checkbox" :checked="checked('xray_routing_ids', routing.id)" @change="toggle('xray_routing_ids', routing.id, $event.target.checked)"><span><strong>{{ routing.name }}</strong><small>{{ routing.description || 'Шаблон правила маршрутизации.' }}{{ routing.is_active ? '' : ' · Неактивно' }}</small></span></label><p v-if="!(props.targets.routings || []).length" class="source-empty">Нет доступных шаблонов правил маршрутизации.</p></div>
             </JsonSectionEditor>
             <JsonSectionEditor v-model="groupsJson" title="Группы исходящих подключений" description="Объединяйте серверы, подписки и proxy-ноды в группы с балансировкой и резервными маршрутами.">
                 <div class="groups-section__header"><div></div><AppButton variant="secondary" type="button" @click="addGroup">+ Добавить группу</AppButton></div>
@@ -666,7 +666,7 @@ const saveResource = async () => {
                 <div class="routes-section__header"><div></div><AppButton variant="secondary" type="button" @click="addRoute">+ Добавить маршрут</AppButton></div>
                 <div v-if="routes.length === 0" class="routes-empty">Маршрутов сайтов пока нет. Добавьте маршрут, чтобы настроить правила.</div>
                 <article v-for="(route, index) in routes" :key="route" class="route-card" :class="{ 'route-card--collapsed': !isRouteExpanded(index) }" draggable="true" @dragstart="dragStartRoute(index)" @dragover.prevent @drop="dropRoute(index)">
-                    <div class="route-card__header"><span class="route-drag-handle" title="Перетащите, чтобы изменить порядок">⠿</span><button type="button" class="route-card__toggle" :aria-expanded="isRouteExpanded(index)" @click="toggleRouteExpanded(index)"><span class="route-card__title"><b>{{ index + 1 }}</b><strong>{{ route.name || `Route ${index + 1}` }}</strong><small>{{ routeSummary(route) }}</small></span><span class="route-card__status" :class="{ 'is-disabled': !route.is_active }">{{ route.is_active ? 'Включено' : 'Отключено' }}</span><span class="source-chevron">{{ isRouteExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Действия с правилом" @click.stop="route._menuOpen = !route._menuOpen">⋯</button><div v-if="route._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateRoute(route, index)">Дублировать правило</button><button type="button" class="is-danger" @click="removeRoute(route, index)">Удалить правило</button></div></div></div>
+                    <div class="route-card__header"><span class="route-drag-handle" title="Перетащите, чтобы изменить порядок">⠿</span><button type="button" class="route-card__toggle" :aria-expanded="isRouteExpanded(index)" @click="toggleRouteExpanded(index)"><span class="route-card__title"><b>{{ index + 1 }}</b><strong>{{ route.name || `Маршрут ${index + 1}` }}</strong><small>{{ routeSummary(route) }}</small></span><span class="route-card__status" :class="{ 'is-disabled': !route.is_active }">{{ route.is_active ? 'Включено' : 'Отключено' }}</span><span class="source-chevron">{{ isRouteExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Действия с правилом" @click.stop="route._menuOpen = !route._menuOpen">⋯</button><div v-if="route._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateRoute(route, index)">Дублировать правило</button><button type="button" class="is-danger" @click="removeRoute(route, index)">Удалить правило</button></div></div></div>
                     <div v-if="isRouteExpanded(index)" class="route-card__body">
                         <div class="grid grid--two"><label class="field"><span>Название правила</span><AppInput v-model="route.name" /></label><label class="field route-enabled"><span>Включено</span><AppCheckbox v-model="route.is_active" /></label></div>
                         <div v-for="(type, matchIndex) in route.match_types" :key="type" class="route-match-condition">

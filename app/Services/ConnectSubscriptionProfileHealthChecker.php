@@ -48,7 +48,7 @@ final class ConnectSubscriptionProfileHealthChecker
         );
 
         if (! is_array($decoded) || ! array_is_list($decoded)) {
-            throw new \RuntimeException('The /connect-v2 subscription did not generate a JSON profile list.');
+            throw new \RuntimeException('Подписка /connect-v2 не сформировала список профилей JSON.');
         }
 
         $profiles = $decoded;
@@ -58,18 +58,18 @@ final class ConnectSubscriptionProfileHealthChecker
                 $this->recorder->record(
                     'connect-v2',
                     sha1('malformed-profile|'.$index.'|'.json_encode($profile)),
-                    'Invalid profile #'.($index + 1),
+                    'Некорректный профиль №'.($index + 1),
                     [
                         'status' => SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
                         'results' => [],
-                        'error' => 'Generated /connect-v2 entry is not a JSON profile object.',
+                        'error' => 'Запись /connect-v2 не является объектом профиля JSON.',
                     ],
                 );
 
                 continue;
             }
 
-            $name = trim((string) ($profile['remarks'] ?? '')) ?: 'Profile #'.($index + 1);
+            $name = trim((string) ($profile['remarks'] ?? '')) ?: 'Профиль №'.($index + 1);
             $key = $this->profileKey($profile, 'connect-v2-'.$index);
             $this->recorder->queueProbe(
                 'connect-v2',

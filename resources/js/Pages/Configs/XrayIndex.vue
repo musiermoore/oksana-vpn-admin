@@ -31,7 +31,7 @@ const toggleConfig = (config) => {
         <div class="page-header">
             <div>
                 <h1>Конфигурации Xray</h1>
-                <p>Управление VLESS и Shadowsocks-конфигами участников.</p>
+                <p>Управление конфигурациями VLESS и Shadowsocks участников.</p>
             </div>
             <div class="actions">
                 <AppButton href="/xray-configs/create">Создать</AppButton>

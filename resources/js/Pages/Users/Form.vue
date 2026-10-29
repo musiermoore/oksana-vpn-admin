@@ -145,7 +145,7 @@ const setPriceForAssignment = (assignment) => {
 
         <div v-if="mode === 'edit' && subscription_links" class="grid grid--two">
             <label class="field">
-                <span>Connect v2</span>
+                <span>Новая подписка</span>
                 <AppInput :model-value="subscription_links.connect_v2" readonly />
             </label>
 
@@ -160,12 +160,12 @@ const setPriceForAssignment = (assignment) => {
             </label>
 
             <div class="actions" style="grid-column: 1 / -1;">
-                <AppButton variant="secondary" :href="subscription_links.connect_v2" target="_blank">Открыть connect v2</AppButton>
+                <AppButton variant="secondary" :href="subscription_links.connect_v2" target="_blank">Открыть новую подписку</AppButton>
                 <AppButton variant="secondary" type="button" @click="copySubscriptionLink('connect_v2', subscription_links.connect_v2)">
-                    {{ copiedSubscriptionLink === 'connect_v2' ? 'Скопировано' : 'Копировать connect v2' }}
+                    {{ copiedSubscriptionLink === 'connect_v2' ? 'Скопировано' : 'Копировать ссылку новой подписки' }}
                 </AppButton>
                 <AppButton variant="secondary" :href="subscription_links.standard" target="_blank">Открыть стандартную</AppButton>
-                <AppButton variant="secondary" :href="subscription_links.whitelist" target="_blank">Открыть white list</AppButton>
+                <AppButton variant="secondary" :href="subscription_links.whitelist" target="_blank">Открыть подписку с обходом блокировок</AppButton>
             </div>
         </div>
 
@@ -225,7 +225,7 @@ const setPriceForAssignment = (assignment) => {
     <template v-if="mode === 'edit' && user">
         <details class="page-card stack user-collapsible">
             <summary class="user-collapsible__summary">
-                <div><h2 class="section-title">Конфиги</h2><p v-if="user.subscription_expires_at">Подписка активна до {{ new Date(user.subscription_expires_at).toLocaleString() }}</p></div>
+                <div><h2 class="section-title">Конфигурации</h2><p v-if="user.subscription_expires_at">Подписка активна до {{ new Date(user.subscription_expires_at).toLocaleString('ru-RU') }}</p></div>
                 <span aria-hidden="true">⌄</span>
             </summary>
             <div class="actions"><AppButton href="/configs/create">Создать</AppButton></div>
@@ -250,7 +250,7 @@ const setPriceForAssignment = (assignment) => {
         </details>
 
         <details class="page-card stack user-collapsible">
-            <summary class="user-collapsible__summary"><h2 class="section-title">Xray конфиги</h2><span aria-hidden="true">⌄</span></summary>
+            <summary class="user-collapsible__summary"><h2 class="section-title">Конфигурации Xray</h2><span aria-hidden="true">⌄</span></summary>
             <div class="actions"><AppButton :href="`/xray-configs/create?user_id=${user.id}`">Создать</AppButton></div>
 
             <div v-if="user.xray_configs?.length" class="list">
@@ -278,7 +278,7 @@ const setPriceForAssignment = (assignment) => {
 
         <details class="page-card stack user-collapsible" open>
             <summary class="user-collapsible__summary">
-                <div><h2 class="section-title">Персональные Xray JSON конфиги</h2><p>Добавьте конфиг пользователю и укажите его разовую цену. Новая дата добавит запись в историю цен; сохранение цены не списывает баланс.</p></div>
+                <div><h2 class="section-title">Персональные JSON-конфигурации Xray</h2><p>Назначьте конфигурацию пользователю и укажите разовую цену. Новая дата добавит запись в историю цен; сохранение цены не списывает баланс.</p></div>
                 <span aria-hidden="true">⌄</span>
             </summary>
 
@@ -308,7 +308,7 @@ const setPriceForAssignment = (assignment) => {
                     <AppButton type="submit" :disabled="xrayPriceForm.processing">Сохранить цену</AppButton>
                 </div>
             </form>
-            <div v-else class="empty-state">Сначала создайте Xray custom config.</div>
+            <div v-else class="empty-state">Сначала создайте пользовательскую конфигурацию Xray.</div>
 
             <div v-if="xray_custom_config_assignments.length" class="list">
                 <div v-for="assignment in xray_custom_config_assignments" :key="assignment.id" class="item-row">
@@ -341,7 +341,7 @@ const setPriceForAssignment = (assignment) => {
                     <AppButton variant="danger" type="button" @click="unlinkPersonalXrayConfig(assignment)">Снять назначение</AppButton>
                 </div>
             </div>
-            <div v-else class="empty-state">У пользователя пока нет персональных Xray JSON конфигов.</div>
+            <div v-else class="empty-state">У пользователя пока нет персональных JSON-конфигураций Xray.</div>
         </details>
 
         <details class="page-card stack user-collapsible">

@@ -41,12 +41,12 @@ const taxStatusLabel = (status) => ({
 </script>
 
 <template>
-    <Head :title="`Invoice #${invoice.id}`" />
+    <Head :title="`Счёт №${invoice.id}`" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Invoice #{{ invoice.id }}</h1>
+                <h1>Счёт №{{ invoice.id }}</h1>
                 <p>
                     {{ invoice.amount }} {{ invoice.currency }}
                     <template v-if="invoice.user?.full_name"> · {{ invoice.user.full_name }}</template>

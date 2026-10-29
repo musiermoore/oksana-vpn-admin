@@ -124,7 +124,7 @@ class AdminSearchService
             ->all();
 
         return [
-            'label' => 'WireGuard конфиги',
+            'label' => 'Конфигурации WireGuard',
             'items' => $items,
         ];
     }
@@ -166,7 +166,7 @@ class AdminSearchService
             ->all();
 
         return [
-            'label' => 'Xray / VLESS конфиги',
+            'label' => 'Конфигурации Xray и VLESS',
             'items' => $items,
         ];
     }

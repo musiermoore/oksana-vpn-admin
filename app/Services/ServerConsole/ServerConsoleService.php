@@ -18,7 +18,7 @@ class ServerConsoleService
     public function start(Server $server, User $user): ServerConsoleSession
     {
         if (blank($server->ssh_private_key) && blank($server->ssh_password)) {
-            throw new RuntimeException('Add an SSH private key or password in the server settings first.');
+            throw new RuntimeException('Сначала добавьте закрытый SSH-ключ или пароль в настройках сервера.');
         }
 
         $session = ServerConsoleSession::query()->create([
@@ -37,16 +37,16 @@ class ServerConsoleService
     public function command(ServerConsoleSession $session, string $command, int $timeout, array $answers = [], ?string $script = null): void
     {
         if ($session->status !== 'active' || $session->busy) {
-            throw new RuntimeException('Wait for the current command to finish.');
+            throw new RuntimeException('Дождитесь завершения текущей команды.');
         }
 
         if (blank($command)) {
-            throw new RuntimeException('Enter a command to run.');
+            throw new RuntimeException('Введите команду для выполнения.');
         }
 
         $key = $this->key($session, 'pending');
         if (! Redis::set($key, '1', 'EX', 3600, 'NX')) {
-            throw new RuntimeException('A command is already waiting to run.');
+            throw new RuntimeException('Ожидается выполнение другой команды.');
         }
 
         Redis::rpush($this->key($session, 'commands'), json_encode([
@@ -84,12 +84,12 @@ class ServerConsoleService
     public function input(ServerConsoleSession $session, string $input): void
     {
         if ($session->status !== 'active') {
-            throw new RuntimeException('The SSH session is not active.');
+            throw new RuntimeException('Сеанс SSH не активен.');
         }
 
         $key = $this->key($session, 'input');
         if ((int) Redis::llen($key) >= 100) {
-            throw new RuntimeException('The terminal input queue is full. Wait for the server to read it.');
+            throw new RuntimeException('Очередь ввода терминала заполнена. Дождитесь обработки данных сервером.');
         }
 
         Redis::rpush($key, $input);
@@ -98,7 +98,7 @@ class ServerConsoleService
     public function resize(ServerConsoleSession $session, int $columns, int $rows): void
     {
         if ($session->status !== 'active') {
-            throw new RuntimeException('The SSH session is not active.');
+            throw new RuntimeException('Сеанс SSH не активен.');
         }
 
         Redis::set($this->key($session, 'resize'), json_encode([

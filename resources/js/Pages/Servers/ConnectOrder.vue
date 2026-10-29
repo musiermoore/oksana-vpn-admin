@@ -57,13 +57,13 @@ const saveSortOrder = () => router.post(props.sort_connect_groups_url, {
 </script>
 
 <template>
-    <Head title="Порядок connect" />
+    <Head title="Порядок выдачи" />
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
-                <h1>Порядок connect</h1>
-                <p>Настройте общий порядок серверов, внешних подписок и Xray custom configs в подписке.</p>
+                <h1>Порядок выдачи</h1>
+                <p>Настройте порядок серверов, внешних подписок и пользовательских конфигураций Xray в подписке.</p>
             </div>
             <div class="actions">
                 <AppButton variant="secondary" :href="servers_page_url">Вернуться к серверам</AppButton>

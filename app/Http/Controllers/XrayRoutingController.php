@@ -170,22 +170,26 @@ class XrayRoutingController extends Controller
             'index_url' => route('xray-routings.index'),
             'outbound_options' => collect(XrayRoutingOutbound::cases())
                 ->map(fn (XrayRoutingOutbound $outbound): array => [
-                    'label' => $outbound->value,
+                    'label' => match ($outbound) {
+                        XrayRoutingOutbound::Direct => 'Напрямую',
+                        XrayRoutingOutbound::Proxy => 'Через прокси',
+                        XrayRoutingOutbound::Blocked => 'Заблокировать',
+                    },
                     'value' => $outbound->value,
                 ])
                 ->values()
                 ->all(),
             'subscription_type_options' => [
                 [
-                    'label' => 'Стандартная подписка (connect)',
+                    'label' => 'Стандартная подписка',
                     'value' => XrayRouting::SUBSCRIPTION_CONNECT,
                 ],
                 [
-                    'label' => 'Новая подписка (connect-v2)',
+                    'label' => 'Новая подписка',
                     'value' => XrayRouting::SUBSCRIPTION_CONNECT_V2,
                 ],
                 [
-                    'label' => 'Белые списки (connect-wl)',
+                    'label' => 'Подписка белых списков',
                     'value' => XrayRouting::SUBSCRIPTION_CONNECT_WL,
                 ],
                 [
@@ -247,7 +251,7 @@ class XrayRoutingController extends Controller
                     ->map(fn ($inbound): array => [
                         'id' => $inbound->id,
                         'external_id' => $inbound->external_id,
-                        'label' => 'Inbound #'.$inbound->external_id,
+                        'label' => 'Узел №'.$inbound->external_id,
                         'is_active' => $inbound->is_active,
                         'is_public' => $inbound->is_public,
                     ])

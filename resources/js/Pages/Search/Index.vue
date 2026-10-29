@@ -29,7 +29,7 @@ defineProps({
         </div>
 
         <div v-if="!query" class="empty-state">
-            Ищите по ID, username, UUID, IP, названию сервера, конфигу или транзакции.
+            Ищите по ID, имени пользователя в Telegram, UUID, IP, названию сервера, конфигурации или транзакции.
         </div>
 
         <div v-else-if="!results.length" class="empty-state">

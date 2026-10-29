@@ -28,7 +28,7 @@ const breadcrumbs = computed(() => page.props.app?.breadcrumbs ?? []);
 
 <template>
     <section class="page-hero stack">
-        <div v-if="breadcrumbs.length" class="breadcrumbs" aria-label="Breadcrumb">
+        <div v-if="breadcrumbs.length" class="breadcrumbs" aria-label="Навигационная цепочка">
             <template v-for="(crumb, index) in breadcrumbs" :key="`${crumb.label}-${index}`">
                 <Link v-if="crumb.href" :href="crumb.href" class="breadcrumbs__item">
                     <AppIcon v-if="crumb.icon" :name="crumb.icon" class="breadcrumbs__icon" />

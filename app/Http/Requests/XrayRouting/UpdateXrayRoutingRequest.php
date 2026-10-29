@@ -69,7 +69,7 @@ class UpdateXrayRoutingRequest extends DataFormRequest
             $rules = json_decode((string) $this->input('rules_json'), true);
 
             if (! is_array($rules)) {
-                $validator->errors()->add('rules_json', 'Rules JSON must decode to an object or array.');
+                $validator->errors()->add('rules_json', 'Правила JSON должны быть объектом или массивом.');
             }
         });
     }

@@ -106,13 +106,13 @@ Each inbound record has:
 
 `external_id` is the inbound id from 3x-ui.
 
-`params` stores the raw inbound payload from 3x-ui so app logic does not depend on a rigid local schema for inbound settings.
+`params` stores the inbound definition from 3x-ui without duplicated client or top-level `configs` lists, so app logic does not depend on a rigid local schema for inbound settings while avoiding redundant large payloads.
 
 `sort_order` stores the explicit `/connect` order of inbounds inside a server.
 
 `is_visible_in_connect` and `is_visible_in_connect_v2` independently control whether an inbound appears in the matching subscription output. Both default to `true`. Amnezia mini-app config lists require the owning server and inbound to be active; subscription visibility flags do not affect those lists.
 
-Deleted or broken 3x-ui inbounds with empty payloads should not stay active locally.
+Deleted or broken 3x-ui inbounds with empty payloads are soft-deleted locally so they no longer appear on the server edit page. If a deleted inbound reappears in a later panel sync, its local record is restored.
 
 ### Xray Inbound Health Checks
 
@@ -126,7 +126,7 @@ For direct inbound and subscription profile destination probes, all destinations
 
 Proxy nodes are stored in `proxies`.
 
-Current connect behavior assumes one proxy belongs to one server through `server_id`.
+Current connect behavior assumes one proxy belongs to one server through `server_id`. Proxy host endpoints are stored in ordered `proxy_hosts` rows. The first active host by `sort` is the user-facing endpoint; later rows describe cascade hops for future automation and are currently informational.
 
 Important fields:
 
@@ -134,6 +134,7 @@ Important fields:
 - `xray_inbound_id`
 - `hide_main_node_name`
 - `sort_order`
+- `proxy_hosts` stores each proxy's host, port, cascade `sort`, and active flag
 
 `sort_order` stores the explicit position of the proxy in the mixed per-server `/connect` list alongside Xray inbounds.
 

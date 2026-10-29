@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Proxy extends Model
 {
@@ -14,8 +15,6 @@ class Proxy extends Model
 
     protected $fillable = [
         'name',
-        'host',
-        'port',
         'server_id',
         'sort_order',
         'xray_inbound_id',
@@ -30,7 +29,6 @@ class Proxy extends Model
         return [
             'is_https' => 'boolean',
             'is_ready' => 'boolean',
-            'port' => 'integer',
             'server_id' => 'integer',
             'sort_order' => 'integer',
             'xray_inbound_id' => 'integer',
@@ -50,6 +48,32 @@ class Proxy extends Model
     public function xrayInbound(): BelongsTo
     {
         return $this->belongsTo(XrayInbound::class);
+    }
+
+    public function hosts(): HasMany
+    {
+        return $this->hasMany(ProxyHost::class)->orderBy('sort')->orderBy('id');
+    }
+
+    public function entryHost(): ?ProxyHost
+    {
+        if ($this->relationLoaded('hosts')) {
+            return $this->hosts->first(fn (ProxyHost $host): bool => $host->is_active);
+        }
+
+        return $this->hosts()->where('is_active', true)->first();
+    }
+
+    public function getHostAttribute(): ?string
+    {
+        return $this->entryHost()?->host;
+    }
+
+    public function getPortAttribute(): ?int
+    {
+        $port = $this->entryHost()?->port;
+
+        return $port === null ? null : (int) $port;
     }
 
     public function getInboundIdAttribute(): ?int

@@ -123,6 +123,7 @@ Route::middleware('auth')->group(function () {
         ->name('servers.enable');
     Route::post('servers/{server}/disable', [ServerController::class, 'disable'])
         ->name('servers.disable');
+    Route::get('proxies/{proxy}/duplicate', [ProxyController::class, 'duplicate'])->name('proxies.duplicate');
     Route::resource('proxies', ProxyController::class)->except(['show']);
     Route::resource('vless-external-subscriptions', VlessExternalSubscriptionController::class)->except(['show']);
     Route::post('vless-external-subscriptions/preview', [VlessExternalSubscriptionController::class, 'preview'])

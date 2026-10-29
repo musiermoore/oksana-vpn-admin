@@ -234,6 +234,7 @@ const removePriceRow = (index) => {
                             <th>ID</th>
                             <th>Remark</th>
                             <th>Protocol</th>
+                            <th>Port</th>
                             <th>Is Active</th>
                             <th>Is Public</th>
                             <th>Connect</th>
@@ -247,6 +248,7 @@ const removePriceRow = (index) => {
                             <td>{{ inbound.external_id }}</td>
                             <td>{{ inbound.remark || '—' }}</td>
                             <td>{{ inbound.protocol || '—' }}</td>
+                            <td>{{ inbound.port || '—' }}</td>
                             <td><AppCheckbox v-model="inbound.is_active" /></td>
                             <td><AppCheckbox v-model="inbound.is_public" /></td>
                             <td><AppCheckbox v-model="inbound.is_visible_in_connect" /></td>

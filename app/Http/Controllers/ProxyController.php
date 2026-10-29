@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Proxy\StoreProxyRequest;
@@ -10,6 +12,7 @@ use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\XrayInbound;
 use App\Services\Crud\ProxyCrudService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ProxyController extends Controller
@@ -21,7 +24,7 @@ class ProxyController extends Controller
     public function index(Request $request)
     {
         $proxies = Proxy::query()
-            ->with(['server:id,name', 'xrayInbound:id,external_id'])
+            ->with(['server:id,name', 'xrayInbound:id,external_id', 'hosts'])
             ->orderBy('server_id')
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -32,16 +35,25 @@ class ProxyController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $sourceProxy = $request->integer('duplicate') > 0
+            ? Proxy::query()->with(['server', 'xrayInbound:id,external_id', 'hosts'])->findOrFail($request->integer('duplicate'))
+            : null;
+
         return $this->inertia('Proxies/Form', [
             'mode' => 'create',
             'submit_url' => route('proxies.store'),
             'method' => 'post',
-            'proxy' => null,
+            'proxy' => $sourceProxy ? (new ProxyFormResource($sourceProxy))->toArray($request) : null,
             'server_options' => $this->getServerOptions(),
             'inbound_options_by_server' => $this->getInboundOptionsByServer(),
         ]);
+    }
+
+    public function duplicate(Proxy $proxy): RedirectResponse
+    {
+        return redirect()->route('proxies.create', ['duplicate' => $proxy->getKey()]);
     }
 
     public function store(StoreProxyRequest $request)
@@ -54,7 +66,7 @@ class ProxyController extends Controller
 
     public function edit(Proxy $proxy)
     {
-        $proxy->load(['server', 'xrayInbound:id,external_id']);
+        $proxy->load(['server', 'xrayInbound:id,external_id', 'hosts']);
 
         return $this->inertia('Proxies/Form', [
             'mode' => 'edit',
@@ -109,9 +121,10 @@ class ProxyController extends Controller
                 xray_inbounds.server_id,
                 xray_inbounds.external_id,
                 xray_inbounds.sort_order,
-                JSON_UNQUOTE(JSON_EXTRACT(xi.params, '$.remark')) as label
+                JSON_UNQUOTE(JSON_EXTRACT(xray_inbounds.params, '$.remark')) as label,
+                JSON_UNQUOTE(JSON_EXTRACT(xray_inbounds.params, '$.protocol')) as protocol_name,
+                JSON_UNQUOTE(JSON_EXTRACT(xray_inbounds.params, '$.port')) as inbound_port
             ")
-            ->leftJoin('xray_inbounds as xi', 'xi.id', '=', 'xray_inbounds.id')
             ->orderBy('xray_inbounds.server_id')
             ->orderBy('xray_inbounds.sort_order')
             ->orderBy('xray_inbounds.external_id')
@@ -130,10 +143,13 @@ class ProxyController extends Controller
 
     private function buildInboundLabel(XrayInbound $inbound): string
     {
-        $label = trim((string) ($inbound->label ?? ''));
+        $remark = trim((string) ($inbound->label ?? data_get($inbound->params, 'remark', '')));
+        $protocol = trim((string) ($inbound->protocol_name ?? ''));
+        $port = $inbound->inbound_port ?? null;
+        $label = implode(' · ', array_filter([$remark, $protocol, is_numeric($port) ? (string) $port : '']));
 
         if ($label !== '') {
-            return $label;
+            return sprintf('%s (Inbound #%d)', $label, (int) $inbound->external_id);
         }
 
         return sprintf('Inbound #%d', (int) $inbound->external_id);

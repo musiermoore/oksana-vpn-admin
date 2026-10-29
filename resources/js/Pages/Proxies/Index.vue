@@ -57,6 +57,7 @@ const destroyProxy = (proxy) => {
                     <td>
                         <div class="actions">
                             <AppButton v-if="proxy.links?.edit" variant="secondary" :href="proxy.links.edit">Изменить</AppButton>
+                            <AppButton v-if="proxy.links?.duplicate" variant="secondary" :href="proxy.links.duplicate">Дублировать</AppButton>
                             <AppButton
                                 v-if="proxy.links?.destroy"
                                 variant="danger"

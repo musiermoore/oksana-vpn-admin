@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ServerFormResource;
@@ -78,7 +80,7 @@ class ServerController extends Controller
         $server->load([
             'prices',
             'xrayInbounds',
-            'proxies',
+            'proxies.hosts',
         ]);
 
         return $this->inertia('Servers/Form', [

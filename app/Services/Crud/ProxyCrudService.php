@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Crud;
 
 use App\DTOs\Proxy\ProxyData;
+use App\DTOs\Proxy\ProxyHostData;
 use App\Models\Proxy;
 use App\Models\XrayInbound;
 use App\Repositories\ProxyRepository;
+use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Facades\DB;
 
 class ProxyCrudService
 {
@@ -15,25 +20,37 @@ class ProxyCrudService
 
     public function create(ProxyData $data): Proxy
     {
-        $proxy = $this->proxies->create([
-            ...$this->buildProxyAttributes($data),
-            'sort_order' => $this->resolveNextSortOrder($data->serverId),
-        ]);
+        $proxy = DB::transaction(function () use ($data): Proxy {
+            $proxy = $this->proxies->create([
+                ...$this->buildProxyAttributes($data),
+                'sort_order' => $this->resolveNextSortOrder($data->serverId),
+            ]);
 
-        return $proxy->load(['server', 'xrayInbound']);
+            $this->syncHosts($proxy, $data->hosts);
+
+            return $proxy;
+        });
+
+        return $proxy->load(['server', 'xrayInbound', 'hosts']);
     }
 
     public function update(Proxy $proxy, ProxyData $data): Proxy
     {
-        $updatedProxy = $this->proxies->update($proxy, $this->buildProxyAttributes($data));
+        $serverChanged = (int) $proxy->server_id !== $data->serverId;
+        $updatedProxy = DB::transaction(function () use ($proxy, $data, $serverChanged): Proxy {
+            $updatedProxy = $this->proxies->update($proxy, $this->buildProxyAttributes($data));
+            $this->syncHosts($updatedProxy, $data->hosts);
 
-        if ((int) $proxy->server_id !== (int) $data->serverId) {
-            $updatedProxy->update([
-                'sort_order' => $this->resolveNextSortOrder($data->serverId),
-            ]);
-        }
+            if ($serverChanged) {
+                $updatedProxy->update([
+                    'sort_order' => $this->resolveNextSortOrder($data->serverId),
+                ]);
+            }
 
-        return $updatedProxy->load(['server', 'xrayInbound']);
+            return $updatedProxy;
+        });
+
+        return $updatedProxy->load(['server', 'xrayInbound', 'hosts']);
     }
 
     public function delete(Proxy $proxy): void
@@ -46,8 +63,11 @@ class ProxyCrudService
      */
     private function buildProxyAttributes(ProxyData $data): array
     {
+        $attributes = $data->toArray();
+        unset($attributes['hosts']);
+
         return [
-            ...$data->toArray(),
+            ...$attributes,
             'xray_inbound_id' => $this->resolveXrayInboundId($data->inboundId, $data->serverId),
         ];
     }
@@ -65,6 +85,38 @@ class ProxyCrudService
             ->first();
 
         return $record ? (int) $record->getKey() : null;
+    }
+
+    private function syncHosts(Proxy $proxy, DataCollection $hosts): void
+    {
+        $existingIds = $proxy->hosts()->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
+        $retainedIds = [];
+
+        foreach ($hosts->items() as $host) {
+            if (! $host instanceof ProxyHostData) {
+                continue;
+            }
+
+            $attributes = [
+                'host' => trim($host->host),
+                'port' => $host->port,
+                'sort' => $host->sort,
+                'is_active' => $host->isActive,
+            ];
+
+            if ($host->id !== null && in_array($host->id, $existingIds, true)) {
+                $proxy->hosts()->whereKey($host->id)->update($attributes);
+                $retainedIds[] = $host->id;
+
+                continue;
+            }
+
+            $retainedIds[] = (int) $proxy->hosts()->create($attributes)->getKey();
+        }
+
+        $proxy->hosts()
+            ->when($retainedIds !== [], fn ($query) => $query->whereNotIn('id', $retainedIds))
+            ->delete();
     }
 
     private function resolveNextSortOrder(int $serverId): int

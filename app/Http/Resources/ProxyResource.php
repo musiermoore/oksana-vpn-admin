@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -13,7 +15,14 @@ class ProxyResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'host' => $this->host,
-            'port' => (int) $this->port,
+            'port' => $this->port,
+            'hosts' => $this->whenLoaded('hosts', fn () => $this->hosts->map(fn ($host): array => [
+                'id' => (int) $host->id,
+                'host' => (string) $host->host,
+                'port' => (int) $host->port,
+                'sort' => (int) $host->sort,
+                'is_active' => (bool) $host->is_active,
+            ])->values()->all(), []),
             'server_id' => $this->server_id !== null ? (int) $this->server_id : null,
             'server_name' => $this->whenLoaded('server', fn () => $this->server?->name),
             'sort_order' => (int) $this->sort_order,
@@ -26,6 +35,7 @@ class ProxyResource extends JsonResource
             'links' => [
                 'edit' => route('proxies.edit', $this->resource),
                 'destroy' => route('proxies.destroy', $this->resource),
+                'duplicate' => route('proxies.duplicate', $this->resource),
             ],
         ];
     }

@@ -16,8 +16,15 @@ const props = defineProps({
 
 const form = useForm({
     name: props.proxy?.name ?? '',
-    host: props.proxy?.host ?? '',
-    port: props.proxy?.port ?? 443,
+    hosts: props.proxy?.hosts?.length
+        ? props.proxy.hosts.map((host) => ({
+            id: props.mode === 'edit' ? host.id : null,
+            host: host.host,
+            port: host.port,
+            sort: host.sort,
+            is_active: host.is_active,
+        }))
+        : [{ id: null, host: props.proxy?.host ?? '', port: props.proxy?.port ?? 443, sort: 0, is_active: true }],
     server_id: props.proxy?.server_id ?? '',
     inbound_id: props.proxy?.inbound_id ?? '',
     is_https: props.proxy?.is_https ?? true,
@@ -67,6 +74,16 @@ watch(selectedServerId, (serverId) => {
 });
 
 const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : form.post(props.submit_url);
+const addHost = () => form.hosts.push({
+    id: null,
+    host: '',
+    port: 443,
+    sort: Math.max(-1, ...form.hosts.map((host) => Number(host.sort) || 0)) + 1,
+    is_active: true,
+});
+const removeHost = (index) => {
+    if (form.hosts.length > 1) form.hosts.splice(index, 1);
+};
 </script>
 
 <template>
@@ -77,12 +94,26 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
 
         <form class="grid grid--two" @submit.prevent="submit">
             <label class="field"><span>Имя</span><AppInput v-model="form.name" required /></label>
-            <label class="field"><span>Host</span><AppInput v-model="form.host" required /></label>
-            <label class="field"><span>Port</span><AppInput v-model="form.port" type="number" min="1" max="65535" required /></label>
+            <div class="field" style="grid-column: 1 / -1;">
+                <div class="page-header">
+                    <div>
+                        <span>Цепочка proxy hosts</span>
+                        <p class="hint">Первый активный host используется для подключения пользователей. Остальные сохранены для настройки каскада.</p>
+                    </div>
+                    <AppButton variant="secondary" type="button" @click="addHost">Добавить host</AppButton>
+                </div>
+                <div v-for="(host, index) in form.hosts" :key="index" class="host-row">
+                    <label class="field"><span>{{ index === 0 ? 'Host' : `Cascade host ${index}` }}</span><AppInput v-model="host.host" required /></label>
+                    <label class="field"><span>Port</span><AppInput v-model="host.port" type="number" min="1" max="65535" required /></label>
+                    <label class="field"><span>Порядок</span><AppInput v-model="host.sort" type="number" min="0" required /></label>
+                    <label class="field"><span>Active</span><AppCheckbox v-model="host.is_active" /></label>
+                    <AppButton variant="danger" type="button" :disabled="form.hosts.length <= 1" @click="removeHost(index)">Удалить</AppButton>
+                </div>
+            </div>
             <label class="field"><span>Сервер</span>
                 <AppSelect v-model="form.server_id" :options="serverOptions" required />
             </label>
-            <label class="field"><span>Inbound</span>
+            <label class="field" style="grid-column: 1 / -1;"><span>Inbound</span>
                 <AppSelect v-model="form.inbound_id" :options="inboundOptions" :disabled="selectedServerId === null" />
             </label>
             <label class="field"><span>HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
@@ -100,3 +131,13 @@ const submit = () => props.method === 'patch' ? form.patch(props.submit_url) : f
         </form>
     </section>
 </template>
+
+<style scoped>
+.host-row {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(100px, 1fr) minmax(80px, 0.5fr) auto auto;
+    gap: 12px;
+    align-items: end;
+    margin-top: 12px;
+}
+</style>

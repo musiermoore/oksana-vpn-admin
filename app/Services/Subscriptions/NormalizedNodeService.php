@@ -291,7 +291,7 @@ class NormalizedNodeService
 
         $proxyQuery = Proxy::query()
             ->whereIn('server_id', $serverIds)
-            ->with('xrayInbound:id,external_id')
+            ->with(['xrayInbound:id,external_id', 'hosts'])
             ->orderBy('server_id')
             ->orderBy('sort_order')
             ->orderBy('id');
@@ -306,6 +306,10 @@ class NormalizedNodeService
                 $serverId = (int) ($proxy->server_id ?? 0);
 
                 if ($serverId < 1) {
+                    return;
+                }
+
+                if ($proxy->host === null || $proxy->port === null) {
                     return;
                 }
 

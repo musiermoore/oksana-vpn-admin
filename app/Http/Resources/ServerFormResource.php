@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -32,6 +34,7 @@ class ServerFormResource extends ServerResource
                     'is_visible_in_connect' => (bool) $inbound->is_visible_in_connect,
                     'is_visible_in_connect_v2' => (bool) $inbound->is_visible_in_connect_v2,
                     'protocol' => (string) data_get($inbound->params, 'protocol', ''),
+                    'port' => (int) data_get($inbound->params, 'port', 0),
                     'remark' => (string) data_get($inbound->params, 'remark', ''),
                 ])
                 ->values()
@@ -57,6 +60,7 @@ class ServerFormResource extends ServerResource
             'title' => 'Inbound #'.(int) $inbound->external_id,
             'subtitle' => trim(implode(' · ', array_filter([
                 (string) data_get($inbound->params, 'protocol', ''),
+                (string) data_get($inbound->params, 'port', ''),
                 (string) data_get($inbound->params, 'remark', ''),
             ]))) ?: null,
         ]);

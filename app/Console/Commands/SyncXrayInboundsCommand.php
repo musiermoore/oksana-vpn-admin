@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Models\Server;
@@ -52,10 +54,12 @@ class SyncXrayInboundsCommand extends Command
 
         $syncedExternalIds = collect();
         $existingExternalIds = XrayInbound::query()
+            ->withTrashed()
             ->where('server_id', $server->id)
             ->pluck('external_id')
             ->mapWithKeys(fn (mixed $externalId): array => [(int) $externalId => true]);
         $nextSortOrder = (int) (XrayInbound::query()
+            ->withTrashed()
             ->where('server_id', $server->id)
             ->max('sort_order') ?? -1) + 1;
         $timestamp = now();
@@ -78,6 +82,7 @@ class SyncXrayInboundsCommand extends Command
                 'external_id' => $externalId,
                 'sort_order' => $existingExternalIds->has($externalId) ? 0 : $nextSortOrder++,
                 'params' => json_encode($this->snapshotParams($inbound), JSON_THROW_ON_ERROR),
+                'deleted_at' => null,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
@@ -87,11 +92,11 @@ class SyncXrayInboundsCommand extends Command
             XrayInbound::query()->upsert(
                 $rows,
                 ['server_id', 'external_id'],
-                ['params', 'updated_at'],
+                ['params', 'deleted_at', 'updated_at'],
             );
         }
 
-        $this->markMissingInboundsAsInactive($server, $syncedExternalIds);
+        $this->softDeleteMissingInbounds($server, $syncedExternalIds);
     }
 
     /**
@@ -112,6 +117,8 @@ class SyncXrayInboundsCommand extends Command
      */
     private function snapshotParams(array $inbound): array
     {
+        unset($inbound['configs']);
+
         $settings = $inbound['settings'] ?? null;
 
         if (is_array($settings)) {
@@ -132,7 +139,7 @@ class SyncXrayInboundsCommand extends Command
     /**
      * @param  Collection<int, int>  $syncedExternalIds
      */
-    private function markMissingInboundsAsInactive(Server $server, Collection $syncedExternalIds): void
+    private function softDeleteMissingInbounds(Server $server, Collection $syncedExternalIds): void
     {
         $query = XrayInbound::query()
             ->where('server_id', $server->id);
@@ -141,9 +148,6 @@ class SyncXrayInboundsCommand extends Command
             $query->whereNotIn('external_id', $syncedExternalIds->unique()->values()->all());
         }
 
-        $query->update([
-            'is_active' => false,
-            'params' => null,
-        ]);
+        $query->delete();
     }
 }

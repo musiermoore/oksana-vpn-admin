@@ -19,8 +19,12 @@ class StoreProxyRequest extends DataFormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'host' => ['required', 'string', 'max:255'],
-            'port' => ['required', 'integer', 'between:1,65535'],
+            'hosts' => ['required', 'array', 'min:1'],
+            'hosts.*.id' => ['nullable', 'integer', Rule::exists('proxy_hosts', 'id')],
+            'hosts.*.host' => ['required', 'string', 'max:255'],
+            'hosts.*.port' => ['required', 'integer', 'between:1,65535'],
+            'hosts.*.sort' => ['required', 'integer', 'min:0'],
+            'hosts.*.is_active' => ['required', 'boolean'],
             'server_id' => ['required', 'integer', Rule::exists('servers', 'id')],
             'inbound_id' => ['nullable', 'integer', 'min:1'],
             'is_https' => ['required', 'boolean'],

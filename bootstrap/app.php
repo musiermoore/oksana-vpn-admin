@@ -37,7 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->redirectGuestsTo(fn (Request $request) => route('login'));
-        $middleware->redirectUsersTo(fn (Request $request) => route('wireguard.active-peers'));
+        $middleware->redirectUsersTo(fn (Request $request) => route('dashboard.index'));
 
         $middleware->preventRequestForgery(except: [
             'api/users/register',

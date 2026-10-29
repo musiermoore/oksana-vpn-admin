@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\TelegramAppToken;
@@ -181,6 +183,15 @@ class TelegramAppAuthTest extends TestCase
                 ->component('Auth/Login')
                 ->url('/login')
             );
+    }
+
+    public function test_authenticated_user_visiting_admin_login_is_redirected_to_dashboard(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/login')
+            ->assertRedirect('/');
     }
 
     public function test_public_login_page_uses_public_routes(): void

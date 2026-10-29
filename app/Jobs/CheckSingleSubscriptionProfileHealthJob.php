@@ -35,7 +35,9 @@ final class CheckSingleSubscriptionProfileHealthJob implements ShouldQueue, Shou
         public readonly string $profileName,
         public readonly string $mode,
         public readonly array|NormalizedNode $subject,
-    ) {}
+    ) {
+        $this->onQueue('slow');
+    }
 
     public function uniqueId(): string
     {

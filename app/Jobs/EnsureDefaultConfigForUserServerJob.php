@@ -21,7 +21,7 @@ class EnsureDefaultConfigForUserServerJob implements ShouldQueue
         public readonly int $userId,
         public readonly int $serverId,
     ) {
-        $this->onQueue('configs');
+        $this->onQueue('default');
     }
 
     public function handle(): void

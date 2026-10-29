@@ -28,7 +28,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
     public function __construct(
         public readonly int $serverId,
     ) {
-        $this->onQueue('vless-configs');
+        $this->onQueue('slow');
     }
 
     public function uniqueId(): string
@@ -92,7 +92,7 @@ class PullVlessConfigsForServerJob implements ShouldQueue, ShouldBeUnique
         }
 
         Bus::chain($jobs)
-            ->onQueue('vless-configs')
+            ->onQueue('slow')
             ->dispatch();
     }
 

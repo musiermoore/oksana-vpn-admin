@@ -18,7 +18,7 @@ class ProcessReferralRewardJob implements ShouldQueue
     public function __construct(
         public readonly int $referralId,
     ) {
-        $this->onQueue('payments');
+        $this->onQueue('default');
     }
 
     public function handle(ReferralRewardService $referralRewards): void

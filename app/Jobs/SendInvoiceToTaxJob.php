@@ -19,7 +19,7 @@ class SendInvoiceToTaxJob implements ShouldQueue
         public readonly int $invoiceId,
         public readonly ?int $initiatorUserId = null,
     ) {
-        $this->onQueue('tax');
+        $this->onQueue('slow');
     }
 
     public function handle(InvoiceTaxService $invoiceTax): void

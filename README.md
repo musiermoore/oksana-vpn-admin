@@ -90,6 +90,8 @@ If a separate Caddy reverse proxy runs in front of the app, the `app` container 
 
 Horizon needs Redis and a separate worker process. Production compose already includes `redis` and `horizon`.
 
+Production Horizon uses three worker pools: `default` (up to 3 processes), `slow` (up to 2), and `server-console` (up to 1), for a maximum of 6 worker processes. Older queue names remain monitored during the transition so already queued jobs continue to run; new jobs use `default`, `slow`, or `server-console`.
+
 Minimum `.env` values:
 
 ```.dotenv

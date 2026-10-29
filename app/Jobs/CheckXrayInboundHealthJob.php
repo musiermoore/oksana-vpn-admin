@@ -27,7 +27,10 @@ final class CheckXrayInboundHealthJob implements ShouldQueue, ShouldBeUnique
 
     public int $uniqueFor = 600;
 
-    public function __construct(public readonly int $inboundId) {}
+    public function __construct(public readonly int $inboundId)
+    {
+        $this->onQueue('slow');
+    }
 
     public function uniqueId(): string
     {

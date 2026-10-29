@@ -25,7 +25,7 @@ class PersistPulledVlessInboundJob implements ShouldQueue
         public readonly int $inboundId,
         public readonly array $updates,
     ) {
-        $this->onQueue('vless-configs');
+        $this->onQueue('slow');
     }
 
     public function handle(): void

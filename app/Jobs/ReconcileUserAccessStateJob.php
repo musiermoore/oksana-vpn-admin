@@ -16,7 +16,7 @@ class ReconcileUserAccessStateJob implements ShouldQueue
     public function __construct(
         public readonly int $userId,
     ) {
-        $this->onQueue('configs');
+        $this->onQueue('default');
     }
 
     public function handle(): void

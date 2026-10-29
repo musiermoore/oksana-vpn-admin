@@ -21,7 +21,7 @@ class ReleaseBlockedConfigsJob implements ShouldBeUnique, ShouldQueue
 
     public function __construct()
     {
-        $this->onQueue('xui-sync');
+        $this->onQueue('slow');
     }
 
     public function uniqueId(): string

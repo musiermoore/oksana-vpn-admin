@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
 use App\Models\VlessExternalSubscription;
@@ -22,7 +24,9 @@ class SyncVlessExternalSubscriptionJob implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly int $subscriptionId,
-    ) {}
+    ) {
+        $this->onQueue('slow');
+    }
 
     public function uniqueId(): string
     {

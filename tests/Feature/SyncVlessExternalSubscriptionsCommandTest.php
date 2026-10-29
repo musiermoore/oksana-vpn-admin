@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Console\Commands\SyncVlessExternalSubscriptionsCommand;
@@ -48,7 +50,7 @@ class SyncVlessExternalSubscriptionsCommandTest extends TestCase
 
         Bus::assertDispatched(SyncVlessExternalSubscriptionJob::class, function (SyncVlessExternalSubscriptionJob $job) use ($active) {
             return $job->subscriptionId === $active->id
-                && $job->queue === null;
+                && $job->queue === 'slow';
         });
 
         Bus::assertDispatchedTimes(SyncVlessExternalSubscriptionJob::class, 1);
@@ -66,7 +68,7 @@ class SyncVlessExternalSubscriptionsCommandTest extends TestCase
         $this->assertSame('*/15 * * * *', $event->expression);
     }
 
-    public function test_manual_sync_queues_job_on_default_queue(): void
+    public function test_manual_sync_queues_job_on_slow_queue(): void
     {
         Bus::fake();
 
@@ -91,7 +93,7 @@ class SyncVlessExternalSubscriptionsCommandTest extends TestCase
 
         Bus::assertDispatched(SyncVlessExternalSubscriptionJob::class, function (SyncVlessExternalSubscriptionJob $job) use ($subscription) {
             return $job->subscriptionId === $subscription->id
-                && $job->queue === null;
+                && $job->queue === 'slow';
         });
     }
 }

@@ -25,7 +25,7 @@ class SyncServerOnlineClientsJob implements ShouldBeUnique, ShouldQueue
     public function __construct(
         public readonly int $serverId,
     ) {
-        $this->onQueue('xui-sync');
+        $this->onQueue('slow');
     }
 
     public function uniqueId(): string

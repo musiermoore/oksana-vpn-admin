@@ -26,6 +26,11 @@ final class CheckSubscriptionProfilesHealthJob implements ShouldQueue, ShouldBeU
 
     public int $uniqueFor = 900;
 
+    public function __construct()
+    {
+        $this->onQueue('slow');
+    }
+
     public function uniqueId(): string
     {
         return 'subscription-profile-health';

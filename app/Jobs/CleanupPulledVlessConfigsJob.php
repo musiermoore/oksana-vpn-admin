@@ -24,7 +24,7 @@ class CleanupPulledVlessConfigsJob implements ShouldQueue
         public readonly int $serverId,
         public readonly array $retainedConfigIds,
     ) {
-        $this->onQueue('vless-configs');
+        $this->onQueue('slow');
     }
 
     public function handle(): void

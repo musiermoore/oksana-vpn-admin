@@ -18,7 +18,7 @@ class InstallWireGuardAgentForServerJob implements ShouldQueue
     public function __construct(
         public readonly int $serverId,
     ) {
-        $this->onQueue('servers');
+        $this->onQueue('slow');
     }
 
     public function handle(): void

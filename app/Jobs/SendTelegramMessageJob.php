@@ -23,7 +23,7 @@ class SendTelegramMessageJob implements ShouldQueue
     public function __construct(
         public readonly array $payload,
     ) {
-        $this->onQueue('telegram');
+        $this->onQueue('default');
     }
 
     public function handle(): void

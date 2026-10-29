@@ -18,7 +18,7 @@ class ExecuteTaxDebugRequestJob implements ShouldQueue
     public function __construct(
         public readonly int $logId,
     ) {
-        $this->onQueue('tax');
+        $this->onQueue('slow');
     }
 
     public function handle(InvoiceTaxService $invoiceTax): void

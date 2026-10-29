@@ -1,5 +1,7 @@
 {
-    frankenphp
+    frankenphp {
+        max_wait_time 30s
+    }
     auto_https off
     admin off
 }

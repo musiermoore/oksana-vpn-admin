@@ -13,7 +13,7 @@ TAG="${1:-latest}"
 FULL_IMAGE_NAME="$DOCKERHUB_USERNAME/$IMAGE_NAME:$TAG"
 
 echo "Building $FULL_IMAGE_NAME..."
-docker build \
+docker build --pull \
     -f "$PROJECT_ROOT/docker/app/Dockerfile.base" \
     -t "$FULL_IMAGE_NAME" \
     "$PROJECT_ROOT"

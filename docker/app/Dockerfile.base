@@ -1,4 +1,6 @@
-FROM dunglas/frankenphp:1-php8.5-bookworm
+FROM dunglas/frankenphp:1.13.4-php8.5-bookworm
+
+RUN php -r 'if (version_compare(PHP_VERSION, "8.5.12", "<")) { fwrite(STDERR, "PHP 8.5.12 or newer is required.\n"); exit(1); }'
 
 ARG DEBIAN_FRONTEND=noninteractive
 

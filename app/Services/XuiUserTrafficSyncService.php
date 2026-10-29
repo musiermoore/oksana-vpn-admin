@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Models\Server;
 use App\Models\UserServerStat;
-use App\Models\UserServerStatHistory;
+use App\Models\UserDailyTraffic;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class XuiUserTrafficSyncService
@@ -95,38 +96,75 @@ class XuiUserTrafficSyncService
     private function persistTotals(Server $server, array $totals): void
     {
         $collectedAt = now();
-        $statRows = [];
-        $historyRows = [];
 
-        foreach ($totals as $userId => $payload) {
-            $baseRow = [
-                'user_id' => $userId,
-                'server_id' => $server->id,
-                'upload_bytes' => $payload['upload_bytes'],
-                'download_bytes' => $payload['download_bytes'],
-                'created_at' => $collectedAt,
-                'updated_at' => $collectedAt,
-            ];
-            $statRows[] = $baseRow;
-            $historyRows[] = [...$baseRow, 'collected_at' => $collectedAt];
-        }
+        DB::transaction(function () use ($server, $totals, $collectedAt): void {
+            $previousStats = $totals === []
+                ? collect()
+                : UserServerStat::query()
+                    ->where('server_id', $server->id)
+                    ->whereIn('user_id', array_keys($totals))
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('user_id');
+            $statRows = [];
+            $dailyRows = [];
 
-        if ($statRows !== []) {
-            UserServerStat::query()->upsert(
-                $statRows,
-                ['user_id', 'server_id'],
-                ['upload_bytes', 'download_bytes', 'updated_at'],
-            );
-            UserServerStatHistory::query()->insert($historyRows);
-        }
+            foreach ($totals as $userId => $payload) {
+                $previous = $previousStats->get($userId);
+                $uploadDelta = $previous === null
+                    ? 0
+                    : $this->trafficDelta((int) $previous->upload_bytes, $payload['upload_bytes']);
+                $downloadDelta = $previous === null
+                    ? 0
+                    : $this->trafficDelta((int) $previous->download_bytes, $payload['download_bytes']);
 
-        UserServerStat::query()
-            ->where('server_id', $server->id)
-            ->when(
-                $totals !== [],
-                fn ($query) => $query->whereNotIn('user_id', array_keys($totals)),
-                fn ($query) => $query,
-            )
-            ->delete();
+                $statRows[] = [
+                    'user_id' => $userId,
+                    'server_id' => $server->id,
+                    'upload_bytes' => $payload['upload_bytes'],
+                    'download_bytes' => $payload['download_bytes'],
+                    'created_at' => $collectedAt,
+                    'updated_at' => $collectedAt,
+                ];
+
+                if ($uploadDelta === 0 && $downloadDelta === 0) {
+                    continue;
+                }
+
+                $dailyRows[] = [
+                    'user_id' => $userId,
+                    'traffic_date' => $collectedAt->toDateString(),
+                    'upload_bytes' => $uploadDelta,
+                    'download_bytes' => $downloadDelta,
+                    'created_at' => $collectedAt,
+                    'updated_at' => $collectedAt,
+                ];
+            }
+
+            if ($statRows !== []) {
+                UserServerStat::query()->upsert(
+                    $statRows,
+                    ['user_id', 'server_id'],
+                    ['upload_bytes', 'download_bytes', 'updated_at'],
+                );
+            }
+
+            if ($dailyRows !== []) {
+                UserDailyTraffic::query()->upsert(
+                    $dailyRows,
+                    ['user_id', 'traffic_date'],
+                    [
+                        'upload_bytes' => DB::raw('upload_bytes + VALUES(upload_bytes)'),
+                        'download_bytes' => DB::raw('download_bytes + VALUES(download_bytes)'),
+                        'updated_at' => DB::raw('VALUES(updated_at)'),
+                    ],
+                );
+            }
+        });
+    }
+
+    private function trafficDelta(int $previous, int $current): int
+    {
+        return $current >= $previous ? $current - $previous : $current;
     }
 }

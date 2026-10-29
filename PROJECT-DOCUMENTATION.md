@@ -167,7 +167,7 @@ Each server has an SSH username, port, and optional encrypted password in additi
 
 The main `/connect` subscription is built from normalized local and external nodes.
 
-`/connect` and `/connect-v2` report upload and download usage in `Subscription-Userinfo` for the current monthly cycle of the active subscription. Each cycle starts on the subscription's `start_date` anniversary and ends at the next anniversary (exclusive); counter decreases are treated as panel counter resets. Users without an active subscription report zero usage. The reported total remains the user's configured traffic limit.
+`/connect` and `/connect-v2` report upload and download usage in `Subscription-Userinfo` for the current monthly cycle of the active subscription. Each cycle starts on the subscription's `start_date` anniversary and ends at the next anniversary (exclusive); counter decreases are treated as panel counter resets. Usage deltas from all servers are added to one `user_daily_traffic` row per user and date. Daily totals older than 90 days are deleted. Users without an active subscription report zero usage. The reported total remains the user's configured traffic limit.
 
 External VLESS subscriptions support multiple source formats:
 
@@ -247,6 +247,10 @@ Each connected device has:
 One user agent can create separate rows per subscription route, for example one `connect` row and one `connect-wl` row for the same device.
 
 Requests with `skip_connection=true` skip this tracking for admin workflows.
+
+### Daily Traffic
+
+`user_server_stats` keeps the latest cumulative panel counters per user and server. Each five-minute sync compares the current counters with that baseline, handles counter resets, and atomically adds the deltas to `user_daily_traffic`, one row per user and date across all servers. The first counter observed for a user/server establishes a baseline and is not counted as new traffic. `/connect` sums daily deltas in the active subscription's current monthly cycle. `traffic:cleanup-daily` removes records older than the 90-day retention window.
 
 ### Support Tickets
 

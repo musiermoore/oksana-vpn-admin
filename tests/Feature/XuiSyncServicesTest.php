@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ActiveConnection;
 use App\Models\Server;
 use App\Models\User;
+use App\Models\UserDailyTraffic;
 use App\Models\UserServerStat;
 use App\Models\VlessConfig;
 use App\Services\XuiConnectionSyncService;
@@ -90,17 +91,22 @@ class XuiSyncServicesTest extends TestCase
                     ],
                 ],
             ]),
-            'https://panel.test/panel/api/clients/list' => Http::response([
-                'obj' => [[
+            'https://panel.test/panel/api/clients/list' => Http::sequence()
+                ->push(['obj' => [[
                     'email' => 'alice-config',
                     'inboundIds' => [10],
-                    'traffic' => [
-                        'up' => 512,
-                        'down' => 1024,
-                        'enable' => true,
-                    ],
-                ]],
-            ]),
+                    'traffic' => ['up' => 512, 'down' => 1024, 'enable' => true],
+                ]]])
+                ->push(['obj' => [[
+                    'email' => 'alice-config',
+                    'inboundIds' => [10],
+                    'traffic' => ['up' => 1024, 'down' => 2048, 'enable' => true],
+                ]]])
+                ->push(['obj' => [[
+                    'email' => 'alice-config',
+                    'inboundIds' => [10],
+                    'traffic' => ['up' => 256, 'down' => 512, 'enable' => true],
+                ]]]),
             'https://panel.test/panel/api/inbounds/list' => Http::response([
                 'obj' => [[
                     'id' => 10,
@@ -128,6 +134,13 @@ class XuiSyncServicesTest extends TestCase
         $this->assertSame([$user->id], $touchedUsers);
         $this->assertSame([$user->id], $statUsers);
 
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && $request->url() === 'https://panel.test/panel/api/clients/onlines');
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && $request->url() === 'https://panel.test/panel/api/clients/ips/alice-config');
+        Http::assertSent(fn (Request $request) => $request->method() === 'GET'
+            && $request->url() === 'https://panel.test/panel/api/clients/list');
+
         $this->assertDatabaseCount('active_connections', 2);
         $this->assertDatabaseHas('active_connections', [
             'user_id' => $user->id,
@@ -145,16 +158,22 @@ class XuiSyncServicesTest extends TestCase
             'download_bytes' => 1024,
         ]);
 
+        $this->assertDatabaseMissing('user_daily_traffic', ['user_id' => $user->id]);
+
+        app(XuiUserTrafficSyncService::class)->syncServer($server);
+        app(XuiUserTrafficSyncService::class)->syncServer($server);
+
+        $dailyTraffic = UserDailyTraffic::query()->where('user_id', $user->id)->first();
+        $this->assertNotNull($dailyTraffic);
+        $this->assertSame(768, (int) $dailyTraffic->upload_bytes);
+        $this->assertSame(1536, (int) $dailyTraffic->download_bytes);
+
         $stat = UserServerStat::query()->where('user_id', $user->id)->where('server_id', $server->id)->first();
 
         $this->assertNotNull($stat);
+        $this->assertSame(256, (int) $stat->upload_bytes);
+        $this->assertSame(512, (int) $stat->download_bytes);
 
-        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
-            && $request->url() === 'https://panel.test/panel/api/clients/onlines');
-        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
-            && $request->url() === 'https://panel.test/panel/api/clients/ips/alice-config');
-        Http::assertSent(fn (Request $request) => $request->method() === 'GET'
-            && $request->url() === 'https://panel.test/panel/api/clients/list');
     }
 
     public function test_online_connection_sync_ignores_missing_client_ips_endpoint(): void

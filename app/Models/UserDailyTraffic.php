@@ -1,34 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class UserServerStatHistory extends Model
+class UserDailyTraffic extends Model
 {
     protected $fillable = [
         'user_id',
-        'server_id',
+        'traffic_date',
         'upload_bytes',
         'download_bytes',
-        'collected_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'collected_at' => 'datetime',
+            'traffic_date' => 'date',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function server(): BelongsTo
-    {
-        return $this->belongsTo(Server::class);
     }
 }

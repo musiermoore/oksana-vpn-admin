@@ -8,8 +8,7 @@ use App\Models\ProxyHost;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\UserConnectedDevice;
-use App\Models\UserServerStat;
-use App\Models\UserServerStatHistory;
+use App\Models\UserDailyTraffic;
 use App\Models\UserSubscription;
 use App\Models\VlessConfig;
 use App\Models\VlessExternalSubscription;
@@ -2317,26 +2316,11 @@ class VlessConnectTest extends TestCase
             'spx' => '/',
         ]);
 
-        UserServerStat::query()->create([
+        UserDailyTraffic::query()->create([
             'user_id' => $user->id,
-            'server_id' => $server->id,
-            'upload_bytes' => 1073741824,
-            'download_bytes' => 5368709120,
-        ]);
-
-        UserServerStatHistory::query()->create([
-            'user_id' => $user->id,
-            'server_id' => $server->id,
-            'upload_bytes' => 314572800,
-            'download_bytes' => 2147483648,
-            'collected_at' => $subscriptionStart->copy()->subMinute(),
-        ]);
-        UserServerStatHistory::query()->create([
-            'user_id' => $user->id,
-            'server_id' => $server->id,
-            'upload_bytes' => 1073741824,
-            'download_bytes' => 5368709120,
-            'collected_at' => now(),
+            'traffic_date' => now()->toDateString(),
+            'upload_bytes' => 759169024,
+            'download_bytes' => 3221225472,
         ]);
         Cache::forget('subscription-metadata:'.$user->id);
 
@@ -2368,10 +2352,9 @@ class VlessConnectTest extends TestCase
         $this->assertStringContainsString('total=107374182400', $userinfo);
     }
 
-    public function test_subscription_metadata_counts_monthly_usage_after_a_panel_counter_reset(): void
+    public function test_subscription_metadata_reads_daily_usage_for_current_subscription_month(): void
     {
         $user = $this->createActiveUser('Monthly Traffic User', '@monthly-traffic-user', '123457');
-        $server = $this->createServer('Латвия', 'LV', 'lv.monthly.example.com');
         $monthStart = now()->startOfMonth();
         UserSubscription::query()
             ->where('user_id', $user->id)
@@ -2380,26 +2363,11 @@ class VlessConnectTest extends TestCase
                 'end_date' => $monthStart->copy()->addMonthNoOverflow()->toDateString(),
             ]);
 
-        UserServerStatHistory::query()->create([
+        UserDailyTraffic::query()->create([
             'user_id' => $user->id,
-            'server_id' => $server->id,
-            'upload_bytes' => 10737418240,
-            'download_bytes' => 21474836480,
-            'collected_at' => $monthStart->copy()->subMinute(),
-        ]);
-        UserServerStatHistory::query()->create([
-            'user_id' => $user->id,
-            'server_id' => $server->id,
-            'upload_bytes' => 104857600,
-            'download_bytes' => 209715200,
-            'collected_at' => $monthStart->copy()->addMinute(),
-        ]);
-        UserServerStatHistory::query()->create([
-            'user_id' => $user->id,
-            'server_id' => $server->id,
+            'traffic_date' => $monthStart->copy()->addDays(2)->toDateString(),
             'upload_bytes' => 314572800,
             'download_bytes' => 734003200,
-            'collected_at' => $monthStart->copy()->addMinutes(2),
         ]);
 
         $metadata = app(SubscriptionMetadataService::class);
@@ -2413,7 +2381,6 @@ class VlessConnectTest extends TestCase
         $this->travelTo(Carbon::parse('2026-10-29 12:00:00'));
 
         $user = $this->createActiveUser('Subscription Month User', '@subscription-month-user', '123458');
-        $server = $this->createServer('Латвия', 'LV', 'lv.subscription-month.example.com');
         UserSubscription::query()
             ->where('user_id', $user->id)
             ->update([
@@ -2422,18 +2389,17 @@ class VlessConnectTest extends TestCase
             ]);
 
         foreach ([
-            ['2026-10-01 00:00:00', 500000, 800000],
-            ['2026-10-14 23:55:00', 700000, 1000000],
-            ['2026-10-15 00:05:00', 700100, 1000300],
-            ['2026-10-16 00:05:00', 701100, 1001300],
-            ['2026-11-15 00:00:00', 9000000, 9000000],
-        ] as [$collectedAt, $uploadBytes, $downloadBytes]) {
-            UserServerStatHistory::query()->create([
+            ['2026-10-01', 500000, 800000],
+            ['2026-10-14', 200000, 200000],
+            ['2026-10-15', 100, 300],
+            ['2026-10-16', 1000, 1000],
+            ['2026-11-15', 9000000, 9000000],
+        ] as [$trafficDate, $uploadBytes, $downloadBytes]) {
+            UserDailyTraffic::query()->create([
                 'user_id' => $user->id,
-                'server_id' => $server->id,
+                'traffic_date' => $trafficDate,
                 'upload_bytes' => $uploadBytes,
                 'download_bytes' => $downloadBytes,
-                'collected_at' => Carbon::parse($collectedAt),
             ]);
         }
 

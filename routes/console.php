@@ -3,6 +3,7 @@
 use App\Console\Commands\AddExtraPayments;
 use App\Console\Commands\CalculatePeersTraffic;
 use App\Console\Commands\CheckXrayInboundHealthCommand;
+use App\Console\Commands\CleanupDailyTrafficCommand;
 use App\Console\Commands\CleanupSupportTicketsCommand;
 use App\Console\Commands\CreateDefaultConfigsForActiveSubscribersCommand;
 use App\Console\Commands\DisableConfigsOfOverdueDebtorsCommand;
@@ -33,6 +34,7 @@ Schedule::command(SendSubscriptionExpiryRemindersCommand::class)->everyFiveMinut
 Schedule::command(DisableConfigsOfOverdueDebtorsCommand::class)->everyFiveMinutes();
 Schedule::command(SendPaidInvoicesToTaxCommand::class)->dailyAt('06:00')->timezone('UTC');
 Schedule::command(CleanupSupportTicketsCommand::class)->hourly();
+Schedule::command(CleanupDailyTrafficCommand::class)->dailyAt('00:15');
 
 Schedule::call(function (): void {
     Server::query()

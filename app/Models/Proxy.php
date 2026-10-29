@@ -15,6 +15,7 @@ class Proxy extends Model
 
     protected $fillable = [
         'name',
+        'proxy_group_id',
         'server_id',
         'sort_order',
         'xray_inbound_id',
@@ -30,6 +31,7 @@ class Proxy extends Model
             'is_https' => 'boolean',
             'is_ready' => 'boolean',
             'server_id' => 'integer',
+            'proxy_group_id' => 'integer',
             'sort_order' => 'integer',
             'xray_inbound_id' => 'integer',
             'hide_main_node_name' => 'boolean',
@@ -94,5 +96,10 @@ class Proxy extends Model
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function proxyGroup(): BelongsTo
+    {
+        return $this->belongsTo(ProxyGroup::class);
     }
 }

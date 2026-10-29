@@ -68,6 +68,7 @@ class ProxyCrudService
 
         return [
             ...$attributes,
+            'proxy_group_id' => $data->proxyGroupId,
             'xray_inbound_id' => $this->resolveXrayInboundId($data->inboundId, $data->serverId),
         ];
     }
@@ -102,6 +103,8 @@ class ProxyCrudService
                 'port' => $host->port,
                 'sort' => $host->sort,
                 'is_active' => $host->isActive,
+                'is_https' => $host->isHttps,
+                'proxy_server_id' => $host->proxyServerId,
             ];
 
             if ($host->id !== null && in_array($host->id, $existingIds, true)) {

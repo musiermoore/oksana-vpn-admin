@@ -13,6 +13,7 @@ use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NonRegularPaymentController;
 use App\Http\Controllers\ProxyController;
+use App\Http\Controllers\ProxyGroupController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SearchController;
@@ -125,6 +126,12 @@ Route::middleware('auth')->group(function () {
         ->name('servers.disable');
     Route::get('proxies/{proxy}/duplicate', [ProxyController::class, 'duplicate'])->name('proxies.duplicate');
     Route::resource('proxies', ProxyController::class)->except(['show']);
+    Route::get('proxy-groups', [ProxyGroupController::class, 'index'])->name('proxy-groups.index');
+    Route::post('proxy-groups', [ProxyGroupController::class, 'store'])->name('proxy-groups.store');
+    Route::patch('proxy-groups/{proxyGroup}', [ProxyGroupController::class, 'update'])->name('proxy-groups.update');
+    Route::delete('proxy-groups/{proxyGroup}', [ProxyGroupController::class, 'destroy'])->name('proxy-groups.destroy');
+    Route::get('proxy-groups/{proxyGroup}/configuration-preview', [ProxyGroupController::class, 'preview'])->name('proxy-groups.configuration-preview');
+    Route::post('proxy-groups/{proxyGroup}/configure', [ProxyGroupController::class, 'apply'])->name('proxy-groups.configure');
     Route::resource('vless-external-subscriptions', VlessExternalSubscriptionController::class)->except(['show']);
     Route::post('vless-external-subscriptions/preview', [VlessExternalSubscriptionController::class, 'preview'])
         ->name('vless-external-subscriptions.preview');

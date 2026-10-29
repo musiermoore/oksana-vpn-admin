@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProxyHost extends Model
 {
-    protected $fillable = ['host', 'port', 'sort', 'is_active'];
+    protected $fillable = ['host', 'port', 'sort', 'is_active', 'is_https', 'proxy_server_id'];
 
     protected function casts(): array
     {
@@ -17,11 +17,18 @@ class ProxyHost extends Model
             'port' => 'integer',
             'sort' => 'integer',
             'is_active' => 'boolean',
+            'is_https' => 'boolean',
+            'proxy_server_id' => 'integer',
         ];
     }
 
     public function proxy(): BelongsTo
     {
         return $this->belongsTo(Proxy::class);
+    }
+
+    public function proxyServer(): BelongsTo
+    {
+        return $this->belongsTo(Server::class, 'proxy_server_id');
     }
 }

@@ -22,7 +22,7 @@ const destroyProxy = (proxy) => {
 
     <section class="page-card stack">
         <div class="page-header">
-            <div><h1>Прокси</h1></div>
+            <div><h1>Прокси</h1><p class="hint">{{ proxies.length }} прокси · <a href="/proxy-groups">Группы каскадов</a></p></div>
             <div class="actions">
                 <AppButton href="/proxies/create">Создать</AppButton>
             </div>
@@ -37,6 +37,7 @@ const destroyProxy = (proxy) => {
                     <th>Сервер</th>
                     <th>Порядок</th>
                     <th>Имя</th>
+                    <th>Группа</th>
                     <th>Адрес узла</th>
                     <th>Порт</th>
                     <th>HTTPS</th>
@@ -50,6 +51,7 @@ const destroyProxy = (proxy) => {
                     <td>{{ proxy.server_name || '—' }}</td>
                     <td>{{ proxy.sort_order }}</td>
                     <td>{{ proxy.name }}</td>
+                    <td>{{ proxy.proxy_group_name || '—' }}</td>
                     <td>{{ proxy.host }}</td>
                     <td>{{ proxy.port }}</td>
                     <td>{{ proxy.is_https ? 'Да' : 'Нет' }}</td>

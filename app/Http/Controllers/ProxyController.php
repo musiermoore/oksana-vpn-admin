@@ -9,6 +9,7 @@ use App\Http\Requests\Proxy\UpdateProxyRequest;
 use App\Http\Resources\ProxyFormResource;
 use App\Http\Resources\ProxyResource;
 use App\Models\Proxy;
+use App\Models\ProxyGroup;
 use App\Models\Server;
 use App\Models\XrayInbound;
 use App\Services\Crud\ProxyCrudService;
@@ -24,7 +25,7 @@ class ProxyController extends Controller
     public function index(Request $request)
     {
         $proxies = Proxy::query()
-            ->with(['server:id,name', 'xrayInbound:id,external_id', 'hosts'])
+            ->with(['server:id,name', 'proxyGroup:id,name', 'xrayInbound:id,external_id', 'hosts.proxyServer:id,name'])
             ->orderBy('server_id')
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -48,6 +49,7 @@ class ProxyController extends Controller
             'proxy' => $sourceProxy ? (new ProxyFormResource($sourceProxy))->toArray($request) : null,
             'server_options' => $this->getServerOptions(),
             'inbound_options_by_server' => $this->getInboundOptionsByServer(),
+            'proxy_group_options' => $this->getProxyGroupOptions(),
         ]);
     }
 
@@ -66,7 +68,7 @@ class ProxyController extends Controller
 
     public function edit(Proxy $proxy)
     {
-        $proxy->load(['server', 'xrayInbound:id,external_id', 'hosts']);
+        $proxy->load(['server', 'proxyGroup:id,name', 'xrayInbound:id,external_id', 'hosts.proxyServer:id,name']);
 
         return $this->inertia('Proxies/Form', [
             'mode' => 'edit',
@@ -75,6 +77,7 @@ class ProxyController extends Controller
             'proxy' => (new ProxyFormResource($proxy))->toArray(request()),
             'server_options' => $this->getServerOptions(),
             'inbound_options_by_server' => $this->getInboundOptionsByServer(),
+            'proxy_group_options' => $this->getProxyGroupOptions(),
         ]);
     }
 
@@ -139,6 +142,15 @@ class ProxyController extends Controller
                 ->values()
                 ->all())
             ->all();
+    }
+
+    /** @return array<int, array{value:int, label:string}> */
+    private function getProxyGroupOptions(): array
+    {
+        return ProxyGroup::query()->orderBy('name')->get()->map(fn (ProxyGroup $group): array => [
+            'value' => (int) $group->id,
+            'label' => $group->name,
+        ])->all();
     }
 
     private function buildInboundLabel(XrayInbound $inbound): string

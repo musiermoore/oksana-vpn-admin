@@ -12,6 +12,7 @@ const props = defineProps({
     proxy: Object,
     server_options: Array,
     inbound_options_by_server: Object,
+    proxy_group_options: Array,
 });
 
 const form = useForm({
@@ -23,8 +24,11 @@ const form = useForm({
             port: host.port,
             sort: host.sort,
             is_active: host.is_active,
+            is_https: host.is_https ?? false,
+            proxy_server_id: host.proxy_server_id ?? null,
         }))
-        : [{ id: null, host: props.proxy?.host ?? '', port: props.proxy?.port ?? 443, sort: 0, is_active: true }],
+        : [{ id: null, host: props.proxy?.host ?? '', port: props.proxy?.port ?? 443, sort: 0, is_active: true, is_https: false, proxy_server_id: null }],
+    proxy_group_id: props.proxy?.proxy_group_id ?? '',
     server_id: props.proxy?.server_id ?? '',
     inbound_id: props.proxy?.inbound_id ?? '',
     is_https: props.proxy?.is_https ?? true,
@@ -46,6 +50,17 @@ const selectedServerId = computed(() => {
     return Number(form.server_id);
 });
 
+const entryHostIndex = computed(() => form.hosts
+    .map((host, index) => ({ host, index }))
+    .filter(({ host }) => Boolean(host.is_active))
+    .sort((left, right) => (Number(left.host.sort) || 0) - (Number(right.host.sort) || 0) || left.index - right.index)[0]?.index ?? -1);
+
+watch(entryHostIndex, (index) => {
+    if (index >= 0 && form.hosts[index]?.proxy_server_id) {
+        form.hosts[index].proxy_server_id = null;
+    }
+}, { immediate: true });
+
 const inboundOptions = computed(() => {
     if (selectedServerId.value === null) {
         return [{ label: 'Сначала выберите сервер', value: '', disabled: true }];
@@ -55,6 +70,15 @@ const inboundOptions = computed(() => {
         { label: 'Все входящие узлы', value: '' },
         ...(props.inbound_options_by_server?.[selectedServerId.value] ?? []),
     ];
+});
+
+const finalDestination = computed(() => {
+    const server = props.server_options.find((option) => Number(option.value) === selectedServerId.value);
+    const inbound = inboundOptions.value.find((option) => String(option.value) === String(form.inbound_id));
+    const scheme = form.is_https ? 'https' : 'tcp';
+    const destination = [server?.label, inbound?.label && inbound.value !== '' ? inbound.label : 'входящий узел'];
+
+    return `${scheme}://${destination.filter(Boolean).join(' · ')}`;
 });
 
 watch(selectedServerId, (serverId) => {
@@ -80,6 +104,8 @@ const addHost = () => form.hosts.push({
     port: 443,
     sort: Math.max(-1, ...form.hosts.map((host) => Number(host.sort) || 0)) + 1,
     is_active: true,
+    is_https: false,
+    proxy_server_id: null,
 });
 const removeHost = (index) => {
     if (form.hosts.length > 1) form.hosts.splice(index, 1);
@@ -103,21 +129,30 @@ const removeHost = (index) => {
                     <AppButton variant="secondary" type="button" @click="addHost">Добавить узел</AppButton>
                 </div>
                 <div v-for="(host, index) in form.hosts" :key="index" class="host-row">
-                    <label class="field"><span>{{ index === 0 ? 'Адрес узла' : `Адрес каскадного узла ${index}` }}</span><AppInput v-model="host.host" required /></label>
+                    <label class="field"><span>{{ index === entryHostIndex ? 'Точка входа для подписки' : `Каскадный узел ${index}` }}</span><AppInput v-model="host.host" required /></label>
                     <label class="field"><span>Порт</span><AppInput v-model="host.port" type="number" min="1" max="65535" required /></label>
                     <label class="field"><span>Порядок</span><AppInput v-model="host.sort" type="number" min="0" required /></label>
                     <label class="field"><span>Узел активен</span><AppCheckbox v-model="host.is_active" /></label>
+                    <label class="field"><span>HTTPS на узле</span><AppCheckbox v-model="host.is_https" /></label>
+                    <label v-if="host.is_active && index !== entryHostIndex" class="field"><span>Сервер для настройки HAProxy</span><AppSelect v-model="host.proxy_server_id" :options="serverOptions" /></label>
                     <AppButton variant="danger" type="button" :disabled="form.hosts.length <= 1" @click="removeHost(index)">Удалить</AppButton>
                 </div>
             </div>
+            <label class="field"><span>Группа каскадных прокси</span>
+                <AppSelect v-model="form.proxy_group_id" :options="[{ label: 'Без группы', value: '' }, ...props.proxy_group_options]" />
+            </label>
             <label class="field"><span>Сервер</span>
                 <AppSelect v-model="form.server_id" :options="serverOptions" required />
             </label>
             <label class="field" style="grid-column: 1 / -1;"><span>Входящий узел</span>
                 <AppSelect v-model="form.inbound_id" :options="inboundOptions" :disabled="selectedServerId === null" />
             </label>
-            <label class="field"><span>Использовать HTTPS</span><AppCheckbox v-model="form.is_https" /></label>
-            <label class="field"><span>Прокси готов<AppHelpTip text="Готовый прокси может использоваться в конфигурациях. Это состояние доступности, а не настройка видимости для пользователей." /></span><AppCheckbox v-model="form.is_ready" enabled-label="Готов" disabled-label="Не готов" /></label>
+            <label class="field"><span>HTTPS для конечного сервера</span><AppCheckbox v-model="form.is_https" /></label>
+            <div class="field final-destination" style="grid-column: 1 / -1;">
+                <span>Конечная точка каскада (из сервера и входящего узла)</span>
+                <code>{{ finalDestination }}</code>
+            </div>
+            <label class="field"><span>Прокси готов<AppHelpTip text="Если выключено, прокси скрыт в подписке у пользователей, но остаётся доступен администраторам." /></span><AppCheckbox v-model="form.is_ready" enabled-label="Готов" disabled-label="Только администраторы" /></label>
             <label class="field"><span>Скрывать имя основного сервера<AppHelpTip text="В ссылке подключения будет показано только имя прокси, без имени основного сервера." /></span><AppCheckbox v-model="form.hide_main_node_name" enabled-label="Скрывать" disabled-label="Показывать" /></label>
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>

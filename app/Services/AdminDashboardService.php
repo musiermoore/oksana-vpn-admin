@@ -139,7 +139,7 @@ class AdminDashboardService
     private function networkSection(int $activeServers, int $serverWarnings): array
     {
         return ['label' => 'Сеть', 'icon' => 'server', 'description' => 'Серверы, Xray-конфигурации, прокси и внешние подписки.', 'links' => [
-            ['label' => 'Серверы', 'href' => route('servers.index')], ['label' => 'Конфигурации Xray', 'href' => route('xray-configs.index')], ['label' => 'Прокси', 'href' => route('proxies.index')], ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index')],
+            ['label' => 'Серверы', 'href' => route('servers.index')], ['label' => 'Конфигурации Xray', 'href' => route('xray-configs.index')], ['label' => 'Прокси', 'href' => route('proxies.index')], ['label' => 'Группы прокси', 'href' => route('proxy-groups.index')], ['label' => 'Внешние подписки', 'href' => route('vless-external-subscriptions.index')],
         ], 'highlights' => [sprintf('%d активных серверов', $activeServers), sprintf('%d серверов с предупреждениями', $serverWarnings), sprintf('%d активных внешних подписок', VlessExternalSubscription::query()->where('is_active', true)->count())]];
     }
 

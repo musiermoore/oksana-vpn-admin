@@ -126,15 +126,32 @@ For direct inbound and subscription profile destination probes, all destinations
 
 Proxy nodes are stored in `proxies`.
 
-Current connect behavior assumes one proxy belongs to one server through `server_id`. Proxy host endpoints are stored in ordered `proxy_hosts` rows. The first active host by `sort` is the user-facing endpoint; later rows describe cascade hops for future automation and are currently informational.
+Current connect behavior assumes one proxy belongs to one final destination server through `server_id`. Proxy host endpoints are stored in ordered `proxy_hosts` rows. The first active host by `sort` is the user-facing VLESS entrypoint. Every later active row describes a cascade hop and must select the server where HAProxy is configured with `proxy_server_id` before the group can be previewed or deployed. `proxy_hosts.is_https` controls TLS for that hop; `proxies.is_https` applies only to the final destination.
+
+`proxy_groups` groups related proxies for shared cascade configuration. The proxy group admin page previews each proxy's complete route, systemd HAProxy override, and generated frontend/backend files before an administrator confirms deployment. The deployment checks the frontend and backend templates for `{TEXT}`, checks the effective `haproxy` systemd `ExecStart`, backs up active config files, renders the group config, validates it with `haproxy -c`, restarts HAProxy, and checks for `Active: active (running)`. A failure restores backups and restarts the affected servers. Backups are removed only after all group servers restart successfully.
+
+On every configured proxy server, retain `/etc/haproxy/frontends/frontend.cfg.template` and `/etc/haproxy/backends/backend.cfg.template`, each with a `{TEXT}` insertion point. `systemctl edit haproxy` must configure the service with:
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/usr/sbin/haproxy -Ws \
+    -f /etc/haproxy/haproxy.cfg \
+    -f /etc/haproxy/frontends/frontend.cfg \
+    -f /etc/haproxy/backends/backend.cfg \
+    -p /run/haproxy.pid
+```
+
+Proxy `is_ready` controls availability to subscribers: non-admin subscription output filters out proxies that are not ready. Admin subscription output can still include them. It does not hide the proxy from the admin UI.
 
 Important fields:
 
 - `server_id`
+- `proxy_group_id` (nullable)
 - `xray_inbound_id`
 - `hide_main_node_name`
 - `sort_order`
-- `proxy_hosts` stores each proxy's host, port, cascade `sort`, and active flag
+- `proxy_hosts` stores each proxy's host, port, cascade `sort`, active flag, per-hop HTTPS setting, and optional HAProxy configuration server
 
 `sort_order` stores the explicit position of the proxy in the mixed per-server `/connect` list alongside Xray inbounds.
 

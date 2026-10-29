@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\Proxy\ProxyData;
 use App\DTOs\Proxy\ProxyHostData;
 use App\Models\Proxy;
+use App\Models\ProxyGroup;
 use App\Models\Server;
 use App\Models\XrayInbound;
 use App\Services\Crud\ProxyCrudService;
@@ -20,6 +21,7 @@ class ProxyCrudServiceTest extends TestCase
     {
         $serverOne = $this->createServer('LV1');
         $serverTwo = $this->createServer('FI1');
+        $proxyGroup = ProxyGroup::query()->create(['name' => 'Nordic']);
         $inbound = XrayInbound::query()->create([
             'server_id' => $serverOne->id,
             'external_id' => 10,
@@ -32,24 +34,37 @@ class ProxyCrudServiceTest extends TestCase
 
         $proxy = $service->create(new ProxyData(
             name: 'Ru Proxy',
-            hosts: new DataCollection(ProxyHostData::class, [new ProxyHostData(
-                host: 'proxy.example.com',
-                port: 443,
-                sort: 0,
-                isActive: true,
-            )]),
+            hosts: new DataCollection(ProxyHostData::class, [
+                new ProxyHostData(
+                    host: 'proxy.example.com',
+                    port: 443,
+                    sort: 0,
+                    isActive: true,
+                    isHttps: true,
+                ),
+                new ProxyHostData(
+                    host: 'cascade.example.com',
+                    port: 8443,
+                    sort: 1,
+                    isActive: true,
+                    isHttps: true,
+                    proxyServerId: $serverTwo->id,
+                ),
+            ]),
             isHttps: true,
             isReady: true,
             hideMainNodeName: true,
             serverId: $serverOne->id,
             inboundId: 10,
             description: 'Primary proxy',
+            proxyGroupId: $proxyGroup->id,
         ));
 
         $this->assertDatabaseHas('proxies', [
             'id' => $proxy->id,
             'name' => 'Ru Proxy',
             'server_id' => $serverOne->id,
+            'proxy_group_id' => $proxyGroup->id,
             'xray_inbound_id' => $inbound->id,
             'is_ready' => true,
             'hide_main_node_name' => true,
@@ -61,6 +76,13 @@ class ProxyCrudServiceTest extends TestCase
             'host' => 'proxy.example.com',
             'port' => 443,
             'sort' => 0,
+            'is_https' => true,
+        ]);
+        $this->assertDatabaseHas('proxy_hosts', [
+            'proxy_id' => $proxy->id,
+            'host' => 'cascade.example.com',
+            'proxy_server_id' => $serverTwo->id,
+            'is_https' => true,
         ]);
         $this->assertSame($serverOne->id, $proxy->server?->id);
 
@@ -79,6 +101,7 @@ class ProxyCrudServiceTest extends TestCase
             serverId: $serverTwo->id,
             inboundId: null,
             description: null,
+            proxyGroupId: $proxyGroup->id,
         ));
 
         $this->assertSame($serverTwo->id, $proxy->server?->id);
@@ -88,6 +111,7 @@ class ProxyCrudServiceTest extends TestCase
             'host' => 'proxy-updated.example.com',
             'port' => 8443,
             'sort' => 2,
+            'is_https' => false,
         ]);
         $this->assertDatabaseHas('proxies', [
             'id' => $proxy->id,

@@ -21,6 +21,7 @@ class ProxyData extends Data
         public int $serverId,
         public ?int $inboundId = null,
         public ?string $description = null,
+        public ?int $proxyGroupId = null,
     ) {}
 
     public function toArray(): array
@@ -28,6 +29,7 @@ class ProxyData extends Data
         return [
             'name' => $this->name,
             'server_id' => $this->serverId,
+            'proxy_group_id' => $this->proxyGroupId,
             'is_https' => $this->isHttps,
             'is_ready' => $this->isReady,
             'hide_main_node_name' => $this->hideMainNodeName,

@@ -14,5 +14,7 @@ class ProxyHostData extends Data
         public int $sort,
         public bool $isActive,
         public ?int $id = null,
+        public bool $isHttps = false,
+        public ?int $proxyServerId = null,
     ) {}
 }

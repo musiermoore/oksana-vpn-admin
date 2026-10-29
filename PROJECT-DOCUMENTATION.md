@@ -167,7 +167,7 @@ Each server has an SSH username, port, and optional encrypted password in additi
 
 The main `/connect` subscription is built from normalized local and external nodes.
 
-`/connect` and `/connect-v2` report monthly upload and download usage in `Subscription-Userinfo`. Usage is calculated from consecutive `user_server_stat_histories` snapshots since the start of the current calendar month, with counter decreases treated as panel counter resets. The reported total remains the user's configured traffic limit.
+`/connect` and `/connect-v2` report upload and download usage in `Subscription-Userinfo` for the current monthly cycle of the active subscription. Each cycle starts on the subscription's `start_date` anniversary and ends at the next anniversary (exclusive); counter decreases are treated as panel counter resets. Users without an active subscription report zero usage. The reported total remains the user's configured traffic limit.
 
 External VLESS subscriptions support multiple source formats:
 

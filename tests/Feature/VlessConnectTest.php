@@ -2287,6 +2287,13 @@ class VlessConnectTest extends TestCase
                 'subscription_expires_at' => now()->addDays(7)->endOfDay(),
             ],
         );
+        $subscriptionStart = now()->startOfMonth();
+        UserSubscription::query()
+            ->where('user_id', $user->id)
+            ->update([
+                'start_date' => $subscriptionStart->toDateString(),
+                'end_date' => $subscriptionStart->copy()->addMonthNoOverflow()->toDateString(),
+            ]);
 
         $server = $this->createServer('Латвия', 'LV', 'lv.example.com');
 
@@ -2322,7 +2329,7 @@ class VlessConnectTest extends TestCase
             'server_id' => $server->id,
             'upload_bytes' => 314572800,
             'download_bytes' => 2147483648,
-            'collected_at' => now()->startOfMonth()->subMinute(),
+            'collected_at' => $subscriptionStart->copy()->subMinute(),
         ]);
         UserServerStatHistory::query()->create([
             'user_id' => $user->id,
@@ -2366,6 +2373,12 @@ class VlessConnectTest extends TestCase
         $user = $this->createActiveUser('Monthly Traffic User', '@monthly-traffic-user', '123457');
         $server = $this->createServer('Латвия', 'LV', 'lv.monthly.example.com');
         $monthStart = now()->startOfMonth();
+        UserSubscription::query()
+            ->where('user_id', $user->id)
+            ->update([
+                'start_date' => $monthStart->toDateString(),
+                'end_date' => $monthStart->copy()->addMonthNoOverflow()->toDateString(),
+            ]);
 
         UserServerStatHistory::query()->create([
             'user_id' => $user->id,
@@ -2393,6 +2406,41 @@ class VlessConnectTest extends TestCase
 
         $this->assertSame(314572800, $metadata->getUpload($user));
         $this->assertSame(734003200, $metadata->getDownload($user));
+    }
+
+    public function test_subscription_metadata_uses_the_active_subscription_month_window(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-29 12:00:00'));
+
+        $user = $this->createActiveUser('Subscription Month User', '@subscription-month-user', '123458');
+        $server = $this->createServer('Латвия', 'LV', 'lv.subscription-month.example.com');
+        UserSubscription::query()
+            ->where('user_id', $user->id)
+            ->update([
+                'start_date' => '2026-08-15',
+                'end_date' => '2026-11-15',
+            ]);
+
+        foreach ([
+            ['2026-10-01 00:00:00', 500000, 800000],
+            ['2026-10-14 23:55:00', 700000, 1000000],
+            ['2026-10-15 00:05:00', 700100, 1000300],
+            ['2026-10-16 00:05:00', 701100, 1001300],
+            ['2026-11-15 00:00:00', 9000000, 9000000],
+        ] as [$collectedAt, $uploadBytes, $downloadBytes]) {
+            UserServerStatHistory::query()->create([
+                'user_id' => $user->id,
+                'server_id' => $server->id,
+                'upload_bytes' => $uploadBytes,
+                'download_bytes' => $downloadBytes,
+                'collected_at' => Carbon::parse($collectedAt),
+            ]);
+        }
+
+        $metadata = app(SubscriptionMetadataService::class);
+
+        $this->assertSame(1100, $metadata->getUpload($user));
+        $this->assertSame(1300, $metadata->getDownload($user));
     }
 
     public function test_connect_prefers_local_static_link_over_remote_subscription_source(): void

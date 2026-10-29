@@ -6,7 +6,9 @@ namespace App\Services;
 
 use App\Models\ActiveConnection;
 use App\Models\User;
+use App\Models\UserSubscription;
 use App\Models\UserServerStatHistory;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -108,7 +110,7 @@ class SubscriptionMetadataService
         return Cache::remember(
             $this->cacheKey((int) $user->id),
             now()->addSeconds(self::CACHE_TTL_SECONDS),
-            fn () => $this->buildPayload($user->fresh(['latestActiveOrFutureSubscription']) ?? $user),
+            fn () => $this->buildPayload($user->fresh(['activeSubscription']) ?? $user),
         );
     }
 
@@ -138,7 +140,13 @@ class SubscriptionMetadataService
     /** @return array{upload:int,download:int} */
     private function monthlyTrafficTotals(User $user): array
     {
-        $periodStart = now()->startOfMonth();
+        $subscription = $user->activeSubscription;
+
+        if (! $subscription instanceof UserSubscription) {
+            return ['upload' => 0, 'download' => 0];
+        }
+
+        [$periodStart, $periodEnd] = $this->currentSubscriptionMonth($subscription);
         $baselineRows = UserServerStatHistory::query()
             ->where('user_id', $user->id)
             ->where('collected_at', '<', $periodStart)
@@ -158,6 +166,7 @@ class SubscriptionMetadataService
         $monthlyRows = UserServerStatHistory::query()
             ->where('user_id', $user->id)
             ->where('collected_at', '>=', $periodStart)
+            ->where('collected_at', '<', $periodEnd)
             ->orderBy('server_id')
             ->orderBy('collected_at')
             ->orderBy('id')
@@ -180,6 +189,23 @@ class SubscriptionMetadataService
         }
 
         return $totals;
+    }
+
+    /** @return array{0:Carbon,1:Carbon} */
+    private function currentSubscriptionMonth(UserSubscription $subscription): array
+    {
+        $anchor = Carbon::parse($subscription->start_date)->startOfDay();
+        $periodStart = $anchor->copy();
+        $monthOffset = 1;
+        $periodEnd = $anchor->copy()->addMonthNoOverflow();
+
+        while ($periodEnd->lessThanOrEqualTo(now())) {
+            $periodStart = $periodEnd;
+            $monthOffset++;
+            $periodEnd = $anchor->copy()->addMonthsNoOverflow($monthOffset);
+        }
+
+        return [$periodStart, $periodEnd];
     }
 
     private function trafficDelta(int $previous, int $current): int

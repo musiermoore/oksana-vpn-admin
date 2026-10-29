@@ -160,6 +160,7 @@ Correct reactivation usually needs both steps: create missing configs, then reco
 Main `/connect`:
 
 - Built by [UserSubscriptionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Subscriptions/UserSubscriptionService.php).
+- `Subscription-Userinfo` upload/download totals cover the active subscription's current monthly cycle, anchored to its `start_date` and ending at the next monthly anniversary (exclusive). A panel counter decrease is treated as a counter reset; when there is no active subscription, reported usage is zero.
 - Successful requests update `user_connected_devices` by user, `User-Agent`, and route `connect`.
 - `skip_connection=true` disables device tracking for admin requests.
 - Output includes regular user VLESS nodes and external subscriptions with `include_in_main_subscription`.

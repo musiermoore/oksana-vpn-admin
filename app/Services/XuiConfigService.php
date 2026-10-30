@@ -225,12 +225,13 @@ class XuiConfigService
     private function matchesInbound(VlessConfig $config, array $inbound): bool
     {
         $inboundId = (int) ($inbound['id'] ?? 0);
+        $configInboundId = $config->getResolvedInboundId();
 
-        if (($config->getResolvedInboundId() ?? 0) > 0) {
-            return (int) $config->getResolvedInboundId() === $inboundId;
+        if ($configInboundId === null || $configInboundId < 1 || $inboundId < 1) {
+            return false;
         }
 
-        return mb_strtolower((string) $config->type) === mb_strtolower((string) ($inbound['type'] ?? ''));
+        return $configInboundId === $inboundId;
     }
 
     private function looksLikeUsersConfig(VlessConfig $config, User $user): bool

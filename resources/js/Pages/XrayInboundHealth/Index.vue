@@ -360,6 +360,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 .health-matrix tbody th { padding: .65rem 1rem; border-bottom: 1px solid var(--border-color, #e5e7eb); text-align: left; }
 .health-matrix td { font-size: 1.1rem; }
 .inbound-health-table th, .inbound-health-table td { padding: .9rem 1rem; border-bottom: 1px solid var(--border-color, #e5e7eb); text-align: left; vertical-align: top; }
+.inbound-health-table.health-matrix td { text-align: center; vertical-align: middle; }
 .inbound-health-table th { color: var(--text-muted, #64748b); font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
 .inbound-health-table td strong, .inbound-health-table td small { display: block; }
 .inbound-health-table td small { margin-top: .25rem; color: var(--text-muted, #64748b); }

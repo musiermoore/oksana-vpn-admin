@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\Jobs\CheckSingleSubscriptionProfileHealthJob;
-use App\Jobs\SendSubscriptionHealthSummaryJob;
 use App\Models\SubscriptionProfileHealthCheck;
 use Illuminate\Support\Str;
 use Throwable;
@@ -15,8 +14,6 @@ final class SubscriptionProfileHealthRecorder
 {
     /** @var array<string, array<int, string>> */
     private array $seenProfiles = [];
-
-    public function __construct(private readonly TelegramDevChatService $devChat) {}
 
     public function runFlow(string $flow, callable $check): void
     {
@@ -86,7 +83,6 @@ final class SubscriptionProfileHealthRecorder
             'flow' => $flow,
             'profile_key' => $key,
         ]);
-        $previousStatus = $check->status;
         $check->fill([
             'name' => Str::limit($name, 255, ''),
             'status' => $result['status'],
@@ -95,7 +91,6 @@ final class SubscriptionProfileHealthRecorder
             'checked_at' => now(),
         ])->save();
 
-        $this->notifyOnTransition($flow, $check, $previousStatus);
     }
 
     public function recordEmpty(string $flow, array $items): void
@@ -109,23 +104,6 @@ final class SubscriptionProfileHealthRecorder
             'results' => [],
             'error' => 'Технический пользователь пока не получает профили для этого типа подписки.',
         ]);
-    }
-
-    private function notifyOnTransition(string $flow, SubscriptionProfileHealthCheck $check, ?string $previousStatus): void
-    {
-        if (in_array($check->status, [
-            SubscriptionProfileHealthCheck::STATUS_WARNING,
-            SubscriptionProfileHealthCheck::STATUS_UNHEALTHY,
-        ], true) && $previousStatus !== $check->status) {
-            SendSubscriptionHealthSummaryJob::dispatch()
-                ->delay(now()->addSeconds(10))
-                ->afterCommit();
-        }
-
-        if ($check->status === SubscriptionProfileHealthCheck::STATUS_HEALTHY
-            && $previousStatus === SubscriptionProfileHealthCheck::STATUS_UNHEALTHY) {
-            $this->devChat->send("🟢 Профиль восстановлен: {$this->flowName($flow)} — {$check->name}");
-        }
     }
 
     private function flowName(string $flow): string

@@ -1,5 +1,5 @@
 <script setup>
-import { onUnmounted, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import AppPageHeader from '../../Shared/AppPageHeader.vue';
@@ -46,6 +46,46 @@ const statusLabel = (status) => ({
 }[status] ?? status);
 
 const statusClass = (status) => `health-status health-status--${status}`;
+
+const matrixStatuses = ['unhealthy', 'warning', 'pending', 'healthy', 'unsupported', 'unknown'];
+const matrixStatus = (statuses) => matrixStatuses.find((status) => statuses.includes(status)) ?? 'unknown';
+const matrixRows = computed(() => {
+    const rows = new Map();
+    const ensureRow = (name) => {
+        const label = String(name || 'Неизвестный узел').split(' • ')[0].trim();
+        if (!rows.has(label)) rows.set(label, { name: label, direct: [], connect: [], connectV2: [], external: [], custom: [] });
+        return rows.get(label);
+    };
+
+    props.inbounds.forEach((inbound) => {
+        const row = ensureRow(inbound.server);
+        row.direct.push(inbound.status);
+    });
+    props.profiles.forEach((profile) => {
+        const row = ensureRow(profile.name);
+        const column = ({
+            connect: 'connect',
+            'connect-v2': 'connectV2',
+            external: 'external',
+            'external-source': 'external',
+            'xray-custom': 'custom',
+        })[profile.flow];
+        if (column) row[column].push(profile.status);
+    });
+
+    return [...rows.values()].map((row) => ({
+        ...row,
+        direct: matrixStatus(row.direct),
+        connect: matrixStatus(row.connect),
+        connectV2: matrixStatus(row.connectV2),
+        external: matrixStatus(row.external),
+        custom: matrixStatus(row.custom),
+    }));
+});
+
+const matrixEmoji = (status) => ({
+    healthy: '✅', warning: '⚠️', unhealthy: '❌', pending: '⏳', unsupported: '➖', unknown: '—',
+}[status] ?? '—');
 
 const flowLabel = (flow) => ({
     connect: '/connect',
@@ -115,6 +155,31 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
             <p>{{ healthChecksEnabled ? 'Проверки выполняются по расписанию и вручную.' : 'Плановые проверки приостановлены. Ранее полученные результаты сохранены.' }}</p>
         </section>
 
+        <section class="panel-card">
+            <header class="profile-health-header">
+                <div>
+                    <h2>Сводка по узлам</h2>
+                    <p>✅ доступен · ⚠️ нестабильно · ❌ ошибка · ➖ не поддерживается</p>
+                </div>
+            </header>
+            <div v-if="!matrixRows.length" class="empty-state">
+                <strong>Проверок пока нет</strong>
+            </div>
+            <div v-else class="table-scroll">
+                <table class="data-table inbound-health-table health-matrix">
+                    <thead><tr><th>Имя</th><th>Direct</th><th>/connect</th><th>/connect-v2</th><th>Внешние</th><th>Custom config</th></tr></thead>
+                    <tbody>
+                        <tr v-for="row in matrixRows" :key="row.name">
+                            <th scope="row">{{ row.name }}</th>
+                            <td v-for="column in ['direct', 'connect', 'connectV2', 'external', 'custom']" :key="column" :title="statusLabel(row[column])">{{ matrixEmoji(row[column]) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <details class="health-details">
+            <summary>Подробные результаты по узлам и профилям</summary>
         <section class="panel-card">
             <header class="profile-health-header">
                 <div>
@@ -252,6 +317,8 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
             </div>
         </section>
 
+        </details>
+
         <p class="inbound-health-note">
             В профилях применяется только последняя активная общая настройка JSON. Сохранено активных настроек: {{ props.globalJsonSettings.active }}.
             Полная проверка туннелей WireGuard и AmneziaWG пока не поддерживается. Такой результат не означает, что узел недоступен.
@@ -261,9 +328,15 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
 
 <style scoped>
 .inbound-health-page { gap: 1.25rem; }
+.health-details > summary { padding: .75rem 0; color: var(--text-muted, #64748b); cursor: pointer; font-size: .9rem; }
+.health-details[open] { display: grid; gap: 1rem; }
 .panel-card { overflow: hidden; border: 1px solid var(--border-color, #e5e7eb); border-radius: 1rem; background: var(--surface-card, #fff); }
 .table-scroll { overflow-x: auto; }
 .inbound-health-table { width: 100%; border-collapse: collapse; }
+.health-matrix { min-width: 38rem; }
+.health-matrix th:not(:first-child), .health-matrix td { text-align: center; }
+.health-matrix tbody th { padding: .65rem 1rem; border-bottom: 1px solid var(--border-color, #e5e7eb); text-align: left; }
+.health-matrix td { font-size: 1.1rem; }
 .inbound-health-table th, .inbound-health-table td { padding: .9rem 1rem; border-bottom: 1px solid var(--border-color, #e5e7eb); text-align: left; vertical-align: top; }
 .inbound-health-table th { color: var(--text-muted, #64748b); font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
 .inbound-health-table td strong, .inbound-health-table td small { display: block; }

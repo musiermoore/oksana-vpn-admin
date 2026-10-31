@@ -8,7 +8,7 @@ use App\Jobs\SendTelegramMessageJob;
 
 class TelegramDevChatService
 {
-    public function send(string $message): void
+    public function send(string $message, ?string $parseMode = null): void
     {
         $chatId = (string) config('services.telegram.dev_chat_id', '');
 
@@ -16,9 +16,14 @@ class TelegramDevChatService
             return;
         }
 
-        SendTelegramMessageJob::dispatch([
+        $payload = [
             'chat_id' => $chatId,
             'text' => $message,
-        ])->afterCommit();
+        ];
+        if ($parseMode !== null) {
+            $payload['parse_mode'] = $parseMode;
+        }
+
+        SendTelegramMessageJob::dispatch($payload)->afterCommit();
     }
 }

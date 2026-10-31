@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Jobs\SendSubscriptionHealthSummaryJob;
 use App\Models\XrayInbound;
 use App\Models\XrayInboundHealthCheck;
 use Illuminate\Support\Str;
@@ -14,13 +13,10 @@ final class XrayInboundHealthService
 {
     public function __construct(
         private readonly XrayInboundProbeProvisioner $probeProvisioner,
-        private readonly TelegramDevChatService $devChat,
     ) {}
 
     public function check(XrayInbound $inbound): XrayInboundHealthCheck
     {
-        $previousStatus = $inbound->healthCheck?->status;
-
         try {
             $result = $this->probeProvisioner->check($inbound);
         } catch (Throwable $exception) {
@@ -41,33 +37,6 @@ final class XrayInboundHealthService
             ],
         );
 
-        $this->notifyOnTransition($inbound, $previousStatus, $health);
-
         return $health;
-    }
-
-    private function notifyOnTransition(XrayInbound $inbound, ?string $previousStatus, XrayInboundHealthCheck $health): void
-    {
-        $label = sprintf('%s / входящий порт #%s', $inbound->server?->name ?? 'Неизвестный сервер', $inbound->external_id);
-
-        if ($health->status === XrayInboundHealthCheck::STATUS_WARNING && $previousStatus !== $health->status) {
-            $this->queueHealthSummary();
-        }
-
-        if ($health->status === XrayInboundHealthCheck::STATUS_UNHEALTHY && $previousStatus !== $health->status) {
-            $this->queueHealthSummary();
-        }
-
-        if ($health->status === XrayInboundHealthCheck::STATUS_HEALTHY
-            && $previousStatus === XrayInboundHealthCheck::STATUS_UNHEALTHY) {
-            $this->devChat->send("🟢 Входящий сервер восстановлен: {$label}");
-        }
-    }
-
-    private function queueHealthSummary(): void
-    {
-        SendSubscriptionHealthSummaryJob::dispatch()
-            ->delay(now()->addSeconds(10))
-            ->afterCommit();
     }
 }

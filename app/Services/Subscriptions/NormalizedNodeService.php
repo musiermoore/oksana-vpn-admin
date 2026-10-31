@@ -134,7 +134,7 @@ class NormalizedNodeService
                 ->filter()
                 ->values();
 
-            if ($this->shouldHideMainNodes($proxies)) {
+            if ($visibilityField !== null && $this->shouldHideMainNodes($proxies)) {
                 return $proxyNodes->all();
             }
 

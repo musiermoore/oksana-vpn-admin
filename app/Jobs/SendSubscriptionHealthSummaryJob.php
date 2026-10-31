@@ -71,7 +71,7 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
         }
 
         $rows = collect($rows)->sortKeys(SORT_NATURAL | SORT_FLAG_CASE);
-        $columnWidths = [20, 6, 7, 5, 8, 6];
+        $columnWidths = [16, 3, 3, 3, 3, 3];
         $lines = $rows->take(30)->map(fn (array $row, string $name): string => $this->formatMatrixRow([
             $name,
             $this->matrixEmoji($row['direct']),
@@ -81,7 +81,7 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
             $this->matrixEmoji($row['custom']),
         ], $columnWidths))->all();
         array_unshift($lines, $this->formatMatrixRow(
-            ['Имя', 'Direct', 'Connect', 'C-v2', 'External', 'Custom'],
+            ['Имя', 'Dir', 'V1', 'V2', 'Ext', 'Cus'],
             $columnWidths,
             true,
         ));

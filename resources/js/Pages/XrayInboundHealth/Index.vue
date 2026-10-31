@@ -49,17 +49,42 @@ const statusClass = (status) => `health-status health-status--${status}`;
 
 const matrixStatuses = ['unhealthy', 'warning', 'pending', 'healthy', 'unsupported', 'unknown'];
 const matrixStatus = (statuses) => matrixStatuses.find((status) => statuses.includes(status)) ?? 'unknown';
+const matrixTooltip = (row, column) => {
+    const checks = row.checks[column];
+    const services = new Map();
+    checks.forEach((check) => Object.entries(check.results || {}).forEach(([name, result]) => {
+        if (typeof result?.ok !== 'boolean') return;
+        const previous = services.get(name);
+        services.set(name, {
+            ok: previous ? previous.ok && result.ok : result.ok,
+            error: result.error || previous?.error || '',
+        });
+    }));
+
+    const passed = [...services].filter(([, result]) => result.ok).map(([name]) => name);
+    const failed = [...services].filter(([, result]) => !result.ok).map(([name, result]) => (
+        result.error ? `${name} (${result.error})` : name
+    ));
+    const lines = [`Состояние: ${statusLabel(matrixStatus(checks.map((check) => check.status)))}`];
+    if (passed.length) lines.push(`Прошли: ${passed.join(', ')}`);
+    if (failed.length) lines.push(`Не прошли: ${failed.join(', ')}`);
+    if (!passed.length && !failed.length) lines.push('Нет результатов по отдельным сервисам');
+    return lines.join('\n');
+};
 const matrixRows = computed(() => {
     const rows = new Map();
     const ensureRow = (name) => {
         const label = String(name || 'Неизвестный узел').split(' • ')[0].trim();
-        if (!rows.has(label)) rows.set(label, { name: label, direct: [], connect: [], connectV2: [], external: [], custom: [] });
+        if (!rows.has(label)) rows.set(label, {
+            name: label,
+            checks: { direct: [], connect: [], connectV2: [], external: [], custom: [] },
+        });
         return rows.get(label);
     };
 
     props.inbounds.forEach((inbound) => {
         const row = ensureRow(inbound.server);
-        row.direct.push(inbound.status);
+        row.checks.direct.push({ status: inbound.status, results: inbound.results });
     });
     props.profiles.forEach((profile) => {
         const row = ensureRow(profile.name);
@@ -70,17 +95,14 @@ const matrixRows = computed(() => {
             'external-source': 'external',
             'xray-custom': 'custom',
         })[profile.flow];
-        if (column) row[column].push(profile.status);
+        if (column) row.checks[column].push({ status: profile.status, results: profile.results });
     });
 
-    return [...rows.values()].map((row) => ({
-        ...row,
-        direct: matrixStatus(row.direct),
-        connect: matrixStatus(row.connect),
-        connectV2: matrixStatus(row.connectV2),
-        external: matrixStatus(row.external),
-        custom: matrixStatus(row.custom),
-    }));
+    return [...rows.values()].map((row) => Object.fromEntries([
+        ['name', row.name],
+        ['checks', row.checks],
+        ...Object.keys(row.checks).map((column) => [column, matrixStatus(row.checks[column].map((check) => check.status))]),
+    ]));
 });
 
 const matrixEmoji = (status) => ({
@@ -171,7 +193,7 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
                     <tbody>
                         <tr v-for="row in matrixRows" :key="row.name">
                             <th scope="row">{{ row.name }}</th>
-                            <td v-for="column in ['direct', 'connect', 'connectV2', 'external', 'custom']" :key="column" :title="statusLabel(row[column])">{{ matrixEmoji(row[column]) }}</td>
+                            <td v-for="column in ['direct', 'connect', 'connectV2', 'external', 'custom']" :key="column" :title="matrixTooltip(row, column)">{{ matrixEmoji(row[column]) }}</td>
                         </tr>
                     </tbody>
                 </table>

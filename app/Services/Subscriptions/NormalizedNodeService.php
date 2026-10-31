@@ -32,11 +32,10 @@ class NormalizedNodeService
             ->whereHas('server', fn ($query) => $query->where('is_active', true))
             ->whereHas('xrayInbound', fn ($xrayInboundQuery) => $xrayInboundQuery
                 ->where('is_active', true)
-                ->where('is_public', true)
-                ->where($visibilityField, true))
+                ->where('is_public', true))
             ->with([
                 'server:id,name,code,ip,link_host,is_https,sort_order',
-                "xrayInbound:id,server_id,external_id,is_active,is_public,sort_order,{$visibilityField}",
+                'xrayInbound:id,server_id,external_id,is_active,is_public,is_visible_in_connect,is_visible_in_connect_v2,sort_order',
             ])
             ->get()
             ->map(fn (VlessConfig $config) => [
@@ -48,6 +47,7 @@ class NormalizedNodeService
                 'server_sort' => mb_strtolower((string) $config->server->name),
                 'config_id' => (int) $config->getKey(),
                 'config' => $config,
+                'inbound_visible' => (bool) $config->xrayInbound?->{$visibilityField},
             ]);
 
         $items = $vlessConfigs
@@ -98,7 +98,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
+     * @param  array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig, inbound_visible:bool}  $item
      * @param  array<string, Collection<int, array{proxy:Proxy,sort_order:int}>>  $proxyIndex
      * @return array<int, NormalizedNode>
      */
@@ -113,16 +113,17 @@ class NormalizedNodeService
                 proxyIndex: $proxyIndex,
                 requireExactInboundMatch: true,
             );
-            $directNodes = collect($this->getVlessUris($config))
+            $sourceNodes = collect($this->getVlessUris($config))
                 ->map(fn (string $uri, int $index) => $this->buildNode($uri, $item, $index))
                 ->filter()
                 ->values();
+            $directNodes = $item['inbound_visible'] ? $sourceNodes : collect();
 
             if ($proxies->isEmpty()) {
                 return $directNodes->all();
             }
 
-            $proxyNodes = $directNodes
+            $proxyNodes = $sourceNodes
                 ->flatMap(fn (NormalizedNode $node, int $index) => $proxies
                     ->map(fn (array $proxyItem) => $this->buildProxyNode(
                         $node,
@@ -147,7 +148,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig}  $item
+     * @param  array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig, inbound_visible:bool}  $item
      */
     private function buildNode(string $uri, array $item, int $index): ?NormalizedNode
     {
@@ -271,7 +272,7 @@ class NormalizedNodeService
     }
 
     /**
-     * @param  Collection<int, array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig}>  $items
+     * @param  Collection<int, array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig, inbound_visible:bool}>  $items
      * @return array<string, Collection<int, array{proxy:Proxy,sort_order:int}>>
      */
     private function buildProxyIndex(Collection $items, User $user, string $visibilityField): array

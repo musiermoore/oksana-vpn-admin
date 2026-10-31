@@ -158,7 +158,7 @@ Important fields:
 
 `hide_main_node_name` lets a proxy replace the original server label in `/connect`, so a proxy variant can be shown as just its own name instead of `Server (Proxy Name)`.
 
-Proxy visibility is independent for V1 (`/connect`) and V2 (`/connect-v2`). A proxy is included only when both its owning inbound and its own visibility flag are enabled for that output.
+Proxy visibility is independent for V1 (`/connect`) and V2 (`/connect-v2`). Inbound visibility flags control direct inbound nodes only; a proxy variant follows its own version flag, so it can remain visible when the parent inbound is hidden. The owning inbound, server, and client config must still be active and public as required by subscription eligibility.
 
 ### Server Prices
 

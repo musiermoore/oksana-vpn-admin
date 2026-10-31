@@ -71,7 +71,7 @@ class NormalizedNodeService
         $proxyIndex = $this->buildProxyIndex($items, $user, $visibilityField);
 
         $nodes = $items
-            ->flatMap(fn (array $item) => $this->buildNodesForItem($item, $proxyIndex))
+            ->flatMap(fn (array $item) => $this->buildNodesForItem($item, $proxyIndex, $visibilityField))
             ->unique(fn (NormalizedNode $node) => $node->uri)
             ->sort(fn (NormalizedNode $left, NormalizedNode $right): int => [
                 $left->sortGroupOrder,
@@ -102,7 +102,7 @@ class NormalizedNodeService
      * @param  array<string, Collection<int, array{proxy:Proxy,sort_order:int}>>  $proxyIndex
      * @return array<int, NormalizedNode>
      */
-    private function buildNodesForItem(array $item, array $proxyIndex): array
+    private function buildNodesForItem(array $item, array $proxyIndex, ?string $visibilityField): array
     {
         $config = $item['config'];
 

@@ -20,9 +20,9 @@ class NormalizedNodeService
     /**
      * @return array<int, NormalizedNode>
      */
-    public function collect(User $user, string $visibilityField = 'is_visible_in_connect'): array
+    public function collect(User $user, ?string $visibilityField = 'is_visible_in_connect'): array
     {
-        if (! in_array($visibilityField, ['is_visible_in_connect', 'is_visible_in_connect_v2'], true)) {
+        if ($visibilityField !== null && ! in_array($visibilityField, ['is_visible_in_connect', 'is_visible_in_connect_v2'], true)) {
             throw new \InvalidArgumentException('Unsupported inbound visibility field.');
         }
 
@@ -47,7 +47,7 @@ class NormalizedNodeService
                 'server_sort' => mb_strtolower((string) $config->server->name),
                 'config_id' => (int) $config->getKey(),
                 'config' => $config,
-                'inbound_visible' => (bool) $config->xrayInbound?->{$visibilityField},
+                'inbound_visible' => $visibilityField === null || (bool) $config->xrayInbound?->{$visibilityField},
             ]);
 
         $items = $vlessConfigs
@@ -275,7 +275,7 @@ class NormalizedNodeService
      * @param  Collection<int, array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig, inbound_visible:bool}>  $items
      * @return array<string, Collection<int, array{proxy:Proxy,sort_order:int}>>
      */
-    private function buildProxyIndex(Collection $items, User $user, string $visibilityField): array
+    private function buildProxyIndex(Collection $items, User $user, ?string $visibilityField): array
     {
         $serverIds = $items
             ->pluck('server_id')
@@ -292,7 +292,7 @@ class NormalizedNodeService
 
         $proxyQuery = Proxy::query()
             ->whereIn('server_id', $serverIds)
-            ->where($visibilityField, true)
+            ->when($visibilityField !== null, fn ($query) => $query->where($visibilityField, true))
             ->with(['xrayInbound:id,external_id', 'hosts'])
             ->orderBy('server_id')
             ->orderBy('sort_order')

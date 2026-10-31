@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Subscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
@@ -214,12 +216,16 @@ class UserSubscriptionService
         string $externalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_MAIN,
     ): array
     {
+        $visibilityField = match ($externalPurpose) {
+            VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2 => 'is_visible_in_connect_v2',
+            VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM => null,
+            default => 'is_visible_in_connect',
+        };
+
         $nodes = [
             ...$this->normalizedNodeService->collect(
                 $user,
-                $externalPurpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2
-                    ? 'is_visible_in_connect_v2'
-                    : 'is_visible_in_connect',
+                $visibilityField,
             ),
             ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, $externalPurpose),
         ];

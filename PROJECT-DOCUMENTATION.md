@@ -203,6 +203,7 @@ External VLESS subscriptions support multiple source formats:
 - A DNS resource marked as default is used by every simple JSON config; custom JSON profiles can still select their own DNS resource.
 - Routing rules can be marked global for every simple JSON config or targeted to selected local inbounds/servers. Untargeted rules remain inactive for generated profiles unless explicitly marked global.
 - `xray_custom_config_outbound_groups` and `xray_custom_config_routes` extend custom configs into named, ordered balancer groups and site-specific routing. Groups support `roundRobin`, `leastPing`, `leastLoad`, and `random`; a group may fall back to another multi-node group, while unmatched traffic defaults to `direct`.
+- Explicitly selected local inbounds and proxies in custom configs ignore the standard V1/V2 visibility flags. The selected inbound/config must still meet normal active and public eligibility requirements, and subscriber proxies must be ready.
 - Empty routing target arrays mean the rule is not applied anywhere unless the rule is marked global. Rules are selected per scope and target; if none match, generated profiles receive the default routing rules instead of being left without routing because another target has configured rules.
 - Imported geodata URLs are validated and cached in `storage/app/xray-geodata` by URL plus `LastUpdated`; JSON subscriptions emit Xray `geodata.assets`, so the client-side Xray Core downloads `geoip.dat`/`geosite.dat` into its own resource path.
 

@@ -66,16 +66,20 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
         }
 
         $rows = collect($rows)->sortKeys(SORT_NATURAL | SORT_FLAG_CASE);
-        $lines = $rows->take(30)->map(fn (array $row, string $name): string => sprintf(
-            "%-24s | %s | %s | %s | %s | %s",
-            Str::limit($name, 24, '…'),
+        $columnWidths = [20, 6, 7, 5, 8, 6];
+        $lines = $rows->take(30)->map(fn (array $row, string $name): string => $this->formatMatrixRow([
+            $name,
             $this->matrixEmoji($row['direct']),
             $this->matrixEmoji($row['connect']),
             $this->matrixEmoji($row['connectV2']),
             $this->matrixEmoji($row['external']),
             $this->matrixEmoji($row['custom']),
-        ))->all();
-        array_unshift($lines, 'Имя                     | Direct | Connect | Connect v2 | External | Custom');
+        ], $columnWidths))->all();
+        array_unshift($lines, $this->formatMatrixRow(
+            ['Имя', 'Direct', 'Connect', 'C-v2', 'External', 'Custom'],
+            $columnWidths,
+            true,
+        ));
         if ($rows->count() > 30) {
             $lines[] = '…ещё '.($rows->count() - 30).' строк';
         }
@@ -126,6 +130,25 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
             SubscriptionProfileHealthCheck::STATUS_UNSUPPORTED => '➖',
             default => '—',
         };
+    }
+
+    /** @param array<int, string> $cells
+     *  @param array<int, int> $widths
+     */
+    private function formatMatrixRow(array $cells, array $widths, bool $center = false): string
+    {
+        $formatted = [];
+        foreach ($cells as $index => $cell) {
+            $width = $widths[$index];
+            $cell = mb_strimwidth($cell, 0, $width, '…');
+            $padding = max(0, $width - mb_strwidth($cell));
+            $centerCell = $center || $index > 0;
+            $leftPadding = $centerCell ? intdiv($padding, 2) : 0;
+            $rightPadding = $padding - $leftPadding;
+            $formatted[] = str_repeat(' ', $leftPadding).$cell.str_repeat(' ', $rightPadding);
+        }
+
+        return implode(' | ', $formatted);
     }
 
     private function formatCause(string $error): string

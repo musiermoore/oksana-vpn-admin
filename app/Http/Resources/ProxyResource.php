@@ -14,6 +14,7 @@ class ProxyResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'system_name' => $this->system_name,
             'host' => $this->host,
             'port' => $this->port,
             'hosts' => $this->whenLoaded('hosts', fn () => $this->hosts->map(fn ($host): array => [

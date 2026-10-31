@@ -63,6 +63,7 @@ class ProxyCrudServiceTest extends TestCase
         $this->assertDatabaseHas('proxies', [
             'id' => $proxy->id,
             'name' => 'Ru Proxy',
+            'system_name' => 'Ru Proxy',
             'server_id' => $serverOne->id,
             'proxy_group_id' => $proxyGroup->id,
             'xray_inbound_id' => $inbound->id,
@@ -105,6 +106,7 @@ class ProxyCrudServiceTest extends TestCase
         ));
 
         $this->assertSame($serverTwo->id, $proxy->server?->id);
+        $this->assertSame('Ru Proxy', $proxy->system_name);
         $this->assertDatabaseHas('proxy_hosts', [
             'id' => $hostId,
             'proxy_id' => $proxy->id,

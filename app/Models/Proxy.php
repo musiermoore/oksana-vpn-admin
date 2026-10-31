@@ -15,6 +15,7 @@ class Proxy extends Model
 
     protected $fillable = [
         'name',
+        'system_name',
         'proxy_group_id',
         'server_id',
         'sort_order',

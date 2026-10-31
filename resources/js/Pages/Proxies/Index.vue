@@ -37,6 +37,7 @@ const destroyProxy = (proxy) => {
                     <th>Сервер</th>
                     <th>Порядок</th>
                     <th>Имя</th>
+                    <th>System name</th>
                     <th>Группа</th>
                     <th>Адрес узла</th>
                     <th>Порт</th>
@@ -53,6 +54,7 @@ const destroyProxy = (proxy) => {
                     <td>{{ proxy.server_name || '—' }}</td>
                     <td>{{ proxy.sort_order }}</td>
                     <td>{{ proxy.name }}</td>
+                    <td>{{ proxy.system_name }}</td>
                     <td>{{ proxy.proxy_group_name || '—' }}</td>
                     <td>{{ proxy.host }}</td>
                     <td>{{ proxy.port }}</td>

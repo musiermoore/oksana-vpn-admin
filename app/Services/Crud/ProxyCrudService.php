@@ -68,6 +68,7 @@ class ProxyCrudService
 
         return [
             ...$attributes,
+            'system_name' => $data->name,
             'proxy_group_id' => $data->proxyGroupId,
             'xray_inbound_id' => $this->resolveXrayInboundId($data->inboundId, $data->serverId),
         ];

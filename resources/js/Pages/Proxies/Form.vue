@@ -109,6 +109,11 @@ const addHost = () => form.hosts.push({
     is_https: false,
     proxy_server_id: null,
 });
+const sanitizePort = (host, event) => {
+    const port = event.target.value.replace(/\D/g, '').slice(0, 5);
+    host.port = port;
+    event.target.value = port;
+};
 const removeHost = (index) => {
     if (form.hosts.length > 1) form.hosts.splice(index, 1);
 };
@@ -132,11 +137,11 @@ const removeHost = (index) => {
                 </div>
                 <div v-for="(host, index) in form.hosts" :key="index" class="host-row">
                     <label class="field"><span>{{ index === entryHostIndex ? 'Точка входа для подписки' : `Каскадный узел ${index}` }}</span><AppInput v-model="host.host" required /></label>
-                    <label class="field"><span>Порт</span><AppInput v-model="host.port" type="number" min="1" max="65535" required /></label>
+                    <label class="field"><span>Порт</span><AppInput v-model="host.port" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" required @input="sanitizePort(host, $event)" /></label>
                     <label class="field"><span>Порядок</span><AppInput v-model="host.sort" type="number" min="0" required /></label>
                     <label class="field"><span>Узел активен</span><AppCheckbox v-model="host.is_active" /></label>
                     <label class="field"><span>HTTPS на узле</span><AppCheckbox v-model="host.is_https" /></label>
-                    <label v-if="host.is_active && index !== entryHostIndex" class="field"><span>Сервер для настройки HAProxy</span><AppSelect v-model="host.proxy_server_id" :options="serverOptions" /></label>
+                    <label v-if="host.is_active && index !== entryHostIndex" class="field"><span>Сервер для настройки HAProxy</span><AppSelect v-model="host.proxy_server_id" :options="serverOptions" required /></label>
                     <AppButton variant="danger" type="button" :disabled="form.hosts.length <= 1" @click="removeHost(index)">Удалить</AppButton>
                 </div>
             </div>
@@ -178,5 +183,9 @@ const removeHost = (index) => {
     gap: 12px;
     align-items: end;
     margin-top: 12px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 12px;
+    background: var(--surface-color, #fff);
 }
 </style>

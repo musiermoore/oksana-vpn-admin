@@ -50,7 +50,7 @@ class ProxyFormPageTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Proxies/Form')
                 ->where('inbound_options_by_server.'.$server->id.'.0.value', 101)
-                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Reality TCP · vless · 443 (Inbound #101)')
+                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Reality TCP · vless · 443 (узел №101)')
             );
     }
 
@@ -105,8 +105,76 @@ class ProxyFormPageTest extends TestCase
                 ->component('Proxies/Form')
                 ->where('proxy.inbound_id', 202)
                 ->where('inbound_options_by_server.'.$server->id.'.0.value', 202)
-                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Main inbound · vless · 443 (Inbound #202)')
+                ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Main inbound · vless · 443 (узел №202)')
                 ->where('proxy.hosts.0.host', 'proxy.example.com')
+            );
+    }
+
+    public function test_active_cascade_host_requires_a_haproxy_server_but_entrypoint_does_not(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $server = Server::query()->create([
+            'name' => 'Germany',
+            'code' => 'DE-1',
+            'sort_order' => 1,
+            'ip' => '10.0.0.12',
+            'type' => Server::TYPE_VLESS,
+        ]);
+        $payload = [
+            'name' => 'Cascade proxy',
+            'hosts' => [
+                ['host' => 'entry.example.com', 'port' => 443, 'sort' => 0, 'is_active' => true],
+                ['host' => 'hop.example.com', 'port' => 8443, 'sort' => 1, 'is_active' => true],
+            ],
+            'server_id' => $server->id,
+            'is_https' => true,
+            'is_ready' => false,
+            'hide_main_node_name' => false,
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('proxies.store'), $payload)
+            ->assertSessionHasErrors('hosts.1.proxy_server_id');
+
+        $payload['hosts'][0]['proxy_server_id'] = $server->id;
+        $payload['hosts'][1]['proxy_server_id'] = $server->id;
+
+        $this->actingAs($admin)
+            ->post(route('proxies.store'), $payload)
+            ->assertSessionHasErrors('hosts.0.proxy_server_id');
+    }
+
+    public function test_proxies_page_shows_system_name_for_admins(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $server = Server::query()->create([
+            'name' => 'Germany',
+            'code' => 'DE-1',
+            'sort_order' => 1,
+            'ip' => '10.0.0.12',
+            'type' => Server::TYPE_VLESS,
+        ]);
+        $proxy = Proxy::query()->create([
+            'name' => 'Admin label',
+            'system_name' => 'Admin label',
+            'server_id' => $server->id,
+            'sort_order' => 0,
+            'is_https' => true,
+            'is_ready' => true,
+        ]);
+        $proxy->hosts()->create([
+            'host' => 'proxy.example.com',
+            'port' => 443,
+            'sort' => 0,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('proxies.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Proxies/Index')
+                ->where('proxies.0.system_name', 'Admin label')
             );
     }
 }

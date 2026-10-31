@@ -146,6 +146,7 @@ Proxy `is_ready` controls availability to subscribers: non-admin subscription ou
 
 Important fields:
 
+- `system_name` is the admin-facing system label; it currently mirrors `name`.
 - `server_id`
 - `proxy_group_id` (nullable)
 - `xray_inbound_id`

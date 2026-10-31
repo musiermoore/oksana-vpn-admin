@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\HealthCheck\UpdateInboundHealthCheckSettingsRequest;
+use App\Jobs\SendSubscriptionHealthSummaryJob;
 use App\Models\XrayInbound;
 use App\Models\XrayInboundHealthCheck;
 use App\Models\XrayJsonSetting;
@@ -121,6 +122,16 @@ final class XrayInboundHealthController
         $scheduler->dispatch();
 
         return redirect()->route('xray-inbound-health.index')->with('success', 'Проверки добавлены в очередь. Результаты появятся после их выполнения.');
+    }
+
+    public function sendTelegramSummary(): RedirectResponse
+    {
+        SendSubscriptionHealthSummaryJob::dispatch(includeStaleResults: true)->afterCommit();
+
+        return redirect()->route('xray-inbound-health.index')->with(
+            'success',
+            'Сводка проверки добавлена в очередь Telegram.',
+        );
     }
 
     public function updateSettings(

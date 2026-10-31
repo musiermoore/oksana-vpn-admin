@@ -139,6 +139,10 @@ const runChecks = () => router.post('/xray-inbound-health/run', {}, {
     },
 });
 
+const sendTelegramSummary = () => router.post('/xray-inbound-health/telegram-summary', {}, {
+    preserveScroll: true,
+});
+
 const toggleHealthChecks = () => router.put('/xray-inbound-health/settings', {
     is_enabled: !props.healthChecksEnabled,
 }, { preserveScroll: true });
@@ -165,6 +169,9 @@ onUnmounted(() => window.clearTimeout(refreshTimer.value));
             ]"
         >
             <template #actions>
+                <AppButton variant="secondary" type="button" @click="sendTelegramSummary">
+                    Отправить сводку в Telegram
+                </AppButton>
                 <AppButton variant="secondary" type="button" @click="toggleHealthChecks">
                     {{ healthChecksEnabled ? 'Приостановить проверки' : 'Возобновить проверки' }}
                 </AppButton>

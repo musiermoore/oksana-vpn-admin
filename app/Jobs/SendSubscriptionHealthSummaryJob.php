@@ -28,24 +28,29 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
 
     public int $uniqueFor = 120;
 
+    public function __construct(public bool $includeStaleResults = false) {}
+
     public function uniqueId(): string
     {
-        return 'subscription-health-failure-summary';
+        return 'subscription-health-failure-summary'.($this->includeStaleResults ? '-manual' : '');
     }
 
     public function handle(TelegramDevChatService $devChat): void
     {
         $checkedSince = now()->subMinutes(30);
-        $profiles = SubscriptionProfileHealthCheck::query()
-            ->where('checked_at', '>=', $checkedSince)
-            ->get(['flow', 'name', 'status', 'error']);
-        $inbounds = XrayInboundHealthCheck::query()
-            ->where('checked_at', '>=', $checkedSince)
-            ->with('inbound.server')
-            ->get();
+        $profilesQuery = SubscriptionProfileHealthCheck::query();
+        $inboundsQuery = XrayInboundHealthCheck::query()->with('inbound.server');
+        if (! $this->includeStaleResults) {
+            $profilesQuery->where('checked_at', '>=', $checkedSince);
+            $inboundsQuery->where('checked_at', '>=', $checkedSince);
+        }
+        $profiles = $profilesQuery->get(['flow', 'name', 'status', 'error']);
+        $inbounds = $inboundsQuery->get();
 
         if ($profiles->isEmpty() && $inbounds->isEmpty()) {
-            return;
+            if (! $this->includeStaleResults) {
+                return;
+            }
         }
 
         $rows = [];
@@ -80,6 +85,9 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
             $columnWidths,
             true,
         ));
+        if ($profiles->isEmpty() && $inbounds->isEmpty()) {
+            $lines[] = 'Нет сохранённых результатов';
+        }
         if ($rows->count() > 30) {
             $lines[] = '…ещё '.($rows->count() - 30).' строк';
         }
@@ -99,7 +107,7 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
         $unhealthy = $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_UNHEALTHY)->count()
             + $inbounds->where('status', XrayInboundHealthCheck::STATUS_UNHEALTHY)->count();
         $devChat->send(
-            "🔎 Состояние VPN за последние 30 минут\n"
+            ($this->includeStaleResults ? "🔎 Текущее состояние VPN\n" : "🔎 Состояние VPN за последние 30 минут\n")
             ."🔴 Требуют исправления: {$unhealthy}\n"
             ."🟡 Нестабильны: {$warnings}\n\n"
             ."<pre>".htmlspecialchars(implode("\n", $lines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')."</pre>"

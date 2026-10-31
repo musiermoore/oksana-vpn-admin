@@ -143,6 +143,8 @@ Route::middleware('auth')->group(function () {
         ->name('xray-inbound-health.index');
     Route::post('xray-inbound-health/run', [XrayInboundHealthController::class, 'run'])
         ->name('xray-inbound-health.run');
+    Route::post('xray-inbound-health/telegram-summary', [XrayInboundHealthController::class, 'sendTelegramSummary'])
+        ->name('xray-inbound-health.telegram-summary');
     Route::put('xray-inbound-health/settings', [XrayInboundHealthController::class, 'updateSettings'])
         ->name('xray-inbound-health.settings');
     Route::get('xray-routings/create', [XrayRoutingController::class, 'create'])

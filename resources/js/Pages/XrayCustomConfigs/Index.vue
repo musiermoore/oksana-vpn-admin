@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
 defineOptions({ layout: AppLayout });
@@ -8,6 +8,8 @@ const props = defineProps({
     create_page_url: String,
     configs: { type: Array, default: () => [] },
 });
+
+const duplicateConfig = (config) => router.post(config.links.duplicate);
 </script>
 
 <template>
@@ -30,7 +32,7 @@ const props = defineProps({
                     <td>
                         <div class="actions">
                             <AppButton variant="secondary" :href="config.links.edit">Редактировать</AppButton>
-                            <AppButton variant="secondary" :href="config.links.duplicate" method="post" as="button">Дублировать</AppButton>
+                            <AppButton variant="secondary" type="button" @click="duplicateConfig(config)">Дублировать</AppButton>
                         </div>
                     </td>
                 </tr>

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\XrayInbound;
 use App\Services\ProxyGroupConfigurationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProxyGroupConfigurationPreviewTest extends TestCase
@@ -80,6 +81,16 @@ class ProxyGroupConfigurationPreviewTest extends TestCase
         $this->assertStringContainsString('server finland_1 dest.example.com:13708 check ssl verify none', $preview['servers'][1]['backend_config']);
         $this->assertStringContainsString('systemctl edit haproxy', implode("\n", $preview['instructions']));
         $this->assertStringContainsString('/etc/haproxy/backends/backend.cfg', $preview['instructions'][2]);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin)
+            ->get(route('proxy-groups.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('groups.0.proxies.0.chain.0.host', 'proxy-fin.example.com')
+                ->where('groups.0.proxies.0.chain.1.host', '194.164.168.89')
+                ->where('groups.0.proxies.0.chain.2.host', 'dest.example.com')
+                ->where('groups.0.proxies.0.chain.2.port', 13708)
+            );
     }
 
     private function createServer(string $code): Server

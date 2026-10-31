@@ -90,7 +90,7 @@ const closePipeline = () => { selectedGroup.value = null; };
             </div>
             <div v-if="group.proxies.length" class="table-wrap">
                 <table><thead><tr><th>Прокси</th><th>Сервер назначения</th><th>Готов</th><th>Цепочка узлов</th></tr></thead>
-                    <tbody><tr v-for="proxy in group.proxies" :key="proxy.id"><td><a :href="`/proxies/${proxy.id}/edit`">{{ proxy.name }}</a></td><td>{{ proxy.server_name || '—' }}</td><td>{{ proxy.is_ready ? 'Да' : 'Нет' }}</td><td>{{ proxy.hosts.map((host) => `${host.host}:${host.port}`).join(' → ') }}</td></tr></tbody>
+                    <tbody><tr v-for="proxy in group.proxies" :key="proxy.id"><td><a :href="`/proxies/${proxy.id}/edit`">{{ proxy.name }}</a></td><td>{{ proxy.server_name || '—' }}</td><td>{{ proxy.is_ready ? 'Да' : 'Нет' }}</td><td>{{ proxy.chain.map((host) => `${host.host}:${host.port}`).join(' → ') }}</td></tr></tbody>
                 </table>
             </div>
             <p v-else class="hint">Добавьте прокси в эту группу из формы прокси.</p>

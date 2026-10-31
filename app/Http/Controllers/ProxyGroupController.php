@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\DTOs\Proxy\ProxyGroupData;
 use App\Http\Requests\Proxy\StoreProxyGroupRequest;
+use App\Models\Proxy;
 use App\Models\ProxyGroup;
 use App\Services\ProxyGroupConfigurationService;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,7 @@ class ProxyGroupController extends Controller
     {
         $this->authorizeAdmin($request);
         $groups = ProxyGroup::query()
-            ->with(['proxies.server:id,name', 'proxies.hosts'])
+            ->with(['proxies.server:id,name,ip,link_host', 'proxies.xrayInbound:id,params', 'proxies.hosts'])
             ->withCount('proxies')
             ->orderBy('name')
             ->get()
@@ -31,16 +32,30 @@ class ProxyGroupController extends Controller
                 'id' => (int) $group->id,
                 'name' => $group->name,
                 'proxy_count' => (int) $group->proxies_count,
-                'proxies' => $group->proxies->map(fn ($proxy): array => [
-                    'id' => (int) $proxy->id,
-                    'name' => $proxy->name,
-                    'server_name' => $proxy->server?->name,
-                    'is_ready' => (bool) $proxy->is_ready,
-                    'hosts' => $proxy->hosts->where('is_active', true)->sortBy('sort')->values()->map(fn ($host): array => [
-                        'host' => $host->host,
-                        'port' => (int) $host->port,
-                    ])->all(),
-                ])->all(),
+                'proxies' => $group->proxies->map(function (Proxy $proxy): array {
+                    $chain = $proxy->hosts->where('is_active', true)->sortBy('sort')->values()
+                        ->map(fn ($host): array => [
+                            'host' => $host->host,
+                            'port' => (int) $host->port,
+                        ]);
+                    $destinationHost = $proxy->server?->getLinkAddressHost();
+                    $destinationPort = data_get($proxy->xrayInbound?->params, 'port');
+
+                    if ($destinationHost !== null && $destinationHost !== '' && is_numeric($destinationPort)) {
+                        $chain->push([
+                            'host' => $destinationHost,
+                            'port' => (int) $destinationPort,
+                        ]);
+                    }
+
+                    return [
+                        'id' => (int) $proxy->id,
+                        'name' => $proxy->name,
+                        'server_name' => $proxy->server?->name,
+                        'is_ready' => (bool) $proxy->is_ready,
+                        'chain' => $chain->all(),
+                    ];
+                })->all(),
             ])->all();
 
         return $this->inertia('ProxyGroups/Index', ['groups' => $groups]);

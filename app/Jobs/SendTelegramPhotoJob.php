@@ -25,7 +25,7 @@ final class SendTelegramPhotoJob implements ShouldQueue
 
     public function __construct(
         public readonly string $chatId,
-        public readonly string $contents,
+        public readonly string $base64Contents,
         public readonly string $caption,
     ) {
         $this->onQueue('default');
@@ -34,9 +34,14 @@ final class SendTelegramPhotoJob implements ShouldQueue
     public function handle(): void
     {
         try {
+            $contents = base64_decode($this->base64Contents, true);
+            if ($contents === false) {
+                throw new \UnexpectedValueException('Queued Telegram photo has invalid base64 data.');
+            }
+
             Telegram::sendPhoto([
                 'chat_id' => $this->chatId,
-                'photo' => InputFile::createFromContents($this->contents, 'health-check-summary.png'),
+                'photo' => InputFile::createFromContents($contents, 'health-check-summary.png'),
                 'caption' => $this->caption,
             ]);
         } catch (Throwable $throwable) {

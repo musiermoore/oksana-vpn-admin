@@ -35,6 +35,6 @@ class TelegramDevChatService
             return;
         }
 
-        SendTelegramPhotoJob::dispatch($chatId, $contents, $caption)->afterCommit();
+        SendTelegramPhotoJob::dispatch($chatId, base64_encode($contents), mb_scrub($caption, 'UTF-8'))->afterCommit();
     }
 }

@@ -72,6 +72,70 @@ class XrayCustomConfigController extends Controller
         return redirect()->route('xray-custom-configs.edit', $config)->with('success', 'Пользовательская конфигурация Xray создана.');
     }
 
+    public function duplicate(XrayCustomConfig $xrayCustomConfig): RedirectResponse
+    {
+        $copy = DB::transaction(function () use ($xrayCustomConfig): XrayCustomConfig {
+            $source = $xrayCustomConfig->load(['clientGeodata', 'outboundGroups', 'routes']);
+            $copy = $source->replicate();
+            $copy->name = $source->name.' (копия)';
+            $copy->slug = $this->duplicateSlug($source->slug);
+            $copy->is_active = false;
+            $copy->sort_order = (int) XrayCustomConfig::query()->max('sort_order') + 1;
+            $copy->save();
+
+            foreach ($source->clientGeodata as $mapping) {
+                $copy->clientGeodata()->create([
+                    'client_key' => $mapping->client_key,
+                    'geodata_id' => $mapping->geodata_id,
+                ]);
+            }
+
+            $groupsById = [];
+            foreach ($source->outboundGroups as $group) {
+                $groupCopy = $group->replicate(['fallback_group_id']);
+                $groupCopy->xray_custom_config_id = $copy->id;
+                $groupCopy->fallback_group_id = null;
+                $groupCopy->save();
+                $groupsById[$group->id] = $groupCopy;
+            }
+
+            foreach ($source->outboundGroups as $group) {
+                if ($group->fallback_group_id !== null && isset($groupsById[$group->fallback_group_id])) {
+                    $groupsById[$group->id]->fallback_group_id = $groupsById[$group->fallback_group_id]->id;
+                    $groupsById[$group->id]->save();
+                }
+            }
+
+            foreach ($source->routes as $route) {
+                $routeCopy = $route->replicate();
+                $routeCopy->xray_custom_config_id = $copy->id;
+                $routeCopy->save();
+            }
+
+            return $copy;
+        });
+
+        return redirect()->route('xray-custom-configs.edit', $copy)->with('success', 'Копия конфигурации Xray создана.');
+    }
+
+    private function duplicateSlug(string $slug): string
+    {
+        $baseSlug = $slug.'-copy';
+        $duplicateSlug = $baseSlug;
+        $suffix = 2;
+        $existingSlugs = XrayCustomConfig::query()
+            ->where('slug', 'like', $baseSlug.'%')
+            ->pluck('slug')
+            ->all();
+
+        while (in_array($duplicateSlug, $existingSlugs, true)) {
+            $duplicateSlug = $baseSlug.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $duplicateSlug;
+    }
+
     public function edit(XrayCustomConfig $xrayCustomConfig)
     {
         $xrayCustomConfig->load(['outboundGroups.fallbackGroup', 'routes', 'clientGeodata', 'userAssignments']);
@@ -363,7 +427,10 @@ class XrayCustomConfigController extends Controller
                 ? ['id' => $config->geodata->id, 'name' => $config->geodata->name]
                 : null,
             'connect_url' => route('vless.custom-connect', $config),
-            'links' => ['edit' => route('xray-custom-configs.edit', $config)],
+            'links' => [
+                'edit' => route('xray-custom-configs.edit', $config),
+                'duplicate' => route('xray-custom-configs.duplicate', $config),
+            ],
         ];
     }
 

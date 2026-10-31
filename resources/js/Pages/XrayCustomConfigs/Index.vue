@@ -27,7 +27,12 @@ const props = defineProps({
                     <td>{{ config.dns_settings?.name || '—' }}</td>
                     <td>{{ config.geodata?.name || '—' }}</td>
                     <td>{{ config.is_active ? 'Активна' : 'Отключена' }}</td>
-                    <td><AppButton variant="secondary" :href="config.links.edit">Редактировать</AppButton></td>
+                    <td>
+                        <div class="actions">
+                            <AppButton variant="secondary" :href="config.links.edit">Редактировать</AppButton>
+                            <AppButton variant="secondary" :href="config.links.duplicate" method="post" as="button">Дублировать</AppButton>
+                        </div>
+                    </td>
                 </tr>
             </tbody>
         </table>

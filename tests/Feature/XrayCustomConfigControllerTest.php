@@ -7,6 +7,9 @@ namespace Tests\Feature;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\XrayCustomConfig;
+use App\Models\XrayCustomConfigOutboundGroup;
+use App\Models\XrayCustomConfigRoute;
+use App\Models\XrayCustomConfigUser;
 use App\Models\XrayInbound;
 use App\Models\XrayRoutingDnsSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,6 +79,79 @@ class XrayCustomConfigControllerTest extends TestCase
             ->assertRedirect();
 
         $this->assertFalse($config->fresh()->is_active);
+    }
+
+    public function test_admin_can_duplicate_a_custom_config_without_copying_user_assignments(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $assignedUser = User::factory()->create();
+        $config = XrayCustomConfig::query()->create([
+            'name' => 'Custom config',
+            'slug' => 'custom-config',
+            'description' => 'Profile description',
+            'xray_inbound_ids' => [10, 11],
+            'base_settings' => ['log' => ['loglevel' => 'warning']],
+            'is_active' => true,
+            'is_public' => false,
+            'sort_order' => 3,
+        ]);
+        $fallback = XrayCustomConfigOutboundGroup::query()->create([
+            'xray_custom_config_id' => $config->id,
+            'name' => 'Fallback',
+            'tag' => 'fallback',
+            'strategy' => 'random',
+            'sort_order' => 0,
+        ]);
+        XrayCustomConfigOutboundGroup::query()->create([
+            'xray_custom_config_id' => $config->id,
+            'name' => 'Primary',
+            'tag' => 'primary',
+            'strategy' => 'roundRobin',
+            'fallback_group_id' => $fallback->id,
+            'sort_order' => 1,
+        ]);
+        XrayCustomConfigRoute::query()->create([
+            'xray_custom_config_id' => $config->id,
+            'name' => 'Route',
+            'rules' => [['domain' => ['example.com']]],
+            'target_type' => 'balancer',
+            'target_tag' => 'primary',
+            'sort_order' => 2,
+        ]);
+        XrayCustomConfigUser::query()->create([
+            'xray_custom_config_id' => $config->id,
+            'user_id' => $assignedUser->id,
+        ]);
+        XrayCustomConfig::query()->create([
+            'name' => 'Existing copy',
+            'slug' => 'custom-config-copy',
+            'is_active' => false,
+            'sort_order' => 4,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('xray-custom-configs.duplicate', $config));
+
+        $copy = XrayCustomConfig::query()->where('slug', 'custom-config-copy-2')->firstOrFail();
+        $response->assertRedirect(route('xray-custom-configs.edit', $copy));
+        $this->assertSame('Custom config (копия)', $copy->name);
+        $this->assertSame('Profile description', $copy->description);
+        $this->assertSame([10, 11], $copy->xray_inbound_ids);
+        $this->assertSame(['log' => ['loglevel' => 'warning']], $copy->base_settings);
+        $this->assertFalse($copy->is_active);
+        $this->assertFalse($copy->is_public);
+        $this->assertSame(5, $copy->sort_order);
+        $this->assertDatabaseHas('xray_custom_config_outbound_groups', [
+            'xray_custom_config_id' => $copy->id,
+            'tag' => 'primary',
+        ]);
+        $copiedPrimary = $copy->outboundGroups()->where('tag', 'primary')->firstOrFail();
+        $this->assertSame(
+            $copy->outboundGroups()->where('tag', 'fallback')->value('id'),
+            $copiedPrimary->fallback_group_id,
+        );
+        $this->assertSame(1, XrayCustomConfigRoute::query()->where('xray_custom_config_id', $copy->id)->count());
+        $this->assertSame(0, XrayCustomConfigUser::query()->where('xray_custom_config_id', $copy->id)->count());
     }
 
     public function test_admin_can_create_a_custom_dns_resource_with_structured_servers(): void

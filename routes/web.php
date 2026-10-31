@@ -167,6 +167,8 @@ Route::middleware('auth')->group(function () {
         ->name('xray-custom-configs.create');
     Route::post('xray-custom-configs', [XrayCustomConfigController::class, 'store'])
         ->name('xray-custom-configs.store');
+    Route::post('xray-custom-configs/{xrayCustomConfig}/duplicate', [XrayCustomConfigController::class, 'duplicate'])
+        ->name('xray-custom-configs.duplicate');
     Route::get('xray-custom-configs/{xrayCustomConfig}/edit', [XrayCustomConfigController::class, 'edit'])
         ->name('xray-custom-configs.edit');
     Route::put('xray-custom-configs/{xrayCustomConfig}', [XrayCustomConfigController::class, 'update'])

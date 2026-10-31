@@ -51,24 +51,13 @@ class StoreProxyRequest extends DataFormRequest
             uasort($hosts, static fn (mixed $left, mixed $right): int =>
                 ((int) (is_array($left) ? ($left['sort'] ?? 0) : 0)) <=> ((int) (is_array($right) ? ($right['sort'] ?? 0) : 0))
             );
-            $entrypointFound = false;
             foreach ($hosts as $index => $host) {
                 if (! is_array($host) || empty($host['is_active'])) {
                     continue;
                 }
 
-                if (! $entrypointFound) {
-                    if (! empty($host['proxy_server_id'])) {
-                        $validator->errors()->add("hosts.{$index}.proxy_server_id", 'The entrypoint cannot have a proxy server.');
-                    }
-
-                    $entrypointFound = true;
-
-                    continue;
-                }
-
                 if (empty($host['proxy_server_id'])) {
-                    $validator->errors()->add("hosts.{$index}.proxy_server_id", 'Select the HAProxy server for each active cascade host.');
+                    $validator->errors()->add("hosts.{$index}.proxy_server_id", 'Select the HAProxy server for each active host.');
                 }
             }
         }];

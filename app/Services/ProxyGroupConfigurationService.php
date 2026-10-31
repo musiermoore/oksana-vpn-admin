@@ -111,17 +111,16 @@ SYSTEMD,
         $snippets = [];
         foreach ($group->proxies as $proxy) {
             $hosts = $proxy->hosts->where('is_active', true)->sortBy([['sort', 'asc'], ['id', 'asc']])->values();
-            $lastHost = $hosts->last();
-            if (! $lastHost instanceof ProxyHost || $hosts->count() < 2) {
-                throw new RuntimeException("Proxy {$proxy->name} needs an active cascade host after its entrypoint.");
+            if ($hosts->isEmpty()) {
+                throw new RuntimeException("Proxy {$proxy->name} needs at least one active host.");
             }
 
-            foreach ($hosts->slice(1)->values() as $offset => $host) {
+            foreach ($hosts as $index => $host) {
                 if ($host->proxy_server_id === null || ! $host->proxyServer instanceof Server) {
-                    throw new RuntimeException("Select a HAProxy configuration server for active hop {$host->host} on proxy {$proxy->name}.");
+                    throw new RuntimeException("Select a HAProxy configuration server for active host {$host->host} on proxy {$proxy->name}.");
                 }
 
-                $nextHost = $hosts->get($offset + 2);
+                $nextHost = $hosts->get($index + 1);
                 $target = $nextHost instanceof ProxyHost
                     ? $this->hostTarget($nextHost->host, (int) $nextHost->port, (bool) $nextHost->is_https)
                     : $this->finalTarget($proxy);

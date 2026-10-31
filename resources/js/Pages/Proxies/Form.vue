@@ -141,7 +141,7 @@ const removeHost = (index) => {
                     <label class="field"><span>Порядок</span><AppInput v-model="host.sort" type="number" min="0" required /></label>
                     <label class="field"><span>Узел активен</span><AppCheckbox v-model="host.is_active" /></label>
                     <label class="field"><span>HTTPS на узле</span><AppCheckbox v-model="host.is_https" /></label>
-                    <label v-if="host.is_active && index !== entryHostIndex" class="field"><span>Сервер для настройки HAProxy</span><AppSelect v-model="host.proxy_server_id" :options="serverOptions" required /></label>
+                    <label v-if="host.is_active" class="field"><span>Сервер для настройки HAProxy</span><AppSelect v-model="host.proxy_server_id" :options="serverOptions" required /></label>
                     <AppButton variant="danger" type="button" :disabled="form.hosts.length <= 1" @click="removeHost(index)">Удалить</AppButton>
                 </div>
             </div>

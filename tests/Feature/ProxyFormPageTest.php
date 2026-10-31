@@ -110,7 +110,7 @@ class ProxyFormPageTest extends TestCase
             );
     }
 
-    public function test_active_cascade_host_requires_a_haproxy_server_but_entrypoint_does_not(): void
+    public function test_each_active_host_including_entrypoint_requires_a_haproxy_server(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
         $server = Server::query()->create([
@@ -134,14 +134,21 @@ class ProxyFormPageTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('proxies.store'), $payload)
-            ->assertSessionHasErrors('hosts.1.proxy_server_id');
+            ->assertSessionHasErrors(['hosts.0.proxy_server_id', 'hosts.1.proxy_server_id']);
 
         $payload['hosts'][0]['proxy_server_id'] = $server->id;
         $payload['hosts'][1]['proxy_server_id'] = $server->id;
 
         $this->actingAs($admin)
             ->post(route('proxies.store'), $payload)
-            ->assertSessionHasErrors('hosts.0.proxy_server_id');
+            ->assertRedirect();
+
+        $proxy = Proxy::query()->where('name', 'Cascade proxy')->firstOrFail();
+        $this->assertDatabaseHas('proxy_hosts', [
+            'proxy_id' => $proxy->id,
+            'host' => 'entry.example.com',
+            'proxy_server_id' => $server->id,
+        ]);
     }
 
     public function test_proxies_page_shows_system_name_for_admins(): void

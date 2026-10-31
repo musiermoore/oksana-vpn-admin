@@ -22,6 +22,8 @@ class ProxyData extends Data
         public ?int $inboundId = null,
         public ?string $description = null,
         public ?int $proxyGroupId = null,
+        public bool $isVisibleInConnect = true,
+        public bool $isVisibleInConnectV2 = true,
     ) {}
 
     public function toArray(): array
@@ -33,6 +35,8 @@ class ProxyData extends Data
             'is_https' => $this->isHttps,
             'is_ready' => $this->isReady,
             'hide_main_node_name' => $this->hideMainNodeName,
+            'is_visible_in_connect' => $this->isVisibleInConnect,
+            'is_visible_in_connect_v2' => $this->isVisibleInConnectV2,
             'description' => $this->description,
             'hosts' => $this->hosts->toArray(),
         ];

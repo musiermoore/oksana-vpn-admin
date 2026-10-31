@@ -34,6 +34,8 @@ const form = useForm({
     is_https: props.proxy?.is_https ?? true,
     is_ready: props.proxy?.is_ready ?? false,
     hide_main_node_name: props.proxy?.hide_main_node_name ?? false,
+    is_visible_in_connect: props.proxy?.is_visible_in_connect ?? true,
+    is_visible_in_connect_v2: props.proxy?.is_visible_in_connect_v2 ?? true,
     description: props.proxy?.description ?? '',
 });
 
@@ -154,6 +156,8 @@ const removeHost = (index) => {
             </div>
             <label class="field"><span>Прокси готов<AppHelpTip text="Если выключено, прокси скрыт в подписке у пользователей, но остаётся доступен администраторам." /></span><AppCheckbox v-model="form.is_ready" enabled-label="Готов" disabled-label="Только администраторы" /></label>
             <label class="field"><span>Скрывать имя основного сервера<AppHelpTip text="В ссылке подключения будет показано только имя прокси, без имени основного сервера." /></span><AppCheckbox v-model="form.hide_main_node_name" enabled-label="Скрывать" disabled-label="Показывать" /></label>
+            <label class="field"><span>В подписке V1 (/connect)</span><AppCheckbox v-model="form.is_visible_in_connect" enabled-label="Показывать" disabled-label="Скрывать" /></label>
+            <label class="field"><span>В подписке V2 (/connect-v2)</span><AppCheckbox v-model="form.is_visible_in_connect_v2" enabled-label="Показывать" disabled-label="Скрывать" /></label>
             <label class="field" style="grid-column: 1 / -1;">
                 <span>Описание</span>
                 <AppTextarea v-model="form.description"  />

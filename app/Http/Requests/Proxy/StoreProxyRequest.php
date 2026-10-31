@@ -33,6 +33,8 @@ class StoreProxyRequest extends DataFormRequest
             'is_https' => ['required', 'boolean'],
             'is_ready' => ['required', 'boolean'],
             'hide_main_node_name' => ['required', 'boolean'],
+            'is_visible_in_connect' => ['sometimes', 'boolean'],
+            'is_visible_in_connect_v2' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
         ];
     }

@@ -68,7 +68,7 @@ class NormalizedNodeService
             ])
             ->values();
 
-        $proxyIndex = $this->buildProxyIndex($items, $user);
+        $proxyIndex = $this->buildProxyIndex($items, $user, $visibilityField);
 
         $nodes = $items
             ->flatMap(fn (array $item) => $this->buildNodesForItem($item, $proxyIndex))
@@ -274,7 +274,7 @@ class NormalizedNodeService
      * @param  Collection<int, array{type:string, server_id:int, group_sort_order:int, item_sort_order:int, server:string, server_sort:string, config_id:int, config:VlessConfig}>  $items
      * @return array<string, Collection<int, array{proxy:Proxy,sort_order:int}>>
      */
-    private function buildProxyIndex(Collection $items, User $user): array
+    private function buildProxyIndex(Collection $items, User $user, string $visibilityField): array
     {
         $serverIds = $items
             ->pluck('server_id')
@@ -291,6 +291,7 @@ class NormalizedNodeService
 
         $proxyQuery = Proxy::query()
             ->whereIn('server_id', $serverIds)
+            ->where($visibilityField, true)
             ->with(['xrayInbound:id,external_id', 'hosts'])
             ->orderBy('server_id')
             ->orderBy('sort_order')

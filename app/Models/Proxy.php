@@ -20,6 +20,8 @@ class Proxy extends Model
         'sort_order',
         'xray_inbound_id',
         'hide_main_node_name',
+        'is_visible_in_connect',
+        'is_visible_in_connect_v2',
         'is_https',
         'is_ready',
         'description',
@@ -35,6 +37,8 @@ class Proxy extends Model
             'sort_order' => 'integer',
             'xray_inbound_id' => 'integer',
             'hide_main_node_name' => 'boolean',
+            'is_visible_in_connect' => 'boolean',
+            'is_visible_in_connect_v2' => 'boolean',
         ];
     }
 

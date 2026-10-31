@@ -150,12 +150,15 @@ Important fields:
 - `proxy_group_id` (nullable)
 - `xray_inbound_id`
 - `hide_main_node_name`
+- `is_visible_in_connect` and `is_visible_in_connect_v2` (both default to `true`)
 - `sort_order`
 - `proxy_hosts` stores each proxy's host, port, cascade `sort`, active flag, per-hop HTTPS setting, and optional HAProxy configuration server
 
 `sort_order` stores the explicit position of the proxy in the mixed per-server `/connect` list alongside Xray inbounds.
 
 `hide_main_node_name` lets a proxy replace the original server label in `/connect`, so a proxy variant can be shown as just its own name instead of `Server (Proxy Name)`.
+
+Proxy visibility is independent for V1 (`/connect`) and V2 (`/connect-v2`). A proxy is included only when both its owning inbound and its own visibility flag are enabled for that output.
 
 ### Server Prices
 

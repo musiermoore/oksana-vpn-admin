@@ -42,6 +42,8 @@ const destroyProxy = (proxy) => {
                     <th>Порт</th>
                     <th>HTTPS</th>
                     <th>Готов</th>
+                    <th>V1</th>
+                    <th>V2</th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -56,6 +58,8 @@ const destroyProxy = (proxy) => {
                     <td>{{ proxy.port }}</td>
                     <td>{{ proxy.is_https ? 'Да' : 'Нет' }}</td>
                     <td>{{ proxy.is_ready ? 'Да' : 'Нет' }}</td>
+                    <td>{{ proxy.is_visible_in_connect ? 'Да' : 'Нет' }}</td>
+                    <td>{{ proxy.is_visible_in_connect_v2 ? 'Да' : 'Нет' }}</td>
                     <td>
                         <div class="actions">
                             <AppButton v-if="proxy.links?.edit" variant="secondary" :href="proxy.links.edit">Изменить</AppButton>

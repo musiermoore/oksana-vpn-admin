@@ -36,6 +36,8 @@ class ProxyResource extends JsonResource
             'is_https' => (bool) $this->is_https,
             'is_ready' => (bool) $this->is_ready,
             'hide_main_node_name' => (bool) $this->hide_main_node_name,
+            'is_visible_in_connect' => (bool) $this->is_visible_in_connect,
+            'is_visible_in_connect_v2' => (bool) $this->is_visible_in_connect_v2,
             'description' => $this->description,
             'links' => [
                 'edit' => route('proxies.edit', $this->resource),

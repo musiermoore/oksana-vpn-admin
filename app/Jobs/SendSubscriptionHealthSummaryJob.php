@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\SubscriptionProfileHealthCheck;
 use App\Models\XrayInboundHealthCheck;
+use App\Services\HealthCheckSummaryImageRenderer;
 use App\Services\TelegramDevChatService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -35,7 +36,7 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
         return 'subscription-health-failure-summary'.($this->includeStaleResults ? '-manual' : '');
     }
 
-    public function handle(TelegramDevChatService $devChat): void
+    public function handle(TelegramDevChatService $devChat, HealthCheckSummaryImageRenderer $imageRenderer): void
     {
         $checkedSince = now()->subMinutes(30);
         $profilesQuery = SubscriptionProfileHealthCheck::query();
@@ -71,32 +72,11 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
         }
 
         $rows = collect($rows)->sortKeys(SORT_NATURAL | SORT_FLAG_CASE);
-        $columnWidths = [14, 4, 4, 4, 4, 4];
-        $lines = $rows->take(30)->map(fn (array $row, string $name): string => $this->formatMatrixRow([
-            $name,
-            $this->matrixEmoji($row['direct']),
-            $this->matrixEmoji($row['connect']),
-            $this->matrixEmoji($row['connectV2']),
-            $this->matrixEmoji($row['external']),
-            $this->matrixEmoji($row['custom']),
-        ], $columnWidths))->all();
-        array_unshift($lines, $this->formatMatrixRow(
-            ['Имя', 'Dir', 'V1', 'V2', 'Ext', 'Cus'],
-            $columnWidths,
-            true,
-        ));
-        if ($profiles->isEmpty() && $inbounds->isEmpty()) {
-            $lines[] = 'Нет сохранённых результатов';
-        }
-        if ($rows->count() > 30) {
-            $lines[] = '…ещё '.($rows->count() - 30).' строк';
-        }
 
         $causes = $profiles->pluck('error')->concat($inbounds->pluck('error'))
             ->filter()
             ->map(fn (string $error): string => $this->formatCause($error))
             ->unique()
-            ->map(fn (string $cause): string => htmlspecialchars($cause, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'))
             ->take(2)
             ->values()
             ->all();
@@ -106,14 +86,17 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
             + $inbounds->where('status', XrayInboundHealthCheck::STATUS_WARNING)->count();
         $unhealthy = $profiles->where('status', SubscriptionProfileHealthCheck::STATUS_UNHEALTHY)->count()
             + $inbounds->where('status', XrayInboundHealthCheck::STATUS_UNHEALTHY)->count();
-        $devChat->send(
-            ($this->includeStaleResults ? "🔎 Текущее состояние VPN\n" : "🔎 Состояние VPN за последние 30 минут\n")
-            ."🔴 Требуют исправления: {$unhealthy}\n"
-            ."🟡 Нестабильны: {$warnings}\n\n"
-            ."<pre>".htmlspecialchars(implode("\n", $lines), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')."</pre>"
-            .$causeSummary,
-            'HTML',
+        $caption = ($this->includeStaleResults ? '🔎 Текущее состояние VPN' : '🔎 Состояние VPN за последние 30 минут')
+            ."\n🔴 Требуют исправления: {$unhealthy}"
+            ."\n🟡 Нестабильны: {$warnings}"
+            .$causeSummary;
+        $image = $imageRenderer->render(
+            $rows->all(),
+            $this->includeStaleResults,
+            $unhealthy,
+            $warnings,
         );
+        $devChat->sendPhoto($image, $caption);
     }
 
     /** @param array<string, array<string, string>> $rows */
@@ -126,37 +109,6 @@ final class SendSubscriptionHealthSummaryJob implements ShouldQueue, ShouldBeUni
         if (($priority[$status] ?? 5) < ($priority[$current] ?? 5)) {
             $rows[$label][$column] = $status;
         }
-    }
-
-    private function matrixEmoji(string $status): string
-    {
-        return match ($status) {
-            SubscriptionProfileHealthCheck::STATUS_HEALTHY => '✅',
-            SubscriptionProfileHealthCheck::STATUS_WARNING => '⚠️',
-            SubscriptionProfileHealthCheck::STATUS_UNHEALTHY => '❌',
-            SubscriptionProfileHealthCheck::STATUS_PENDING => '⏳',
-            SubscriptionProfileHealthCheck::STATUS_UNSUPPORTED => '➖',
-            default => '—',
-        };
-    }
-
-    /** @param array<int, string> $cells
-     *  @param array<int, int> $widths
-     */
-    private function formatMatrixRow(array $cells, array $widths, bool $center = false): string
-    {
-        $formatted = [];
-        foreach ($cells as $index => $cell) {
-            $width = $widths[$index];
-            $cell = mb_strimwidth($cell, 0, $width, '…');
-            $padding = max(0, $width - mb_strwidth($cell));
-            $centerCell = $center || $index > 0;
-            $leftPadding = $centerCell ? intdiv($padding, 2) : 0;
-            $rightPadding = $padding - $leftPadding;
-            $formatted[] = str_repeat(' ', $leftPadding).$cell.str_repeat(' ', $rightPadding);
-        }
-
-        return implode(' | ', $formatted);
     }
 
     private function formatCause(string $error): string

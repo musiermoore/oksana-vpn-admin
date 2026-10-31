@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Jobs\SendTelegramMessageJob;
+use App\Jobs\SendTelegramPhotoJob;
 
 class TelegramDevChatService
 {
@@ -25,5 +26,15 @@ class TelegramDevChatService
         }
 
         SendTelegramMessageJob::dispatch($payload)->afterCommit();
+    }
+
+    public function sendPhoto(string $contents, string $caption): void
+    {
+        $chatId = (string) config('services.telegram.dev_chat_id', '');
+        if ($chatId === '') {
+            return;
+        }
+
+        SendTelegramPhotoJob::dispatch($chatId, $contents, $caption)->afterCommit();
     }
 }

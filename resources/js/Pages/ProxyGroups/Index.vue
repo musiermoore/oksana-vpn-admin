@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../Layouts/AppLayout.vue';
 
@@ -14,7 +14,58 @@ const loading = ref(false);
 const applying = ref(false);
 const error = ref('');
 const stage = ref('preview');
+const runRevision = ref(-1);
+const runChannel = ref('');
+let runPoll = null;
 const flowText = computed(() => preview.value?.flow ?? []);
+
+const stopRunUpdates = () => {
+    if (runChannel.value && window.Echo) window.Echo.leave(runChannel.value);
+    runChannel.value = '';
+    if (runPoll) window.clearInterval(runPoll);
+    runPoll = null;
+};
+
+const applyRunState = (run) => {
+    if (!run || Number(run.revision) < runRevision.value) return;
+
+    runRevision.value = Number(run.revision);
+    steps.value = run.steps ?? [];
+    if (run.status === 'pending' || run.status === 'running') {
+        stage.value = 'running';
+        return;
+    }
+
+    stage.value = run.status === 'completed' ? 'complete' : 'failed';
+    error.value = run.error_message ?? '';
+    if (runChannel.value && window.Echo) window.Echo.leave(runChannel.value);
+    runChannel.value = '';
+    if (runPoll) window.clearInterval(runPoll);
+    runPoll = null;
+};
+
+const refreshRun = async (groupId, expectedRunId) => {
+    try {
+        const response = await window.axios.get(`/proxy-groups/${groupId}/configuration-run`);
+        if (Number(response.data.run?.id) === Number(expectedRunId)) applyRunState(response.data.run);
+    } catch {
+        // Keep the last saved progress visible if a transient status request fails.
+    }
+};
+
+const watchRun = (groupId, run) => {
+    applyRunState(run);
+    if (run.status !== 'pending' && run.status !== 'running') return;
+
+    const channel = `proxy-group-configuration.${run.id}`;
+    if (window.Echo) {
+        runChannel.value = channel;
+        window.Echo.private(channel).listen('.proxy-group.configuration.updated', applyRunState);
+    }
+    if (!runPoll) {
+        runPoll = window.setInterval(() => refreshRun(groupId, run.id), 3000);
+    }
+};
 
 const createGroup = () => createForm.post('/proxy-groups');
 const renameGroup = (group) => {
@@ -29,15 +80,19 @@ const deleteGroup = (group) => {
     }
 };
 const openPipeline = async (group) => {
+    stopRunUpdates();
     selectedGroup.value = group;
     preview.value = null;
     steps.value = [];
     error.value = '';
     stage.value = 'preview';
+    runRevision.value = -1;
     loading.value = true;
     try {
         const response = await window.axios.get(`/proxy-groups/${group.id}/configuration-preview`);
         preview.value = response.data;
+        const runResponse = await window.axios.get(`/proxy-groups/${group.id}/configuration-run`);
+        if (runResponse.data.run) watchRun(group.id, runResponse.data.run);
     } catch (exception) {
         error.value = exception.response?.data?.message ?? 'Не удалось построить схему конфигурации.';
     } finally {
@@ -47,13 +102,14 @@ const openPipeline = async (group) => {
 const applyConfiguration = async () => {
     if (!selectedGroup.value || !window.confirm('Подтвердить применение показанной конфигурации ко всем серверам группы?')) return;
     applying.value = true;
+    stopRunUpdates();
     steps.value = [];
     error.value = '';
     stage.value = 'running';
     try {
         const response = await window.axios.post(`/proxy-groups/${selectedGroup.value.id}/configure`);
-        steps.value = response.data.steps ?? [];
-        stage.value = response.data.success ? 'complete' : 'failed';
+        watchRun(selectedGroup.value.id, response.data.run);
+        await refreshRun(selectedGroup.value.id, response.data.run.id);
     } catch (exception) {
         const response = exception.response;
         const responseData = response?.data;
@@ -71,7 +127,12 @@ const applyConfiguration = async () => {
         applying.value = false;
     }
 };
-const closePipeline = () => { selectedGroup.value = null; };
+const closePipeline = () => {
+    stopRunUpdates();
+    selectedGroup.value = null;
+};
+
+onBeforeUnmount(stopRunUpdates);
 </script>
 
 <template>
@@ -111,7 +172,7 @@ const closePipeline = () => { selectedGroup.value = null; };
         <section class="pipeline-modal page-card stack" role="dialog" aria-modal="true" aria-labelledby="pipeline-title">
             <div class="page-header"><div><h2 id="pipeline-title">HAProxy · {{ selectedGroup.name }}</h2><p class="hint">Проверьте схему и конфигурацию перед применением.</p></div><AppButton variant="secondary" @click="closePipeline">Закрыть</AppButton></div>
             <p v-if="loading">Подготовка схемы…</p>
-            <p v-if="applying">Выполняю проверку и настройку HAProxy на серверах группы…</p>
+            <p v-if="stage === 'running'">Задача ожидает запуска или выполняет настройку HAProxy на серверах группы…</p>
             <p v-if="error" class="pipeline-error">{{ error }}</p>
             <template v-if="preview">
                 <h3>Путь трафика</h3>
@@ -128,7 +189,7 @@ const closePipeline = () => { selectedGroup.value = null; };
                 <div v-if="steps.length" class="pipeline-steps"><h3>{{ stage === 'complete' ? 'Результат' : 'Этапы и результаты' }}</h3>
                     <div v-for="(step, index) in steps" :key="`${step.server}-${index}`" class="pipeline-step" :class="step.success ? 'is-success' : 'is-failed'"><strong>{{ step.server }} · {{ step.step }}</strong><span>{{ step.message }}</span></div>
                 </div>
-                <div class="actions"><AppButton v-if="stage === 'preview'" :disabled="applying" @click="applyConfiguration">Да, применить</AppButton><AppButton v-if="stage === 'failed'" variant="secondary" @click="stage = 'preview'; steps = []">Вернуться к схеме</AppButton></div>
+                <div class="actions"><AppButton v-if="stage !== 'running'" :disabled="applying" @click="applyConfiguration">{{ stage === 'preview' ? 'Да, применить' : 'Применить ещё раз' }}</AppButton><AppButton v-if="stage === 'failed'" variant="secondary" @click="stage = 'preview'; steps = []; error = ''">Вернуться к схеме</AppButton></div>
             </template>
         </section>
     </div>

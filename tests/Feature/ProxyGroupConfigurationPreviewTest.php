@@ -6,13 +6,15 @@ namespace Tests\Feature;
 
 use App\Models\Proxy;
 use App\Models\ProxyGroup;
+use App\Models\ProxyGroupConfigurationRun;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\XrayInbound;
+use App\Jobs\RunProxyGroupConfigurationJob;
 use App\Services\ProxyGroupConfigurationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
-use RuntimeException;
 use Tests\TestCase;
 
 class ProxyGroupConfigurationPreviewTest extends TestCase
@@ -32,20 +34,29 @@ class ProxyGroupConfigurationPreviewTest extends TestCase
         $this->actingAs($user)->get(route('proxy-groups.index'))->assertForbidden();
     }
 
-    public function test_apply_returns_a_failure_step_when_preparation_throws(): void
+    public function test_apply_queues_configuration_and_returns_a_persistent_run(): void
     {
+        Queue::fake();
         $admin = User::factory()->create(['is_admin' => true]);
         $group = ProxyGroup::query()->create(['name' => 'Nordic cascade']);
-        $configuration = \Mockery::mock(ProxyGroupConfigurationService::class);
-        $configuration->shouldReceive('apply')->once()->andThrow(new RuntimeException('Invalid HAProxy target.'));
-        $this->app->instance(ProxyGroupConfigurationService::class, $configuration);
 
         $this->actingAs($admin)
             ->postJson(route('proxy-groups.configure', $group))
-            ->assertStatus(422)
-            ->assertJsonPath('success', false)
-            ->assertJsonPath('steps.0.step', 'Подготовка конфигурации')
-            ->assertJsonPath('steps.0.message', 'Invalid HAProxy target.');
+            ->assertStatus(202)
+            ->assertJsonPath('started', true)
+            ->assertJsonPath('run.status', ProxyGroupConfigurationRun::STATUS_PENDING)
+            ->assertJsonPath('run.group_name', 'Nordic cascade');
+
+        $run = ProxyGroupConfigurationRun::query()->sole();
+        $this->assertSame($group->id, $run->proxy_group_id);
+        $this->assertSame($admin->id, $run->started_by);
+        Queue::assertPushedOn('default', RunProxyGroupConfigurationJob::class);
+
+        $this->actingAs($admin)
+            ->getJson(route('proxy-groups.configuration-run', $group))
+            ->assertOk()
+            ->assertJsonPath('run.id', $run->id)
+            ->assertJsonPath('run.status', ProxyGroupConfigurationRun::STATUS_PENDING);
     }
 
     public function test_preview_shows_cascade_and_per_server_haproxy_configuration(): void

@@ -12,3 +12,9 @@ Broadcast::channel('server-console.{sessionUuid}', function ($user, string $sess
         ->where('user_id', $user->id)
         ->exists();
 });
+
+Broadcast::channel('proxy-group-configuration.{runId}', function ($user, int $runId): bool {
+    return (bool) $user->is_admin && \App\Models\ProxyGroupConfigurationRun::query()
+        ->whereKey($runId)
+        ->exists();
+});

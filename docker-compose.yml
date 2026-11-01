@@ -100,6 +100,28 @@ services:
             redis:
                 condition: service_healthy
 
+    default-worker:
+        container_name: wireguard_default_worker
+        env_file:
+            - .env
+        build:
+            context: .
+            dockerfile: docker/app/Dockerfile
+        working_dir: /var/www/html
+        command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--timeout=930"]
+        healthcheck:
+            disable: true
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - app
+            - oksana-vpn
+        depends_on:
+            app:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+
     mysql:
         container_name: wireguard_mysql
         env_file:

@@ -9,16 +9,19 @@ use App\Http\Requests\Proxy\StoreProxyGroupRequest;
 use App\Models\Proxy;
 use App\Models\ProxyGroup;
 use App\Services\ProxyGroupConfigurationService;
+use App\Services\ProxyGroupConfigurationRunService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
 use RuntimeException;
-use Throwable;
 
 class ProxyGroupController extends Controller
 {
-    public function __construct(private readonly ProxyGroupConfigurationService $configuration) {}
+    public function __construct(
+        private readonly ProxyGroupConfigurationService $configuration,
+        private readonly ProxyGroupConfigurationRunService $runs,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -102,22 +105,21 @@ class ProxyGroupController extends Controller
     public function apply(Request $request, ProxyGroup $proxyGroup): JsonResponse
     {
         $this->authorizeAdmin($request);
-        try {
-            return response()->json($this->configuration->apply($proxyGroup));
-        } catch (Throwable $exception) {
-            report($exception);
+        $result = $this->runs->start($proxyGroup, (int) $request->user()->id);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Не удалось применить конфигурацию.',
-                'steps' => [[
-                    'server' => 'Приложение',
-                    'step' => 'Подготовка конфигурации',
-                    'success' => false,
-                    'message' => $exception->getMessage(),
-                ]],
-            ], 422);
-        }
+        return response()->json([
+            'run' => $result['run']->toStatusArray(),
+            'started' => $result['started'],
+        ], $result['started'] ? 202 : 200);
+    }
+
+    public function latestRun(Request $request, ProxyGroup $proxyGroup): JsonResponse
+    {
+        $this->authorizeAdmin($request);
+
+        return response()->json([
+            'run' => $this->runs->latestForGroup($proxyGroup)?->toStatusArray(),
+        ]);
     }
 
     private function authorizeAdmin(Request $request): void

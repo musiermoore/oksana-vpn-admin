@@ -131,6 +131,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('proxy-groups/{proxyGroup}', [ProxyGroupController::class, 'update'])->name('proxy-groups.update');
     Route::delete('proxy-groups/{proxyGroup}', [ProxyGroupController::class, 'destroy'])->name('proxy-groups.destroy');
     Route::get('proxy-groups/{proxyGroup}/configuration-preview', [ProxyGroupController::class, 'preview'])->name('proxy-groups.configuration-preview');
+    Route::get('proxy-groups/{proxyGroup}/configuration-run', [ProxyGroupController::class, 'latestRun'])->name('proxy-groups.configuration-run');
     Route::post('proxy-groups/{proxyGroup}/configure', [ProxyGroupController::class, 'apply'])->name('proxy-groups.configure');
     Route::resource('vless-external-subscriptions', VlessExternalSubscriptionController::class)->except(['show']);
     Route::post('vless-external-subscriptions/preview', [VlessExternalSubscriptionController::class, 'preview'])

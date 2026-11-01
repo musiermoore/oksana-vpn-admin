@@ -8,6 +8,7 @@ use App\Models\Proxy;
 use App\Models\ProxyGroup;
 use App\Models\ProxyHost;
 use App\Models\Server;
+use Closure;
 use phpseclib4\Crypt\PublicKeyLoader;
 use phpseclib4\Net\SSH2;
 use RuntimeException;
@@ -55,12 +56,13 @@ SYSTEMD,
     }
 
     /** @return array<string, mixed> */
-    public function apply(ProxyGroup $group): array
+    public function apply(ProxyGroup $group, ?Closure $onStep = null): array
     {
         $group->load(['proxies.server', 'proxies.xrayInbound', 'proxies.hosts.proxyServer']);
         $plans = array_values($this->buildPlans($group));
         $steps = [];
         $prepared = [];
+        $reportedStepCount = 0;
 
         foreach ($plans as $plan) {
             $server = $plan['server'];
@@ -68,11 +70,16 @@ SYSTEMD,
             try {
                 $ssh = $this->connect($server);
                 $steps[] = $this->step($server, 'SSH connection', true, 'Connected.');
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
                 $this->checkRemotePrerequisites($ssh, $server, $steps);
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
                 $this->createBackups($ssh, $server, $steps);
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
                 $prepared[] = ['server' => $server, 'plan' => $plan];
                 $this->renderFiles($ssh, $server, $plan, $steps);
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
                 $this->checkConfigurationAndRestart($ssh, $server, $steps);
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
             } catch (Throwable $exception) {
                 $steps[] = $this->step($server, 'Configuration', false, $exception->getMessage());
                 if ($ssh instanceof SSH2) {
@@ -81,6 +88,7 @@ SYSTEMD,
 
                 $rollback = $this->rollback($prepared);
                 $steps = [...$steps, ...$rollback];
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
 
                 return ['success' => false, 'steps' => $steps];
             }
@@ -96,13 +104,31 @@ SYSTEMD,
                 $ssh = $this->connect($server);
                 $this->run($ssh, 'rm -f '.self::FRONTEND_BACKUP.' '.self::BACKEND_BACKUP);
                 $steps[] = $this->step($server, 'Remove backups', true, 'HAProxy restarted successfully; backups removed.');
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
                 $ssh->disconnect();
             } catch (Throwable $exception) {
                 $steps[] = $this->step($server, 'Remove backups', false, $exception->getMessage());
+                $this->reportNewSteps($steps, $reportedStepCount, $onStep);
             }
         }
 
         return ['success' => true, 'steps' => $steps];
+    }
+
+    /** @param array<int, array{server:string,step:string,success:bool,message:string}> $steps */
+    private function reportNewSteps(array $steps, int &$reportedStepCount, ?Closure $onStep): void
+    {
+        if ($onStep === null) {
+            $reportedStepCount = count($steps);
+
+            return;
+        }
+
+        foreach (array_slice($steps, $reportedStepCount) as $step) {
+            $onStep($step);
+        }
+
+        $reportedStepCount = count($steps);
     }
 
     /** @return array<int, array{server:Server,frontend:string,backend:string}> */

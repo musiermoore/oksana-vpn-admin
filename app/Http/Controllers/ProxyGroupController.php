@@ -107,7 +107,16 @@ class ProxyGroupController extends Controller
         } catch (Throwable $exception) {
             report($exception);
 
-            return response()->json(['success' => false, 'message' => 'Configuration failed before deployment could finish.'], 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'Не удалось применить конфигурацию.',
+                'steps' => [[
+                    'server' => 'Приложение',
+                    'step' => 'Подготовка конфигурации',
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                ]],
+            ], 422);
         }
     }
 

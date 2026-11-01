@@ -12,6 +12,7 @@ use App\Models\XrayInbound;
 use App\Services\ProxyGroupConfigurationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use RuntimeException;
 use Tests\TestCase;
 
 class ProxyGroupConfigurationPreviewTest extends TestCase
@@ -29,6 +30,22 @@ class ProxyGroupConfigurationPreviewTest extends TestCase
         $this->assertDatabaseHas('proxy_groups', ['name' => 'Nordic cascade']);
 
         $this->actingAs($user)->get(route('proxy-groups.index'))->assertForbidden();
+    }
+
+    public function test_apply_returns_a_failure_step_when_preparation_throws(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $group = ProxyGroup::query()->create(['name' => 'Nordic cascade']);
+        $configuration = \Mockery::mock(ProxyGroupConfigurationService::class);
+        $configuration->shouldReceive('apply')->once()->andThrow(new RuntimeException('Invalid HAProxy target.'));
+        $this->app->instance(ProxyGroupConfigurationService::class, $configuration);
+
+        $this->actingAs($admin)
+            ->postJson(route('proxy-groups.configure', $group))
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('steps.0.step', 'Подготовка конфигурации')
+            ->assertJsonPath('steps.0.message', 'Invalid HAProxy target.');
     }
 
     public function test_preview_shows_cascade_and_per_server_haproxy_configuration(): void

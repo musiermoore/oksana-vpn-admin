@@ -55,8 +55,17 @@ const applyConfiguration = async () => {
         steps.value = response.data.steps ?? [];
         stage.value = response.data.success ? 'complete' : 'failed';
     } catch (exception) {
-        steps.value = exception.response?.data?.steps ?? [];
-        error.value = exception.response?.data?.message ?? 'Не удалось применить конфигурацию.';
+        const response = exception.response;
+        const responseData = response?.data;
+        steps.value = responseData?.steps?.length ? responseData.steps : [{
+            server: 'Приложение',
+            step: response ? `Ответ HTTP ${response.status}` : 'Сетевой запрос',
+            success: false,
+            message: responseData?.message ?? (response
+                ? `Сервер вернул HTTP ${response.status} без этапов выполнения.`
+                : `Нет ответа от сервера: ${exception.message}`),
+        }];
+        error.value = responseData?.message ?? 'Не удалось применить конфигурацию.';
         stage.value = 'failed';
     } finally {
         applying.value = false;

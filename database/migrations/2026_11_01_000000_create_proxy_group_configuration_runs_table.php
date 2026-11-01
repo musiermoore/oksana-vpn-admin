@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('group_name');
             $table->string('status')->default('pending');
             $table->unsignedInteger('revision')->default(0);
-            $table->json('steps')->default('[]');
+            $table->json('steps');
             $table->text('error_message')->nullable();
             $table->timestamp('started_at')->nullable();
             $table->timestamp('finished_at')->nullable();

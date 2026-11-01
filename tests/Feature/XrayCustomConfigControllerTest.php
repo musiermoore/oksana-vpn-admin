@@ -81,6 +81,38 @@ class XrayCustomConfigControllerTest extends TestCase
         $this->assertFalse($config->fresh()->is_active);
     }
 
+    public function test_edit_discards_proxy_ids_that_no_longer_exist(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $config = XrayCustomConfig::query()->create([
+            'name' => 'Custom config',
+            'slug' => 'custom-config',
+            'proxy_ids' => [999999],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('xray-custom-configs.update', $config), [
+                'name' => $config->name,
+                'slug' => $config->slug,
+                'description' => null,
+                'xray_inbound_ids' => [],
+                'external_subscription_config_ids' => [],
+                'external_subscription_ids' => [],
+                'proxy_ids' => [999999],
+                'xray_routing_ids' => [],
+                'base_settings_json' => '{}',
+                'outbound_groups_json' => '[]',
+                'routes_json' => '[]',
+                'is_active' => true,
+                'sort_order' => 1,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame([], $config->fresh()->proxy_ids);
+    }
+
     public function test_admin_can_duplicate_a_custom_config_without_copying_user_assignments(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

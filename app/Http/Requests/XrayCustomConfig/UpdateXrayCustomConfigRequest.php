@@ -7,6 +7,7 @@ namespace App\Http\Requests\XrayCustomConfig;
 use App\DTOs\XrayCustomConfig\XrayCustomConfigData;
 use App\Enums\XrayBalancerStrategy;
 use App\Http\Requests\DataFormRequest;
+use App\Models\Proxy;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -15,6 +16,34 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
     protected function laravelData(): string
     {
         return XrayCustomConfigData::class;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $proxyIds = $this->input('proxy_ids', []);
+        if (! is_array($proxyIds)) {
+            return;
+        }
+
+        $proxyIdsToCheck = array_values(array_unique(array_map(
+            'intval',
+            array_filter($proxyIds, static fn (mixed $id): bool =>
+                (is_int($id) || (is_string($id) && ctype_digit($id))) && (int) $id > 0
+            ),
+        )));
+
+        $existingProxyIds = Proxy::query()
+            ->whereKey($proxyIdsToCheck)
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $this->merge(['proxy_ids' => array_values(array_filter(
+            $proxyIds,
+            static fn (mixed $id): bool => ! (is_int($id) || (is_string($id) && ctype_digit($id)))
+                || (int) $id < 1
+                || in_array((int) $id, $existingProxyIds, true),
+        ))]);
     }
 
     public function rules(): array

@@ -57,12 +57,6 @@ const entryHostIndex = computed(() => form.hosts
     .filter(({ host }) => Boolean(host.is_active))
     .sort((left, right) => (Number(left.host.sort) || 0) - (Number(right.host.sort) || 0) || left.index - right.index)[0]?.index ?? -1);
 
-watch(entryHostIndex, (index) => {
-    if (index >= 0 && form.hosts[index]?.proxy_server_id) {
-        form.hosts[index].proxy_server_id = null;
-    }
-}, { immediate: true });
-
 const inboundOptions = computed(() => {
     if (selectedServerId.value === null) {
         return [{ label: 'Сначала выберите сервер', value: '', disabled: true }];

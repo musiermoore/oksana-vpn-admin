@@ -96,6 +96,7 @@ class ProxyFormPageTest extends TestCase
             'port' => 443,
             'sort' => 0,
             'is_active' => true,
+            'proxy_server_id' => $server->id,
         ]);
 
         $this->actingAs($admin)
@@ -107,6 +108,8 @@ class ProxyFormPageTest extends TestCase
                 ->where('inbound_options_by_server.'.$server->id.'.0.value', 202)
                 ->where('inbound_options_by_server.'.$server->id.'.0.label', 'Main inbound · vless · 443 (узел №202)')
                 ->where('proxy.hosts.0.host', 'proxy.example.com')
+                ->where('proxy.hosts.0.proxy_server_id', $server->id)
+                ->where('server_options.0.value', $server->id)
             );
     }
 

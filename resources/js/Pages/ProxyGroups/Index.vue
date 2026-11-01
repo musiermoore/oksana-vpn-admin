@@ -187,7 +187,7 @@ onBeforeUnmount(stopRunUpdates);
                     <p>backends/backend.cfg</p><pre>{{ server.backend_config }}</pre>
                 </details>
                 <div v-if="steps.length" class="pipeline-steps"><h3>{{ stage === 'complete' ? 'Результат' : 'Этапы и результаты' }}</h3>
-                    <div v-for="(step, index) in steps" :key="`${step.server}-${index}`" class="pipeline-step" :class="step.success ? 'is-success' : 'is-failed'"><strong>{{ step.server }} · {{ step.step }}</strong><span>{{ step.message }}</span></div>
+                    <div v-for="(step, index) in steps" :key="`${step.server}-${index}`" class="pipeline-step" :class="step.warning ? 'is-warning' : (step.success ? 'is-success' : 'is-failed')"><strong>{{ step.server }} · {{ step.step }}</strong><span>{{ step.message }}</span></div>
                 </div>
                 <div class="actions"><AppButton v-if="stage !== 'running'" :disabled="applying" @click="applyConfiguration">{{ stage === 'preview' ? 'Да, применить' : 'Применить ещё раз' }}</AppButton><AppButton v-if="stage === 'failed'" variant="secondary" @click="stage = 'preview'; steps = []; error = ''">Вернуться к схеме</AppButton></div>
             </template>
@@ -202,5 +202,6 @@ onBeforeUnmount(stopRunUpdates);
 .pipeline-flow, .pipeline-step { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--border, #d1d5db); border-radius: 8px; overflow-wrap: anywhere; }
 .pipeline-steps { display: grid; gap: 10px; }
 .pipeline-step.is-success { border-color: #22a06b; }
+.pipeline-step.is-warning { color: #9a6700; border-color: #d99a00; background: #fff9e6; }
 .pipeline-step.is-failed, .pipeline-error { color: #b42318; border-color: #b42318; }
 </style>

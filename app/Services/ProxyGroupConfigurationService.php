@@ -63,6 +63,7 @@ SYSTEMD,
         $steps = [];
         $prepared = [];
         $reportedStepCount = 0;
+        $journalSinceByServerId = [];
 
         foreach ($plans as $plan) {
             $server = $plan['server'];
@@ -78,6 +79,7 @@ SYSTEMD,
                 $prepared[] = ['server' => $server, 'plan' => $plan];
                 $this->renderFiles($ssh, $server, $plan, $steps);
                 $this->reportNewSteps($steps, $reportedStepCount, $onStep);
+                $journalSinceByServerId[(int) $server->id] = now()->utc()->subSeconds(2)->format('Y-m-d H:i:s').' UTC';
                 $this->checkConfigurationAndRestart($ssh, $server, $steps);
                 $this->reportNewSteps($steps, $reportedStepCount, $onStep);
             } catch (Throwable $exception) {
@@ -98,6 +100,10 @@ SYSTEMD,
             }
         }
 
+        $healthSteps = $this->checkBackendLogs($prepared, $journalSinceByServerId);
+        $steps = [...$steps, ...$healthSteps];
+        $this->reportNewSteps($steps, $reportedStepCount, $onStep);
+
         foreach ($prepared as $entry) {
             $server = $entry['server'];
             try {
@@ -115,7 +121,7 @@ SYSTEMD,
         return ['success' => true, 'steps' => $steps];
     }
 
-    /** @param array<int, array{server:string,step:string,success:bool,message:string}> $steps */
+    /** @param array<int, array{server:string,step:string,success:bool,message:string,warning:bool}> $steps */
     private function reportNewSteps(array $steps, int &$reportedStepCount, ?Closure $onStep): void
     {
         if ($onStep === null) {
@@ -131,7 +137,7 @@ SYSTEMD,
         $reportedStepCount = count($steps);
     }
 
-    /** @return array<int, array{server:Server,frontend:string,backend:string}> */
+    /** @return array<int, array{server:Server,frontend:string,backend:string,backend_proxy_names:array<string,string>}> */
     private function buildPlans(ProxyGroup $group): array
     {
         $snippets = [];
@@ -158,6 +164,7 @@ SYSTEMD,
                 $server = $host->proxyServer;
                 $snippets[$server->id]['server'] = $server;
                 $snippets[$server->id]['frontend'][] = "frontend {$frontendName}\n    bind *:{$port}\n    mode tcp\n    default_backend {$backendName}";
+                $snippets[$server->id]['backend_proxy_names'][$backendName] = (string) $proxy->name;
                 $ssl = $target['is_https'] ? ' ssl verify none' : '';
                 $snippets[$server->id]['backend'][] = "backend {$backendName}\n    mode tcp\n    server {$serverName} {$target['host']}:{$target['port']} check{$ssl}";
             }
@@ -173,6 +180,7 @@ SYSTEMD,
                 'server' => $snippet['server'],
                 'frontend' => implode("\n\n", $snippet['frontend'])."\n",
                 'backend' => implode("\n\n", $snippet['backend'])."\n",
+                'backend_proxy_names' => $snippet['backend_proxy_names'],
             ];
         }
 
@@ -369,6 +377,78 @@ SYSTEMD,
         return $steps;
     }
 
+    /**
+     * @param array<string, string> $backendProxyNames
+     * @return array<string, array{proxy_name:string,message:string}>
+     */
+    private function unavailableBackends(string $journal, array $backendProxyNames): array
+    {
+        $unavailable = [];
+
+        foreach (explode("\n", $journal) as $line) {
+            foreach ($backendProxyNames as $backendName => $proxyName) {
+                if (str_contains($line, "backend {$backendName} has no server available")) {
+                    $unavailable[$backendName] = ['proxy_name' => $proxyName, 'message' => trim($line)];
+                }
+            }
+        }
+
+        return $unavailable;
+    }
+
+    /**
+     * @param array<int, array{server:Server,plan:array{server:Server,frontend:string,backend:string,backend_proxy_names:array<string,string>}}> $prepared
+     * @param array<int, string> $journalSinceByServerId
+     * @return array<int, array{server:string,step:string,success:bool,message:string,warning:bool}>
+     */
+    private function checkBackendLogs(array $prepared, array $journalSinceByServerId): array
+    {
+        sleep(5);
+        $steps = [];
+
+        foreach ($prepared as $entry) {
+            $server = $entry['server'];
+            $ssh = null;
+            try {
+                $ssh = $this->connect($server);
+                $journal = $this->run(
+                    $ssh,
+                    'journalctl -t haproxy --since '.escapeshellarg($journalSinceByServerId[(int) $server->id]).' --no-pager --output=cat',
+                );
+                $unavailableBackends = $this->unavailableBackends($journal, $entry['plan']['backend_proxy_names']);
+
+                if ($unavailableBackends === []) {
+                    $steps[] = $this->step($server, 'Check HAProxy backends', true, 'No “has no server available” messages found for this deployment.');
+                    continue;
+                }
+
+                foreach ($unavailableBackends as $backend => $alert) {
+                    $steps[] = $this->step(
+                        $server,
+                        'Проверка доступности прокси',
+                        true,
+                        "Прокси «{$alert['proxy_name']}» (backend {$backend}): {$alert['message']}",
+                        true,
+                    );
+                }
+            } catch (Throwable $exception) {
+                $steps[] = $this->step(
+                    $server,
+                    'Проверка журнала HAProxy',
+                    true,
+                    'Не удалось проверить журнал HAProxy: '.$exception->getMessage(),
+                    true,
+                );
+            } finally {
+                if ($ssh instanceof SSH2) {
+                    $ssh->disconnect();
+                }
+            }
+        }
+
+        return $steps;
+    }
+
     private function readRemote(SSH2 $ssh, string $path): string
     {
         $output = $ssh->exec('cat '.escapeshellarg($path));
@@ -395,9 +475,9 @@ SYSTEMD,
         return $output;
     }
 
-    /** @return array{server:string,step:string,success:bool,message:string} */
-    private function step(Server $server, string $step, bool $success, string $message): array
+    /** @return array{server:string,step:string,success:bool,message:string,warning:bool} */
+    private function step(Server $server, string $step, bool $success, string $message, bool $warning = false): array
     {
-        return ['server' => $server->name, 'step' => $step, 'success' => $success, 'message' => $message];
+        return ['server' => $server->name, 'step' => $step, 'success' => $success, 'message' => $message, 'warning' => $warning];
     }
 }

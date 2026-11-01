@@ -279,7 +279,7 @@ SYSTEMD,
             '/run/haproxy.pid',
         ];
         $overrideCheck = implode(' && ', array_map(
-            fn (string $argument): string => $effectiveExecStart.' | grep -Fq '.escapeshellarg($argument),
+            fn (string $argument): string => $effectiveExecStart.' | grep -Fq -- '.escapeshellarg($argument),
             $requiredArguments,
         ));
         $this->run($ssh, $overrideCheck);

@@ -294,7 +294,7 @@ class VlessConfigController extends Controller
 
         foreach ([
             'Support-Url' => config('services.telegram.incy_links.bot'),
-            'Profile-Web-Page-Url' => config('services.telegram.incy_links.news'),
+            'Profile-Web-Page-Url' => config('services.vless.profile_web_page_url'),
             'Announce-Url' => config('services.telegram.incy_links.chat'),
         ] as $name => $value) {
             $response->header($name, (string) $value);

@@ -49,6 +49,10 @@ return [
         'mini_app_init_data_ttl_seconds' => env('TELEGRAM_MINI_APP_INIT_DATA_TTL_SECONDS', 3600),
     ],
 
+    'vless' => [
+        'profile_web_page_url' => env('VLESS_PROFILE_WEB_PAGE_URL', 'https://public.oksana1984.ru'),
+    ],
+
     'inbound_health' => [
         'sing_box_binary' => env('INBOUND_HEALTH_SING_BOX_BINARY', 'sing-box'),
         'xray_binary' => env('INBOUND_HEALTH_XRAY_BINARY', 'xray'),

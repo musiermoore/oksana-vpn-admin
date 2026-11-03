@@ -300,8 +300,9 @@ class ConnectV2Test extends TestCase
             ->assertHeader('Content-Type', 'application/json; charset=UTF-8');
     }
 
-    public function test_incy_subscription_includes_telegram_links_in_metadata_headers(): void
+    public function test_incy_subscription_uses_configured_website_and_telegram_metadata_headers(): void
     {
+        config()->set('services.vless.profile_web_page_url', 'https://profiles.example.test');
         config()->set('services.telegram.incy_links', [
             'bot' => 'https://t.me/test_bot',
             'news' => 'https://t.me/test_news',
@@ -320,7 +321,7 @@ class ConnectV2Test extends TestCase
         $response
             ->assertOk()
             ->assertHeader('Support-Url', 'https://t.me/test_bot')
-            ->assertHeader('Profile-Web-Page-Url', 'https://t.me/test_news')
+            ->assertHeader('Profile-Web-Page-Url', 'https://profiles.example.test')
             ->assertHeader('Announce-Url', 'https://t.me/test_chat')
             ->assertHeader('Hide-Url', 'true')
             ->assertHeader('Hide-Proxy', 'true');

@@ -12,7 +12,9 @@ class XrayJsonProfileNormalizer
      */
     public function normalizeProfile(array $profile, ?string $client = null): array
     {
-        return $this->normalizeRouting($this->normalizeOutbounds($this->normalizeInbounds($profile), $client));
+        return $this->normalizeRouting(
+            $this->normalizePolicy($this->normalizeOutbounds($this->normalizeInbounds($profile), $client)),
+        );
     }
 
     /**
@@ -83,6 +85,23 @@ class XrayJsonProfileNormalizer
 
             return $outbound;
         }, $profile['outbounds']);
+
+        return $profile;
+    }
+
+    /**
+     * Xray expects policy levels to be an object keyed by level number. PHP's
+     * associative JSON decoding represents both JSON objects and arrays as
+     * arrays, so cast the levels map back to an object before encoding.
+     *
+     * @param  array<string, mixed>  $profile
+     * @return array<string, mixed>
+     */
+    private function normalizePolicy(array $profile): array
+    {
+        if (is_array($profile['policy'] ?? null) && is_array($profile['policy']['levels'] ?? null)) {
+            $profile['policy']['levels'] = (object) $profile['policy']['levels'];
+        }
 
         return $profile;
     }

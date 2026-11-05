@@ -125,6 +125,7 @@ class VlessExternalSubscriptionAccessService
                 'external_subscription_id' => (int) $config->vless_external_subscription_id,
                 'external_subscription_config_id' => (int) $config->id,
                 'json_profile' => $config->json,
+                'external_subscription_geodata_assets' => $config->subscription->geodata?->assets,
             ],
         );
     }

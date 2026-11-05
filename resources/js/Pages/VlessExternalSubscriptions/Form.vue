@@ -13,6 +13,7 @@ const props = defineProps({
     subscription: Object,
     types: Array,
     source_formats: Array,
+    geodata: { type: Array, default: () => [] },
 });
 
 const form = useForm({
@@ -24,6 +25,7 @@ const form = useForm({
     filter_pattern: props.subscription?.filter_pattern ?? '',
     except_pattern: props.subscription?.except_pattern ?? '',
     connect_name_prefix: props.subscription?.connect_name_prefix ?? '',
+    geodata_id: props.subscription?.geodata_id ?? '',
     include_in_main_subscription: props.subscription?.include_in_main_subscription ?? false,
     include_in_whitelist: props.subscription?.include_in_whitelist ?? true,
     include_in_connect_v2: props.subscription?.include_in_connect_v2 ?? true,
@@ -38,6 +40,7 @@ const previewLoading = ref(false);
 const regexHelpOpen = ref(false);
 const typeOptions = props.types;
 const sourceFormatOptions = props.source_formats;
+const geodataOptions = props.geodata;
 
 const submit = () => props.method === 'patch'
     ? form.patch(props.submit_url)
@@ -111,6 +114,12 @@ const loadPreview = async () => {
             <label class="field">
                 <span>Название в подписке белых списков</span>
                 <AppInput v-model="form.connect_name_prefix" placeholder="Например: Сервер" />
+            </label>
+
+            <label class="field">
+                <span>Резервные геоданные</span>
+                <AppSelect v-model="form.geodata_id" :options="geodataOptions.map((item) => ({ value: item.id, label: item.name }))" placeholder="Без выбранного источника" />
+                <small>Геоданные источника сохраняются. Выбранный ресурс добавит недостающие файлы, затем применятся глобальные геоданные.</small>
             </label>
 
             <label class="field">

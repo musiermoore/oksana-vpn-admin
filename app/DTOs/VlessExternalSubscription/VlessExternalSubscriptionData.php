@@ -23,6 +23,7 @@ class VlessExternalSubscriptionData extends Data
         public bool $isFree,
         public bool $isActive,
         public bool $isReady,
+        public ?int $geodataId = null,
     ) {}
 
     /**
@@ -39,6 +40,7 @@ class VlessExternalSubscriptionData extends Data
             'filter_pattern' => $this->filterPattern,
             'except_pattern' => $this->exceptPattern,
             'connect_name_prefix' => $this->connectNamePrefix,
+            'geodata_id' => $this->geodataId,
             'include_in_main_subscription' => $this->includeInMainSubscription,
             'include_in_whitelist' => $this->includeInWhitelist,
             'include_in_connect_v2' => $this->includeInConnectV2,

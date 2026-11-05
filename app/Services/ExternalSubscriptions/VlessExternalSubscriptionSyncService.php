@@ -118,7 +118,7 @@ class VlessExternalSubscriptionSyncService
     public function getVisibleConfigsForUser(User $user, string $purpose = self::PURPOSE_WHITELIST): array
     {
         return $this->visibleSubscriptionsQuery($user, $purpose)
-            ->with('configs')
+            ->with(['configs', 'geodata'])
             ->ordered()
             ->get()
             ->flatMap(fn (VlessExternalSubscription $subscription) => $subscription->configs

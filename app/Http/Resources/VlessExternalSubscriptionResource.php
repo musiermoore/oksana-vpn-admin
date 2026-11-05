@@ -22,6 +22,7 @@ class VlessExternalSubscriptionResource extends JsonResource
             'filter_pattern' => $this->filter_pattern,
             'except_pattern' => $this->except_pattern,
             'connect_name_prefix' => $this->connect_name_prefix,
+            'geodata_id' => $this->geodata_id === null ? null : (int) $this->geodata_id,
             'include_in_main_subscription' => (bool) $this->include_in_main_subscription,
             'include_in_whitelist' => (bool) $this->include_in_whitelist,
             'include_in_connect_v2' => (bool) $this->include_in_connect_v2,

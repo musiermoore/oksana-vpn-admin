@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ExternalSubscriptionSourceFormat;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VlessExternalSubscription extends Model
@@ -24,6 +25,7 @@ class VlessExternalSubscription extends Model
         'filter_pattern',
         'except_pattern',
         'connect_name_prefix',
+        'geodata_id',
         'include_in_main_subscription',
         'include_in_whitelist',
         'include_in_connect_v2',
@@ -54,6 +56,11 @@ class VlessExternalSubscription extends Model
         return $this->hasMany(VlessExternalSubscriptionConfig::class)
             ->orderBy('sort_order')
             ->orderBy('id');
+    }
+
+    public function geodata(): BelongsTo
+    {
+        return $this->belongsTo(XrayRoutingGeodata::class, 'geodata_id');
     }
 
     public function scopeOrdered($query)

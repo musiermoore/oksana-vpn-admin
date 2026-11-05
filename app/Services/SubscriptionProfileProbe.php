@@ -97,7 +97,7 @@ final class SubscriptionProfileProbe
 
         $geodata = $this->geodataAssets->mergeDefaultGeodata(
             is_array($profile['geodata'] ?? null) ? $profile['geodata'] : null,
-            $this->settingsProvider->geodata(),
+            $this->externalGeodata($node),
         );
 
         if ($geodata !== null) {
@@ -105,6 +105,20 @@ final class SubscriptionProfileProbe
         }
 
         return $this->checkJsonProfile($profile);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function externalGeodata(NormalizedNode $node): ?array
+    {
+        $selectedGeodata = $this->settingsProvider->geodataFromAssets(
+            is_array($node->meta['external_subscription_geodata_assets'] ?? null)
+                ? $node->meta['external_subscription_geodata_assets']
+                : null,
+        );
+
+        return $selectedGeodata === null
+            ? $this->settingsProvider->geodata()
+            : $this->geodataAssets->mergeDefaultGeodata($selectedGeodata, $this->settingsProvider->geodata());
     }
 
     /** @return array{status:string,results:array<string,mixed>,error:string} */

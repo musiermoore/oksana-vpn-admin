@@ -147,11 +147,17 @@ class ConnectJsonProfileSettingsProvider
      */
     public function geodataFromSettings(?XrayRoutingGeodata $geodata): ?array
     {
-        if ($geodata === null || ! is_array($geodata->assets) || $geodata->assets === []) {
+        return $this->geodataFromAssets($geodata?->assets);
+    }
+
+    /** @param array<string, mixed>|null $assets */
+    public function geodataFromAssets(?array $assets): ?array
+    {
+        if ($assets === null || $assets === []) {
             return null;
         }
 
-        $assets = collect($geodata->assets)
+        $xrayAssets = collect($assets)
             ->filter(fn (mixed $asset): bool => is_array($asset)
                 && is_string($asset['url'] ?? null)
                 && is_string($asset['file'] ?? null))
@@ -162,10 +168,10 @@ class ConnectJsonProfileSettingsProvider
             ->values()
             ->all();
 
-        return $assets === [] ? null : [
+        return $xrayAssets === [] ? null : [
             'cron' => (string) config('connect_json.geodata.cron', '0 4 * * *'),
             'outbound' => (string) config('connect_json.geodata.outbound', $this->proxyTag()),
-            'assets' => $assets,
+            'assets' => $xrayAssets,
         ];
     }
 

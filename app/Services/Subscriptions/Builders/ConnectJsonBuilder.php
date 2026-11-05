@@ -573,7 +573,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 : $this->settingsProvider->dnsFromSettings($customConfig->dnsSettings),
             ...array_filter([
                 'geodata' => $customConfig === null
-                    ? $this->settingsProvider->geodata()
+                    ? $this->geodataForNode($node)
                     : $this->settingsProvider->geodataFromSettings($this->geodataForClient($customConfig, $client)),
             ]),
             'routing' => $customConfig === null
@@ -595,6 +595,20 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             ->firstWhere('client_key', $clientKey)?->geodata_id;
 
         return $geodataId === null ? $customConfig->geodata : XrayRoutingGeodata::query()->find($geodataId);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function geodataForNode(NormalizedNode $node): ?array
+    {
+        $selectedGeodata = $this->settingsProvider->geodataFromAssets(
+            is_array($node->meta['external_subscription_geodata_assets'] ?? null)
+                ? $node->meta['external_subscription_geodata_assets']
+                : null,
+        );
+
+        return $selectedGeodata === null
+            ? $this->settingsProvider->geodata()
+            : $this->geodataAssets->mergeDefaultGeodata($selectedGeodata, $this->settingsProvider->geodata());
     }
 
     private function nodeTargetIds(NormalizedNode $node): array
@@ -625,7 +639,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         if ($customConfig === null) {
             $geodata = $this->geodataAssets->mergeDefaultGeodata(
                 is_array($profile['geodata'] ?? null) ? $profile['geodata'] : null,
-                $this->settingsProvider->geodata(),
+                $this->geodataForNode($node),
             );
 
             if ($geodata !== null) {

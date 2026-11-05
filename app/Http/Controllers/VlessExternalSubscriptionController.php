@@ -10,6 +10,7 @@ use App\Http\Requests\VlessExternalSubscription\UpdateVlessExternalSubscriptionR
 use App\Http\Resources\VlessExternalSubscriptionResource;
 use App\Jobs\SyncVlessExternalSubscriptionJob;
 use App\Models\VlessExternalSubscription;
+use App\Models\XrayRoutingGeodata;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -45,6 +46,7 @@ class VlessExternalSubscriptionController extends Controller
             'subscription' => null,
             'types' => $this->types(),
             'source_formats' => $this->sourceFormats(),
+            'geodata' => $this->geodataOptions(),
         ]);
     }
 
@@ -80,6 +82,7 @@ class VlessExternalSubscriptionController extends Controller
             'subscription' => (new VlessExternalSubscriptionResource($vlessExternalSubscription))->toArray($request),
             'types' => $this->types(),
             'source_formats' => $this->sourceFormats(),
+            'geodata' => $this->geodataOptions(),
         ]);
     }
 
@@ -138,5 +141,19 @@ class VlessExternalSubscriptionController extends Controller
             ['value' => ExternalSubscriptionSourceFormat::Direct->value, 'label' => ExternalSubscriptionSourceFormat::Direct->label()],
             ['value' => ExternalSubscriptionSourceFormat::Incy->value, 'label' => ExternalSubscriptionSourceFormat::Incy->label()],
         ];
+    }
+
+    /** @return array<int, array{id:int, name:string}> */
+    private function geodataOptions(): array
+    {
+        return XrayRoutingGeodata::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (XrayRoutingGeodata $geodata): array => [
+                'id' => (int) $geodata->id,
+                'name' => (string) $geodata->name,
+            ])
+            ->all();
     }
 }

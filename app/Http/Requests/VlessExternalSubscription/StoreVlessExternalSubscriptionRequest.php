@@ -50,6 +50,7 @@ class StoreVlessExternalSubscriptionRequest extends DataFormRequest
                 },
             ],
             'connect_name_prefix' => ['nullable', 'string', 'max:255'],
+            'geodata_id' => ['nullable', 'integer', Rule::exists('xray_routing_geodata', 'id')],
             'include_in_main_subscription' => ['required', 'boolean'],
             'include_in_whitelist' => ['required', 'boolean'],
             'include_in_connect_v2' => ['required', 'boolean'],

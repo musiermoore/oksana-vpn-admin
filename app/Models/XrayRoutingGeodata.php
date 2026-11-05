@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class XrayRoutingGeodata extends Model
 {
@@ -23,5 +24,20 @@ class XrayRoutingGeodata extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function customConfigs(): HasMany
+    {
+        return $this->hasMany(XrayCustomConfig::class, 'geodata_id');
+    }
+
+    public function externalSubscriptions(): HasMany
+    {
+        return $this->hasMany(VlessExternalSubscription::class, 'geodata_id');
+    }
+
+    public function clientMappings(): HasMany
+    {
+        return $this->hasMany(XrayCustomConfigGeodata::class, 'geodata_id');
     }
 }

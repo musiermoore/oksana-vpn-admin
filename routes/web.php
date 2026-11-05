@@ -46,6 +46,7 @@ use App\Http\Controllers\XrayRoutingController;
 use App\Http\Controllers\XrayCustomConfigController;
 use App\Http\Controllers\XrayInboundHealthController;
 use App\Http\Controllers\XrayGlobalConfigController;
+use App\Http\Controllers\XrayGeodataController;
 use App\Http\Controllers\XuiDebugController;
 use App\Http\Controllers\SubscriptionDebugController;
 use App\Http\Middleware\BasicAuth;
@@ -182,8 +183,18 @@ Route::middleware('auth')->group(function () {
         ->name('xray-dns-settings.store');
     Route::put('xray-dns-settings/{xrayRoutingDnsSettings}', [XrayCustomConfigController::class, 'updateDnsSettings'])
         ->name('xray-dns-settings.update');
-    Route::post('xray-geodata', [XrayCustomConfigController::class, 'storeGeodata'])
+    Route::get('xray-geodata', [XrayGeodataController::class, 'index'])
+        ->name('xray-geodata.index');
+    Route::get('xray-geodata/create', [XrayGeodataController::class, 'create'])
+        ->name('xray-geodata.create');
+    Route::post('xray-geodata', [XrayGeodataController::class, 'store'])
         ->name('xray-geodata.store');
+    Route::get('xray-geodata/{xrayRoutingGeodata}/edit', [XrayGeodataController::class, 'edit'])
+        ->name('xray-geodata.edit');
+    Route::put('xray-geodata/{xrayRoutingGeodata}', [XrayGeodataController::class, 'update'])
+        ->name('xray-geodata.update');
+    Route::delete('xray-geodata/{xrayRoutingGeodata}', [XrayGeodataController::class, 'destroy'])
+        ->name('xray-geodata.destroy');
     Route::resource('limits', LimitController::class)->except(['edit', 'update', 'show']);
     Route::resource('extra-payments', ExtraPaymentController::class)->except(['edit', 'update', 'show']);
     Route::resource('non-regular-payments', NonRegularPaymentController::class)->only(['index', 'create', 'store', 'destroy']);

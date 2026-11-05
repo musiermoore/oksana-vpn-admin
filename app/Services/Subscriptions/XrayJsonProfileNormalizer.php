@@ -133,20 +133,44 @@ class XrayJsonProfileNormalizer
 
         if (is_array($profile['routing']['rules'] ?? null)) {
             $profile['routing']['rules'] = array_map(function (mixed $rule): mixed {
-                if (! is_array($rule) || ! is_array($rule['port'] ?? null)) {
+                if (! is_array($rule)) {
                     return $rule;
                 }
 
-                $ports = array_values(array_filter(
-                    array_map(static fn (mixed $port): string => trim((string) $port), $rule['port']),
-                    static fn (string $port): bool => $port !== '',
-                ));
-                $rule['port'] = implode(',', $ports);
+                if (is_array($rule['port'] ?? null)) {
+                    $ports = array_values(array_filter(
+                        array_map(static fn (mixed $port): string => trim((string) $port), $rule['port']),
+                        static fn (string $port): bool => $port !== '',
+                    ));
+                    $rule['port'] = implode(',', $ports);
+                }
+
+                if (array_key_exists('ip', $rule)) {
+                    $rule['ip'] = $this->replaceRussiaGeoIpRule($rule['ip']);
+                }
 
                 return $rule;
             }, $profile['routing']['rules']);
         }
 
         return $profile;
+    }
+
+    private function replaceRussiaGeoIpRule(mixed $ipRules): mixed
+    {
+        $replace = static fn (mixed $rule): mixed => is_string($rule)
+            && strtolower(trim($rule)) === 'geoip:ru'
+                ? 'geoip:direct'
+                : $rule;
+
+        if (is_array($ipRules)) {
+            return array_map($replace, $ipRules);
+        }
+
+        if (is_string($ipRules)) {
+            return implode(',', array_map($replace, explode(',', $ipRules)));
+        }
+
+        return $ipRules;
     }
 }

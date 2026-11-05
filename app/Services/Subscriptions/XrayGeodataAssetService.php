@@ -51,6 +51,63 @@ class XrayGeodataAssetService
     }
 
     /**
+     * Explicitly selected subscription assets take precedence over assets from
+     * the upstream profile when both use the same local filename.
+     *
+     * @param  array<string, mixed>|null  $profileGeodata
+     * @param  array<string, mixed>|null  $selectedGeodata
+     * @return array<string, mixed>|null
+     */
+    public function mergeSelectedGeodata(?array $profileGeodata, ?array $selectedGeodata): ?array
+    {
+        if ($selectedGeodata === null || $selectedGeodata === []) {
+            return $profileGeodata;
+        }
+
+        if ($profileGeodata === null || $profileGeodata === []) {
+            return $selectedGeodata;
+        }
+
+        $profileAssets = is_array($profileGeodata['assets'] ?? null) ? array_values($profileGeodata['assets']) : [];
+        $selectedAssets = is_array($selectedGeodata['assets'] ?? null) ? array_values($selectedGeodata['assets']) : [];
+        $selectedAssetsByFile = collect($selectedAssets)
+            ->filter(fn (mixed $asset): bool => is_array($asset) && (string) ($asset['file'] ?? '') !== '')
+            ->keyBy(fn (array $asset): string => (string) $asset['file']);
+        $mergedAssets = [];
+        $mergedFiles = [];
+
+        foreach ($profileAssets as $asset) {
+            $file = is_array($asset) ? (string) ($asset['file'] ?? '') : '';
+
+            if ($file !== '' && $selectedAssetsByFile->has($file)) {
+                $mergedAssets[] = $selectedAssetsByFile->get($file);
+                $mergedFiles[] = $file;
+
+                continue;
+            }
+
+            $mergedAssets[] = $asset;
+        }
+
+        foreach ($selectedAssets as $asset) {
+            $file = is_array($asset) ? (string) ($asset['file'] ?? '') : '';
+
+            if ($file === '' || in_array($file, $mergedFiles, true)) {
+                continue;
+            }
+
+            $mergedAssets[] = $asset;
+            $mergedFiles[] = $file;
+        }
+
+        return [
+            ...$selectedGeodata,
+            ...$profileGeodata,
+            'assets' => $mergedAssets,
+        ];
+    }
+
+    /**
      * @param  array<string, string>  $urls
      * @return array<string, array<string, string>>
      */

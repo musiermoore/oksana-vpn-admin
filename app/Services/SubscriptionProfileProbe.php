@@ -95,30 +95,21 @@ final class SubscriptionProfileProbe
             throw new \RuntimeException('External config did not produce a JSON client profile.');
         }
 
-        $geodata = $this->geodataAssets->mergeDefaultGeodata(
+        $geodata = $this->geodataAssets->mergeSelectedGeodata(
             is_array($profile['geodata'] ?? null) ? $profile['geodata'] : null,
-            $this->externalGeodata($node),
+            $this->settingsProvider->geodataFromAssets(
+                is_array($node->meta['external_subscription_geodata_assets'] ?? null)
+                    ? $node->meta['external_subscription_geodata_assets']
+                    : null,
+            ),
         );
+        $geodata = $this->geodataAssets->mergeDefaultGeodata($geodata, $this->settingsProvider->geodata());
 
         if ($geodata !== null) {
             $profile['geodata'] = $geodata;
         }
 
         return $this->checkJsonProfile($profile);
-    }
-
-    /** @return array<string, mixed>|null */
-    private function externalGeodata(NormalizedNode $node): ?array
-    {
-        $selectedGeodata = $this->settingsProvider->geodataFromAssets(
-            is_array($node->meta['external_subscription_geodata_assets'] ?? null)
-                ? $node->meta['external_subscription_geodata_assets']
-                : null,
-        );
-
-        return $selectedGeodata === null
-            ? $this->settingsProvider->geodata()
-            : $this->geodataAssets->mergeDefaultGeodata($selectedGeodata, $this->settingsProvider->geodata());
     }
 
     /** @return array{status:string,results:array<string,mixed>,error:string} */

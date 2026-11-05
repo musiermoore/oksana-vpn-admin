@@ -146,9 +146,27 @@ class XrayGeodataAssetService
 
             Log::info('Downloading '.$asset.'.dat: '.$url);
 
-            $content = $this->download($url, $asset);
-            $hash = hash('sha256', $content);
-            $this->replaceAtomically($path, $content);
+            File::ensureDirectoryExists(dirname($path));
+            $tempPath = $path.'.tmp.'.bin2hex(random_bytes(8));
+
+            try {
+                $this->download($url, $asset, $tempPath);
+                $hash = hash_file('sha256', $tempPath);
+
+                if (! is_string($hash) || ! rename($tempPath, $path)) {
+                    throw new RuntimeException('Failed to save routing '.$asset.'.dat to local storage.');
+                }
+
+                foreach (array_keys(self::$verifiedAssetHashes) as $cacheKey) {
+                    if (str_starts_with($cacheKey, $path.':')) {
+                        unset(self::$verifiedAssetHashes[$cacheKey]);
+                    }
+                }
+            } finally {
+                if (is_file($tempPath)) {
+                    @unlink($tempPath);
+                }
+            }
 
             Log::info('Updated '.$asset.'.dat successfully', [
                 'path' => $path,
@@ -218,39 +236,19 @@ class XrayGeodataAssetService
         return $this->isCached($path, $url, $lastUpdated, $metadata);
     }
 
-    private function download(string $url, string $asset): string
+    private function download(string $url, string $asset, string $path): void
     {
         $response = Http::timeout(180)
             ->accept('*/*')
+            ->withOptions(['sink' => $path])
             ->get($url);
 
         if (! $response->successful()) {
             throw new RuntimeException('Failed to download routing '.$asset.'.dat from '.$url);
         }
 
-        $body = (string) $response->body();
-
-        if ($body === '') {
+        if (! is_file($path) || filesize($path) === 0) {
             throw new RuntimeException('Failed to download routing '.$asset.'.dat from '.$url.': empty response');
         }
-
-        return $body;
     }
-
-    private function replaceAtomically(string $path, string $content): void
-    {
-        File::ensureDirectoryExists(dirname($path));
-
-        $tempPath = $path.'.tmp.'.bin2hex(random_bytes(8));
-
-        file_put_contents($tempPath, $content, LOCK_EX);
-        rename($tempPath, $path);
-
-        foreach (array_keys(self::$verifiedAssetHashes) as $cacheKey) {
-            if (str_starts_with($cacheKey, $path.':')) {
-                unset(self::$verifiedAssetHashes[$cacheKey]);
-            }
-        }
-    }
-
 }

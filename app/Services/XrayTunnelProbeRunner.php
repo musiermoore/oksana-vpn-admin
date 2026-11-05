@@ -156,7 +156,10 @@ final class XrayTunnelProbeRunner
     {
         try {
             $response = Http::timeout($timeoutSeconds)
-                ->withOptions(['proxy' => 'socks5h://127.0.0.1:'.$proxyPort])
+                ->withOptions([
+                    'proxy' => 'socks5h://127.0.0.1:'.$proxyPort,
+                    'sink' => '/dev/null',
+                ])
                 ->get($url);
 
             return ['ok' => $response->status() < 500, 'status' => $response->status()];

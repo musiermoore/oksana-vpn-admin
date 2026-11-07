@@ -232,15 +232,31 @@ const availableServers = computed(() => (props.targets.servers || []).map((serve
 const availableSubscriptions = computed(() => (props.targets.external_subscriptions || []).filter((subscription) => checked('external_subscription_ids', subscription.id)));
 const availableProxies = computed(() => (props.targets.proxies || []).filter((proxy) => checked('proxy_ids', proxy.id)));
 const groupMemberCount = (group) => idsForGroup(group).length;
-const idsForGroup = (group) => [...(group.xray_inbound_ids || []), ...(group.external_subscription_ids || []), ...(group.proxy_ids || [])].map(Number);
+const idsForGroup = (group) => [...(group.xray_inbound_ids || []), ...(group.external_subscription_config_ids || []), ...(group.external_subscription_ids || []), ...(group.proxy_ids || [])].map(Number);
 const groupSelectedInbounds = (group, server) => (server.xray_inbounds || []).filter((inbound) => groupChecked(group, 'xray_inbound_ids', inbound.id));
 const groupSelectedConfigs = (group, subscription) => groupChecked(group, 'external_subscription_ids', subscription.id) ? (subscription.configs || []) : [];
 const groupSelectedProxies = (group) => availableProxies.value.filter((proxy) => groupChecked(group, 'proxy_ids', proxy.id));
-const groupInvalidMemberCount = (group) => idsForGroup(group).filter((id) => ![
-    ...availableServers.value.flatMap((server) => server.xray_inbounds.map((inbound) => Number(inbound.id))),
-    ...availableSubscriptions.value.flatMap((subscription) => subscription.configs.map((config) => Number(config.id))),
-    ...availableProxies.value.map((proxy) => Number(proxy.id)),
-].includes(id)).length;
+const groupInvalidMemberCount = (group) => [
+    ...(group.xray_inbound_ids || []).filter((id) => !checked('xray_inbound_ids', id)),
+    ...(group.external_subscription_config_ids || []).filter((id) => !checked('external_subscription_config_ids', id)),
+    ...(group.external_subscription_ids || []).filter((id) => !checked('external_subscription_ids', id)),
+    ...(group.proxy_ids || []).filter((id) => !checked('proxy_ids', id)),
+].length;
+const groupInvalidMemberWarning = (group) => {
+    const count = groupInvalidMemberCount(group);
+    const lastTwoDigits = count % 100;
+    const lastDigit = count % 10;
+    const noun = lastTwoDigits >= 11 && lastTwoDigits <= 14
+        ? 'участников'
+        : lastDigit === 1
+            ? 'участник'
+            : lastDigit >= 2 && lastDigit <= 4
+                ? 'участника'
+                : 'участников';
+    const reference = count === 1 ? 'который больше не включён' : 'которых больше нет';
+
+    return `В группе ${count} ${noun}, ${reference} в выбранных источниках. При сохранении они будут исключены из этой группы; сами источники останутся активными.`;
+};
 const isGroupExpanded = (index) => expandedGroups.value.has(index);
 const toggleGroupExpanded = (index) => {
     const next = new Set(expandedGroups.value);
@@ -656,7 +672,7 @@ const saveResource = async () => {
                     <div class="group-card__header"><button type="button" class="group-card__toggle" :aria-expanded="isGroupExpanded(index)" @click="toggleGroupExpanded(index)"><span><strong>{{ group.name || 'Новая группа выходов' }}</strong><small>{{ group.tag }}</small></span><span class="group-card__summary"><b>{{ groupMemberCount(group) }} участников</b><span>{{ strategyLabel(group.strategy) }}</span><span>{{ group.fallback_group_tag ? `Резерв → ${groups.find((item) => item.tag === group.fallback_group_tag)?.name || group.fallback_group_tag}` : 'Резерв не выбран' }}</span></span><span class="source-chevron">{{ isGroupExpanded(index) ? '⌄' : '›' }}</span></button><div class="group-card__menu"><button type="button" aria-label="Действия с группой" @click.stop="group._menuOpen = !group._menuOpen">⋯</button><div v-if="group._menuOpen" class="group-card__menu-popover"><button type="button" @click="duplicateGroup(group, index)">Дублировать группу</button><button type="button" class="is-danger" @click="removeGroup(group, index)">Удалить группу</button></div></div></div>
                     <div v-if="isGroupExpanded(index)" class="group-card__body">
                         <div class="grid grid--two"><label class="field"><span>Название группы</span><AppInput v-model="group.name" @input="onGroupNameInput(group)" /></label><label class="field"><span>Метка группы</span><AppInput v-model="group.tag" @input="group._tagManuallyEdited = true" /><small>Создаётся автоматически на основе названия группы.</small></label><label class="field"><span>Стратегия балансировки</span><AppSelect v-model="group.strategy" :options="strategyOptions" /></label><label class="field"><span>Резервная группа</span><AppSelect v-model="group.fallback_group_tag" :options="fallbackOptions(group)" /></label></div>
-                        <p v-if="groupInvalidMemberCount(group)" class="group-warning">{{ groupInvalidMemberCount(group) }} участник(ов) больше не включено в источники и будет удалено при сохранении.</p>
+                        <p v-if="groupInvalidMemberCount(group)" class="group-warning">{{ groupInvalidMemberWarning(group) }}</p>
                         <div class="group-members"><h3>Узлы</h3><div class="group-member-type"><div class="group-member-type__header"><strong>Локальные серверы и входящие узлы</strong><span>{{ availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length }} выбрано</span></div><div v-if="availableServers.flatMap((server) => groupSelectedInbounds(group, server)).length" class="group-member-list"><span v-for="inbound in availableServers.flatMap((server) => groupSelectedInbounds(group, server))" :key="`gm-i-${inbound.id}`">{{ countryFlag(availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name) }} {{ availableServers.find((server) => server.xray_inbounds.some((item) => item.id === inbound.id))?.name }} · {{ inboundLabel(inbound) }}</span></div><small v-else class="group-member-empty">Локальные серверы и входящие узлы не добавлены.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>Внешние подписки</strong><span>{{ group.external_subscription_ids.length }} выбрано</span></div><div v-if="availableSubscriptions.filter((subscription) => group.external_subscription_ids.includes(subscription.id)).length" class="group-member-list"><span v-for="subscription in availableSubscriptions.filter((item) => group.external_subscription_ids.includes(item.id))" :key="`gm-s-${subscription.id}`">{{ subscription.name }} · все текущие конфигурации</span></div><small v-else class="group-member-empty">Конфигурации подписки не добавлены.</small></div><div class="group-member-type"><div class="group-member-type__header"><strong>Прокси-узлы</strong><span>{{ groupSelectedProxies(group).length }} выбрано</span></div><div v-if="groupSelectedProxies(group).length" class="group-member-list"><span v-for="proxy in groupSelectedProxies(group)" :key="`gm-p-${proxy.id}`">{{ countryFlag(proxy.server?.name) }} {{ proxy.server?.name || 'Авто' }} · {{ proxy.name }}</span></div><small v-else class="group-member-empty">Прокси-узлы не добавлены.</small></div></div>
                         <div class="group-card__actions"><AppButton variant="secondary" type="button" @click="openGroupMemberPicker(index)">+ Добавить участников</AppButton><button type="button" class="picker-text-button" @click="openGroupMemberPicker(index)">Настроить состав</button></div><div v-if="group.fallback_group_tag" class="fallback-chain"><strong>Цепочка резервов</strong><span>{{ fallbackChain(group).join(' → ') }}</span></div>
                     </div>

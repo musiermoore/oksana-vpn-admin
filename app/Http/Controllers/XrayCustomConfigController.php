@@ -507,10 +507,16 @@ class XrayCustomConfigController extends Controller
                 'name' => (string) ($group['name'] ?? 'Group '.($index + 1)),
                 'tag' => (string) ($group['tag'] ?? 'group-'.($index + 1)),
                 'strategy' => (string) ($group['strategy'] ?? 'roundRobin'),
-                'xray_inbound_ids' => $group['xray_inbound_ids'] ?? [],
-                'external_subscription_config_ids' => $group['external_subscription_config_ids'] ?? [],
-                'external_subscription_ids' => $group['external_subscription_ids'] ?? [],
-                'proxy_ids' => $group['proxy_ids'] ?? [],
+                'xray_inbound_ids' => $this->selectedGroupIds($group['xray_inbound_ids'] ?? [], $data->xray_inbound_ids),
+                'external_subscription_config_ids' => $this->selectedGroupIds(
+                    $group['external_subscription_config_ids'] ?? [],
+                    $data->external_subscription_config_ids,
+                ),
+                'external_subscription_ids' => $this->selectedGroupIds(
+                    $group['external_subscription_ids'] ?? [],
+                    $data->external_subscription_ids,
+                ),
+                'proxy_ids' => $this->selectedGroupIds($group['proxy_ids'] ?? [], $data->proxy_ids),
                 'strategy_settings' => $group['strategy_settings'] ?? [],
                 'sort_order' => (int) ($group['sort_order'] ?? $index),
                 'is_active' => (bool) ($group['is_active'] ?? true),
@@ -536,6 +542,29 @@ class XrayCustomConfigController extends Controller
                 'is_active' => (bool) ($route['is_active'] ?? true),
             ]);
         }
+    }
+
+    /**
+     * @param array<int, int> $selectedIds
+     * @return array<int, int>
+     */
+    private function selectedGroupIds(mixed $groupIds, array $selectedIds): array
+    {
+        if (! is_array($groupIds)) {
+            return [];
+        }
+
+        $selectedIdSet = array_fill_keys(array_map('intval', $selectedIds), true);
+        $groupIds = array_filter(
+            $groupIds,
+            static fn (mixed $id): bool => (is_int($id) || (is_string($id) && ctype_digit($id)))
+                && isset($selectedIdSet[(int) $id]),
+        );
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', $groupIds),
+            static fn (int $id): bool => $id > 0,
+        )));
     }
 
     private function setDraftGroupsAndRoutes(XrayCustomConfig $config, XrayCustomConfigData $data): void

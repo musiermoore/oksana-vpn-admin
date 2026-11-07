@@ -113,6 +113,65 @@ class XrayCustomConfigControllerTest extends TestCase
         $this->assertSame([], $config->fresh()->proxy_ids);
     }
 
+    public function test_edit_removes_group_members_that_are_not_selected_as_config_sources(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $server = Server::query()->create([
+            'name' => 'Germany',
+            'code' => 'DE-1',
+            'sort_order' => 1,
+            'ip' => '10.0.0.10',
+            'type' => Server::TYPE_VLESS,
+        ]);
+        $inbound = XrayInbound::query()->create([
+            'server_id' => $server->id,
+            'external_id' => 1,
+            'sort_order' => 1,
+            'is_active' => true,
+            'is_public' => true,
+            'params' => ['protocol' => 'vless'],
+        ]);
+        $config = XrayCustomConfig::query()->create([
+            'name' => 'Custom config',
+            'slug' => 'custom-config',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('xray-custom-configs.update', $config), [
+                'name' => $config->name,
+                'slug' => $config->slug,
+                'description' => null,
+                'xray_inbound_ids' => [$inbound->id],
+                'external_subscription_config_ids' => [],
+                'external_subscription_ids' => [],
+                'proxy_ids' => [],
+                'xray_routing_ids' => [],
+                'base_settings_json' => '{}',
+                'outbound_groups_json' => json_encode([[
+                    'name' => 'Germany pool',
+                    'tag' => 'germany-pool',
+                    'strategy' => 'roundRobin',
+                    'xray_inbound_ids' => [$inbound->id, 999999],
+                    'external_subscription_config_ids' => [],
+                    'external_subscription_ids' => [],
+                    'proxy_ids' => [],
+                    'is_active' => true,
+                ]], JSON_THROW_ON_ERROR),
+                'routes_json' => '[]',
+                'is_active' => true,
+                'sort_order' => 1,
+            ])
+            ->assertRedirect();
+
+        $group = XrayCustomConfigOutboundGroup::query()
+            ->where('xray_custom_config_id', $config->id)
+            ->firstOrFail();
+
+        $this->assertSame([$inbound->id], $group->xray_inbound_ids);
+    }
+
     public function test_admin_can_duplicate_a_custom_config_without_copying_user_assignments(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

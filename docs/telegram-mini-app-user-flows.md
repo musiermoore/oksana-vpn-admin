@@ -81,7 +81,7 @@ VLESS menu flow:
 Actions:
 
 - `Connect`: open the public `connect` `/deep-link/{client}?token=...` URL from `GET /api/users/{telegramId}/vless/link`; it redirects to the target app's import scheme. Incy receives `incy://add/{urlencoded_start_url}`.
-- `QR Code`: show the selected app-specific QR from `GET /api/users/{telegramId}/vless/qr-code?target=...`.
+- `QR Code`: show the selected app-specific QR from `GET /api/users/{telegramId}/vless/qr-code?target=...`. Pass `incy`, `happ`, or `v2raytun` so the QR contains that client's import URI directly; omit `target` only for the legacy website-link QR.
 - `New subscription` and `Old subscription`: separate collapsed blocks with copy and QR actions for Connect v2 and Connect v1.
 - `Whitelist`: open `/vless-wl?step=links` on the standalone app.
 - `Home`: return to Home.

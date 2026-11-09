@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\User\ApiUserRegistrationData;
@@ -231,7 +233,7 @@ class UserController extends Controller
         );
     }
 
-    public function getVlessQrCode()
+    public function getVlessQrCode(Request $request): Response
     {
         $user = $this->resolveApiUser();
 
@@ -240,7 +242,10 @@ class UserController extends Controller
         }
 
         return $this->vlessQrCodes->download(
-            $this->userService->getVlessLink($user),
+            $this->userService->getVlessConnectV2QrLink(
+                $user,
+                (string) $request->query('target', 'legacy'),
+            ),
             'vless-qrcode.png',
         );
     }

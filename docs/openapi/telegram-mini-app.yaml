@@ -465,7 +465,7 @@ paths:
       tags: [VLESS]
       operationId: getVlessQrCode
       summary: Download a VLESS QR code
-      description: Encodes the generated Connect v2 deep link, or the legacy link when target=legacy.
+      description: Encodes an app-specific import URI when target is a client name (for example, incy://, happ://, or v2raytun://). The legacy website link remains the default when target=legacy or is omitted.
       security:
         - TelegramBearer: []
         - PublicAppBearer: []
@@ -474,7 +474,7 @@ paths:
           in: query
           required: false
           schema: {type: string, default: legacy}
-          description: Passed to the link builder; `legacy` is the default. Supported target-specific handling is implementation-dependent.
+          description: Use `incy`, `happ`, or `v2raytun` for a QR scanned inside that client. `connect-v1`, `connect-v2`, and `legacy` encode subscription URLs; `legacy` is the default.
       responses:
         '200':
           description: QR code PNG.

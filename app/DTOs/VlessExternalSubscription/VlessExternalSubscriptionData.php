@@ -24,6 +24,7 @@ class VlessExternalSubscriptionData extends Data
         public bool $isActive,
         public bool $isReady,
         public ?int $geodataId = null,
+        public ?int $groupId = null,
     ) {}
 
     /**

@@ -76,6 +76,7 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'is_active' => ['required', 'boolean'],
             'is_public' => ['sometimes', 'boolean'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'group_id' => ['nullable', 'integer', Rule::exists('config_groups', 'id')],
         ];
     }
 
@@ -141,6 +142,7 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
                 ? (bool) $validated['is_public']
                 : (bool) ($this->route('xrayCustomConfig')?->is_public ?? true),
             'sort_order' => (int) $validated['sort_order'],
+            'group_id' => isset($validated['group_id']) ? (int) $validated['group_id'] : null,
         ];
     }
 

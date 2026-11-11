@@ -6,6 +6,7 @@ use App\Jobs\StoreApiRequestLogJob;
 use App\DTOs\Subscription\SubscriptionBuildResult;
 use App\Services\Subscriptions\UserSubscriptionService;
 use App\Models\User;
+use App\Models\ConfigGroup;
 use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,6 +32,7 @@ class ConnectV2Test extends TestCase
             ]));
 
         $this->assertIsArray($response->json());
+        $response->assertJsonStructure(['configs' => [], 'groups' => []]);
 
         $response
             ->assertOk()
@@ -233,6 +235,31 @@ class ConnectV2Test extends TestCase
         $this->assertStringContainsString('Connect WL Name', $response->getContent());
         $this->assertStringNotContainsString('External subscription name', $response->getContent());
         $this->assertStringNotContainsString('external-1.example.com', $response->getContent());
+    }
+
+    public function test_connect_v2_returns_root_config_groups_with_external_subscription_membership(): void
+    {
+        $user = $this->createUser();
+        $group = ConfigGroup::query()->create(['name' => 'Auto', 'sort_order' => 0]);
+        $subscription = VlessExternalSubscription::query()->create([
+            'name' => 'External subscription',
+            'type' => VlessExternalSubscription::TYPE_DIRECT,
+            'source_url' => 'vless://external@external.example.com:443?type=tcp#External',
+            'include_in_main_subscription' => false,
+            'include_in_whitelist' => false,
+            'include_in_connect_v2' => true,
+            'is_free' => true,
+            'is_active' => true,
+            'is_ready' => true,
+        ]);
+        $group->externalSubscriptions()->attach($subscription);
+
+        $response = $this->getJson(route('vless.connect-v2', ['token' => $user->uuid]));
+
+        $response->assertOk()->assertJsonPath('groups.0.name', 'Auto');
+        $response->assertJsonPath('groups.0.items.0.model_type', 'external_subscription');
+        $response->assertJsonPath('groups.0.items.0.model_id', $subscription->id);
+        $this->assertIsArray($response->json('configs'));
     }
 
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void

@@ -186,6 +186,8 @@ Each server has an SSH username, port, and optional encrypted password in additi
 
 ### Subscription Output
 
+Config groups are stored in `config_groups` and attached polymorphically through `config_group_items` to local VLESS configs, external VLESS subscriptions, and custom Xray profiles. Each attachable record has at most one group; the admin edit/create forms allow clearing the assignment. `/connect-v2` returns an object with `configs` (the existing profile array) and root-level `groups`. Each group has an id, name, and `items` references using stable `model_type` values (`vless_config`, `external_subscription`, `xray_custom_config`) plus `model_id` and `name`. External subscription items also include their config references under `configs` so the desktop client can group imported profiles by name or source id.
+
 The main `/connect` subscription is built from normalized local and external nodes.
 
 `/connect` and `/connect-v2` report upload and download usage in `Subscription-Userinfo` for the current monthly cycle of the active subscription. Each cycle starts on the subscription's `start_date` anniversary and ends at the next anniversary (exclusive); counter decreases are treated as panel counter resets. Usage deltas from all servers are added to one `user_daily_traffic` row per user and date. Daily totals older than 90 days are deleted. Users without an active subscription report zero usage. The reported total remains the user's configured traffic limit.

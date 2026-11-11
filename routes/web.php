@@ -4,6 +4,7 @@ use App\Http\Controllers\ApiRequestLogController;
 use App\Http\Controllers\AdminTelegramAppApiDocsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\ConfigGroupController;
 use App\Http\Controllers\CurrentPaymentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExtraPaymentController;
@@ -70,6 +71,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('traffic', [WireGuardController::class, 'traffic'])->name('wireguard.traffic');
+    Route::resource('config-groups', ConfigGroupController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->parameters(['config-groups' => 'configGroup']);
     Route::get('api-request-logs', [ApiRequestLogController::class, 'index'])->name('api-request-logs.index');
     Route::get('search', [SearchController::class, 'index'])->name('search.index');
     Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');

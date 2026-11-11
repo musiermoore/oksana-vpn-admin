@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 class VlessConfig extends Model
 {
@@ -136,6 +137,11 @@ class VlessConfig extends Model
     public function xrayInbound(): BelongsTo
     {
         return $this->belongsTo(XrayInbound::class);
+    }
+
+    public function configGroups(): MorphToMany
+    {
+        return $this->morphToMany(ConfigGroup::class, 'groupable', 'config_group_items');
     }
 
     public function getResolvedInboundId(): ?int

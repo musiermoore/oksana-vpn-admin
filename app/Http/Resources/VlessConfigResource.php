@@ -11,6 +11,9 @@ class VlessConfigResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'group_id' => $this->resource->relationLoaded('configGroups')
+                ? $this->resource->configGroups->first()?->id
+                : $this->resource->configGroups()->value('config_groups.id'),
             'name' => $this->name,
             'is_active' => (bool) $this->is_active,
             'enable' => (bool) $this->enable,

@@ -30,6 +30,7 @@ class StoreXrayConfigRequest extends DataFormRequest
                 ),
             ],
             'inbound_id' => ['required', 'integer', 'min:1'],
+            'group_id' => ['nullable', 'integer', Rule::exists('config_groups', 'id')],
         ];
     }
 

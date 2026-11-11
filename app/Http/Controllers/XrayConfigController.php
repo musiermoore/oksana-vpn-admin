@@ -10,6 +10,7 @@ use App\Http\Resources\XrayConfigResource;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
+use App\Models\ConfigGroup;
 use App\Services\Crud\VlessConfigCrudService;
 use App\Services\XuiConfigServiceFactory;
 use Exception;
@@ -28,6 +29,7 @@ class XrayConfigController extends Controller
             ->with([
                 'vlessConfigs.user',
                 'vlessConfigs.server',
+                'vlessConfigs.configGroups',
             ])
             ->whereHas('vlessConfigs')
             ->orderByDesc('deleted_at')
@@ -62,6 +64,7 @@ class XrayConfigController extends Controller
             'selected_user_id' => $request->integer('user_id') ?: null,
             'users' => UserResource::collection($users)->toArray($request),
             'available_inbounds' => $this->getAvailableInbounds($request->user()),
+            'groups' => $this->groupOptions(),
         ]);
     }
 
@@ -69,7 +72,8 @@ class XrayConfigController extends Controller
     {
         try {
             $data = $request->toDto();
-            $this->vlessConfigService->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
+            $created = $this->vlessConfigService->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
+            $created->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
         } catch (RuntimeException $exception) {
             return redirect()->back()
                 ->with('error', $exception->getMessage());
@@ -92,15 +96,16 @@ class XrayConfigController extends Controller
             'config' => (new XrayConfigResource($model, $protocol))->toArray($request),
             'users' => UserResource::collection($users)->toArray($request),
             'available_inbounds' => [],
+            'groups' => $this->groupOptions(),
         ]);
     }
 
     public function update(UpdateXrayConfigRequest $request, string $protocol, string $config)
     {
         $model = $this->resolveConfig($protocol, $config);
-        $userId = $request->toDto()->userId;
+        $data = $request->toDto();
 
-        $this->vlessConfigService->update($model, new VlessConfigUpdateData($userId));
+        $this->vlessConfigService->update($model, new VlessConfigUpdateData($data->userId, $data->groupId));
 
         return redirect()->route('xray-configs.index')
             ->with('success', 'Конфиг успешно обновлён');
@@ -167,6 +172,15 @@ class XrayConfigController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /** @return array<int, array{id:int, name:string}> */
+    private function groupOptions(): array
+    {
+        return ConfigGroup::query()->ordered()->get(['id', 'name'])->map(fn (ConfigGroup $group): array => [
+            'id' => (int) $group->id,
+            'name' => (string) $group->name,
+        ])->all();
     }
 
     /**

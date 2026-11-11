@@ -14,6 +14,7 @@ const props = defineProps({
     types: Array,
     source_formats: Array,
     geodata: { type: Array, default: () => [] },
+    groups: { type: Array, default: () => [] },
 });
 
 const form = useForm({
@@ -26,6 +27,7 @@ const form = useForm({
     except_pattern: props.subscription?.except_pattern ?? '',
     connect_name_prefix: props.subscription?.connect_name_prefix ?? '',
     geodata_id: props.subscription?.geodata_id ?? '',
+    group_id: props.subscription?.group_id ?? '',
     include_in_main_subscription: props.subscription?.include_in_main_subscription ?? false,
     include_in_whitelist: props.subscription?.include_in_whitelist ?? true,
     include_in_connect_v2: props.subscription?.include_in_connect_v2 ?? true,
@@ -41,6 +43,7 @@ const regexHelpOpen = ref(false);
 const typeOptions = props.types;
 const sourceFormatOptions = props.source_formats;
 const geodataOptions = props.geodata;
+const groupOptions = [{ value: '', label: 'Без группы' }, ...props.groups.map((group) => ({ value: group.id, label: group.name }))];
 
 const submit = () => props.method === 'patch'
     ? form.patch(props.submit_url)
@@ -85,6 +88,11 @@ const loadPreview = async () => {
             <label class="field">
                 <span>Формат источника</span>
                 <AppSelect v-model="form.source_format" :options="sourceFormatOptions" required />
+            </label>
+
+            <label class="field">
+                <span>Группа конфигураций</span>
+                <AppSelect v-model="form.group_id" :options="groupOptions" />
             </label>
 
             <label class="field" style="grid-column: 1 / -1;">

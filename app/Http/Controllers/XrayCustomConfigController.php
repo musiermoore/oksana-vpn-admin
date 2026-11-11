@@ -8,6 +8,7 @@ use App\DTOs\XrayCustomConfig\XrayCustomConfigData;
 use App\Http\Requests\XrayCustomConfig\StoreXrayDnsSettingsRequest;
 use App\Http\Requests\XrayCustomConfig\UpdateXrayCustomConfigRequest;
 use App\Models\Proxy;
+use App\Models\ConfigGroup;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessExternalSubscription;
@@ -33,7 +34,7 @@ class XrayCustomConfigController extends Controller
     {
         return $this->inertia('XrayCustomConfigs/Index', [
             'create_page_url' => route('xray-custom-configs.create'),
-            'configs' => XrayCustomConfig::query()->with(['dnsSettings', 'geodata', 'clientGeodata', 'userAssignments'])->latest('id')->get()->map(
+            'configs' => XrayCustomConfig::query()->with(['dnsSettings', 'geodata', 'clientGeodata', 'userAssignments', 'configGroups'])->latest('id')->get()->map(
                 fn (XrayCustomConfig $config): array => $this->payload($config)
             )->values(),
         ]);
@@ -63,10 +64,13 @@ class XrayCustomConfigController extends Controller
         $data = $request->toDto();
         $attributes = $data->toArray();
         $userIds = $attributes['user_ids'];
+        $groupId = $attributes['group_id'];
         unset($attributes['user_ids']);
+        unset($attributes['group_id']);
 
         $config = XrayCustomConfig::query()->create($attributes);
         $this->syncUserAssignments($config, $userIds);
+        $config->configGroups()->sync($groupId === null ? [] : [$groupId]);
         $this->syncGroupsAndRoutes($config, $data);
 
         return redirect()->route('xray-custom-configs.edit', $config)->with('success', 'Пользовательская конфигурация Xray создана.');
@@ -138,7 +142,7 @@ class XrayCustomConfigController extends Controller
 
     public function edit(XrayCustomConfig $xrayCustomConfig)
     {
-        $xrayCustomConfig->load(['outboundGroups.fallbackGroup', 'routes', 'clientGeodata', 'userAssignments']);
+        $xrayCustomConfig->load(['outboundGroups.fallbackGroup', 'routes', 'clientGeodata', 'userAssignments', 'configGroups']);
 
         return $this->inertia('XrayCustomConfigs/Form', [
             ...$this->formProps(),
@@ -157,10 +161,13 @@ class XrayCustomConfigController extends Controller
         $data = $request->toDto();
         $attributes = $data->toArray();
         $userIds = $attributes['user_ids'];
+        $groupId = $attributes['group_id'];
         unset($attributes['user_ids']);
+        unset($attributes['group_id']);
 
         $xrayCustomConfig->update($attributes);
         $this->syncUserAssignments($xrayCustomConfig, $userIds);
+        $xrayCustomConfig->configGroups()->sync($groupId === null ? [] : [$groupId]);
         $this->syncGroupsAndRoutes($xrayCustomConfig, $data);
 
         return redirect()->back()->with('success', 'Пользовательская конфигурация Xray обновлена.');
@@ -307,6 +314,10 @@ class XrayCustomConfigController extends Controller
     private function formProps(): array
     {
         return [
+            'groups' => ConfigGroup::query()->ordered()->get(['id', 'name'])->map(fn (ConfigGroup $group): array => [
+                'id' => (int) $group->id,
+                'name' => (string) $group->name,
+            ])->all(),
             'dns_settings' => XrayRoutingDnsSettings::query()->active()->latest('id')->get()
                 ->map(fn (XrayRoutingDnsSettings $settings): array => $this->dnsSettingsPayload($settings))
                 ->values(),
@@ -393,6 +404,7 @@ class XrayCustomConfigController extends Controller
                 ? $config->userAssignments->pluck('user_id')->map(static fn ($id): int => (int) $id)->all()
                 : [],
             'sort_order' => $config->sort_order,
+            'group_id' => $config->relationLoaded('configGroups') ? $config->configGroups->first()?->id : $config->configGroups()->value('config_groups.id'),
             'dns_settings' => $config->relationLoaded('dnsSettings') && $config->dnsSettings !== null
                 ? ['id' => $config->dnsSettings->id, 'name' => $config->dnsSettings->name]
                 : null,

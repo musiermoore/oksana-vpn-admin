@@ -39,5 +39,6 @@ class XrayCustomConfigData extends Data
         public bool $is_active,
         public bool $is_public,
         public int $sort_order,
+        public ?int $group_id = null,
     ) {}
 }

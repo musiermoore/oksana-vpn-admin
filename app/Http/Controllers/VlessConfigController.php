@@ -10,6 +10,7 @@ use App\Http\Requests\VlessConfig\UpdateVlessConfigRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\VlessConfigResource;
 use App\Models\Server;
+use App\Models\ConfigGroup;
 use App\Models\User;
 use App\Models\UserToken;
 use App\Models\VlessConfig;
@@ -18,6 +19,7 @@ use App\Services\Crud\VlessConfigCrudService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\SubscriptionMetadataService;
 use App\Services\Subscriptions\UserSubscriptionService;
+use App\Services\Subscriptions\ConnectV2ConfigGroupPayload;
 use App\Services\UserConnectedDeviceService;
 use App\Services\VlessDeepLinkService;
 use App\Services\XuiConfigServiceFactory;
@@ -39,7 +41,7 @@ class VlessConfigController extends Controller
     public function index(Request $request)
     {
         $users = User::query()
-            ->with('vlessConfigs.user')
+            ->with(['vlessConfigs.user', 'vlessConfigs.configGroups'])
             ->withWhereHas('vlessConfigs', function ($query) {
                 $query
                     ->orderBy('server_id')
@@ -76,6 +78,7 @@ class VlessConfigController extends Controller
             'config' => null,
             'users' => UserResource::collection($users)->toArray($request),
             'available_inbounds' => $this->getAvailableInbounds(),
+            'groups' => $this->configGroupOptions(),
         ]);
     }
 
@@ -105,6 +108,7 @@ class VlessConfigController extends Controller
             'config' => (new VlessConfigResource($config))->toArray($request),
             'users' => UserResource::collection($users)->toArray($request),
             'available_inbounds' => [],
+            'groups' => $this->configGroupOptions(),
         ]);
     }
 
@@ -221,6 +225,7 @@ class VlessConfigController extends Controller
         Request $request,
         SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService,
+        ConnectV2ConfigGroupPayload $groupPayload,
     ): Response
     {
         $user = User::query()
@@ -252,6 +257,15 @@ class VlessConfigController extends Controller
         }
 
         $subscription = $subscriptionService->buildConnectV2($user, $app !== '' ? $app : null);
+        $profiles = json_decode($subscription->content, true);
+        $subscription = new SubscriptionBuildResult(
+            content: json_encode([
+                'configs' => is_array($profiles) ? $profiles : [],
+                'groups' => $groupPayload->forUser($user),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{"configs":[],"groups":[]}',
+            contentType: $subscription->contentType,
+            fileExtension: $subscription->fileExtension,
+        );
 
         Log::info('connect-v2.res', [
             'user_id' => (int) $user->id,
@@ -317,6 +331,15 @@ class VlessConfigController extends Controller
         }
 
         return $response;
+    }
+
+    /** @return array<int, array{id:int, name:string}> */
+    private function configGroupOptions(): array
+    {
+        return ConfigGroup::query()->ordered()->get(['id', 'name'])->map(fn (ConfigGroup $group): array => [
+            'id' => (int) $group->id,
+            'name' => (string) $group->name,
+        ])->all();
     }
 
     public function connectJson(

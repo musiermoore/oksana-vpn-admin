@@ -15,6 +15,9 @@ class VlessExternalSubscriptionResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'sort_order' => (int) $this->sort_order,
+            'group_id' => $this->resource->relationLoaded('configGroups')
+                ? $this->resource->configGroups->first()?->id
+                : $this->resource->configGroups()->value('config_groups.id'),
             'description' => $this->description,
             'type' => $this->type,
             'source_format' => $this->source_format?->value ?? $this->source_format,

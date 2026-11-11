@@ -10,6 +10,7 @@ use App\Http\Requests\VlessExternalSubscription\UpdateVlessExternalSubscriptionR
 use App\Http\Resources\VlessExternalSubscriptionResource;
 use App\Jobs\SyncVlessExternalSubscriptionJob;
 use App\Models\VlessExternalSubscription;
+use App\Models\ConfigGroup;
 use App\Models\XrayRoutingGeodata;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,7 @@ class VlessExternalSubscriptionController extends Controller
     {
         $subscriptions = VlessExternalSubscription::query()
             ->withCount('configs')
+            ->with('configGroups')
             ->ordered()
             ->get();
 
@@ -47,6 +49,7 @@ class VlessExternalSubscriptionController extends Controller
             'types' => $this->types(),
             'source_formats' => $this->sourceFormats(),
             'geodata' => $this->geodataOptions(),
+            'groups' => $this->groupOptions(),
         ]);
     }
 
@@ -61,6 +64,7 @@ class VlessExternalSubscriptionController extends Controller
         ]);
 
         try {
+            $subscription->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
             $this->syncService->sync($subscription);
         } catch (RuntimeException $exception) {
             $this->syncService->failSync($subscription, $exception->getMessage());
@@ -72,7 +76,7 @@ class VlessExternalSubscriptionController extends Controller
 
     public function edit(Request $request, VlessExternalSubscription $vlessExternalSubscription)
     {
-        $vlessExternalSubscription->load('configs');
+        $vlessExternalSubscription->load(['configs', 'configGroups']);
 
         return $this->inertia('VlessExternalSubscriptions/Form', [
             'mode' => 'edit',
@@ -83,6 +87,7 @@ class VlessExternalSubscriptionController extends Controller
             'types' => $this->types(),
             'source_formats' => $this->sourceFormats(),
             'geodata' => $this->geodataOptions(),
+            'groups' => $this->groupOptions(),
         ]);
     }
 
@@ -90,7 +95,9 @@ class VlessExternalSubscriptionController extends Controller
         UpdateVlessExternalSubscriptionRequest $request,
         VlessExternalSubscription $vlessExternalSubscription
     ): RedirectResponse {
-        $vlessExternalSubscription->update($request->toDto()->toModelAttributes());
+        $data = $request->toDto();
+        $vlessExternalSubscription->update($data->toModelAttributes());
+        $vlessExternalSubscription->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
 
         try {
             $this->syncService->sync($vlessExternalSubscription);
@@ -155,5 +162,14 @@ class VlessExternalSubscriptionController extends Controller
                 'name' => (string) $geodata->name,
             ])
             ->all();
+    }
+
+    /** @return array<int, array{id:int, name:string}> */
+    private function groupOptions(): array
+    {
+        return ConfigGroup::query()->ordered()->get(['id', 'name'])->map(fn (ConfigGroup $group): array => [
+            'id' => (int) $group->id,
+            'name' => (string) $group->name,
+        ])->all();
     }
 }

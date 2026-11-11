@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 class XrayCustomConfig extends Model
 {
@@ -45,6 +46,11 @@ class XrayCustomConfig extends Model
     public function userAssignments(): HasMany
     {
         return $this->hasMany(XrayCustomConfigUser::class);
+    }
+
+    public function configGroups(): MorphToMany
+    {
+        return $this->morphToMany(ConfigGroup::class, 'groupable', 'config_group_items');
     }
 
     public function clientGeodata(): HasMany

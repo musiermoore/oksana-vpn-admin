@@ -20,7 +20,10 @@ class VlessConfigCrudService
 
     public function assign(VlessConfigStoreData $data): VlessConfig
     {
-        return $this->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
+        $config = $this->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
+        $config->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
+
+        return $config;
     }
 
     public function assignFromXrayData(int $userId, int $serverId, int $inboundId): VlessConfig
@@ -69,7 +72,10 @@ class VlessConfigCrudService
 
     public function update(VlessConfig $config, VlessConfigUpdateData $data): VlessConfig
     {
-        return $this->configs->update($config, $data->toArray());
+        $updated = $this->configs->update($config, ['user_id' => $data->userId]);
+        $updated->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
+
+        return $updated;
     }
 
     public function unassign(VlessConfig $config): VlessConfig

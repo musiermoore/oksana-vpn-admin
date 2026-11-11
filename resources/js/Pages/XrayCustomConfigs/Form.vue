@@ -16,6 +16,7 @@ const props = defineProps({
     targets: { type: Object, default: () => ({}) },
     create_dns_url: String,
     create_geodata_url: String,
+    groups: { type: Array, default: () => [] },
 });
 
 const initial = props.config || {};
@@ -26,6 +27,7 @@ const form = useForm({
     dns_settings_id: initial.dns_settings_id || '', geodata_id: initial.geodata_id || '', geodata_by_client: initial.geodata_by_client || { incy: null, happ: null, v2raytun: null, other: null },
     xray_inbound_ids: initial.xray_inbound_ids || [], external_subscription_config_ids: initial.external_subscription_config_ids || [], external_subscription_ids: initial.external_subscription_ids || [],
     proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], user_ids: initial.user_ids || [],
+    group_id: initial.group_id || '',
     is_active: initial.is_active ?? true, is_public: initial.is_public ?? true, sort_order: initial.sort_order ?? 0,
 });
 const slugManuallyEdited = ref(Boolean(initial.slug && initial.slug !== slugify(initial.name)));
@@ -496,6 +498,7 @@ const resourcesJson = computed({
     }),
 });
 const requestPayload = (baseSettings = buildBaseSettings()) => ({
+    group_id: form.group_id || null,
     is_active: Boolean(form.is_active),
     is_public: Boolean(form.is_public),
     user_ids: ids('user_ids'),
@@ -584,6 +587,7 @@ const saveResource = async () => {
                 <h2>Основная информация</h2>
                 <div class="grid grid--two">
                     <label class="field"><span>Название конфигурации</span><AppInput v-model="form.name" required /></label>
+                    <label class="field"><span>Группа конфигураций</span><AppSelect v-model="form.group_id" :options="[{ value: '', label: 'Без группы' }, ...props.groups.map((group) => ({ value: group.id, label: group.name }))]" /></label>
                     <label class="field"><span>Короткое имя</span><AppInput v-model="form.slug" required @input="slugManuallyEdited = true" /><small>Создаётся автоматически на основе названия.</small></label>
                     <label class="field"><span>Порядок в JSON-подписке</span><AppInput v-model="form.sort_order" type="number" min="0" /></label>
                     <label class="field basic-description"><span>Описание</span><AppTextarea v-model="form.description" rows="3" /></label>

@@ -51,6 +51,7 @@ class StoreVlessExternalSubscriptionRequest extends DataFormRequest
             ],
             'connect_name_prefix' => ['nullable', 'string', 'max:255'],
             'geodata_id' => ['nullable', 'integer', Rule::exists('xray_routing_geodata', 'id')],
+            'group_id' => ['nullable', 'integer', Rule::exists('config_groups', 'id')],
             'include_in_main_subscription' => ['required', 'boolean'],
             'include_in_whitelist' => ['required', 'boolean'],
             'include_in_connect_v2' => ['required', 'boolean'],
@@ -64,6 +65,7 @@ class StoreVlessExternalSubscriptionRequest extends DataFormRequest
     {
         $this->merge([
             'source_format' => $this->input('source_format', ExternalSubscriptionSourceFormat::Direct->value),
+            'group_id' => $this->input('group_id') ?: null,
         ]);
     }
 

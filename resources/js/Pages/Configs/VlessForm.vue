@@ -11,6 +11,7 @@ const props = defineProps({
     config: Object,
     users: Array,
     available_inbounds: Array,
+    groups: { type: Array, default: () => [] },
 });
 
 const selectedInbound = props.available_inbounds[0] ?? null;
@@ -19,6 +20,7 @@ const form = useForm({
     user_id: props.config?.user?.id ?? props.users[0]?.id ?? '',
     server_id: props.config?.server?.id ?? selectedInbound?.server_id ?? '',
     inbound_id: selectedInbound?.inbound_id ?? '',
+    group_id: props.config?.group_id ?? '',
 });
 
 const userOptions = computed(() => props.users.map((user) => ({
@@ -63,6 +65,11 @@ const submit = () => {
             <label class="field">
                 <span>Участник</span>
                 <AppSelect v-model="form.user_id" :options="userOptions" />
+            </label>
+
+            <label class="field">
+                <span>Группа конфигураций</span>
+                <AppSelect v-model="form.group_id" :options="[{ value: '', label: 'Без группы' }, ...props.groups.map((group) => ({ value: group.id, label: group.name }))]" />
             </label>
 
             <label v-if="mode === 'create'" class="field">

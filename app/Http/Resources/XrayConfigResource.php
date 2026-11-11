@@ -38,6 +38,9 @@ class XrayConfigResource
 
         return [
             'id' => $this->resource->getKey(),
+            'group_id' => $this->resource->relationLoaded('configGroups')
+                ? $this->resource->configGroups->first()?->id
+                : $this->resource->configGroups()->value('config_groups.id'),
             'protocol' => $protocol,
             'protocol_label' => $this->formatProtocolLabel($protocol),
             'name' => $this->resource->name,

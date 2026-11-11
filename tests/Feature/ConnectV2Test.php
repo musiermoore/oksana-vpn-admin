@@ -32,7 +32,7 @@ class ConnectV2Test extends TestCase
             ]));
 
         $this->assertIsArray($response->json());
-        $response->assertJsonStructure(['configs' => [], 'groups' => []]);
+        $this->assertArrayNotHasKey('groups', $response->json());
 
         $response
             ->assertOk()
@@ -253,13 +253,24 @@ class ConnectV2Test extends TestCase
             'is_ready' => true,
         ]);
         $group->externalSubscriptions()->attach($subscription);
+        VlessExternalSubscriptionConfig::query()->create([
+            'vless_external_subscription_id' => $subscription->id,
+            'config_key' => 'external-grouped',
+            'name' => 'Grouped external profile',
+            'normalized_name' => 'grouped external profile',
+            'protocol' => 'vless',
+            'url' => 'vless://external@external.example.com:443?type=tcp#Grouped',
+            'sort_order' => 0,
+        ]);
 
         $response = $this->getJson(route('vless.connect-v2', ['token' => $user->uuid]));
 
-        $response->assertOk()->assertJsonPath('groups.0.name', 'Auto');
-        $response->assertJsonPath('groups.0.items.0.model_type', 'external_subscription');
-        $response->assertJsonPath('groups.0.items.0.model_id', $subscription->id);
-        $this->assertIsArray($response->json('configs'));
+        $response->assertOk()->assertJsonFragment([
+            'group' => ['id' => $group->id, 'name' => 'Auto'],
+        ]);
+        $this->assertIsArray($response->json());
+        $this->assertArrayNotHasKey('groups', $response->json());
+        $this->assertStringContainsString('Grouped external profile', $response->getContent());
     }
 
     public function test_happ_deep_link_uses_android_intent_in_chrome(): void

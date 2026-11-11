@@ -32,7 +32,7 @@ final class ConnectJsonProfileOrderer
                     ->orWhereHas('userAssignments', fn ($assignmentQuery) => $assignmentQuery->where('user_id', $user->id));
             }))
             ->ordered()
-            ->with(['dnsSettings', 'geodata', 'clientGeodata', 'outboundGroups.fallbackGroup', 'routes'])
+            ->with(['dnsSettings', 'geodata', 'clientGeodata', 'outboundGroups.fallbackGroup', 'routes', 'configGroups'])
             ->get();
 
         $entries = collect($this->buildBaseProfileEntries($builder, $nodes, $subscriptionType))

@@ -19,7 +19,6 @@ use App\Services\Crud\VlessConfigCrudService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionAccessService;
 use App\Services\SubscriptionMetadataService;
 use App\Services\Subscriptions\UserSubscriptionService;
-use App\Services\Subscriptions\ConnectV2ConfigGroupPayload;
 use App\Services\UserConnectedDeviceService;
 use App\Services\VlessDeepLinkService;
 use App\Services\XuiConfigServiceFactory;
@@ -225,7 +224,6 @@ class VlessConfigController extends Controller
         Request $request,
         SubscriptionMetadataService $metadataService,
         UserSubscriptionService $subscriptionService,
-        ConnectV2ConfigGroupPayload $groupPayload,
     ): Response
     {
         $user = User::query()
@@ -257,15 +255,6 @@ class VlessConfigController extends Controller
         }
 
         $subscription = $subscriptionService->buildConnectV2($user, $app !== '' ? $app : null);
-        $profiles = json_decode($subscription->content, true);
-        $subscription = new SubscriptionBuildResult(
-            content: json_encode([
-                'configs' => is_array($profiles) ? $profiles : [],
-                'groups' => $groupPayload->forUser($user),
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{"configs":[],"groups":[]}',
-            contentType: $subscription->contentType,
-            fileExtension: $subscription->fileExtension,
-        );
 
         Log::info('connect-v2.res', [
             'user_id' => (int) $user->id,

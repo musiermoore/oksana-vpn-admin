@@ -94,7 +94,7 @@ class UserSubscriptionService
 
         if ($app === 'happ') {
             return $this->buildFromNodes(
-                $this->buildNamedNodes($user, $externalPurpose),
+                ConnectV2ConfigGroupAnnotator::annotate($this->buildNamedNodes($user, $externalPurpose)),
                 'json',
                 XrayRouting::SUBSCRIPTION_CONNECT_V2,
                 $user,
@@ -103,7 +103,7 @@ class UserSubscriptionService
             );
         }
 
-        $nodes = $this->buildNamedNodes($user, $externalPurpose);
+        $nodes = ConnectV2ConfigGroupAnnotator::annotate($this->buildNamedNodes($user, $externalPurpose));
 
         return $this->buildFromNodes(
             $nodes,

@@ -39,7 +39,11 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     public function buildForSubscriptionType(array $nodes, string $subscriptionType): SubscriptionBuildResult
     {
         $profiles = collect($nodes)
-            ->map(fn (NormalizedNode $node) => $this->buildProfile($node, $this->routingTypeForNode($node, $subscriptionType)))
+            ->map(fn (NormalizedNode $node) => $this->buildProfile(
+                $node,
+                $this->routingTypeForNode($node, $subscriptionType),
+                includeConfigGroup: $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2,
+            ))
             ->filter()
             ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile))
             ->values()
@@ -98,6 +102,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->routingTypeForNode($node, $subscriptionType),
                 $customConfig,
                 $client,
+                $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2,
             ))
             ->filter()
             ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile, $client))
@@ -140,6 +145,9 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         $this->appendGroupedObservatory($profile, $groups, $base);
         $this->appendGroupedGeodata($profile, $customConfig, $client);
+        if ($subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2) {
+            $profile = $this->withConfigGroup($profile, null, $customConfig);
+        }
 
         return new SubscriptionBuildResult(
             content: json_encode([$this->profileNormalizer->normalizeProfile($profile, $client)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '[]',
@@ -529,11 +537,12 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         string $subscriptionType,
         ?XrayCustomConfig $customConfig = null,
         ?string $client = null,
+        bool $includeConfigGroup = false,
     ): ?array {
         [$xrayInboundId, $externalSubscriptionConfigId, $proxyId] = $this->nodeTargetIds($node);
 
         if (is_array($node->meta['json_profile'] ?? null)) {
-            return $this->buildStoredJsonProfile(
+            $profile = $this->buildStoredJsonProfile(
                 $node,
                 $subscriptionType,
                 $customConfig,
@@ -542,6 +551,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $proxyId,
                 $client,
             );
+
+            return $includeConfigGroup
+                ? $this->withConfigGroup($profile, $node, $customConfig)
+                : $profile;
         }
 
         $parsed = $this->parser->parse($node->uri);
@@ -564,7 +577,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         $proxyOutbound['tag'] = $this->settingsProvider->proxyTag();
 
-        return [
+        $profile = [
             ...($customConfig?->base_settings ?? []),
             'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
             'log' => $this->settingsProvider->log(),
@@ -586,6 +599,28 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->settingsProvider->blockOutbound(),
             ],
         ];
+
+        return $includeConfigGroup
+            ? $this->withConfigGroup($profile, $node, $customConfig)
+            : $profile;
+    }
+
+    /** @param array<string, mixed> $profile
+     *  @return array<string, mixed>
+     */
+    private function withConfigGroup(
+        array $profile,
+        ?NormalizedNode $node,
+        ?XrayCustomConfig $customConfig,
+    ): array {
+        $group = $customConfig?->configGroups->first();
+        $reference = $customConfig === null
+            ? ($node?->meta['config_group'] ?? null)
+            : ($group === null ? null : ['id' => (int) $group->id, 'name' => (string) $group->name]);
+
+        $profile['group'] = $reference;
+
+        return $profile;
     }
 
     private function geodataForClient(XrayCustomConfig $customConfig, ?string $client): mixed

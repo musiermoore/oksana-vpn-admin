@@ -11,6 +11,7 @@ class VlessConfigUpdateData extends Data
     public function __construct(
         public int $userId,
         public ?int $groupId = null,
+        public ?string $subtitle = null,
     ) {}
 
     public function toArray(): array
@@ -18,6 +19,7 @@ class VlessConfigUpdateData extends Data
         return [
             'user_id' => $this->userId,
             'group_id' => $this->groupId,
+            'subtitle' => $this->subtitle,
         ];
     }
 }

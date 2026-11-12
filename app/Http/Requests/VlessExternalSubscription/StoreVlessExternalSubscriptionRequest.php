@@ -23,6 +23,7 @@ class StoreVlessExternalSubscriptionRequest extends DataFormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'subtitle' => ['nullable', 'string', 'max:500'],
             'type' => ['required', 'string', Rule::in([
                 VlessExternalSubscription::TYPE_SUBSCRIPTION,
                 VlessExternalSubscription::TYPE_DIRECT,

@@ -178,6 +178,7 @@ class NormalizedNodeService
             sortServerName: $item['server_sort'],
             meta: [
                 'config_name' => (string) $config->name,
+                'subtitle' => $config->subtitle,
                 'config_port' => (int) $config->port,
                 'config_protocol' => (string) ($config->protocol ?: 'vless'),
                 'config_inbound_id' => $config->getResolvedInboundId(),

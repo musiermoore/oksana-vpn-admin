@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 class XrayCustomConfig extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'description', 'dns_settings_id', 'geodata_id',
+        'name', 'slug', 'description', 'subtitle', 'dns_settings_id', 'geodata_id',
         'xray_inbound_ids', 'external_subscription_config_ids', 'external_subscription_ids', 'proxy_ids',
         'xray_routing_ids', 'base_settings', 'is_active', 'is_public', 'sort_order',
     ];

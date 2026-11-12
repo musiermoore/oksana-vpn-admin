@@ -9,9 +9,10 @@ use App\Http\Requests\VlessExternalSubscription\StoreVlessExternalSubscriptionRe
 use App\Http\Requests\VlessExternalSubscription\UpdateVlessExternalSubscriptionRequest;
 use App\Http\Resources\VlessExternalSubscriptionResource;
 use App\Jobs\SyncVlessExternalSubscriptionJob;
-use App\Models\VlessExternalSubscription;
 use App\Models\ConfigGroup;
+use App\Models\VlessExternalSubscription;
 use App\Models\XrayRoutingGeodata;
+use App\Services\ConfigGroupAssignmentService;
 use App\Services\ExternalSubscriptions\VlessExternalSubscriptionSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +24,7 @@ class VlessExternalSubscriptionController extends Controller
 {
     public function __construct(
         private readonly VlessExternalSubscriptionSyncService $syncService,
+        private readonly ConfigGroupAssignmentService $configGroupAssignment,
     ) {}
 
     public function index(Request $request)
@@ -64,7 +66,7 @@ class VlessExternalSubscriptionController extends Controller
         ]);
 
         try {
-            $subscription->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
+            $this->configGroupAssignment->assign($subscription, $data->groupId);
             $this->syncService->sync($subscription);
         } catch (RuntimeException $exception) {
             $this->syncService->failSync($subscription, $exception->getMessage());
@@ -97,7 +99,7 @@ class VlessExternalSubscriptionController extends Controller
     ): RedirectResponse {
         $data = $request->toDto();
         $vlessExternalSubscription->update($data->toModelAttributes());
-        $vlessExternalSubscription->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
+        $this->configGroupAssignment->assign($vlessExternalSubscription, $data->groupId);
 
         try {
             $this->syncService->sync($vlessExternalSubscription);

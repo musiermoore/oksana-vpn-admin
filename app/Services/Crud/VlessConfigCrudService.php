@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Crud;
 
 use App\DTOs\VlessConfig\VlessConfigStoreData;
@@ -8,6 +10,7 @@ use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessConfig;
 use App\Repositories\VlessConfigRepository;
+use App\Services\ConfigGroupAssignmentService;
 use App\Services\XuiConfigService;
 use App\Services\XuiConfigServiceFactory;
 use RuntimeException;
@@ -16,14 +19,14 @@ class VlessConfigCrudService
 {
     public function __construct(
         private readonly VlessConfigRepository $configs,
+        private readonly ConfigGroupAssignmentService $configGroups,
     ) {}
 
     public function assign(VlessConfigStoreData $data): VlessConfig
     {
         $config = $this->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
-        $config->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
 
-        return $config;
+        return $this->update($config, new VlessConfigUpdateData($data->userId, $data->groupId, $data->subtitle));
     }
 
     public function assignFromXrayData(int $userId, int $serverId, int $inboundId): VlessConfig
@@ -72,8 +75,11 @@ class VlessConfigCrudService
 
     public function update(VlessConfig $config, VlessConfigUpdateData $data): VlessConfig
     {
-        $updated = $this->configs->update($config, ['user_id' => $data->userId]);
-        $updated->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
+        $updated = $this->configs->update($config, [
+            'user_id' => $data->userId,
+            'subtitle' => $data->subtitle,
+        ]);
+        $this->configGroups->assign($updated, $data->groupId);
 
         return $updated;
     }

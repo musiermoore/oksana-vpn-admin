@@ -14,5 +14,6 @@ class XrayConfigStoreData extends Data
         public int $serverId,
         public int $inboundId,
         public ?int $groupId = null,
+        public ?string $subtitle = null,
     ) {}
 }

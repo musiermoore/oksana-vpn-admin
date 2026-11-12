@@ -25,6 +25,7 @@ class VlessExternalSubscriptionData extends Data
         public bool $isReady,
         public ?int $geodataId = null,
         public ?int $groupId = null,
+        public ?string $subtitle = null,
     ) {}
 
     /**
@@ -35,6 +36,7 @@ class VlessExternalSubscriptionData extends Data
         return [
             'name' => $this->name,
             'description' => $this->description,
+            'subtitle' => $this->subtitle,
             'type' => $this->type,
             'source_format' => $this->sourceFormat,
             'source_url' => $this->sourceUrl,

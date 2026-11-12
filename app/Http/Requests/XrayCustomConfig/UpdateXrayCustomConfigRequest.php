@@ -54,6 +54,7 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique('xray_custom_configs', 'slug')->ignore($configId)],
             'description' => ['nullable', 'string', 'max:1000'],
+            'subtitle' => ['nullable', 'string', 'max:500'],
             'dns_settings_id' => ['nullable', 'integer', Rule::exists('xray_routing_dns_settings', 'id')],
             'geodata_id' => ['nullable', 'integer', Rule::exists('xray_routing_geodata', 'id')],
             'geodata_by_client' => ['nullable', 'array'],
@@ -120,6 +121,7 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
             'name' => $validated['name'],
             'slug' => $validated['slug'],
             'description' => $validated['description'] ?? null,
+            'subtitle' => $validated['subtitle'] ?? null,
             'dns_settings_id' => isset($validated['dns_settings_id']) ? (int) $validated['dns_settings_id'] : null,
             'geodata_id' => isset($validated['geodata_id']) ? (int) $validated['geodata_id'] : null,
             'geodata_by_client' => collect($validated['geodata_by_client'] ?? [])

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use App\Models\VlessConfig;
@@ -44,6 +46,7 @@ class XrayConfigResource
             'protocol' => $protocol,
             'protocol_label' => $this->formatProtocolLabel($protocol),
             'name' => $this->resource->name,
+            'subtitle' => $this->resource->subtitle,
             'is_active' => (bool) $this->resource->is_active,
             'enable' => (bool) $this->resource->enable,
             'password' => $this->resource->password,

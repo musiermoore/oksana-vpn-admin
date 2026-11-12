@@ -31,14 +31,14 @@ final class ConnectV2ConfigGroupAnnotator
 
         $localGroups = VlessConfig::query()
             ->whereKey($localIds)
-            ->with('configGroups:id,name')
+            ->with('configGroups:id,name,is_default,sort')
             ->get()
             ->mapWithKeys(fn (VlessConfig $config): array => [
                 (int) $config->id => self::groupReference($config->configGroups->first()),
             ]);
         $subscriptionGroups = VlessExternalSubscription::query()
             ->whereKey($subscriptionIds)
-            ->with('configGroups:id,name')
+            ->with('configGroups:id,name,is_default,sort')
             ->get()
             ->mapWithKeys(fn (VlessExternalSubscription $subscription): array => [
                 (int) $subscription->id => self::groupReference($subscription->configGroups->first()),
@@ -66,9 +66,14 @@ final class ConnectV2ConfigGroupAnnotator
         }, $nodes);
     }
 
-    /** @return array{id:int,name:string}|null */
+    /** @return array{id:int,name:string,is_default:bool,sort:int}|null */
     private static function groupReference(?ConfigGroup $group): ?array
     {
-        return $group === null ? null : ['id' => (int) $group->id, 'name' => (string) $group->name];
+        return $group === null ? null : [
+            'id' => (int) $group->id,
+            'name' => (string) $group->name,
+            'is_default' => (bool) $group->is_default,
+            'sort' => (int) $group->sort,
+        ];
     }
 }

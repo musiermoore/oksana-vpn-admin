@@ -20,6 +20,7 @@ class UpdateVlessConfigRequest extends DataFormRequest
         return [
             'user_id' => ['required', 'exists:users,id'],
             'group_id' => ['nullable', 'integer', Rule::exists('config_groups', 'id')],
+            'subtitle' => ['nullable', 'string', 'max:500'],
         ];
     }
 

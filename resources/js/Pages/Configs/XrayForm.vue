@@ -35,6 +35,7 @@ const form = useForm({
     server_id: props.config?.server?.id ?? selectedInbound?.server_id ?? '',
     inbound_id: selectedInbound?.inbound_id ?? '',
     group_id: props.config?.group_id ?? '',
+    subtitle: props.config?.subtitle ?? '',
 });
 
 const selectedInboundDetails = () => props.available_inbounds.find(
@@ -106,6 +107,11 @@ const submit = () => {
             <label class="field">
                 <span>Группа конфигураций</span>
                 <AppSelect v-model="form.group_id" :options="[{ value: '', label: 'Без группы' }, ...props.groups.map((group) => ({ value: group.id, label: group.name }))]" />
+            </label>
+
+            <label class="field">
+                <span>Подпись в клиенте</span>
+                <AppInput v-model="form.subtitle" placeholder="Например: Для мобильных данных" />
             </label>
 
             <label v-if="mode === 'create'" class="field">

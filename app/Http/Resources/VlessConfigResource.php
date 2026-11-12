@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class VlessConfigResource extends JsonResource
                 ? $this->resource->configGroups->first()?->id
                 : $this->resource->configGroups()->value('config_groups.id'),
             'name' => $this->name,
+            'subtitle' => $this->subtitle,
             'is_active' => (bool) $this->is_active,
             'enable' => (bool) $this->enable,
             'password' => $this->password,

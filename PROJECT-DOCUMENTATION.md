@@ -186,7 +186,7 @@ Each server has an SSH username, port, and optional encrypted password in additi
 
 ### Subscription Output
 
-Config groups are stored in `config_groups` and attached polymorphically through `config_group_items` to local VLESS configs, external VLESS subscriptions, and custom Xray profiles. Each attachable record has at most one group; the admin edit/create forms allow clearing the assignment. Each profile object in `/connect-v2` includes a `group` property containing `{id, name}` or `null`. Local VLESS profiles inherit their config's group, external profiles inherit their subscription's group, and custom Xray profiles inherit their custom config's group.
+Config groups are stored in `config_groups` and attached polymorphically through `config_group_items` to local VLESS configs, external VLESS subscriptions, and custom Xray profiles. Each attachable record has at most one group; the admin edit/create forms allow clearing the assignment. `/connect-v2` profile objects include `subtitle` and a `group` property containing `{id, name, is_default, sort}` or `null`. Local VLESS profiles inherit subtitle and group from their config, external profiles inherit them from their subscription, and custom Xray profiles inherit them from their custom config. At most one config group can be marked default.
 
 The main `/connect` subscription is built from normalized local and external nodes.
 

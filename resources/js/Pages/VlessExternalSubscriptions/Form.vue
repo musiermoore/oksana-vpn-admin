@@ -19,6 +19,7 @@ const props = defineProps({
 
 const form = useForm({
     name: props.subscription?.name ?? '',
+    subtitle: props.subscription?.subtitle ?? '',
     description: props.subscription?.description ?? '',
     type: props.subscription?.type ?? 'subscription',
     source_format: props.subscription?.source_format ?? 'direct',
@@ -78,6 +79,11 @@ const loadPreview = async () => {
             <label class="field">
                 <span>Название</span>
                 <AppInput v-model="form.name" required />
+            </label>
+
+            <label class="field">
+                <span>Подпись в клиенте</span>
+                <AppInput v-model="form.subtitle" placeholder="Например: Популярные сервисы через VPN" />
             </label>
 
             <label class="field">

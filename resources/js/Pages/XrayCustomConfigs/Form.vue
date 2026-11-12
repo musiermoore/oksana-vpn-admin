@@ -23,7 +23,7 @@ const initial = props.config || {};
 const initialBase = initial.base_settings || {};
 const slugify = (value) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const form = useForm({
-    name: initial.name || '', slug: initial.slug || slugify(initial.name), description: initial.description || '',
+    name: initial.name || '', slug: initial.slug || slugify(initial.name), description: initial.description || '', subtitle: initial.subtitle || '',
     dns_settings_id: initial.dns_settings_id || '', geodata_id: initial.geodata_id || '', geodata_by_client: initial.geodata_by_client || { incy: null, happ: null, v2raytun: null, other: null },
     xray_inbound_ids: initial.xray_inbound_ids || [], external_subscription_config_ids: initial.external_subscription_config_ids || [], external_subscription_ids: initial.external_subscription_ids || [],
     proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], user_ids: initial.user_ids || [],
@@ -588,6 +588,7 @@ const saveResource = async () => {
                 <div class="grid grid--two">
                     <label class="field"><span>Название конфигурации</span><AppInput v-model="form.name" required /></label>
                     <label class="field"><span>Группа конфигураций</span><AppSelect v-model="form.group_id" :options="[{ value: '', label: 'Без группы' }, ...props.groups.map((group) => ({ value: group.id, label: group.name }))]" /></label>
+                    <label class="field"><span>Подпись в клиенте</span><AppInput v-model="form.subtitle" placeholder="Например: Только мессенджеры через VPN" /></label>
                     <label class="field"><span>Короткое имя</span><AppInput v-model="form.slug" required @input="slugManuallyEdited = true" /><small>Создаётся автоматически на основе названия.</small></label>
                     <label class="field"><span>Порядок в JSON-подписке</span><AppInput v-model="form.sort_order" type="number" min="0" /></label>
                     <label class="field basic-description"><span>Описание</span><AppTextarea v-model="form.description" rows="3" /></label>

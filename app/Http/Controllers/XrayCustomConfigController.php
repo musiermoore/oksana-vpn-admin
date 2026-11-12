@@ -7,8 +7,8 @@ namespace App\Http\Controllers;
 use App\DTOs\XrayCustomConfig\XrayCustomConfigData;
 use App\Http\Requests\XrayCustomConfig\StoreXrayDnsSettingsRequest;
 use App\Http\Requests\XrayCustomConfig\UpdateXrayCustomConfigRequest;
-use App\Models\Proxy;
 use App\Models\ConfigGroup;
+use App\Models\Proxy;
 use App\Models\Server;
 use App\Models\User;
 use App\Models\VlessExternalSubscription;
@@ -20,6 +20,7 @@ use App\Models\XrayCustomConfigRoute;
 use App\Models\XrayRouting;
 use App\Models\XrayRoutingDnsSettings;
 use App\Models\XrayRoutingGeodata;
+use App\Services\ConfigGroupAssignmentService;
 use App\Services\SubscriptionMetadataService;
 use App\Services\Subscriptions\XrayCustomConfigService;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,8 @@ use Illuminate\Support\Facades\DB;
 
 class XrayCustomConfigController extends Controller
 {
+    public function __construct(private readonly ConfigGroupAssignmentService $configGroupAssignment) {}
+
     public function index()
     {
         return $this->inertia('XrayCustomConfigs/Index', [
@@ -70,7 +73,7 @@ class XrayCustomConfigController extends Controller
 
         $config = XrayCustomConfig::query()->create($attributes);
         $this->syncUserAssignments($config, $userIds);
-        $config->configGroups()->sync($groupId === null ? [] : [$groupId]);
+        $this->configGroupAssignment->assign($config, $groupId);
         $this->syncGroupsAndRoutes($config, $data);
 
         return redirect()->route('xray-custom-configs.edit', $config)->with('success', 'Пользовательская конфигурация Xray создана.');
@@ -167,7 +170,7 @@ class XrayCustomConfigController extends Controller
 
         $xrayCustomConfig->update($attributes);
         $this->syncUserAssignments($xrayCustomConfig, $userIds);
-        $xrayCustomConfig->configGroups()->sync($groupId === null ? [] : [$groupId]);
+        $this->configGroupAssignment->assign($xrayCustomConfig, $groupId);
         $this->syncGroupsAndRoutes($xrayCustomConfig, $data);
 
         return redirect()->back()->with('success', 'Пользовательская конфигурация Xray обновлена.');
@@ -358,6 +361,7 @@ class XrayCustomConfigController extends Controller
         return [
             'id' => $config->id,
             'name' => $config->name,
+            'subtitle' => $config->subtitle,
             'slug' => $config->slug,
             'description' => $config->description,
             'dns_settings_id' => $config->dns_settings_id,

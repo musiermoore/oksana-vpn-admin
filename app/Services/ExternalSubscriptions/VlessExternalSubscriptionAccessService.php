@@ -119,6 +119,7 @@ class VlessExternalSubscriptionAccessService
             sortServerName: mb_strtolower($serverName),
             meta: [
                 'config_name' => (string) $config->name,
+                'subtitle' => $config->subscription->subtitle,
                 'config_protocol' => (string) ($config->protocol ?: ($parsed['protocol'] ?? 'unknown')),
                 'server' => (string) ($parsed['server'] ?? ''),
                 'port' => (int) ($parsed['port'] ?? 0),

@@ -206,7 +206,7 @@ The mini-app must use `connect.oksana1984.ru` for `/start`, `/deep-link/*`, and 
 - External config names prefer `Название в connect-wl` when it is configured.
 - Legacy `/connect-v2/deep-link/{client}` routes remain available for compatibility with existing non-mini-app callers.
 - External subscriptions are included only when `include_in_connect_v2` (`Отображать в connect-v2`) is enabled. The flag also controls external profiles included in connect-v2 custom JSON profiles.
-- Each profile object in the existing JSON array includes `group: {id, name}` when assigned, or `group: null` otherwise. Local VLESS profiles inherit their config group, external profiles inherit the external subscription group, and custom Xray profiles inherit their custom config group. This metadata does not affect profile generation or access eligibility.
+- Each profile object in the existing JSON array includes `subtitle` and `group: {id, name, is_default, sort}` when assigned, or `group: null` otherwise. Local VLESS profiles inherit both values from their config, external profiles inherit them from the external subscription, and custom Xray profiles inherit them from their custom config. Only one group may be default. This metadata does not affect profile generation or access eligibility.
 - Local Xray-backed configs, including AmneziaWG, are included only when the config and server are active and the inbound is active, public, and visible for the requested connect format.
 
 WireGuard/AmneziaWG output:

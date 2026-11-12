@@ -19,6 +19,7 @@ class VlessConfig extends Model
         'user_id',
         'name', // email in 3x-ui
         'description',
+        'subtitle',
         'is_active',
         'enable',
 

@@ -4,39 +4,40 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ConfigGroup\StoreConfigGroupRequest;
+use App\Http\Requests\ConfigGroup\UpdateConfigGroupRequest;
+use App\Http\Resources\ConfigGroupResource;
 use App\Models\ConfigGroup;
+use App\Services\Crud\ConfigGroupCrudService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ConfigGroupController extends Controller
 {
-    public function index()
+    public function index(Request $request, ConfigGroupCrudService $service): \Inertia\Response
     {
         return $this->inertia('ConfigGroups/Index', [
-            'groups' => ConfigGroup::query()->ordered()->get(['id', 'name', 'sort_order']),
+            'groups' => ConfigGroupResource::collection($service->ordered())->toArray($request),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreConfigGroupRequest $request, ConfigGroupCrudService $service): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
-        ConfigGroup::query()->create([
-            'name' => $data['name'],
-            'sort_order' => ((int) ConfigGroup::query()->max('sort_order')) + 1,
-        ]);
+        $service->create($request->toData());
 
         return redirect()->back()->with('success', 'Группа конфигураций создана.');
     }
 
-    public function update(Request $request, ConfigGroup $configGroup)
+    public function update(UpdateConfigGroupRequest $request, ConfigGroup $configGroup, ConfigGroupCrudService $service): RedirectResponse
     {
-        $configGroup->update($request->validate(['name' => ['required', 'string', 'max:255']]));
+        $service->update($configGroup, $request->toData());
 
         return redirect()->back()->with('success', 'Группа конфигураций обновлена.');
     }
 
-    public function destroy(ConfigGroup $configGroup)
+    public function destroy(ConfigGroup $configGroup, ConfigGroupCrudService $service): RedirectResponse
     {
-        $configGroup->delete();
+        $service->delete($configGroup);
 
         return redirect()->back()->with('success', 'Группа конфигураций удалена.');
     }

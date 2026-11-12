@@ -11,5 +11,6 @@ class XrayConfigUpdateData extends Data
     public function __construct(
         public int $userId,
         public ?int $groupId = null,
+        public ?string $subtitle = null,
     ) {}
 }

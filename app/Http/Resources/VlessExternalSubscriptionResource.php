@@ -19,6 +19,7 @@ class VlessExternalSubscriptionResource extends JsonResource
                 ? $this->resource->configGroups->first()?->id
                 : $this->resource->configGroups()->value('config_groups.id'),
             'description' => $this->description,
+            'subtitle' => $this->subtitle,
             'type' => $this->type,
             'source_format' => $this->source_format?->value ?? $this->source_format,
             'source_url' => $this->source_url,

@@ -240,9 +240,10 @@ class ConnectV2Test extends TestCase
     public function test_connect_v2_returns_root_config_groups_with_external_subscription_membership(): void
     {
         $user = $this->createUser();
-        $group = ConfigGroup::query()->create(['name' => 'Auto', 'sort_order' => 0]);
+        $group = ConfigGroup::query()->create(['name' => 'Auto', 'sort' => 5, 'is_default' => true]);
         $subscription = VlessExternalSubscription::query()->create([
             'name' => 'External subscription',
+            'subtitle' => 'Популярные сервисы через VPN',
             'type' => VlessExternalSubscription::TYPE_DIRECT,
             'source_url' => 'vless://external@external.example.com:443?type=tcp#External',
             'include_in_main_subscription' => false,
@@ -266,8 +267,14 @@ class ConnectV2Test extends TestCase
         $response = $this->getJson(route('vless.connect-v2', ['token' => $user->uuid]));
 
         $response->assertOk()->assertJsonFragment([
-            'group' => ['id' => $group->id, 'name' => 'Auto'],
+            'group' => [
+                'id' => $group->id,
+                'name' => 'Auto',
+                'is_default' => true,
+                'sort' => 5,
+            ],
         ]);
+        $response->assertJsonFragment(['subtitle' => 'Популярные сервисы через VPN']);
         $this->assertIsArray($response->json());
         $this->assertArrayNotHasKey('groups', $response->json());
         $this->assertStringContainsString('Grouped external profile', $response->getContent());

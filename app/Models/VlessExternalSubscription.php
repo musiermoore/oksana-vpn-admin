@@ -20,6 +20,7 @@ class VlessExternalSubscription extends Model
         'name',
         'sort_order',
         'description',
+        'subtitle',
         'type',
         'source_format',
         'source_url',

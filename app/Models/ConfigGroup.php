@@ -10,7 +10,12 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 class ConfigGroup extends Model
 {
-    protected $fillable = ['name', 'sort_order'];
+    protected $fillable = ['name', 'sort', 'is_default'];
+
+    protected function casts(): array
+    {
+        return ['sort' => 'integer', 'is_default' => 'boolean'];
+    }
 
     public function vlessConfigs(): MorphToMany
     {
@@ -29,6 +34,6 @@ class ConfigGroup extends Model
 
     public function scopeOrdered(Builder $query): Builder
     {
-        return $query->orderBy('sort_order')->orderBy('id');
+        return $query->orderBy('sort')->orderBy('id');
     }
 }

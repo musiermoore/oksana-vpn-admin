@@ -616,9 +616,15 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         $group = $customConfig?->configGroups->first();
         $reference = $customConfig === null
             ? ($node?->meta['config_group'] ?? null)
-            : ($group === null ? null : ['id' => (int) $group->id, 'name' => (string) $group->name]);
+            : ($group === null ? null : [
+                'id' => (int) $group->id,
+                'name' => (string) $group->name,
+                'is_default' => (bool) $group->is_default,
+                'sort' => (int) $group->sort,
+            ]);
 
         $profile['group'] = $reference;
+        $profile['subtitle'] = $customConfig?->subtitle ?? ($node?->meta['subtitle'] ?? null);
 
         return $profile;
     }

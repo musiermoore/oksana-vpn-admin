@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\DTOs\VlessConfig\VlessConfigUpdateData;
@@ -73,7 +75,7 @@ class XrayConfigController extends Controller
         try {
             $data = $request->toDto();
             $created = $this->vlessConfigService->assignFromXrayData($data->userId, $data->serverId, $data->inboundId);
-            $created->configGroups()->sync($data->groupId === null ? [] : [$data->groupId]);
+            $this->vlessConfigService->update($created, new VlessConfigUpdateData($data->userId, $data->groupId, $data->subtitle));
         } catch (RuntimeException $exception) {
             return redirect()->back()
                 ->with('error', $exception->getMessage());
@@ -105,7 +107,7 @@ class XrayConfigController extends Controller
         $model = $this->resolveConfig($protocol, $config);
         $data = $request->toDto();
 
-        $this->vlessConfigService->update($model, new VlessConfigUpdateData($data->userId, $data->groupId));
+        $this->vlessConfigService->update($model, new VlessConfigUpdateData($data->userId, $data->groupId, $data->subtitle));
 
         return redirect()->route('xray-configs.index')
             ->with('success', 'Конфиг успешно обновлён');

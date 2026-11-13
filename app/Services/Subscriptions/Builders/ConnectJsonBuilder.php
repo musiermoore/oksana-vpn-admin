@@ -683,6 +683,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
         ];
 
+        if ($customConfig === null && $node->sourceType === 'external_subscription') {
+            $profile = $this->replaceExternalDirectGeosite($profile);
+        }
+
         if ($customConfig === null) {
             $profileGeodata = is_array($profile['geodata'] ?? null) ? $profile['geodata'] : null;
             $geodata = $this->geodataAssets->mergeSelectedGeodata(
@@ -716,6 +720,38 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             $profile['routing'] = $this->customRouting($customConfig, $subscriptionType, $node);
             $profile = [...($customConfig->base_settings ?? []), ...$profile];
         }
+
+        return $profile;
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     * @return array<string, mixed>
+     */
+    private function replaceExternalDirectGeosite(array $profile): array
+    {
+        if (! is_array($profile['routing']['rules'] ?? null)) {
+            return $profile;
+        }
+
+        $profile['routing']['rules'] = array_map(static function (mixed $rule): mixed {
+            if (! is_array($rule)) {
+                return $rule;
+            }
+
+            $replace = static fn (mixed $domain): mixed => is_string($domain)
+                && strtolower(trim($domain)) === 'geosite:direct'
+                ? 'geosite:private'
+                : $domain;
+
+            if (is_array($rule['domain'] ?? null)) {
+                $rule['domain'] = array_map($replace, $rule['domain']);
+            } elseif (is_string($rule['domain'] ?? null)) {
+                $rule['domain'] = implode(',', array_map($replace, explode(',', $rule['domain'])));
+            }
+
+            return $rule;
+        }, $profile['routing']['rules']);
 
         return $profile;
     }

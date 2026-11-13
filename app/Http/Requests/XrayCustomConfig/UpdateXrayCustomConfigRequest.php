@@ -7,7 +7,7 @@ namespace App\Http\Requests\XrayCustomConfig;
 use App\DTOs\XrayCustomConfig\XrayCustomConfigData;
 use App\Enums\XrayBalancerStrategy;
 use App\Http\Requests\DataFormRequest;
-use App\Models\Proxy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -20,30 +20,47 @@ class UpdateXrayCustomConfigRequest extends DataFormRequest
 
     protected function prepareForValidation(): void
     {
-        $proxyIds = $this->input('proxy_ids', []);
-        if (! is_array($proxyIds)) {
-            return;
+        $filteredIds = [];
+        foreach ([
+            'proxy_ids' => 'proxies',
+            'external_subscription_ids' => 'vless_external_subscriptions',
+        ] as $field => $table) {
+            $ids = $this->input($field, []);
+            if (is_array($ids)) {
+                $filteredIds[$field] = $this->removeMissingIds($ids, $table);
+            }
         }
 
-        $proxyIdsToCheck = array_values(array_unique(array_map(
+        $this->merge($filteredIds);
+    }
+
+    /**
+     * @param array<int, mixed> $ids
+     * @return array<int, mixed>
+     */
+    private function removeMissingIds(array $ids, string $table): array
+    {
+        $idsToCheck = array_values(array_unique(array_map(
             'intval',
-            array_filter($proxyIds, static fn (mixed $id): bool =>
-                (is_int($id) || (is_string($id) && ctype_digit($id))) && (int) $id > 0
-            ),
+            array_filter($ids, self::isPositiveIntegerId(...)),
         )));
 
-        $existingProxyIds = Proxy::query()
-            ->whereKey($proxyIdsToCheck)
+        $existingIds = DB::table($table)
+            ->whereIn('id', $idsToCheck)
             ->pluck('id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all();
 
-        $this->merge(['proxy_ids' => array_values(array_filter(
-            $proxyIds,
-            static fn (mixed $id): bool => ! (is_int($id) || (is_string($id) && ctype_digit($id)))
-                || (int) $id < 1
-                || in_array((int) $id, $existingProxyIds, true),
-        ))]);
+        return array_values(array_filter(
+            $ids,
+            static fn (mixed $id): bool => ! self::isPositiveIntegerId($id)
+                || in_array((int) $id, $existingIds, true),
+        ));
+    }
+
+    private static function isPositiveIntegerId(mixed $id): bool
+    {
+        return (is_int($id) || (is_string($id) && ctype_digit($id))) && (int) $id > 0;
     }
 
     public function rules(): array

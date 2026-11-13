@@ -683,10 +683,6 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             'remarks' => (string) ($node->meta['name'] ?? $node->serverName),
         ];
 
-        if ($customConfig === null && $node->sourceType === 'external_subscription') {
-            $profile = $this->replaceExternalDirectGeodata($profile);
-        }
-
         if ($customConfig === null) {
             $profileGeodata = is_array($profile['geodata'] ?? null) ? $profile['geodata'] : null;
             $geodata = $this->geodataAssets->mergeSelectedGeodata(
@@ -719,6 +715,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             $profile['geodata'] = $this->settingsProvider->geodataFromSettings($this->geodataForClient($customConfig, $client));
             $profile['routing'] = $this->customRouting($customConfig, $subscriptionType, $node);
             $profile = [...($customConfig->base_settings ?? []), ...$profile];
+        }
+
+        if ($customConfig === null && $node->sourceType === 'external_subscription') {
+            $profile = $this->replaceExternalDirectGeodata($profile);
         }
 
         return $profile;

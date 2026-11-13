@@ -39,13 +39,24 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     public function buildForSubscriptionType(array $nodes, string $subscriptionType): SubscriptionBuildResult
     {
         $profiles = collect($nodes)
-            ->map(fn (NormalizedNode $node) => $this->buildProfile(
-                $node,
-                $this->routingTypeForNode($node, $subscriptionType),
-                includeConfigGroup: $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2,
-            ))
+            ->map(function (NormalizedNode $node) use ($subscriptionType): ?array {
+                $profile = $this->buildProfile(
+                    $node,
+                    $this->routingTypeForNode($node, $subscriptionType),
+                    includeConfigGroup: $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                );
+
+                if ($profile === null) {
+                    return null;
+                }
+
+                $profile = $this->profileNormalizer->normalizeProfile($profile);
+
+                return $node->sourceType === 'external_subscription'
+                    ? $this->replaceExternalDirectGeodata($profile)
+                    : $profile;
+            })
             ->filter()
-            ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile))
             ->values()
             ->all();
 
@@ -715,10 +726,6 @@ class ConnectJsonBuilder implements SubscriptionBuilder
             $profile['geodata'] = $this->settingsProvider->geodataFromSettings($this->geodataForClient($customConfig, $client));
             $profile['routing'] = $this->customRouting($customConfig, $subscriptionType, $node);
             $profile = [...($customConfig->base_settings ?? []), ...$profile];
-        }
-
-        if ($customConfig === null && $node->sourceType === 'external_subscription') {
-            $profile = $this->replaceExternalDirectGeodata($profile);
         }
 
         return $profile;

@@ -196,7 +196,7 @@ External VLESS subscriptions support multiple source formats:
 
 - `direct` for regular links and subscription URLs
 - `incy` for sources that start as `incy://...` or as an `https://...` page that redirects to `incy://...`
-- JSON subscription sources keep the original profile payload on each external config so `/connect-json` can preserve upstream routing rules, balancers, and other profile-level settings. In upstream routing rule domain matchers, `geosite:direct` is normalized to `geosite:private`.
+- JSON subscription sources keep the original profile payload on each external config so `/connect-json` can preserve upstream routing rules, balancers, and other profile-level settings. In upstream routing rules, `geosite:direct` domain matchers and `geoip:direct` IP matchers are normalized to their corresponding `private` categories.
 - Each external subscription can select a reusable geodata resource. Its assets fill files missing from each upstream JSON profile before global geodata assets are applied.
 - The whitelist subscription route `/connect-wl-version-2` defaults to JSON output; URI/base64 output remains available through explicit URI aliases such as `format=uri`.
 - Xray JSON routing rules can be managed through the admin UI at `/xray-routings`. Imported RoscomVPN/INCY JSON profiles are stored in `xray_json_settings`, while generated Direct/Proxy/Block field rules are stored in `xray_routings`.

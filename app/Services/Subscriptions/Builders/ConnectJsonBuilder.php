@@ -684,7 +684,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         ];
 
         if ($customConfig === null && $node->sourceType === 'external_subscription') {
-            $profile = $this->replaceExternalDirectGeosite($profile);
+            $profile = $this->replaceExternalDirectGeodata($profile);
         }
 
         if ($customConfig === null) {
@@ -728,7 +728,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
      * @param  array<string, mixed>  $profile
      * @return array<string, mixed>
      */
-    private function replaceExternalDirectGeosite(array $profile): array
+    private function replaceExternalDirectGeodata(array $profile): array
     {
         if (! is_array($profile['routing']['rules'] ?? null)) {
             return $profile;
@@ -739,15 +739,21 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 return $rule;
             }
 
-            $replace = static fn (mixed $domain): mixed => is_string($domain)
-                && strtolower(trim($domain)) === 'geosite:direct'
-                ? 'geosite:private'
-                : $domain;
+            $replacements = [
+                'domain' => ['geosite:direct' => 'geosite:private'],
+                'ip' => ['geoip:direct' => 'geoip:private'],
+            ];
 
-            if (is_array($rule['domain'] ?? null)) {
-                $rule['domain'] = array_map($replace, $rule['domain']);
-            } elseif (is_string($rule['domain'] ?? null)) {
-                $rule['domain'] = implode(',', array_map($replace, explode(',', $rule['domain'])));
+            foreach ($replacements as $field => $fieldReplacements) {
+                $replace = static fn (mixed $matcher): mixed => is_string($matcher)
+                    ? ($fieldReplacements[strtolower(trim($matcher))] ?? $matcher)
+                    : $matcher;
+
+                if (is_array($rule[$field] ?? null)) {
+                    $rule[$field] = array_map($replace, $rule[$field]);
+                } elseif (is_string($rule[$field] ?? null)) {
+                    $rule[$field] = implode(',', array_map($replace, explode(',', $rule[$field])));
+                }
             }
 
             return $rule;

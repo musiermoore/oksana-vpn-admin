@@ -2046,7 +2046,7 @@ body,
     width: fit-content;
 }
 
-.shell--app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.shell--app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.source-position),
 .shell--app select,
 .shell--app textarea {
     width: 100%;
@@ -2065,7 +2065,7 @@ body,
     resize: vertical;
 }
 
-.shell--app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.shell--app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.source-position):focus,
 .shell--app select:focus,
 .shell--app textarea:focus {
     outline: none;

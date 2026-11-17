@@ -159,7 +159,7 @@ Correct reactivation usually needs both steps: create missing configs, then reco
 
 ### Subscription type builder
 
-The authenticated `/subscription-types` admin page manages independent output presets. Each preset stores a slug, output kind, format, active state, placeholder setting, and ordered source list in `subscription_types` and `subscription_type_items`. The source list can include servers, proxies, external subscriptions, and custom Xray profiles. The screen handles inclusion and order; detailed source settings stay on their existing admin pages.
+The authenticated `/subscription-types` admin CRUD has separate index, create, and edit pages. Each preset stores a slug, output kind, format, active state, placeholder setting, and ordered source list in `subscription_types` and `subscription_type_items`. The edit screen handles inclusion and order; selecting one or more sources adds them immediately, while detailed source settings stay on their existing admin pages.
 
 The page can preview its current unsaved lineup for a representative active non-admin user, an admin, a user without an active subscription or with debt, or one selected from user search. It shows the user's subscription, access, and debt status with the generated configuration; configuration output is built by the same service used by the public subscription link.
 

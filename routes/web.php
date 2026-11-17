@@ -102,8 +102,11 @@ Route::middleware('auth')->group(function () {
         ->name('users.xray-custom-config-assignments.destroy');
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);
     Route::get('subscription-types', [SubscriptionTypeController::class, 'index'])->name('subscription-types.index');
+    Route::get('subscription-types/create', [SubscriptionTypeController::class, 'create'])->name('subscription-types.create');
     Route::post('subscription-types', [SubscriptionTypeController::class, 'store'])->name('subscription-types.store');
     Route::get('subscription-types/users', [SubscriptionTypeController::class, 'searchUsers'])->name('subscription-types.users');
+    Route::post('subscription-types/preview', [SubscriptionTypeController::class, 'previewDraft'])->name('subscription-types.preview-draft');
+    Route::get('subscription-types/{subscriptionType}/edit', [SubscriptionTypeController::class, 'edit'])->name('subscription-types.edit');
     Route::post('subscription-types/{subscriptionType}/preview', [SubscriptionTypeController::class, 'preview'])->name('subscription-types.preview');
     Route::put('subscription-types/{subscriptionType}', [SubscriptionTypeController::class, 'update'])->name('subscription-types.update');
     Route::delete('subscription-types/{subscriptionType}', [SubscriptionTypeController::class, 'destroy'])->name('subscription-types.destroy');

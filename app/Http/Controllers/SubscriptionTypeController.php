@@ -21,26 +21,38 @@ use RuntimeException;
 
 final class SubscriptionTypeController extends Controller
 {
-    public function index(Request $request, SubscriptionTypeCrudService $types): InertiaResponse
+    public function index(SubscriptionTypeCrudService $types): InertiaResponse
     {
         return $this->inertia('SubscriptionTypes/Index', [
             'types' => $types->ordered()->map(fn (SubscriptionType $type): array => [
                 'id' => (int) $type->id,
                 'name' => (string) $type->name,
                 'slug' => (string) $type->slug,
-                'kind' => (string) $type->kind,
+                'kind_label' => match ($type->kind) {
+                    SubscriptionType::KIND_CONNECT_V2 => 'V2 — JSON',
+                    SubscriptionType::KIND_CONNECT_FREE => 'Free',
+                    default => 'V1 — Connect',
+                },
                 'format' => (string) $type->format,
                 'is_active' => (bool) $type->is_active,
-                'show_expired_placeholder' => (bool) $type->show_expired_placeholder,
                 'is_system' => (bool) $type->is_system,
-                'items' => $type->items->map(fn ($item): array => [
-                    'source_type' => (string) $item->source_type,
-                    'source_id' => (int) $item->source_id,
-                    'sort_order' => (int) $item->sort_order,
-                ])->values()->all(),
+                'items_count' => $type->items->count(),
             ])->values()->all(),
+        ]);
+    }
+
+    public function create(): InertiaResponse
+    {
+        return $this->inertia('SubscriptionTypes/Create', [
             'catalog' => $this->sourceCatalog(),
-            'selected_type_id' => $request->integer('selected'),
+        ]);
+    }
+
+    public function edit(SubscriptionType $subscriptionType): InertiaResponse
+    {
+        return $this->inertia('SubscriptionTypes/Edit', [
+            'type' => $this->typeData($subscriptionType->load('items')),
+            'catalog' => $this->sourceCatalog(),
         ]);
     }
 
@@ -48,7 +60,7 @@ final class SubscriptionTypeController extends Controller
     {
         $type = $types->create($request->toData());
 
-        return redirect()->route('subscription-types.index', ['selected' => $type->id])
+        return redirect()->route('subscription-types.edit', $type)
             ->with('success', 'Тип подписки создан.');
     }
 
@@ -59,7 +71,7 @@ final class SubscriptionTypeController extends Controller
     ): RedirectResponse {
         $types->update($subscriptionType, $request->toData());
 
-        return redirect()->route('subscription-types.index', ['selected' => $subscriptionType->id])
+        return redirect()->route('subscription-types.edit', $subscriptionType)
             ->with('success', 'Настройки подписки сохранены.');
     }
 
@@ -88,7 +100,34 @@ final class SubscriptionTypeController extends Controller
         SubscriptionType $subscriptionType,
         SubscriptionTypePreviewService $previews,
     ): JsonResponse {
-        return response()->json($previews->preview($subscriptionType, $request->validated()));
+        return response()->json($previews->preview($request->validated()));
+    }
+
+    public function previewDraft(
+        PreviewSubscriptionTypeRequest $request,
+        SubscriptionTypePreviewService $previews,
+    ): JsonResponse {
+        return response()->json($previews->preview($request->validated()));
+    }
+
+    /** @return array<string, mixed> */
+    private function typeData(SubscriptionType $type): array
+    {
+        return [
+            'id' => (int) $type->id,
+            'name' => (string) $type->name,
+            'slug' => (string) $type->slug,
+            'kind' => (string) $type->kind,
+            'format' => (string) $type->format,
+            'is_active' => (bool) $type->is_active,
+            'show_expired_placeholder' => (bool) $type->show_expired_placeholder,
+            'is_system' => (bool) $type->is_system,
+            'items' => $type->items->map(fn ($item): array => [
+                'source_type' => (string) $item->source_type,
+                'source_id' => (int) $item->source_id,
+                'sort_order' => (int) $item->sort_order,
+            ])->values()->all(),
+        ];
     }
 
     /** @return array<int, array<string, mixed>> */

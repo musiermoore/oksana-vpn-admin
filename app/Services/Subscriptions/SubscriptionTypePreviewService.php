@@ -15,12 +15,10 @@ final class SubscriptionTypePreviewService
     public function __construct(private readonly SubscriptionTypeBuilderService $builder) {}
 
     /** @return array<string, mixed> */
-    public function preview(SubscriptionType $savedType, array $data): array
+    public function preview(array $data): array
     {
         $user = $this->resolveUser((string) $data['audience'], $data['user_id'] ?? null);
         $type = new SubscriptionType([
-            'name' => $savedType->name,
-            'slug' => $savedType->slug,
             'kind' => $data['kind'],
             'format' => $data['format'],
             'is_active' => true,

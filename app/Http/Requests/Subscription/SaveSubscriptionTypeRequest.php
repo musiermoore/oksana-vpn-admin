@@ -6,14 +6,16 @@ namespace App\Http\Requests\Subscription;
 
 use App\DTOs\Subscription\SubscriptionTypeData;
 use App\Http\Requests\DataFormRequest;
+use App\Http\Requests\Subscription\Concerns\ValidatesStaticSubscriptionSources;
 use App\Models\SubscriptionType;
 use App\Models\SubscriptionTypeItem;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
-use Illuminate\Support\Facades\DB;
 
 final class SaveSubscriptionTypeRequest extends DataFormRequest
 {
+    use ValidatesStaticSubscriptionSources;
+
     public function authorize(): bool
     {
         return true;
@@ -33,6 +35,7 @@ final class SaveSubscriptionTypeRequest extends DataFormRequest
             'kind' => ['required', Rule::in(SubscriptionType::KINDS)],
             'format' => ['required', Rule::in(SubscriptionType::FORMATS)],
             'is_active' => ['required', 'boolean'],
+            'requires_user_token' => ['required', 'boolean'],
             'show_expired_placeholder' => ['required', 'boolean'],
             'items' => ['present', 'array', 'max:500'],
             'items.*' => ['required', 'array:source_type,source_id,sort_order'],
@@ -57,6 +60,13 @@ final class SaveSubscriptionTypeRequest extends DataFormRequest
             $this->addMissingSourceErrors($validator, $items, SubscriptionTypeItem::SOURCE_PROXY, 'proxies');
             $this->addMissingSourceErrors($validator, $items, SubscriptionTypeItem::SOURCE_EXTERNAL_SUBSCRIPTION, 'vless_external_subscriptions');
             $this->addMissingSourceErrors($validator, $items, SubscriptionTypeItem::SOURCE_XRAY_CUSTOM_CONFIG, 'xray_custom_configs');
+            if (! $this->boolean('requires_user_token')) {
+                $this->addStaticSourceErrors($validator, $items);
+
+                if ($this->boolean('show_expired_placeholder')) {
+                    $validator->errors()->add('show_expired_placeholder', 'Статическая ссылка не использует заглушку для пользователей без доступа.');
+                }
+            }
             $seen = [];
 
             foreach (is_array($items) ? $items : [] as $index => $item) {

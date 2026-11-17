@@ -35,6 +35,7 @@ final class SubscriptionTypeController extends Controller
                 },
                 'format' => (string) $type->format,
                 'is_active' => (bool) $type->is_active,
+                'requires_user_token' => (bool) $type->requires_user_token,
                 'is_system' => (bool) $type->is_system,
                 'items_count' => $type->items->count(),
             ])->values()->all(),
@@ -120,6 +121,7 @@ final class SubscriptionTypeController extends Controller
             'kind' => (string) $type->kind,
             'format' => (string) $type->format,
             'is_active' => (bool) $type->is_active,
+            'requires_user_token' => (bool) $type->requires_user_token,
             'show_expired_placeholder' => (bool) $type->show_expired_placeholder,
             'is_system' => (bool) $type->is_system,
             'items' => $type->items->map(fn ($item): array => [
@@ -159,6 +161,7 @@ final class SubscriptionTypeController extends Controller
                 'detail' => (string) $server->code,
                 'group' => 'Серверы',
                 'active' => (bool) $server->is_active,
+                'is_free' => false,
                 'edit_url' => route('servers.edit', $server),
             ])->all(),
             ...$proxies->map(fn (Proxy $proxy): array => [
@@ -168,6 +171,7 @@ final class SubscriptionTypeController extends Controller
                 'detail' => (string) ($proxy->server?->name ?? 'Сервер не назначен'),
                 'group' => 'Прокси',
                 'active' => (bool) $proxy->is_ready,
+                'is_free' => false,
                 'edit_url' => route('proxies.edit', $proxy),
             ])->all(),
             ...$externalSubscriptions->map(fn (VlessExternalSubscription $subscription): array => [
@@ -177,6 +181,7 @@ final class SubscriptionTypeController extends Controller
                 'detail' => $subscription->is_free ? 'Бесплатная' : 'Платная',
                 'group' => 'Внешние подписки',
                 'active' => (bool) $subscription->is_active,
+                'is_free' => (bool) $subscription->is_free,
                 'edit_url' => route('vless-external-subscriptions.edit', $subscription),
             ])->all(),
             ...$customConfigs->map(fn (XrayCustomConfig $config): array => [
@@ -186,6 +191,7 @@ final class SubscriptionTypeController extends Controller
                 'detail' => $config->is_public ? 'Общая' : 'Назначается пользователям',
                 'group' => 'Пользовательские конфигурации',
                 'active' => (bool) $config->is_active,
+                'is_free' => false,
                 'edit_url' => route('xray-custom-configs.edit', $config),
             ])->all(),
         ];

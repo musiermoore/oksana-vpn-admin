@@ -33,7 +33,7 @@ final class SubscriptionTypeBuilderService
         $externalNodes = collect($this->externalSubscriptions->getNamedNodesForSubscriptionIds(
             $user,
             $externalSubscriptionIds,
-            $type->kind !== SubscriptionType::KIND_CONNECT_FREE && $user->hasActiveAccess(),
+            $type->requires_user_token && $user->hasActiveAccess(),
         ));
         $visibilityField = match ($type->kind) {
             SubscriptionType::KIND_CONNECT => 'is_visible_in_connect',
@@ -69,6 +69,41 @@ final class SubscriptionTypeBuilderService
             client: $client,
             customConfigIds: $customConfigIds,
             customConfigSortOrderById: $customConfigSortOrderById,
+        );
+    }
+
+    public function buildStatic(SubscriptionType $type, ?string $client = null): SubscriptionBuildResult
+    {
+        $items = $type->items;
+        $externalSubscriptionIds = $items
+            ->where('source_type', SubscriptionTypeItem::SOURCE_EXTERNAL_SUBSCRIPTION)
+            ->pluck('source_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+        $externalNodes = collect($this->externalSubscriptions->getNamedNodesForSubscriptionIds(
+            null,
+            $externalSubscriptionIds,
+            false,
+        ));
+        $selectedNodes = $this->selectNodes($items, collect(), $externalNodes);
+
+        if (
+            $type->format === SubscriptionType::FORMAT_JSON
+            && in_array($type->kind, [SubscriptionType::KIND_CONNECT_V2, SubscriptionType::KIND_CONNECT_FREE], true)
+        ) {
+            $selectedNodes = collect(ConnectV2ConfigGroupAnnotator::annotate($selectedNodes->all()));
+        }
+
+        return $this->subscriptions->buildFromNodes(
+            nodes: $selectedNodes->all(),
+            format: $type->format,
+            subscriptionType: $type->kind,
+            user: null,
+            customExternalPurpose: VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_FREE,
+            client: $client,
+            customConfigIds: [],
+            customConfigSortOrderById: [],
         );
     }
 

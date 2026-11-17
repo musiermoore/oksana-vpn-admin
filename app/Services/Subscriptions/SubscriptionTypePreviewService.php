@@ -17,11 +17,15 @@ final class SubscriptionTypePreviewService
     /** @return array<string, mixed> */
     public function preview(array $data): array
     {
-        $user = $this->resolveUser((string) $data['audience'], $data['user_id'] ?? null);
+        $requiresUserToken = (bool) $data['requires_user_token'];
+        $user = $requiresUserToken
+            ? $this->resolveUser((string) $data['audience'], $data['user_id'] ?? null)
+            : null;
         $type = new SubscriptionType([
             'kind' => $data['kind'],
             'format' => $data['format'],
             'is_active' => true,
+            'requires_user_token' => $requiresUserToken,
             'show_expired_placeholder' => (bool) $data['show_expired_placeholder'],
         ]);
         $items = collect($data['items'])->values()->map(fn (array $item, int $index): SubscriptionTypeItem => new SubscriptionTypeItem([
@@ -32,13 +36,16 @@ final class SubscriptionTypePreviewService
         ]));
         $type->setRelation('items', $items);
 
-        $result = $this->builder->build($user, $type);
+        $result = $user instanceof User
+            ? $this->builder->build($user, $type)
+            : $this->builder->buildStatic($type);
         $readableContent = $data['format'] === SubscriptionType::FORMAT_URI
             ? base64_decode($result->content, true)
             : false;
 
         return [
-            'user' => $this->userSummary($user),
+            'is_static' => ! $requiresUserToken,
+            'user' => $user instanceof User ? $this->userSummary($user) : null,
             'format' => $data['format'],
             'content_type' => $result->contentType,
             'content' => $result->content,

@@ -17,11 +17,12 @@ final class SubscriptionTypeData extends Data
         public string $kind,
         public string $format,
         public bool $isActive,
+        public bool $requiresUserToken,
         public bool $showExpiredPlaceholder,
         public array $items,
     ) {}
 
-    /** @return array{name:string,slug:string,kind:string,format:string,is_active:bool,show_expired_placeholder:bool} */
+    /** @return array{name:string,slug:string,kind:string,format:string,is_active:bool,requires_user_token:bool,show_expired_placeholder:bool} */
     public function toModelAttributes(): array
     {
         return [
@@ -30,6 +31,7 @@ final class SubscriptionTypeData extends Data
             'kind' => $this->kind,
             'format' => $this->format,
             'is_active' => $this->isActive,
+            'requires_user_token' => $this->requiresUserToken,
             'show_expired_placeholder' => $this->showExpiredPlaceholder,
         ];
     }

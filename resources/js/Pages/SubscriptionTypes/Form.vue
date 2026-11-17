@@ -18,6 +18,7 @@ const localType = ref(props.type
         kind: 'connect',
         format: 'uri',
         is_active: true,
+        requires_user_token: true,
         show_expired_placeholder: true,
         is_system: false,
         items: [],
@@ -72,9 +73,12 @@ const selectedItems = computed(() => localType.value.items
 const selectedSourceKeys = computed(() => new Set(localType.value.items.map(sourceKey)));
 const availableSources = computed(() => props.catalog.filter((source) => {
     const key = source.source_type + ':' + source.source_id;
-    return source.source_type !== 'xray_custom_config'
-        || localType.value.format === 'json'
-        || selectedSourceKeys.value.has(key);
+    if (selectedSourceKeys.value.has(key)) return true;
+    if (!localType.value.requires_user_token) {
+        return source.source_type === 'external_subscription' && source.is_free;
+    }
+
+    return source.source_type !== 'xray_custom_config' || localType.value.format === 'json';
 }));
 const sourceGroups = computed(() => availableSources.value.reduce((groups, source) => {
     (groups[source.group] ??= []).push(source);
@@ -93,14 +97,28 @@ const sourceSelection = computed({
 });
 const hasFormatConflict = computed(() => localType.value.format !== 'json'
     && selectedItems.value.some((item) => item.source_type === 'xray_custom_config'));
-const outputUrl = computed(() => '/subscription/' + localType.value.slug + '?token=' + (userUuid.value || '{user_uuid}'));
+const hasStaticSourceConflict = computed(() => !localType.value.requires_user_token
+    && (selectedItems.value.length === 0 || selectedItems.value.some((item) =>
+        item.source_type !== 'external_subscription' || item.source?.is_free !== true)));
+const outputUrl = computed(() => localType.value.requires_user_token
+    ? '/subscription/' + localType.value.slug + '?token=' + (userUuid.value || '{user_uuid}')
+    : '/subscription/' + localType.value.slug);
 const hasChanges = computed(() => !props.type
     || JSON.stringify(props.type) !== JSON.stringify(localType.value));
 const canSave = computed(() => Boolean(localType.value.name.trim())
     && Boolean(localType.value.slug.trim())
     && !saving.value
-    && !hasFormatConflict
+    && !hasFormatConflict.value
+    && !hasStaticSourceConflict.value
     && (!isEdit.value || hasChanges.value));
+
+watch(() => localType.value.requires_user_token, (requiresUserToken) => {
+    if (!requiresUserToken) {
+        localType.value.show_expired_placeholder = false;
+    }
+    previewResult.value = null;
+    previewError.value = '';
+});
 
 function syncSourceSelection(values) {
     const selectedKeys = Array.isArray(values) ? [...new Set(values)] : [];
@@ -127,23 +145,32 @@ const removeSource = (item) => {
     normalizeOrder();
 };
 
-const moveItem = (index, offset) => {
+const reorderItems = (fromIndex, toIndex) => {
     const items = selectedItems.value.map(({ source_type, source_id }) => ({ source_type, source_id }));
-    const target = index + offset;
-    if (target < 0 || target >= items.length) return;
-    const [moving] = items.splice(index, 1);
-    items.splice(target, 0, moving);
+    if (fromIndex < 0 || fromIndex >= items.length || toIndex < 0 || toIndex >= items.length || fromIndex === toIndex) return;
+    const [moving] = items.splice(fromIndex, 1);
+    items.splice(toIndex, 0, moving);
     localType.value.items = items.map((item, sort_order) => ({ ...item, sort_order }));
 };
+
+const moveItem = (index, offset) => reorderItems(index, index + offset);
+
+function setItemOrder(index, event) {
+    const requestedPosition = Number.parseInt(event.target.value, 10);
+    if (!Number.isFinite(requestedPosition)) {
+        event.target.value = String(index + 1);
+        return;
+    }
+
+    const targetIndex = Math.max(0, Math.min(selectedItems.value.length - 1, requestedPosition - 1));
+    event.target.value = String(targetIndex + 1);
+    reorderItems(index, targetIndex);
+}
 
 const dropOn = (targetKey) => {
     const fromIndex = selectedItems.value.findIndex((item) => item.key === dragKey.value);
     const toIndex = selectedItems.value.findIndex((item) => item.key === targetKey);
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
-    const items = selectedItems.value.map(({ source_type, source_id }) => ({ source_type, source_id }));
-    const [moving] = items.splice(fromIndex, 1);
-    items.splice(toIndex, 0, moving);
-    localType.value.items = items.map((item, sort_order) => ({ ...item, sort_order }));
+    reorderItems(fromIndex, toIndex);
 };
 
 function normalizeOrder() {
@@ -163,6 +190,7 @@ const saveType = () => {
         kind: localType.value.kind,
         format: localType.value.format,
         is_active: Boolean(localType.value.is_active),
+        requires_user_token: Boolean(localType.value.requires_user_token),
         show_expired_placeholder: Boolean(localType.value.show_expired_placeholder),
         items: selectedItems.value.map(({ source_type, source_id }, sort_order) => ({ source_type, source_id, sort_order })),
     };
@@ -234,11 +262,14 @@ const runPreview = async () => {
     const payload = {
         kind: localType.value.kind,
         format: localType.value.format,
+        requires_user_token: Boolean(localType.value.requires_user_token),
         show_expired_placeholder: Boolean(localType.value.show_expired_placeholder),
         items: selectedItems.value.map(({ source_type, source_id }, sort_order) => ({ source_type, source_id, sort_order })),
-        audience: previewAudience.value,
     };
-    if (previewAudience.value === 'user') payload.user_id = selectedPreviewUser.value.id;
+    if (localType.value.requires_user_token) {
+        payload.audience = previewAudience.value;
+        if (previewAudience.value === 'user') payload.user_id = selectedPreviewUser.value.id;
+    }
 
     const endpoint = isEdit.value
         ? '/subscription-types/' + localType.value.id + '/preview'
@@ -272,6 +303,7 @@ const runPreview = async () => {
             </div>
         </div>
         <p v-if="hasFormatConflict" class="form-error">Уберите пользовательские профили Xray из состава или выберите JSON-формат.</p>
+        <p v-if="hasStaticSourceConflict" class="form-error">Для статической ссылки добавьте хотя бы одну бесплатную внешнюю подписку и уберите остальные источники.</p>
     </section>
 
     <section class="page-card stack">
@@ -301,31 +333,56 @@ const runPreview = async () => {
                 <span>Формат</span>
                 <AppSelect v-model="localType.format" :options="formatOptions" />
             </label>
-            <label class="field-row"><AppCheckbox v-model="localType.is_active" /> Ссылка включена</label>
-            <label class="field-row"><AppCheckbox v-model="localType.show_expired_placeholder" /> Показывать заглушку при отсутствии активной подписки</label>
         </div>
 
-        <div class="link-preview">
+        <div class="type-toggle-row">
+            <label class="type-toggle">
+                <AppCheckbox v-model="localType.is_active" />
+                <span class="type-toggle-copy">
+                    <strong>Ссылка активна</strong>
+                    <small>Отключённый тип не выдаёт конфигурацию.</small>
+                </span>
+            </label>
+            <label class="type-toggle">
+                <AppCheckbox v-model="localType.show_expired_placeholder" :disabled="!localType.requires_user_token" />
+                <span class="type-toggle-copy">
+                    <strong>Показывать заглушку без доступа</strong>
+                    <small>Для персональных ссылок без активной подписки.</small>
+                </span>
+            </label>
+            <label class="type-toggle">
+                <AppCheckbox v-model="localType.requires_user_token" />
+                <span class="type-toggle-copy">
+                    <strong>Требовать токен пользователя</strong>
+                    <small>{{ localType.requires_user_token ? 'Персональная ссылка по UUID.' : 'Статическая ссылка, доступная без UUID.' }}</small>
+                </span>
+            </label>
+        </div>
+
+        <div v-if="localType.requires_user_token" class="link-preview">
             <label class="field">
                 <span>UUID пользователя для открытия ссылки</span>
                 <AppInput v-model="userUuid" placeholder="Вставьте UUID пользователя" />
             </label>
-            <AppButton v-if="userUuid" variant="secondary" :href="outputUrl" target="_blank">Открыть ссылку</AppButton>
+            <AppButton v-if="isEdit && userUuid" variant="secondary" :href="outputUrl" target="_blank">Открыть ссылку</AppButton>
         </div>
-        <p class="hint">Ссылка: <code>{{ outputUrl }}</code></p>
-        <p class="hint">UUID передаётся в параметре <code>token</code>. Существующие /connect и /connect-v2 продолжают работать без изменений.</p>
+        <div v-else class="static-link-preview">
+            <span>Статическая ссылка: <code>{{ outputUrl }}</code></span>
+            <AppButton v-if="isEdit" variant="secondary" :href="outputUrl" target="_blank">Открыть ссылку</AppButton>
+        </div>
+        <p v-if="localType.requires_user_token" class="hint">UUID передаётся в параметре <code>token</code>. Существующие /connect и /connect-v2 продолжают работать без изменений.</p>
     </section>
 
     <section class="page-card stack">
         <div class="page-header">
             <div>
                 <h2>2. Наполнение подписки</h2>
-                <p>Выбирайте источники в списке: каждый выбранный источник сразу добавится в состав.</p>
+                <p>Выбирайте источники в списке, затем меняйте порядок перетаскиванием или номером позиции. Соседние источники сдвинутся автоматически.</p>
             </div>
         </div>
 
         <label class="field">
-            <span>Добавить источники</span>
+            <span>Источники, включённые в подписку</span>
             <MultiSelect
                 v-model="sourceSelection"
                 :options="availableSourceGroups"
@@ -340,6 +397,8 @@ const runPreview = async () => {
                 placeholder="Выберите один или несколько источников"
             />
         </label>
+        <p v-if="!localType.requires_user_token" class="hint">Статические ссылки поддерживают только бесплатные внешние подписки.</p>
+        <p v-if="hasStaticSourceConflict" class="form-error">Удалите локальные, платные или пользовательские источники, чтобы сделать ссылку статической.</p>
 
         <div class="subscription-source-list">
             <div
@@ -352,7 +411,18 @@ const runPreview = async () => {
                 @dragover.prevent
                 @drop="dropOn(item.key)"
             >
-                <span class="source-order">{{ index + 1 }}</span>
+                <input
+                    class="source-position"
+                    type="number"
+                    min="1"
+                    :max="selectedItems.length"
+                    step="1"
+                    :value="index + 1"
+                    :aria-label="'Позиция ' + (item.source?.name ?? 'источника')"
+                    title="Введите номер позиции"
+                    @dragstart.stop.prevent
+                    @change="setItemOrder(index, $event)"
+                >
                 <span class="source-handle" aria-hidden="true">⠿</span>
                 <span class="source-copy">
                     <strong>{{ item.source?.name ?? item.source_type + ' #' + item.source_id }}</strong>
@@ -387,48 +457,61 @@ const runPreview = async () => {
             </div>
         </div>
 
-        <div class="grid grid--two preview-controls">
-            <label class="field">
-                <span>Кого посмотреть</span>
-                <AppSelect v-model="previewAudience" :options="previewAudienceOptions" />
-            </label>
-            <div v-if="previewAudience === 'user'" class="field">
-                <span>Найти пользователя по имени, Telegram или ID</span>
-                <div class="preview-search-row">
-                    <AppInput v-model="previewUserSearch" placeholder="Например, @telegram или 12345" @keyup.enter="searchPreviewUsers" />
-                    <AppButton variant="secondary" :disabled="previewUserSearchLoading || !previewUserSearch.trim()" @click="searchPreviewUsers">
-                        {{ previewUserSearchLoading ? 'Поиск…' : 'Найти' }}
-                    </AppButton>
+        <template v-if="localType.requires_user_token">
+            <div class="grid grid--two preview-controls">
+                <label class="field">
+                    <span>Кого посмотреть</span>
+                    <AppSelect v-model="previewAudience" :options="previewAudienceOptions" />
+                </label>
+                <div v-if="previewAudience === 'user'" class="field">
+                    <span>Найти пользователя по имени, Telegram или ID</span>
+                    <div class="preview-search-row">
+                        <AppInput v-model="previewUserSearch" placeholder="Например, @telegram или 12345" @keyup.enter="searchPreviewUsers" />
+                        <AppButton variant="secondary" :disabled="previewUserSearchLoading || !previewUserSearch.trim()" @click="searchPreviewUsers">
+                            {{ previewUserSearchLoading ? 'Поиск…' : 'Найти' }}
+                        </AppButton>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div v-if="previewAudience === 'user'" class="preview-user-results">
-            <button
-                v-for="user in previewUsers"
-                :key="user.id"
-                type="button"
-                class="preview-user-option"
-                :class="{ 'is-selected': selectedPreviewUser?.id === user.id }"
-                @click="selectedPreviewUser = user"
-            >
-                <span><strong>{{ user.telegram || user.name }}</strong><small>{{ user.name }} · #{{ user.id }}</small></span>
-                <span class="preview-user-status">{{ user.is_admin ? 'Администратор' : user.has_active_subscription ? 'Активная подписка' : 'Без подписки' }}<template v-if="user.has_debt"> · долг {{ user.debt_amount }}</template></span>
-            </button>
-            <p v-if="previewUserSearch.trim() && !previewUsers.length && !previewUserSearchLoading" class="hint">Пользователи не найдены.</p>
-            <p v-if="selectedPreviewUser" class="hint">Выбран: {{ selectedPreviewUser.telegram || selectedPreviewUser.name }} · #{{ selectedPreviewUser.id }}</p>
-        </div>
+            <div v-if="previewAudience === 'user'" class="preview-user-results">
+                <button
+                    v-for="user in previewUsers"
+                    :key="user.id"
+                    type="button"
+                    class="preview-user-option"
+                    :class="{ 'is-selected': selectedPreviewUser?.id === user.id }"
+                    @click="selectedPreviewUser = user"
+                >
+                    <span><strong>{{ user.telegram || user.name }}</strong><small>{{ user.name }} · #{{ user.id }}</small></span>
+                    <span class="preview-user-status">{{ user.is_admin ? 'Администратор' : user.has_active_subscription ? 'Активная подписка' : 'Без подписки' }}<template v-if="user.has_debt"> · долг {{ user.debt_amount }}</template></span>
+                </button>
+                <p v-if="previewUserSearch.trim() && !previewUsers.length && !previewUserSearchLoading" class="hint">Пользователи не найдены.</p>
+                <p v-if="selectedPreviewUser" class="hint">Выбран: {{ selectedPreviewUser.telegram || selectedPreviewUser.name }} · #{{ selectedPreviewUser.id }}</p>
+            </div>
 
-        <div class="preview-actions">
-            <p class="hint">Вариант «без подписки или с долгом» выберет подходящего пользователя и покажет его фактический статус доступа.</p>
-            <AppButton :disabled="previewLoading || (previewAudience === 'user' && !selectedPreviewUser) || hasFormatConflict" @click="runPreview">
+            <div class="preview-actions">
+                <p class="hint">Вариант «без подписки или с долгом» выберет подходящего пользователя и покажет его фактический статус доступа.</p>
+                <AppButton :disabled="previewLoading || (previewAudience === 'user' && !selectedPreviewUser) || hasFormatConflict || hasStaticSourceConflict" @click="runPreview">
+                    {{ previewLoading ? 'Собираем…' : 'Показать подписку' }}
+                </AppButton>
+            </div>
+        </template>
+        <div v-else class="preview-actions">
+            <p class="hint">Предпросмотр статической конфигурации без пользовательского токена.</p>
+            <AppButton :disabled="previewLoading || hasStaticSourceConflict" @click="runPreview">
                 {{ previewLoading ? 'Собираем…' : 'Показать подписку' }}
             </AppButton>
         </div>
+
         <p v-if="previewError" class="form-error">{{ previewError }}</p>
 
         <div v-if="previewResult" class="preview-result stack">
-            <div class="preview-user-summary">
+            <div v-if="previewResult.is_static" class="preview-user-summary">
+                <strong>Статическая конфигурация</strong>
+                <span>Токен пользователя не требуется</span>
+            </div>
+            <div v-else-if="previewResult.user" class="preview-user-summary">
                 <strong>{{ previewResult.user.telegram || previewResult.user.name }} · #{{ previewResult.user.id }}</strong>
                 <span>{{ previewResult.user.is_admin ? 'Администратор' : 'Пользователь' }}</span>
                 <span>Активная подписка: {{ previewResult.user.has_active_subscription ? 'да' : 'нет' }}</span>
@@ -472,6 +555,24 @@ const runPreview = async () => {
     gap: 10px;
 }
 
+.type-toggle-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 16px;
+}
+
+.type-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.type-toggle-copy { display: grid; gap: 3px; }
+.type-toggle-copy small { color: var(--muted, #687386); }
+.static-link-preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
 .subscription-source-list,
 .preview-user-results {
     display: grid;
@@ -489,15 +590,18 @@ const runPreview = async () => {
     cursor: grab;
 }
 
-.source-order {
-    display: grid;
-    place-items: center;
-    width: 28px;
-    height: 28px;
+.source-position {
+    width: 58px;
+    min-width: 58px;
+    height: 36px;
     flex: 0 0 auto;
+    padding: 0 6px;
+    border: 1px solid rgba(148, 163, 184, .45);
     border-radius: 9px;
-    background: rgba(100, 125, 232, .1);
-    font-weight: 700;
+    background: rgba(100, 125, 232, .08);
+    color: inherit;
+    font: inherit;
+    text-align: center;
 }
 
 .source-handle { color: var(--muted, #687386); }
@@ -554,5 +658,8 @@ const runPreview = async () => {
     .preview-search-row {
         grid-template-columns: 1fr;
     }
+
+    .type-toggle-row { grid-template-columns: 1fr; }
+    .static-link-preview { align-items: flex-start; flex-direction: column; }
 }
 </style>

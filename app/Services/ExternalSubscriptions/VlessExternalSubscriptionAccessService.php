@@ -46,12 +46,16 @@ class VlessExternalSubscriptionAccessService
      * @param array<int, int> $subscriptionIds
      * @return array<int, NormalizedNode>
      */
-    public function getNamedNodesForSubscriptionIds(User $user, array $subscriptionIds, bool $includePaid): array
+    public function getNamedNodesForSubscriptionIds(?User $user, array $subscriptionIds, bool $includePaid): array
     {
         $configs = VlessExternalSubscription::query()
             ->whereIn('id', $subscriptionIds)
             ->where('is_active', true)
-            ->visibleForUser($user)
+            ->when(
+                $user instanceof User,
+                fn ($query) => $query->visibleForUser($user),
+                fn ($query) => $query->where('is_ready', true),
+            )
             ->when(! $includePaid, fn ($query) => $query->where('is_free', true))
             ->whereHas('configs')
             ->with(['configs', 'geodata'])

@@ -23,6 +23,27 @@ final class SubscriptionOutputController extends Controller
     ): Response {
         abort_unless($subscriptionType->is_active, 404);
 
+        $subscriptionType->load('items');
+        $client = $this->resolveClient($request);
+
+        if (! $subscriptionType->requires_user_token) {
+            $subscription = $builder->buildStatic(
+                $subscriptionType,
+                $client !== '' ? $client : null,
+            );
+            $response = response($subscription->content);
+
+            foreach ($metadata->buildStaticHeaders(
+                $subscription->fileExtension,
+                $subscription->contentType,
+                (string) $subscriptionType->name,
+            ) as $name => $value) {
+                $response->header($name, $value);
+            }
+
+            return $response;
+        }
+
         $user = User::query()
             ->where('uuid', $request->string('token')->toString())
             ->first();
@@ -31,20 +52,10 @@ final class SubscriptionOutputController extends Controller
 
         $request->setUserResolver(static fn (): User => $user);
         $devices->recordConnection($user, $request);
-        $client = mb_strtolower($request->string('app')->toString());
-        $userAgent = mb_strtolower((string) $request->userAgent());
-
-        if ($client === '' && str_contains($userAgent, 'v2raytun')) {
-            $client = 'v2raytun';
-        }
-
-        if ($client === '' && str_contains($userAgent, 'happ')) {
-            $client = 'happ';
-        }
 
         $subscription = $builder->build(
             $user,
-            $subscriptionType->load('items'),
+            $subscriptionType,
             $client !== '' ? $client : null,
         );
         $response = response($subscription->content);
@@ -59,5 +70,21 @@ final class SubscriptionOutputController extends Controller
         }
 
         return $response;
+    }
+
+    private function resolveClient(Request $request): string
+    {
+        $client = mb_strtolower($request->string('app')->toString());
+        $userAgent = mb_strtolower((string) $request->userAgent());
+
+        if ($client === '' && str_contains($userAgent, 'v2raytun')) {
+            return 'v2raytun';
+        }
+
+        if ($client === '' && str_contains($userAgent, 'happ')) {
+            return 'happ';
+        }
+
+        return $client;
     }
 }

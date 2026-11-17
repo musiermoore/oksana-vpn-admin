@@ -7,8 +7,9 @@ const model = defineModel({
 });
 
 const props = defineProps({
-    enabledLabel: { type: String, default: 'Включено' },
-    disabledLabel: { type: String, default: 'Выключено' },
+    enabledLabel: { type: String, default: '' },
+    disabledLabel: { type: String, default: '' },
+    disabled: { type: Boolean, default: false },
 });
 
 const stateLabel = computed(() => model.value ? props.enabledLabel : props.disabledLabel);
@@ -16,7 +17,7 @@ const stateLabel = computed(() => model.value ? props.enabledLabel : props.disab
 
 <template>
     <span class="app-toggle">
-        <ToggleSwitch v-model="model" />
-        <span class="app-toggle__state">{{ stateLabel }}</span>
+        <ToggleSwitch v-model="model" :disabled="disabled" />
+        <span v-if="stateLabel" class="app-toggle__state">{{ stateLabel }}</span>
     </span>
 </template>

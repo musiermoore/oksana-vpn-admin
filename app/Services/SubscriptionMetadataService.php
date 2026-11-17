@@ -97,6 +97,31 @@ class SubscriptionMetadataService
         return $headers;
     }
 
+    /** @return array<string, string> */
+    public function buildStaticHeaders(
+        string $fileExtension,
+        ?string $contentType = null,
+        ?string $profileTitle = null,
+        string $profileUpdateInterval = '24',
+    ): array {
+        $title = trim((string) $profileTitle);
+        $resolvedProfileTitle = $title !== '' ? $title : 'subscription';
+        $headers = [
+            'Profile-Update-Interval' => $profileUpdateInterval,
+            'Profile-Title' => $resolvedProfileTitle,
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Thu, 01 Jan 1970 00:00:00 GMT',
+            'Content-Disposition' => 'attachment; filename="'.$this->replaceExtension($resolvedProfileTitle.'.txt', $fileExtension).'"',
+        ];
+
+        if ($contentType !== null && $contentType !== '') {
+            $headers['Content-Type'] = $contentType;
+        }
+
+        return $headers;
+    }
+
     public function forgetCache(int $userId): void
     {
         Cache::forget($this->cacheKey($userId));

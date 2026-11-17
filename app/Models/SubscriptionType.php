@@ -43,6 +43,7 @@ final class SubscriptionType extends Model
         'kind',
         'format',
         'is_active',
+        'requires_user_token',
         'show_expired_placeholder',
     ];
 
@@ -50,6 +51,7 @@ final class SubscriptionType extends Model
     {
         return [
             'is_active' => 'boolean',
+            'requires_user_token' => 'boolean',
             'show_expired_placeholder' => 'boolean',
             'is_system' => 'boolean',
         ];

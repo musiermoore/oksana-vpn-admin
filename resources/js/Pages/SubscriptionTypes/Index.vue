@@ -36,6 +36,7 @@ const deleteType = (type) => {
                         <span class="type-state" :class="{ 'is-active': type.is_active }">
                             {{ type.is_active ? 'Включена' : 'Отключена' }}
                         </span>
+                        <span class="type-state">{{ type.requires_user_token ? 'Требует токен' : 'Статическая ссылка' }}</span>
                         <span v-if="type.is_system" class="type-state">Системная</span>
                     </div>
                     <code>/subscription/{{ type.slug }}</code>

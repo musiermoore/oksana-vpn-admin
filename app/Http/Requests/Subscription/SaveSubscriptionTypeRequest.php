@@ -9,6 +9,7 @@ use App\Http\Requests\DataFormRequest;
 use App\Http\Requests\Subscription\Concerns\ValidatesStaticSubscriptionSources;
 use App\Models\SubscriptionType;
 use App\Models\SubscriptionTypeItem;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 

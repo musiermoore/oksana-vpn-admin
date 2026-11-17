@@ -6,6 +6,7 @@ namespace App\Services\ExternalSubscriptions;
 
 use App\DTOs\Subscription\NormalizedNode;
 use App\Models\User;
+use App\Models\VlessExternalSubscription;
 use App\Models\VlessExternalSubscriptionConfig;
 use App\Services\Subscriptions\NodeNameService;
 use App\Services\Subscriptions\SubscriptionUriParser;
@@ -35,6 +36,40 @@ class VlessExternalSubscriptionAccessService
         $configs = collect($this->syncService->getVisibleConfigsForUser($user, $purpose))
             ->values();
 
+        return $this->nameNodes(
+            $configs,
+            $purpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2,
+        );
+    }
+
+    /**
+     * @param array<int, int> $subscriptionIds
+     * @return array<int, NormalizedNode>
+     */
+    public function getNamedNodesForSubscriptionIds(User $user, array $subscriptionIds, bool $includePaid): array
+    {
+        $configs = VlessExternalSubscription::query()
+            ->whereIn('id', $subscriptionIds)
+            ->where('is_active', true)
+            ->visibleForUser($user)
+            ->when(! $includePaid, fn ($query) => $query->where('is_free', true))
+            ->whereHas('configs')
+            ->with(['configs', 'geodata'])
+            ->ordered()
+            ->get()
+            ->flatMap(fn (VlessExternalSubscription $subscription) => $subscription->configs
+                ->map(fn (VlessExternalSubscriptionConfig $config) => $config->setRelation('subscription', $subscription)))
+            ->values();
+
+        return $this->nameNodes($configs, false);
+    }
+
+    /**
+     * @param Collection<int, VlessExternalSubscriptionConfig> $configs
+     * @return array<int, NormalizedNode>
+     */
+    private function nameNodes(Collection $configs, bool $useSubscriptionConfigNames): array
+    {
         $nodes = $configs
             ->map(fn (VlessExternalSubscriptionConfig $config, int $index) => $this->mapConfigToNode($config, $index))
             ->filter()
@@ -43,7 +78,6 @@ class VlessExternalSubscriptionAccessService
 
         $names = $this->nodeNameService->buildNames($nodes);
         $customNames = $this->buildCustomNames($configs);
-        $useSubscriptionConfigNames = $purpose === VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2;
 
         return array_map(
             fn (NormalizedNode $node) => new NormalizedNode(

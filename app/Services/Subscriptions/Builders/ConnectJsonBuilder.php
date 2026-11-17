@@ -43,7 +43,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $profile = $this->buildProfile(
                     $node,
                     $this->routingTypeForNode($node, $subscriptionType),
-                    includeConfigGroup: $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                    includeConfigGroup: in_array($subscriptionType, [
+                        XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                        XrayRouting::SUBSCRIPTION_CONNECT_FREE,
+                    ], true),
                 );
 
                 if ($profile === null) {
@@ -113,7 +116,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->routingTypeForNode($node, $subscriptionType),
                 $customConfig,
                 $client,
-                $subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                in_array($subscriptionType, [
+                    XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                    XrayRouting::SUBSCRIPTION_CONNECT_FREE,
+                ], true),
             ))
             ->filter()
             ->map(fn (array $profile): array => $this->profileNormalizer->normalizeProfile($profile, $client))
@@ -156,7 +162,10 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         $this->appendGroupedObservatory($profile, $groups, $base);
         $this->appendGroupedGeodata($profile, $customConfig, $client);
-        if ($subscriptionType === XrayRouting::SUBSCRIPTION_CONNECT_V2) {
+        if (in_array($subscriptionType, [
+            XrayRouting::SUBSCRIPTION_CONNECT_V2,
+            XrayRouting::SUBSCRIPTION_CONNECT_FREE,
+        ], true)) {
             $profile = $this->withConfigGroup($profile, null, $customConfig);
         }
 

@@ -58,6 +58,8 @@ class UserSubscriptionService
         ?User $user = null,
         string $customExternalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
         ?string $client = null,
+        ?array $customConfigIds = null,
+        ?array $customConfigSortOrderById = null,
     ): SubscriptionBuildResult
     {
         $builder = $this->builderFactory->make((string) $format);
@@ -68,8 +70,17 @@ class UserSubscriptionService
             if ($user !== null && in_array($subscriptionType, [
                 XrayRouting::SUBSCRIPTION_CONNECT,
                 XrayRouting::SUBSCRIPTION_CONNECT_V2,
+                XrayRouting::SUBSCRIPTION_CONNECT_FREE,
             ], true)) {
-                return $this->appendCustomJsonProfiles($user, $nodes, $customExternalPurpose, $client, $subscriptionType);
+                return $this->appendCustomJsonProfiles(
+                    $user,
+                    $nodes,
+                    $customExternalPurpose,
+                    $client,
+                    $subscriptionType,
+                    $customConfigIds,
+                    $customConfigSortOrderById,
+                );
             }
 
             return $result;
@@ -124,6 +135,8 @@ class UserSubscriptionService
         string $externalPurpose = VlessExternalSubscriptionSyncService::PURPOSE_WHITELIST,
         ?string $client = null,
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
+        ?array $customConfigIds = null,
+        ?array $customConfigSortOrderById = null,
     ): SubscriptionBuildResult
     {
         $customNodes = [
@@ -137,6 +150,8 @@ class UserSubscriptionService
             $user,
             $client,
             $subscriptionType,
+            $customConfigIds,
+            $customConfigSortOrderById,
         );
     }
 
@@ -218,7 +233,8 @@ class UserSubscriptionService
     {
         $visibilityField = match ($externalPurpose) {
             VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_V2 => 'is_visible_in_connect_v2',
-            VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM => null,
+            VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM,
+            VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_FREE => null,
             default => 'is_visible_in_connect',
         };
 

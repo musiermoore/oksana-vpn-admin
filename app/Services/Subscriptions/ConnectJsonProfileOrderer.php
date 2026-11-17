@@ -24,9 +24,12 @@ final class ConnectJsonProfileOrderer
         User $user,
         ?string $client = null,
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
+        ?array $customConfigIds = null,
+        ?array $customConfigSortOrderById = null,
     ): SubscriptionBuildResult {
         $customConfigs = XrayCustomConfig::query()
             ->active()
+            ->when($customConfigIds !== null, fn ($query) => $query->whereIn('id', $customConfigIds))
             ->when(! $user->is_health_check_user, fn ($query) => $query->where(function ($configQuery) use ($user): void {
                 $configQuery->where('is_public', true)
                     ->orWhereHas('userAssignments', fn ($assignmentQuery) => $assignmentQuery->where('user_id', $user->id));
@@ -39,7 +42,7 @@ final class ConnectJsonProfileOrderer
             ->merge($customConfigs->map(fn (XrayCustomConfig $config): array => [
                 'type' => 'xray_custom_config',
                 'id' => (int) $config->id,
-                'sort_order' => (int) $config->sort_order,
+                'sort_order' => (int) ($customConfigSortOrderById[$config->id] ?? $config->sort_order),
                 'profiles' => json_decode($builder->buildForCustomConfig(
                     $customNodes,
                     $config,
@@ -81,9 +84,11 @@ final class ConnectJsonProfileOrderer
     ): array
     {
         return collect($nodes)
-            ->groupBy(fn (NormalizedNode $node): string => $node->sourceType === 'external_subscription'
-                ? 'external_subscription:'.(int) ($node->meta['external_subscription_id'] ?? 0)
-                : 'server:'.$node->serverId)
+            ->groupBy(fn (NormalizedNode $node): string => isset($node->meta['subscription_type_item_id'])
+                ? 'subscription_type_item:'.(int) $node->meta['subscription_type_item_id']
+                : ($node->sourceType === 'external_subscription'
+                    ? 'external_subscription:'.(int) ($node->meta['external_subscription_id'] ?? 0)
+                    : 'server:'.$node->serverId))
             ->map(function ($group) use ($builder, $subscriptionType): array {
                 $node = $group->first();
                 $profiles = json_decode(

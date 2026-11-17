@@ -24,6 +24,8 @@ class VlessExternalSubscriptionSyncService
 
     public const PURPOSE_CONNECT_V2 = 'connect-v2';
 
+    public const PURPOSE_CONNECT_FREE = 'connect-free';
+
     public const PURPOSE_CUSTOM = 'custom';
 
     public function __construct(
@@ -132,10 +134,10 @@ class VlessExternalSubscriptionSyncService
         $query = VlessExternalSubscription::query()
             ->where('is_active', true)
             ->visibleForUser($user)
-            ->where(function ($query) use ($user): void {
+            ->where(function ($query) use ($user, $purpose): void {
                 $query->where('is_free', true);
 
-                if ($user->hasActiveAccess()) {
+                if ($user->hasActiveAccess() && $purpose !== self::PURPOSE_CONNECT_FREE) {
                     $query->orWhere('is_free', false);
                 }
             });

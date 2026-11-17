@@ -14,6 +14,8 @@ class XrayRouting extends Model
 
     public const SUBSCRIPTION_CONNECT_V2 = 'connect_v2';
 
+    public const SUBSCRIPTION_CONNECT_FREE = 'connect_free';
+
     public const SUBSCRIPTION_CONNECT_WL = 'connect_wl';
 
     public const SUBSCRIPTION_EXTERNAL = 'external';

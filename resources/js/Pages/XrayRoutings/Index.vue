@@ -48,20 +48,15 @@ const paginationLinks = computed(() => props.routings?.links ?? []);
 
 const subscriptionsLabel = (routing) => {
     const types = routing.subscription_types ?? [];
+    const labels = {
+        connect: 'V1',
+        connect_v2: 'V2',
+        connect_free: 'Free',
+        connect_wl: 'Белый список',
+        external: 'Внешние',
+    };
 
-    if (types.includes('connect') && types.includes('connect_wl')) {
-        return 'Стандартная подписка и подписка белых списков';
-    }
-
-    if (types.includes('connect')) {
-        return 'Стандартная подписка';
-    }
-
-    if (types.includes('connect_wl')) {
-        return 'Подписка белых списков';
-    }
-
-        return 'Все подписки';
+    return types.length ? types.map((type) => labels[type] ?? type).join(', ') : 'Все подписки';
 };
 
 const targetLabel = (routing) => {

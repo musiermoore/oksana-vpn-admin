@@ -157,6 +157,16 @@ Correct reactivation usually needs both steps: create missing configs, then reco
 
 ## 10. `/connect` And Whitelist Output
 
+### Subscription type builder
+
+The authenticated `/subscription-types` admin page manages independent output presets. Each preset stores a slug, output kind, format, active state, placeholder setting, and ordered source list in `subscription_types` and `subscription_type_items`. The source list can include servers, proxies, external subscriptions, and custom Xray profiles. The screen handles inclusion and order; detailed source settings stay on their existing admin pages.
+
+The page can preview its current unsaved lineup for a representative active non-admin user, an admin, a user without an active subscription or with debt, or one selected from user search. It shows the user's subscription, access, and debt status with the generated configuration; configuration output is built by the same service used by the public subscription link.
+
+The new public URL is `/subscription/{slug}?token={user_uuid}`. The migration creates V1 (`v1`), V2 (`v2`), and Free (`free`) presets and copies their initial source selections from the existing V1/V2 visibility and external-subscription inclusion settings. Free initially selects active external subscriptions marked free. Free outputs never include paid external subscriptions, even for a user with active access. JSON Free output uses the separate `connect_free` routing scope; external profiles continue using the `external` scope.
+
+These presets use a separate builder. Existing `/connect`, `/connect-v2`, whitelist, mini-app link generation, and their output behavior are unchanged. The public reverse proxy must forward `/subscription/*` to this Laravel route before the new links can be used through a separate subscription host.
+
 Main `/connect`:
 
 - Built by [UserSubscriptionService](/Users/alexandersustavov/projects/home/wireguard-vpn-app/app/Services/Subscriptions/UserSubscriptionService.php).
@@ -222,7 +232,7 @@ JSON output:
 
 - `/connect-json` returns full Xray-style JSON configs, one object per node.
 - Objects include per-node `remarks` and `outbounds`; shared `dns`, `routing`, and `inbounds` come from app config.
-- Routing rules live in `xray_routings` with `outbound=direct|proxy|blocked`, JSON `rules`, JSON `subscription_types`, order, active state, and target arrays. Supported scopes are `connect`, `connect_v2`, `connect_wl`, and `external`.
+- Routing rules live in `xray_routings` with `outbound=direct|proxy|blocked`, JSON `rules`, JSON `subscription_types`, order, active state, and target arrays. Supported scopes are `connect`, `connect_v2`, `connect_free`, `connect_wl`, and `external`.
 - `/xray-routings` imports RoscomVPN/INCY JSON into `xray_json_settings` and generated Direct/Proxy/Block rules into `xray_routings`.
 - Empty `xray_inbound_ids` and `external_subscription_config_ids` mean a rule applies nowhere.
 - JSON builder selects local rules by output scope and external-node rules through the separate `external` scope, even when those nodes are included in another subscription output.

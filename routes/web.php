@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\ApiRequestLogController;
 use App\Http\Controllers\AdminTelegramAppApiDocsController;
 use App\Http\Controllers\AuthController;
@@ -50,6 +52,8 @@ use App\Http\Controllers\XrayGlobalConfigController;
 use App\Http\Controllers\XrayGeodataController;
 use App\Http\Controllers\XuiDebugController;
 use App\Http\Controllers\SubscriptionDebugController;
+use App\Http\Controllers\SubscriptionOutputController;
+use App\Http\Controllers\SubscriptionTypeController;
 use App\Http\Middleware\BasicAuth;
 use App\Http\Middleware\TrackApiRequests;
 use Illuminate\Support\Facades\Route;
@@ -97,6 +101,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('users/{user}/xray-custom-config-assignments/{assignment}', [UserController::class, 'destroyXrayCustomConfigAssignment'])
         ->name('users.xray-custom-config-assignments.destroy');
     Route::resource('subscriptions', UserSubscriptionController::class)->only(['index', 'edit', 'update']);
+    Route::get('subscription-types', [SubscriptionTypeController::class, 'index'])->name('subscription-types.index');
+    Route::post('subscription-types', [SubscriptionTypeController::class, 'store'])->name('subscription-types.store');
+    Route::get('subscription-types/users', [SubscriptionTypeController::class, 'searchUsers'])->name('subscription-types.users');
+    Route::post('subscription-types/{subscriptionType}/preview', [SubscriptionTypeController::class, 'preview'])->name('subscription-types.preview');
+    Route::put('subscription-types/{subscriptionType}', [SubscriptionTypeController::class, 'update'])->name('subscription-types.update');
+    Route::delete('subscription-types/{subscriptionType}', [SubscriptionTypeController::class, 'destroy'])->name('subscription-types.destroy');
     Route::get('notifications/create', [NotificationController::class, 'create'])
         ->name('notifications.create');
     Route::post('notifications', [NotificationController::class, 'store'])
@@ -258,6 +268,9 @@ Route::get('configs/{userToken:token}/{config}/qr-code', [ConfigController::clas
 Route::get('connect', [VlessConfigController::class, 'connect'])
     ->middleware(TrackApiRequests::class)
     ->name('vless.connect');
+Route::get('subscription/{subscriptionType:slug}', [SubscriptionOutputController::class, 'show'])
+    ->middleware(TrackApiRequests::class)
+    ->name('subscription-types.show');
 Route::get('connect-v2', [VlessConfigController::class, 'connectV2'])
     ->middleware(TrackApiRequests::class)
     ->name('vless.connect-v2');

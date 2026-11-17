@@ -189,6 +189,10 @@ class XrayRoutingController extends Controller
                     'value' => XrayRouting::SUBSCRIPTION_CONNECT_V2,
                 ],
                 [
+                    'label' => 'Бесплатная подписка',
+                    'value' => XrayRouting::SUBSCRIPTION_CONNECT_FREE,
+                ],
+                [
                     'label' => 'Подписка белых списков',
                     'value' => XrayRouting::SUBSCRIPTION_CONNECT_WL,
                 ],

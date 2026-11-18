@@ -54,6 +54,7 @@ class XrayCustomConfigController extends Controller
                 'sort_order' => (int) XrayCustomConfig::query()->max('sort_order') + 1,
                 'is_active' => true,
                 'is_public' => true,
+                'is_free' => false,
                 'user_ids' => [],
             ],
             'create_dns_url' => route('xray-dns-settings.store'),
@@ -404,6 +405,7 @@ class XrayCustomConfigController extends Controller
                 : [],
             'is_active' => $config->is_active,
             'is_public' => $config->is_public,
+            'is_free' => $config->is_free,
             'user_ids' => $config->relationLoaded('userAssignments')
                 ? $config->userAssignments->pluck('user_id')->map(static fn ($id): int => (int) $id)->all()
                 : [],

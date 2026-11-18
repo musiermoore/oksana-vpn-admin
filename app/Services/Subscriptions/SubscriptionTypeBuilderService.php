@@ -23,6 +23,7 @@ final class SubscriptionTypeBuilderService
 
     public function build(User $user, SubscriptionType $type, ?string $client = null): SubscriptionBuildResult
     {
+        $hasActiveAccess = $user->hasActiveAccess() && ! $user->hasDebt();
         $items = $type->items;
         $externalSubscriptionIds = $items
             ->where('source_type', SubscriptionTypeItem::SOURCE_EXTERNAL_SUBSCRIPTION)
@@ -33,7 +34,7 @@ final class SubscriptionTypeBuilderService
         $externalNodes = collect($this->externalSubscriptions->getNamedNodesForSubscriptionIds(
             $user,
             $externalSubscriptionIds,
-            $type->requires_user_token && $user->hasActiveAccess(),
+            $type->requires_user_token && $hasActiveAccess,
         ));
         $visibilityField = match ($type->kind) {
             SubscriptionType::KIND_CONNECT => 'is_visible_in_connect',
@@ -54,7 +55,7 @@ final class SubscriptionTypeBuilderService
             (int) $item->source_id => (int) $item->sort_order,
         ])->all();
 
-        if ($type->show_expired_placeholder && ! $user->hasActiveAccess()) {
+        if ($type->show_expired_placeholder && ! $hasActiveAccess) {
             $selectedNodes->prepend($this->expiredPlaceholder());
         }
 
@@ -69,6 +70,7 @@ final class SubscriptionTypeBuilderService
             client: $client,
             customConfigIds: $customConfigIds,
             customConfigSortOrderById: $customConfigSortOrderById,
+            includePaidCustomConfigs: $hasActiveAccess,
         );
     }
 

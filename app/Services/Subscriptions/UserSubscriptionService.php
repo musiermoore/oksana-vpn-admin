@@ -60,6 +60,7 @@ class UserSubscriptionService
         ?string $client = null,
         ?array $customConfigIds = null,
         ?array $customConfigSortOrderById = null,
+        bool $includePaidCustomConfigs = true,
     ): SubscriptionBuildResult
     {
         $builder = $this->builderFactory->make((string) $format);
@@ -80,6 +81,7 @@ class UserSubscriptionService
                     $subscriptionType,
                     $customConfigIds,
                     $customConfigSortOrderById,
+                    $includePaidCustomConfigs,
                 );
             }
 
@@ -137,6 +139,7 @@ class UserSubscriptionService
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
         ?array $customConfigIds = null,
         ?array $customConfigSortOrderById = null,
+        bool $includePaidCustomConfigs = true,
     ): SubscriptionBuildResult
     {
         $customNodes = [
@@ -152,6 +155,7 @@ class UserSubscriptionService
             $subscriptionType,
             $customConfigIds,
             $customConfigSortOrderById,
+            $includePaidCustomConfigs,
         );
     }
 

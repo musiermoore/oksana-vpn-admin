@@ -38,6 +38,7 @@ class XrayCustomConfigData extends Data
         public array $user_ids,
         public bool $is_active,
         public bool $is_public,
+        public bool $is_free,
         public int $sort_order,
         public ?int $group_id = null,
         public ?string $subtitle = null,

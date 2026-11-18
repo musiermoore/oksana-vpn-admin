@@ -28,7 +28,7 @@ const form = useForm({
     xray_inbound_ids: initial.xray_inbound_ids || [], external_subscription_config_ids: initial.external_subscription_config_ids || [], external_subscription_ids: initial.external_subscription_ids || [],
     proxy_ids: initial.proxy_ids || [], xray_routing_ids: initial.xray_routing_ids || [], user_ids: initial.user_ids || [],
     group_id: initial.group_id || '',
-    is_active: initial.is_active ?? true, is_public: initial.is_public ?? true, sort_order: initial.sort_order ?? 0,
+    is_active: initial.is_active ?? true, is_public: initial.is_public ?? true, is_free: initial.is_free ?? false, sort_order: initial.sort_order ?? 0,
 });
 const slugManuallyEdited = ref(Boolean(initial.slug && initial.slug !== slugify(initial.name)));
 watch(() => form.name, (name) => {
@@ -501,6 +501,7 @@ const requestPayload = (baseSettings = buildBaseSettings()) => ({
     group_id: form.group_id || null,
     is_active: Boolean(form.is_active),
     is_public: Boolean(form.is_public),
+    is_free: Boolean(form.is_free),
     user_ids: ids('user_ids'),
     external_subscription_config_ids: [],
     base_settings_json: JSON.stringify(baseSettings || {}),
@@ -594,6 +595,7 @@ const saveResource = async () => {
                     <label class="field basic-description"><span>Описание</span><AppTextarea v-model="form.description" rows="3" /></label>
                     <label class="field basic-status"><span>Статус</span><AppCheckbox v-model="form.is_active" enabled-label="Активна" disabled-label="Отключена" /></label>
                     <label class="field basic-status"><span>Доступна всем<AppHelpTip text="Если выключить, конфигурация будет доступна только выбранным пользователям из списка ниже." /></span><AppCheckbox v-model="form.is_public" enabled-label="Все пользователи" disabled-label="Только выбранные" /></label>
+                    <label class="field basic-status"><span>Бесплатная<AppHelpTip text="В новых типах подписок такая конфигурация может выдаваться пользователям без активного доступа через персональную ссылку. Для закрытой конфигурации также требуется назначение пользователю." /></span><AppCheckbox v-model="form.is_free" enabled-label="Доступна без доступа" disabled-label="Требует активного доступа" /></label>
                 </div>
             </div>
             <div v-if="!form.is_public" class="source-section user-assignment-section">

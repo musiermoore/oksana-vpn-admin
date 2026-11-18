@@ -148,10 +148,10 @@ final class SubscriptionTypeController extends Controller
             ->get();
         $externalSubscriptions = VlessExternalSubscription::query()
             ->ordered()
-            ->get(['id', 'name', 'is_active', 'is_free']);
+            ->get(['id', 'name', 'is_active', 'is_ready', 'is_free']);
         $customConfigs = XrayCustomConfig::query()
             ->ordered()
-            ->get(['id', 'name', 'is_active', 'is_public']);
+            ->get(['id', 'name', 'is_active', 'is_public', 'is_free']);
 
         return [
             ...$servers->map(fn (Server $server): array => [
@@ -181,6 +181,7 @@ final class SubscriptionTypeController extends Controller
                 'detail' => $subscription->is_free ? 'Бесплатная' : 'Платная',
                 'group' => 'Внешние подписки',
                 'active' => (bool) $subscription->is_active,
+                'ready' => (bool) $subscription->is_ready,
                 'is_free' => (bool) $subscription->is_free,
                 'edit_url' => route('vless-external-subscriptions.edit', $subscription),
             ])->all(),
@@ -191,7 +192,8 @@ final class SubscriptionTypeController extends Controller
                 'detail' => $config->is_public ? 'Общая' : 'Назначается пользователям',
                 'group' => 'Пользовательские конфигурации',
                 'active' => (bool) $config->is_active,
-                'is_free' => false,
+                'is_free' => (bool) $config->is_free,
+                'is_public' => (bool) $config->is_public,
                 'edit_url' => route('xray-custom-configs.edit', $config),
             ])->all(),
         ];

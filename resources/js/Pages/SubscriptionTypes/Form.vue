@@ -62,6 +62,20 @@ const previewAudienceOptions = [
 
 const pageTitle = computed(() => isEdit.value ? 'Редактирование типа подписки' : 'Новый тип подписки');
 const sourceKey = (item) => item.source_type + ':' + item.source_id;
+const sourceAccessBadge = (source) => {
+    if (!['external_subscription', 'xray_custom_config'].includes(source.source_type)) return null;
+    if (!source.is_free) return { label: 'Платная · нужен активный доступ', isFree: false };
+    if (source.source_type === 'xray_custom_config' && !source.is_public) {
+        return { label: 'Бесплатная · назначенным (с токеном)', isFree: true };
+    }
+
+    return {
+        label: source.source_type === 'xray_custom_config'
+            ? 'Бесплатная · доступна без доступа (с токеном)'
+            : 'Бесплатная · доступна без доступа',
+        isFree: true,
+    };
+};
 const catalogByKey = computed(() => new Map(props.catalog.map((source) => [
     source.source_type + ':' + source.source_id,
     source,
@@ -88,7 +102,8 @@ const availableSourceGroups = computed(() => Object.entries(sourceGroups.value).
     label,
     items: sources.map((source) => ({
         value: source.source_type + ':' + source.source_id,
-        label: source.name + (source.detail ? ' · ' + source.detail : ''),
+        label: source.name + (source.detail ? ' · ' + source.detail : '')
+            + (sourceAccessBadge(source) ? ' · ' + sourceAccessBadge(source).label : ''),
     })),
 })));
 const sourceSelection = computed({
@@ -425,10 +440,18 @@ const runPreview = async () => {
                 >
                 <span class="source-handle" aria-hidden="true">⠿</span>
                 <span class="source-copy">
-                    <strong>{{ item.source?.name ?? item.source_type + ' #' + item.source_id }}</strong>
+                    <span class="source-copy-title">
+                        <strong>{{ item.source?.name ?? item.source_type + ' #' + item.source_id }}</strong>
+                        <span
+                            v-if="item.source && sourceAccessBadge(item.source)"
+                            class="source-badge"
+                            :class="{ 'source-badge--free': sourceAccessBadge(item.source).isFree }"
+                        >{{ sourceAccessBadge(item.source).label }}</span>
+                    </span>
                     <small>{{ item.source?.group ?? item.source_type }}<template v-if="item.source?.detail"> · {{ item.source.detail }}</template></small>
                 </span>
                 <span v-if="item.source && !item.source.active" class="source-state">Источник выключен</span>
+                <span v-else-if="item.source?.source_type === 'external_subscription' && item.source.ready === false" class="source-state">Источник не готов: доступен только администратору</span>
                 <div class="source-actions">
                     <AppButton v-if="item.source?.edit_url" variant="secondary" :href="item.source.edit_url" target="_blank">Настроить</AppButton>
                     <AppButton variant="secondary" :disabled="index === 0" title="Переместить вверх" @click="moveItem(index, -1)">↑</AppButton>
@@ -606,6 +629,9 @@ const runPreview = async () => {
 
 .source-handle { color: var(--muted, #687386); }
 .source-copy { min-width: 0; flex: 1; display: grid; gap: 4px; }
+.source-copy-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.source-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: rgba(180, 83, 9, .1); color: #9a5b16; font-size: .75rem; font-weight: 600; }
+.source-badge--free { background: rgba(5, 150, 105, .12); color: #087450; }
 .source-copy small, .hint { color: var(--muted, #687386); }
 .source-state { color: #a16449; font-size: .85rem; }
 .source-actions { display: flex; align-items: center; gap: 6px; }

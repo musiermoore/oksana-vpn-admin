@@ -129,7 +129,7 @@ final class SubscriptionTypePreviewService
             'telegram_id' => $user->telegram_id !== null ? (string) $user->telegram_id : null,
             'is_admin' => (bool) $user->is_admin,
             'has_active_subscription' => $user->hasActiveSubscription(),
-            'has_active_access' => $user->hasActiveAccess(),
+            'has_active_access' => $user->hasActiveAccess() && ! $user->hasDebt(),
             'has_debt' => $user->hasDebt(),
             'debt_amount' => $user->getDebtAmount(),
         ];

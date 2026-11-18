@@ -26,10 +26,12 @@ final class ConnectJsonProfileOrderer
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
         ?array $customConfigIds = null,
         ?array $customConfigSortOrderById = null,
+        bool $includePaidCustomConfigs = true,
     ): SubscriptionBuildResult {
         $customConfigs = XrayCustomConfig::query()
             ->active()
             ->when($customConfigIds !== null, fn ($query) => $query->whereIn('id', $customConfigIds))
+            ->when(! $includePaidCustomConfigs, fn ($query) => $query->where('is_free', true))
             ->when(! $user->is_health_check_user, fn ($query) => $query->where(function ($configQuery) use ($user): void {
                 $configQuery->where('is_public', true)
                     ->orWhereHas('userAssignments', fn ($assignmentQuery) => $assignmentQuery->where('user_id', $user->id));

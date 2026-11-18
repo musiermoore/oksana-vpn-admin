@@ -38,7 +38,7 @@ return [
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'bot_username' => env('TELEGRAM_BOT_USERNAME'),
-        'mini_app_url' => env('TELEGRAM_MINI_APP_URL', 'https://public.oksana1984.ru'),
+        'mini_app_url' => env('TELEGRAM_MINI_APP_URL', 'https://oksana1984.ru'),
         'dev_chat_id' => env('TELEGRAM_DEV_CHAT_ID'),
         'incy_links' => [
             'bot' => env('TELEGRAM_INCY_BOT_URL', 'https://t.me/OksanaVpnBot'),
@@ -50,7 +50,7 @@ return [
     ],
 
     'vless' => [
-        'profile_web_page_url' => env('VLESS_PROFILE_WEB_PAGE_URL', 'https://public.oksana1984.ru'),
+        'profile_web_page_url' => env('VLESS_PROFILE_WEB_PAGE_URL', 'https://oksana1984.ru'),
     ],
 
     'inbound_health' => [

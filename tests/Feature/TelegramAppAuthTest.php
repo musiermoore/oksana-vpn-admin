@@ -172,7 +172,7 @@ class TelegramAppAuthTest extends TestCase
     {
         $this->get('/telegram-app/login')
             ->assertStatus(302)
-            ->assertRedirect('https://public.oksana1984.ru/login');
+            ->assertRedirect('https://oksana1984.ru/login');
     }
 
     public function test_admin_login_page_keeps_admin_inertia_url(): void
@@ -198,39 +198,39 @@ class TelegramAppAuthTest extends TestCase
     {
         $this->get('/public/login')
             ->assertStatus(302)
-            ->assertRedirect('https://public.oksana1984.ru/login');
+            ->assertRedirect('https://oksana1984.ru/login');
     }
 
     public function test_hidden_public_login_page_uses_root_public_routes(): void
     {
-        config()->set('app.public_hosts', ['public.oksana1984.ru']);
+        config()->set('app.public_hosts', ['oksana1984.ru']);
 
-        $this->get('https://public.oksana1984.ru/public/login')
+        $this->get('https://oksana1984.ru/public/login')
             ->assertStatus(302)
-            ->assertRedirect('https://public.oksana1984.ru/login');
+            ->assertRedirect('https://oksana1984.ru/login');
     }
 
     public function test_telegram_app_register_page_is_available(): void
     {
         $this->get('/telegram-app/register')
             ->assertStatus(302)
-            ->assertRedirect('https://public.oksana1984.ru/register');
+            ->assertRedirect('https://oksana1984.ru/register');
     }
 
     public function test_public_register_page_uses_public_routes(): void
     {
         $this->get('/public/register')
             ->assertStatus(302)
-            ->assertRedirect('https://public.oksana1984.ru/register');
+            ->assertRedirect('https://oksana1984.ru/register');
     }
 
     public function test_hidden_public_register_page_uses_root_public_routes(): void
     {
-        config()->set('app.public_hosts', ['public.oksana1984.ru']);
+        config()->set('app.public_hosts', ['oksana1984.ru']);
 
-        $this->get('https://public.oksana1984.ru/public/register')
+        $this->get('https://oksana1984.ru/public/register')
             ->assertStatus(302)
-            ->assertRedirect('https://public.oksana1984.ru/register');
+            ->assertRedirect('https://oksana1984.ru/register');
     }
 
     public function test_telegram_app_password_auth_returns_mini_app_token(): void

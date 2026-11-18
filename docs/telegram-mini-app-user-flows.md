@@ -8,7 +8,7 @@ See also: [docs/telegram-mini-app-state-machine.md](/Users/alexandersustavov/pro
 
 Telegram entry:
 
-1. User opens the standalone Vue app at `https://public.oksana1984.ru/` from Telegram.
+1. User opens the standalone Vue app at `https://oksana1984.ru/` from Telegram.
 2. Frontend sends Telegram WebApp `initData` to `POST https://api.oksana1984.ru/api/v1/auth/telegram`.
 3. If the user does not exist yet, the frontend calls `POST /telegram-app/auth/telegram` on the Laravel API to create the user, then retries the Go API login.
 4. Frontend loads `GET https://api.oksana1984.ru/api/v1/auth/me` with the bearer token.

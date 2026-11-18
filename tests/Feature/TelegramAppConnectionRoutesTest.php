@@ -134,7 +134,7 @@ class TelegramAppConnectionRoutesTest extends TestCase
 
     public function test_authenticated_user_can_load_wireguard_configs_via_hidden_public_routes(): void
     {
-        config()->set('app.public_hosts', ['public.oksana1984.ru']);
+        config()->set('app.public_hosts', ['oksana1984.ru']);
 
         [$user, $token] = $this->createAuthorizedActiveUser();
         $server = $this->createServer('WG');
@@ -147,7 +147,7 @@ class TelegramAppConnectionRoutesTest extends TestCase
         ]);
 
         $this->withToken($token)
-            ->getJson('https://public.oksana1984.ru/public/wireguard/configs')
+            ->getJson('https://oksana1984.ru/public/wireguard/configs')
             ->assertOk()
             ->assertExactJson([
                 'configs' => [[

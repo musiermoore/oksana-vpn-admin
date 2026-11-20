@@ -211,17 +211,37 @@ class PromoCodePaymentTest extends TestCase
         $this->postJson(self::PREVIEW, $payload)->assertOk()->assertJsonPath('discount_amount', 15);
     }
 
-    public function test_disabled_expired_and_upcoming_codes_cannot_be_used(): void
+    public function test_unavailable_codes_return_the_same_message_in_preview_and_checkout(): void
     {
         $promo = $this->promo(PromoCodeBenefit::FixedDiscount, 20, ['is_active' => false]);
         $this->authenticateCustomer();
-        $payload = ['month' => 1, 'promo_code' => 'WELCOME'];
+        $message = 'Промокод не найден или неактивен';
 
-        $this->postJson(self::PURCHASE, $payload)->assertUnprocessable();
-        $promo->update(['is_active' => true, 'ends_on' => '2026-11-18']);
-        $this->postJson(self::PURCHASE, $payload)->assertUnprocessable();
-        $promo->update(['ends_on' => null, 'starts_on' => '2026-11-20']);
-        $this->postJson(self::PURCHASE, $payload)->assertUnprocessable();
+        foreach ([
+            ['is_active' => false],
+            ['is_active' => true, 'ends_on' => '2026-11-18'],
+            ['ends_on' => null, 'starts_on' => '2026-11-20'],
+        ] as $attributes) {
+            $promo->update($attributes);
+
+            foreach ([self::PREVIEW, self::PURCHASE] as $endpoint) {
+                $this->postJson($endpoint, ['month' => 1, 'promo_code' => $promo->code])
+                    ->assertUnprocessable()->assertJsonPath('message', $message);
+            }
+        }
+
+        foreach ([self::PREVIEW, self::PURCHASE] as $endpoint) {
+            $this->postJson($endpoint, ['month' => 1, 'promo_code' => 'UNKNOWN'])
+                ->assertUnprocessable()->assertJsonPath('message', $message);
+
+            foreach (['ПРОМО!', str_repeat('A', 65), ['WELCOME']] as $invalidCode) {
+                $this->postJson($endpoint, ['month' => 1, 'promo_code' => $invalidCode])
+                    ->assertUnprocessable()
+                    ->assertJsonPath('message', $message)
+                    ->assertJsonPath('errors.promo_code', [$message]);
+            }
+        }
+
         $this->assertDatabaseEmpty('promo_code_redemptions');
     }
 

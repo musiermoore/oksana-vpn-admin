@@ -27,7 +27,7 @@ class PromoCodeService
         $today = today();
 
         if (! $promoCode?->is_active || $promoCode->starts_on?->gt($today) || $promoCode->ends_on?->lt($today)) {
-            throw new DomainException('Промокод недействителен или срок его действия истёк.');
+            throw new DomainException(__('validation.promo_code_unavailable'));
         }
 
         if ($promoCode->new_users_only && $this->promoCodes->hasNonTrialSubscription($user)) {

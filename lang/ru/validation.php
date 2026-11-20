@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+$promoCodeUnavailable = 'Промокод не найден или неактивен';
+
 return [
     'accepted' => 'Поле :attribute должно быть принято.',
     'after' => 'Поле :attribute должно содержать дату после :date.',
@@ -34,6 +38,10 @@ return [
     'string' => 'Поле :attribute должно быть строкой.',
     'unique' => 'Такое значение поля :attribute уже используется.',
     'url' => 'Поле :attribute должно содержать корректный URL.',
+    'promo_code_unavailable' => $promoCodeUnavailable,
+    'custom' => [
+        'promo_code' => array_fill_keys(['required', 'string', 'max', 'regex'], $promoCodeUnavailable),
+    ],
     'attributes' => [
         'amount' => 'сумма',
         'description' => 'описание',

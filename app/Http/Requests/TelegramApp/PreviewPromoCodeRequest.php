@@ -13,7 +13,7 @@ class PreviewPromoCodeRequest extends DataFormRequest
     {
         return [
             'month' => ['required', 'integer', 'in:1,3,6,12'],
-            'promo_code' => ['required', 'string', 'max:64', 'regex:/\A[A-Za-z0-9_-]+\z/'],
+            'promo_code' => ['bail', 'required', 'string', 'max:64', 'regex:/\A[A-Za-z0-9_-]+\z/'],
         ];
     }
 

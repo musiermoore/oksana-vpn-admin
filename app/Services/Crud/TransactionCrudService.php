@@ -11,12 +11,15 @@ use App\Jobs\SendTelegramMessageJob;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Repositories\TransactionRepository;
+use App\Repositories\UserRepository;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class TransactionCrudService
 {
     public function __construct(
         private readonly TransactionRepository $transactions,
+        private readonly UserRepository $users,
     ) {}
 
     public function create(TransactionData $data): Transaction
@@ -36,8 +39,17 @@ class TransactionCrudService
 
     public function approve(Transaction $transaction): Transaction
     {
+        return DB::transaction(function () use ($transaction): Transaction {
+            $this->users->lockById($transaction->user_id);
+
+            return $this->approveLocked($this->transactions->lockById($transaction->id));
+        });
+    }
+
+    private function approveLocked(Transaction $transaction): Transaction
+    {
         if ($transaction->is_approved) {
-            return $transaction->refresh();
+            return $transaction;
         }
 
         $transaction = $this->transactions->update($transaction, ['is_approved' => true]);

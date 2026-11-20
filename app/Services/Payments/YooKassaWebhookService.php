@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Payments;
 
 use App\Jobs\EditTelegramMessageTextJob;
 use App\Models\Invoice;
 use App\Models\Transaction;
+use App\Repositories\UserRepository;
 use App\Services\Crud\TransactionCrudService;
+use App\Services\PromoCodeService;
 use App\Services\TelegramDevChatService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +19,8 @@ class YooKassaWebhookService
     public function __construct(
         private readonly TransactionCrudService $transactionService,
         private readonly TelegramDevChatService $devChat,
+        private readonly PromoCodeService $promoCodes,
+        private readonly UserRepository $users,
     ) {}
 
     public function handle(array $payload): void
@@ -28,7 +34,6 @@ class YooKassaWebhookService
 
         $telegramMessageUpdate = DB::transaction(function () use ($payload, $event, $paymentId): ?array {
             $invoice = Invoice::query()
-                ->with(['transactions.user'])
                 ->where('provider', 'yookassa')
                 ->where('provider_payment_id', $paymentId)
                 ->lockForUpdate()
@@ -40,6 +45,8 @@ class YooKassaWebhookService
                 return null;
             }
 
+            $this->users->lockById($invoice->user_id);
+            $invoice->load('transactions.user');
             $wasPaid = (bool) $invoice->paid;
 
             $this->syncInvoice($invoice, $payload);
@@ -52,13 +59,8 @@ class YooKassaWebhookService
                 return $this->buildTelegramMessageUpdatePayload($transaction, $event);
             }
 
-            if ($event === 'payment.canceled' && ($wasPaid || (bool) data_get($payload, 'object.paid', false))) {
-                $userName = $transaction?->user?->full_name ?? "user_id={$invoice->user_id}";
-                $amount = (string) data_get($payload, 'object.amount.value', $invoice->amount);
-
-                $this->devChat->send(
-                    "YooKassa: платеж {$paymentId} отменён после оплаты. Пользователь: {$userName}. Сумма: {$amount} RUB."
-                );
+            if ($event === 'payment.canceled') {
+                $this->handleCancellation($invoice, $transaction, $wasPaid || $invoice->paid);
             }
 
             return $this->buildTelegramMessageUpdatePayload($transaction, $event);
@@ -66,6 +68,18 @@ class YooKassaWebhookService
 
         if ($telegramMessageUpdate !== null) {
             $this->editTelegramPaymentMessage($telegramMessageUpdate);
+        }
+    }
+
+    private function handleCancellation(Invoice $invoice, ?Transaction $transaction, bool $wasPaid): void
+    {
+        if ($wasPaid) {
+            $userName = $transaction?->user?->full_name ?? "user_id={$invoice->user_id}";
+            $this->devChat->send(
+                "YooKassa: платеж {$invoice->provider_payment_id} отменён после оплаты. Пользователь: {$userName}. Сумма: {$invoice->amount} RUB."
+            );
+        } elseif ($transaction !== null) {
+            $this->promoCodes->cancelPendingPayment($transaction);
         }
     }
 

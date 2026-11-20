@@ -42,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('viewLogViewer', fn (?User $user): bool => (bool) $user?->is_admin);
+        Gate::define('manage-promo-codes', fn (User $user): bool => (bool) $user->is_admin);
 
         if (! $this->app->isLocal()) {
             Vite::useHotFile(storage_path('framework/vite.hot'));

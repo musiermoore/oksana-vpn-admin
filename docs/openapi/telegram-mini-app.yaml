@@ -175,6 +175,43 @@ paths:
                     type: array
                     items: {$ref: '#/components/schemas/SubscriptionPackage'}
         '401': {$ref: '#/components/responses/Unauthorized'}
+  /payments/promo-codes/preview:
+    post:
+      tags: [Payments]
+      operationId: previewPromoCode
+      summary: Preview a promo code on a personal subscription package
+      description: Returns the benefit and totals without reserving or redeeming the code. Checkout validates the code again.
+      security:
+        - TelegramBearer: []
+        - PublicAppBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [month, promo_code]
+              properties:
+                month: {type: integer, enum: [1, 3, 6, 12]}
+                promo_code: {type: string, maxLength: 64, pattern: '^[A-Za-z0-9_-]+$'}
+            example: {month: 3, promo_code: WELCOME}
+      responses:
+        '200':
+          description: Discounted package price and any amount due through the payment provider.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, benefit, value, discount_amount, price, payable_now]
+                properties:
+                  code: {type: string, description: Canonical uppercase promo code.}
+                  benefit: {type: string, enum: [balance_deposit, fixed_discount, percentage_discount, bonus_days, balance_cashback]}
+                  value: {type: number, description: Campaign value in rubles, percent, or days depending on the benefit.}
+                  discount_amount: {type: number, description: Actual discount in rubles, or zero for other benefits.}
+                  price: {type: number, description: Subscription charge in rubles after applicable discounts.}
+                  payable_now: {type: number, description: External payment in rubles after applicable balance and deposit credit.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationOrDomainError'}
   /payments/subscriptions:
     post:
       tags: [Payments]
@@ -184,6 +221,7 @@ paths:
         `month=0` requests a trial and is only valid for personal purchases.
         A purchase can return immediate activation, a created gift code, or a
         YooKassa payment redirect depending on purchase_type and the user's balance.
+        A promo code is accepted for personal purchases with month greater than zero.
       security:
         - TelegramBearer: []
         - PublicAppBearer: []
@@ -198,6 +236,7 @@ paths:
                 month: {type: integer, enum: [0, 1, 3, 6, 12]}
                 return_url: {type: [string, 'null'], format: uri, maxLength: 2048}
                 purchase_type: {type: string, enum: [PERSONAL, GIFT], default: PERSONAL}
+                promo_code: {type: [string, 'null'], maxLength: 64, pattern: '^[A-Za-z0-9_-]+$'}
             examples:
               personal:
                 value: {month: 3, purchase_type: PERSONAL, return_url: 'https://mini.example/return'}

@@ -85,7 +85,8 @@ Code status as of `2026-06-28`:
 | `SUBSCRIPTION_OVERVIEW` | auto | Load balance, debt, subscription date | `GET /telegram-app/me` | `SUBSCRIPTION_OVERVIEW` | `APP_INIT_ERROR` |
 | `SUBSCRIPTION_OVERVIEW` | Buy subscription | Load packages | `GET /telegram-app/subscription-packages` | `SUBSCRIPTION_PACKAGE_SELECT` | `PAYMENT_ERROR` |
 | `SUBSCRIPTION_PACKAGE_SELECT` | Select package | Store selected month locally | none | `SUBSCRIPTION_PACKAGE_SELECT` | none |
-| `SUBSCRIPTION_PACKAGE_SELECT` | Pay | Create payment request | `POST /telegram-app/payments/subscriptions` | `SUBSCRIPTION_ACTIVATED` or `SUBSCRIPTION_PAYMENT_REDIRECT` | `PAYMENT_ERROR` |
+| `SUBSCRIPTION_PACKAGE_SELECT` | Apply promo code | Preview benefit and amount due for the selected paid personal package | `POST /telegram-app/payments/promo-codes/preview` | `SUBSCRIPTION_PACKAGE_SELECT` with quote | `SUBSCRIPTION_PACKAGE_SELECT` with promo error |
+| `SUBSCRIPTION_PACKAGE_SELECT` | Pay | Create payment request with the applied promo code when present | `POST /telegram-app/payments/subscriptions` | `SUBSCRIPTION_ACTIVATED` or `SUBSCRIPTION_PAYMENT_REDIRECT` | `PAYMENT_ERROR` |
 | `SUBSCRIPTION_PACKAGE_SELECT` | Cancel | Return to overview | none | `SUBSCRIPTION_OVERVIEW` | none |
 | `SUBSCRIPTION_ACTIVATED` | Home | Refresh profile and return | `GET /telegram-app/me` recommended | `HOME` | `APP_INIT_ERROR` |
 | `SUBSCRIPTION_PAYMENT_REDIRECT` | Pay by card/SBP | Open external URL from `confirmation_url` | none | `YOOKASSA_PAYMENT` | `PAYMENT_ERROR` |

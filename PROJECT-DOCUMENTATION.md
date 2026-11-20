@@ -90,6 +90,12 @@ Each payment period has:
 
 The active payment period is used as the source of truth for subscription renewal price.
 
+### Promo Codes
+
+Admins create and edit promo campaigns at `/promo-codes`. Each code can provide a fixed or percentage discount, a deposit applied toward checkout, extra subscription days, or a balance gift after purchase. Campaigns can allow one use per customer or one use on each eligible personal purchase, and can target all users or only users without a non-trial subscription. The active flag and optional inclusive dates govern availability.
+
+`promo_code_redemptions` records the terms offered at checkout, the customer, the associated transactions, and the completion or cancellation date. Archived campaigns retain their history.
+
 ### Xray Inbounds
 
 Xray/3x-ui inbound identifiers are normalized through the `xray_inbounds` table.

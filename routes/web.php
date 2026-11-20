@@ -15,6 +15,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LimitController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NonRegularPaymentController;
+use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\ProxyController;
 use App\Http\Controllers\ProxyGroupController;
 use App\Http\Controllers\ReferralController;
@@ -121,6 +122,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('user-tokens', UserTokenController::class)->except(['edit', 'update']);
     Route::resource('configs', ConfigController::class)->except(['show']);
     Route::resource('transactions', TransactionController::class);
+    Route::resource('promo-codes', PromoCodeController::class)
+        ->middleware('can:manage-promo-codes')
+        ->withTrashed(['show']);
     Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'edit']);
     Route::resource('current-payments', CurrentPaymentController::class);
     Route::get('servers/connect-order', [ServerController::class, 'connectOrder'])
@@ -344,6 +348,8 @@ $telegramAppAuthenticatedRoutes = function (): void {
             ->name('giveaway.participate');
         Route::post('payments/subscriptions', [TelegramAppPaymentController::class, 'purchaseSubscription'])
             ->name('payments.subscriptions');
+        Route::post('payments/promo-codes/preview', [TelegramAppPaymentController::class, 'previewPromoCode'])
+            ->name('payments.promo-codes.preview');
         Route::post('payments/subscription-codes/activate', [TelegramAppPaymentController::class, 'activateSubscriptionCode'])
             ->name('payments.subscription-codes.activate');
         Route::get('wireguard/configs', [TelegramAppConnectionController::class, 'wireGuardConfigs'])

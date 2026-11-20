@@ -22,6 +22,7 @@ class StoreApiTransactionRequest extends DataFormRequest
             'month' => ['required', 'integer', 'in:0,1,3,6,12'],
             'return_url' => ['nullable', 'url', 'max:2048'],
             'purchase_type' => ['nullable', Rule::enum(SubscriptionPurchaseType::class)],
+            'promo_code' => ['nullable', 'string', 'max:64', 'regex:/\A[A-Za-z0-9_-]+\z/'],
         ];
     }
 

@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\TelegramApp;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreApiTransactionRequest;
 use App\Http\Requests\TelegramApp\ActivateSubscriptionCodeRequest;
+use App\Http\Requests\TelegramApp\PreviewPromoCodeRequest;
+use App\Http\Resources\TelegramApp\PromoCodeQuoteResource;
 use App\Models\User;
 use App\Services\Api\ApiTransactionService;
 use App\Services\SubscriptionCodeService;
@@ -39,6 +43,19 @@ class PaymentController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    public function previewPromoCode(PreviewPromoCodeRequest $request): JsonResponse
+    {
+        $data = $request->toData();
+
+        try {
+            $quote = $this->transactions->quotePromoCode($request->user(), $data->month, $data->promoCode);
+        } catch (DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json((new PromoCodeQuoteResource($quote))->resolve($request));
     }
 
     public function activateSubscriptionCode(ActivateSubscriptionCodeRequest $request): JsonResponse

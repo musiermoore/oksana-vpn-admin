@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories;
 
 use App\Models\Transaction;
@@ -7,6 +9,11 @@ use App\Models\User;
 
 class TransactionRepository
 {
+    public function lockById(int $id): Transaction
+    {
+        return Transaction::query()->lockForUpdate()->findOrFail($id);
+    }
+
     public function create(array $attributes): Transaction
     {
         return Transaction::create($attributes);

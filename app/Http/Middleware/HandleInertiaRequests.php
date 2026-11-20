@@ -115,6 +115,7 @@ class HandleInertiaRequests extends Middleware
                 'items' => [
                     ['label' => 'Транзакции', 'href' => route('transactions.index'), 'badge' => 'TR', 'icon' => 'wallet'],
                     ['label' => 'Инвойсы', 'href' => route('invoices.index'), 'badge' => 'IV', 'icon' => 'receipt'],
+                    ['label' => 'Промокоды', 'href' => route('promo-codes.index'), 'badge' => 'PC', 'icon' => 'gift'],
                     ['label' => 'Подписки', 'href' => route('subscriptions.index'), 'badge' => 'SB', 'icon' => 'calendar'],
                     ['label' => 'Периоды оплаты', 'href' => route('current-payments.index'), 'badge' => 'PP', 'icon' => 'clock'],
                     ['label' => 'Нерегулярные расходы', 'href' => route('non-regular-payments.index'), 'badge' => 'NR', 'icon' => 'wallet'],

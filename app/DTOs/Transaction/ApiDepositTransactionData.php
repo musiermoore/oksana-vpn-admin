@@ -13,5 +13,6 @@ class ApiDepositTransactionData extends Data
         public int $month,
         public ?string $returnUrl = null,
         public SubscriptionPurchaseType $purchaseType = SubscriptionPurchaseType::PERSONAL,
+        public ?string $promoCode = null,
     ) {}
 }

@@ -4,34 +4,43 @@ declare(strict_types=1);
 
 namespace App\Services\Api;
 
+use App\DTOs\PromoCode\PromoCodeQuote;
 use App\DTOs\Transaction\ApiDepositTransactionData;
 use App\Enums\SubscriptionPurchaseType;
 use App\Jobs\DispatchDefaultConfigsForUserJob;
 use App\Jobs\ReconcileUserAccessStateJob;
-use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\TransactionType;
 use App\Models\User;
-use App\Repositories\InvoiceRepository;
+use App\Models\UserSubscription;
 use App\Repositories\TransactionRepository;
-use App\Services\Payments\YooKassaPaymentService;
+use App\Repositories\UserRepository;
+use App\Services\Payments\SubscriptionPaymentService;
+use App\Services\PromoCodeService;
 use App\Services\SubscriptionCodeService;
 use App\Services\SubscriptionService;
 use Carbon\Carbon;
 use DomainException;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class ApiTransactionService
 {
     public function __construct(
-        private readonly InvoiceRepository $invoices,
         private readonly TransactionRepository $transactions,
         private readonly SubscriptionService $subscriptionService,
         private readonly SubscriptionCodeService $subscriptionCodes,
-        private readonly YooKassaPaymentService $yooKassaPaymentService,
+        private readonly SubscriptionPaymentService $payments,
+        private readonly PromoCodeService $promoCodes,
+        private readonly UserRepository $users,
     ) {}
 
     public function purchaseSubscription(User $user, ApiDepositTransactionData $data): array
     {
+        if ($data->promoCode !== null && ($data->month === 0 || $data->purchaseType->isGift())) {
+            throw new DomainException('Промокод можно применить при покупке личной подписки.');
+        }
+
         if ($data->purchaseType->isGift()) {
             return $this->purchaseGiftSubscriptionCode($user, $data);
         }
@@ -40,13 +49,56 @@ class ApiTransactionService
             return $this->activateTrial($user);
         }
 
-        $quote = $this->subscriptionService->buildPurchaseQuote($user, $data->month);
+        $purchase = DB::transaction(fn () => $this->preparePurchase($this->users->lockById($user->id), $data));
 
-        if ($quote['deposit_amount'] <= 0) {
-            return $this->activateFromBalance($user, $data->month, $quote);
+        if ($purchase instanceof UserSubscription) {
+            return $this->activationResponse($purchase->end_date, false);
         }
 
-        return $this->createSubscriptionPayment($user, $data, $quote);
+        try {
+            return $this->createSubscriptionPayment($user, $data, $purchase);
+        } catch (Throwable $exception) {
+            $this->promoCodes->cancelPendingPayment($purchase);
+
+            throw $exception;
+        }
+    }
+
+    public function quotePromoCode(User $user, int $months, string $code): PromoCodeQuote
+    {
+        $quote = $this->subscriptionService->buildPurchaseQuote($user, $months);
+
+        return $this->promoCodes->quote($user, $code, $quote['package_price'], $quote['balance_before']);
+    }
+
+    private function preparePurchase(?User $user, ApiDepositTransactionData $data): UserSubscription|Transaction
+    {
+        if ($user === null) {
+            throw new DomainException('Пользователь не найден.');
+        }
+
+        $quote = $this->subscriptionService->buildPurchaseQuote($user, $data->month);
+        $promo = $data->promoCode === null ? null : $this->promoCodes->quote(
+            $user, $data->promoCode, $quote['package_price'], $quote['balance_before'],
+        );
+
+        if ($promo !== null) {
+            $quote['package_price'] = $promo->packagePrice;
+            $quote['deposit_amount'] = $promo->payableNow;
+            $quote['promo_code_id'] = $promo->promoCode->id;
+        }
+
+        if ($quote['deposit_amount'] > 0) {
+            $payment = $this->createSubscriptionTransaction($user, $data->month, $quote);
+
+            if ($promo !== null) {
+                $this->promoCodes->reserve($promo, $user, $payment);
+            }
+
+            return $payment;
+        }
+
+        return $this->activateFromBalance($user, $data->month, $quote, $promo);
     }
 
     private function activateTrial(User $user): array
@@ -62,8 +114,9 @@ class ApiTransactionService
         return $this->activationResponse($subscription->end_date, true);
     }
 
-    private function activateFromBalance(User $user, int $months, array $quote): array
+    private function activateFromBalance(User $user, int $months, array $quote, ?PromoCodeQuote $promo): UserSubscription
     {
+        $redemption = $promo === null ? null : $this->promoCodes->reserve($promo, $user);
         $subscription = $this->subscriptionService->activatePackageForUser(
             user: $user,
             months: $months,
@@ -75,9 +128,15 @@ class ApiTransactionService
                 'referral_total_discount_percent' => $quote['referral_total_discount_percent'],
                 'referral_discount_amount' => $quote['referral_discount_amount'],
             ],
+            redemption: $redemption,
         );
 
-        return $this->activationResponse($subscription->end_date, false);
+        if ($redemption !== null && $user->hasActiveSubscription()) {
+            DispatchDefaultConfigsForUserJob::dispatch($user->id)->afterCommit();
+            ReconcileUserAccessStateJob::dispatch($user->id)->afterCommit();
+        }
+
+        return $subscription;
     }
 
     private function activationResponse(mixed $endDate, bool $trial): array
@@ -93,23 +152,14 @@ class ApiTransactionService
         ];
     }
 
-    private function createSubscriptionPayment(User $user, ApiDepositTransactionData $data, array $quote): array
+    private function createSubscriptionPayment(User $user, ApiDepositTransactionData $data, Transaction $transaction): array
     {
         $description = $this->buildPaymentDescription($user, $data->month);
-        $transaction = $this->createSubscriptionTransaction($user, $data->month, $quote);
-        $payment = $this->yooKassaPaymentService->createPayment(
-            amount: (float) $transaction->amount,
-            description: $description,
-            metadata: [
-                'user_id' => (string) $user->id,
-                'transaction_id' => (string) $transaction->id,
-                'subscription_months' => (string) $data->month,
-            ],
-            returnUrl: $data->returnUrl,
-        );
-        $invoice = $this->createSubscriptionInvoice($user, $payment, $description);
+        $invoice = $this->payments->initialize($user, $transaction, $data, $description);
 
-        $this->transactions->update($transaction, ['invoice_id' => $invoice->id]);
+        if ($invoice->status === 'canceled') {
+            $this->promoCodes->cancelPendingPayment($transaction);
+        }
 
         return [
             'status' => 'deposit_required',
@@ -143,34 +193,8 @@ class ApiTransactionService
                 'referral_permanent_discount_percent' => $quote['referral_permanent_discount_percent'],
                 'referral_total_discount_percent' => $quote['referral_total_discount_percent'],
                 'referral_discount_amount' => $quote['referral_discount_amount'],
+                ...(isset($quote['promo_code_id']) ? ['promo_code_id' => $quote['promo_code_id']] : []),
             ],
-        ]);
-    }
-
-    private function createSubscriptionInvoice(User $user, array $payment, string $description): Invoice
-    {
-        return $this->invoices->create([
-            'user_id' => $user->id,
-            'provider' => 'yookassa',
-            'provider_payment_id' => (string) $payment['id'],
-            'status' => (string) $payment['status'],
-            'paid' => (bool) $payment['paid'],
-            'amount' => (float) data_get($payment, 'amount.value', 0),
-            'currency' => (string) data_get($payment, 'amount.currency', 'RUB'),
-            'description' => (string) ($payment['description'] ?? $description),
-            'confirmation_url' => data_get($payment, 'confirmation.confirmation_url'),
-            'payload' => $payment['raw'] ?? $payment,
-            'history' => [[
-                'type' => 'payment.created',
-                'status' => (string) $payment['status'],
-                'paid' => (bool) $payment['paid'],
-                'amount' => [
-                    'value' => (string) data_get($payment, 'amount.value', '0'),
-                    'currency' => (string) data_get($payment, 'amount.currency', 'RUB'),
-                ],
-                'occurred_at' => $payment['created_at'] ?? now()->toAtomString(),
-                'payload' => $payment['raw'] ?? $payment,
-            ]],
         ]);
     }
 
@@ -245,45 +269,7 @@ class ApiTransactionService
             ],
         ]);
 
-        $payment = $this->yooKassaPaymentService->createPayment(
-            amount: (float) $transaction->amount,
-            description: $description,
-            metadata: [
-                'user_id' => (string) $user->id,
-                'transaction_id' => (string) $transaction->id,
-                'subscription_months' => (string) $data->month,
-                'purchase_type' => SubscriptionPurchaseType::GIFT->value,
-            ],
-            returnUrl: $data->returnUrl,
-        );
-
-        $invoice = $this->invoices->create([
-            'user_id' => $user->id,
-            'provider' => 'yookassa',
-            'provider_payment_id' => (string) $payment['id'],
-            'status' => (string) $payment['status'],
-            'paid' => (bool) $payment['paid'],
-            'amount' => (float) data_get($payment, 'amount.value', 0),
-            'currency' => (string) data_get($payment, 'amount.currency', 'RUB'),
-            'description' => (string) ($payment['description'] ?? $description),
-            'confirmation_url' => data_get($payment, 'confirmation.confirmation_url'),
-            'payload' => $payment['raw'] ?? $payment,
-            'history' => [[
-                'type' => 'payment.created',
-                'status' => (string) $payment['status'],
-                'paid' => (bool) $payment['paid'],
-                'amount' => [
-                    'value' => (string) data_get($payment, 'amount.value', '0'),
-                    'currency' => (string) data_get($payment, 'amount.currency', 'RUB'),
-                ],
-                'occurred_at' => $payment['created_at'] ?? now()->toAtomString(),
-                'payload' => $payment['raw'] ?? $payment,
-            ]],
-        ]);
-
-        $this->transactions->update($transaction, [
-            'invoice_id' => $invoice->id,
-        ]);
+        $invoice = $this->payments->initialize($user, $transaction, $data, $description);
 
         return [
             'status' => 'deposit_required',

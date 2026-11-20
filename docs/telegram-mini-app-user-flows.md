@@ -104,10 +104,11 @@ Personal subscription purchase:
 1. User chooses `Buy subscription`.
 2. Frontend loads `GET /telegram-app/subscription-packages`.
 3. User chooses a package.
-4. Frontend sends `POST /telegram-app/payments/subscriptions` with `{ month, return_url }`.
-5. If balance covers the package, backend activates immediately and frontend shows success.
-6. If external payment is needed, backend returns `confirmation_url` and frontend opens the payment page.
-7. After payment approval, backend activation follows the `TransactionApproved` listener path.
+4. For a paid package, the user can enter a promo code and select Apply. The frontend calls `POST /telegram-app/payments/promo-codes/preview` with `{ month, promo_code }` and shows the benefit and revised amount due.
+5. Frontend sends `POST /telegram-app/payments/subscriptions` with `{ month, return_url }` and the applied `promo_code` when present.
+6. If balance covers the package, backend activates immediately and frontend shows success.
+7. If external payment is needed, backend returns `confirmation_url` and frontend opens the payment page.
+8. After payment approval, backend activation follows the `TransactionApproved` listener path and grants any promo benefit.
 
 Trial:
 
@@ -243,6 +244,7 @@ Payments:
 - `PAYMENTS(overview) -> Buy gift code -> PAYMENTS(packages:GIFT)`
 - `PAYMENTS(overview) -> Activate code -> PAYMENTS(code-activated)`
 - `PAYMENTS(packages) -> Cancel -> PAYMENTS(overview)`
+- `PAYMENTS(packages:PERSONAL) -> Apply promo code -> PAYMENTS(packages:quoted|promo-error)`
 - `PAYMENTS(packages) -> Pay -> PAYMENTS(activated|redirect|error)`
 - `PAYMENTS(gift-created) -> My codes -> PAYMENTS(overview)`
 

@@ -65,6 +65,14 @@ Rules:
 - New subscription start date must not move into the past.
 - Start date is resolved by `SubscriptionService::resolveNextSubscriptionStartDate()`.
 
+### Promo codes at checkout
+
+- Admins manage campaigns and view redemption history at `/promo-codes`. Each campaign grants one benefit and supports an inclusive start and end date in the application timezone. A blank date leaves that boundary open. Disabling or archiving a campaign prevents new checkouts with the code.
+- Customers can apply one case-insensitive code to a 1, 3, 6, or 12-month personal purchase. A code can be limited to one redemption per customer or enabled on every checkout. A new-customer campaign requires either no subscription history or trial-only history.
+- An immediate discount reduces the subscription charge after package and referral discounts. An optional fixed or percentage discount can reduce the price to zero. A deposit gift offsets the amount due at checkout and any surplus stays on the customer's balance. A cashback gift credits the balance after the purchase without reducing the amount due. A days gift extends the purchased period.
+- The preview endpoint only calculates the offer. Checkout reserves the offer and records its terms. Successful balance checkout or payment approval completes the redemption and grants the benefit in the same database transaction as subscription activation. Pending reservations hold the single use until completion or cancellation. An abandoned payment becomes retryable when the provider cancels it.
+- A pending checkout retains its original terms if the campaign is later changed, disabled, archived, or expires. Duplicate payment approvals do not grant another benefit. Trial, gift-code checkout, and automatic renewal continue through their existing flows.
+
 ## 5. External Payment And Approval
 
 Scenario: the user chooses a paid package and balance is not enough.

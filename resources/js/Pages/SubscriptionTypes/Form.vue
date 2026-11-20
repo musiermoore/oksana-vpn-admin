@@ -140,8 +140,6 @@ watch(() => localType.value.requires_user_token, (requiresUserToken) => {
     if (!requiresUserToken) {
         localType.value.show_expired_placeholder = false;
     }
-    previewResult.value = null;
-    previewError.value = '';
 });
 
 function syncSourceSelection(values) {
@@ -238,17 +236,6 @@ const deleteType = () => {
     }
 };
 
-const previewContext = computed(() => JSON.stringify([
-    localType.value,
-    previewAudience.value,
-    selectedPreviewUser.value?.id,
-]));
-
-watch(previewContext, () => {
-    previewResult.value = null;
-    previewError.value = '';
-});
-
 watch(previewUserSearch, () => {
     previewUsers.value = [];
     selectedPreviewUser.value = null;
@@ -273,40 +260,62 @@ const searchPreviewUsers = async () => {
     }
 };
 
-const runPreview = async () => {
-    if (localType.value.requires_user_token && previewAudience.value === 'user' && !selectedPreviewUser.value) return;
+const previewRequest = computed(() => {
+    if (hasFormatConflict.value || hasStaticSourceConflict.value) return null;
 
-    const context = previewContext.value;
-    previewLoading.value = true;
-    previewError.value = '';
-    previewResult.value = null;
+    const { kind, format, requires_user_token, show_expired_placeholder, id } = localType.value;
     const payload = {
-        kind: localType.value.kind,
-        format: localType.value.format,
-        requires_user_token: Boolean(localType.value.requires_user_token),
-        show_expired_placeholder: Boolean(localType.value.show_expired_placeholder),
+        kind,
+        format,
+        requires_user_token,
+        show_expired_placeholder: requires_user_token && show_expired_placeholder,
         items: selectedItems.value.map(orderedItemData),
     };
-    if (localType.value.requires_user_token) {
+
+    if (requires_user_token) {
         payload.audience = previewAudience.value;
-        if (previewAudience.value === 'user') payload.user_id = selectedPreviewUser.value.id;
+        if (previewAudience.value === 'user') {
+            if (!selectedPreviewUser.value) return null;
+            payload.user_id = selectedPreviewUser.value.id;
+        }
     }
 
-    const endpoint = isEdit.value
-        ? '/subscription-types/' + localType.value.id + '/preview'
-        : '/subscription-types/preview';
-    try {
-        const { data } = await window.axios.post(endpoint, payload);
-        if (context === previewContext.value) previewResult.value = data;
-    } catch (error) {
-        if (context !== previewContext.value) return;
-        previewError.value = error.response?.data?.errors?.audience?.[0]
-            ?? error.response?.data?.message
-            ?? 'Не удалось собрать предпросмотр.';
-    } finally {
-        previewLoading.value = false;
+    const endpoint = isEdit.value ? '/subscription-types/' + id + '/preview' : '/subscription-types/preview';
+    return JSON.stringify({ endpoint, payload });
+});
+
+watch(previewRequest, (request, previousRequest, onCleanup) => {
+    if (typeof window === 'undefined') return;
+
+    previewError.value = '';
+    previewLoading.value = request !== null;
+    if (request === null) {
+        previewResult.value = null;
+        return;
     }
-};
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+        const { endpoint, payload } = JSON.parse(request);
+        try {
+            const { data } = await window.axios.post(endpoint, payload, { signal: controller.signal });
+            if (!controller.signal.aborted) previewResult.value = data;
+        } catch (error) {
+            if (controller.signal.aborted) return;
+            previewResult.value = null;
+            previewError.value = error.response?.data?.errors?.audience?.[0]
+                ?? error.response?.data?.message
+                ?? 'Не удалось собрать предпросмотр.';
+        } finally {
+            if (!controller.signal.aborted) previewLoading.value = false;
+        }
+    }, 250);
+
+    onCleanup(() => {
+        clearTimeout(timeout);
+        controller.abort();
+    });
+}, { immediate: true });
 </script>
 
 <template>
@@ -491,6 +500,16 @@ const runPreview = async () => {
             </div>
         </div>
 
+        <fieldset class="preview-variants">
+            <legend>Вид предпросмотра</legend>
+            <div class="preview-variant-options">
+                <label v-for="option in previewVariantOptions" :key="option.value" class="preview-variant-option">
+                    <input v-model="previewVariant" type="radio" name="subscription-preview-variant" :value="option.value">
+                    {{ option.label }}
+                </label>
+            </div>
+        </fieldset>
+
         <template v-if="localType.requires_user_token">
             <div class="grid grid--two preview-controls">
                 <label class="field">
@@ -524,23 +543,15 @@ const runPreview = async () => {
                 <p v-if="selectedPreviewUser" class="hint">Выбран: {{ selectedPreviewUser.telegram || selectedPreviewUser.name }} · #{{ selectedPreviewUser.id }}</p>
             </div>
 
-            <div class="preview-actions">
-                <p class="hint">Вариант «без подписки или с долгом» выберет подходящего пользователя и покажет его фактический статус доступа.</p>
-                <AppButton :disabled="previewLoading || (previewAudience === 'user' && !selectedPreviewUser) || hasFormatConflict || hasStaticSourceConflict" @click="runPreview">
-                    {{ previewLoading ? 'Собираем…' : 'Показать подписку' }}
-                </AppButton>
-            </div>
+            <p class="hint">Вариант «без подписки или с долгом» выберет подходящего пользователя и покажет его фактический статус доступа.</p>
+            <p v-if="previewAudience === 'user' && !selectedPreviewUser" class="hint">Выберите пользователя для предпросмотра.</p>
         </template>
-        <div v-else class="preview-actions">
-            <p class="hint">Предпросмотр статической конфигурации без пользовательского токена.</p>
-            <AppButton :disabled="previewLoading || hasStaticSourceConflict" @click="runPreview">
-                {{ previewLoading ? 'Собираем…' : 'Показать подписку' }}
-            </AppButton>
-        </div>
+        <p v-else class="hint">Предпросмотр статической конфигурации без пользовательского токена.</p>
 
+        <p v-if="previewLoading" class="hint" role="status">Обновляем предпросмотр…</p>
         <p v-if="previewError" class="form-error">{{ previewError }}</p>
 
-        <div v-if="previewResult" class="preview-result stack">
+        <div v-if="previewResult" class="preview-result stack" :aria-busy="previewLoading">
             <div v-if="previewResult.is_static" class="preview-user-summary">
                 <strong>Статическая конфигурация</strong>
                 <span>Токен пользователя не требуется</span>
@@ -552,10 +563,6 @@ const runPreview = async () => {
                 <span>Доступ по текущим правилам: {{ previewResult.user.has_active_access ? 'есть' : 'нет' }}</span>
                 <span>Долг: {{ previewResult.user.has_debt ? previewResult.user.debt_amount : 'нет' }}</span>
             </div>
-            <label class="field preview-variant">
-                <span>Вид предпросмотра</span>
-                <AppSelect v-model="previewVariant" :options="previewVariantOptions" />
-            </label>
             <template v-if="previewVariant === 'json'">
                 <p v-if="!previewResult.content_type.startsWith('application/json')" class="hint">Предпросмотр в формате Xray JSON.</p>
                 <pre class="preview-content">{{ previewResult.json }}</pre>
@@ -687,12 +694,14 @@ const runPreview = async () => {
 .preview-user-option > span:first-child { display: grid; gap: 3px; }
 .preview-user-option small, .preview-user-status { color: var(--muted, #687386); }
 .preview-user-status { text-align: right; font-size: .88rem; }
-.preview-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.preview-actions .hint { margin: 0; }
 .preview-result { padding-top: 14px; border-top: 1px solid rgba(148, 163, 184, .3); }
 .preview-user-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .preview-user-summary span { color: var(--muted, #687386); }
-.preview-variant { max-width: 300px; }
+.preview-variants { min-width: 0; margin: 0; padding: 0; border: 0; }
+.preview-variants legend { margin-bottom: 6px; font-weight: 600; }
+.preview-variant-options { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.preview-variant-option { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.preview-variant-option input { margin: 0; accent-color: var(--accent, #647de8); }
 .preview-profiles { display: grid; gap: 8px; margin: 0; padding-left: 30px; }
 .preview-profile { padding: 10px 12px; border: 1px solid rgba(148, 163, 184, .32); border-radius: 10px; }
 .preview-profile::marker { color: var(--muted, #687386); }
@@ -705,8 +714,7 @@ const runPreview = async () => {
 
 @media (max-width: 650px) {
     .subscription-source-row,
-    .preview-user-option,
-    .preview-actions {
+    .preview-user-option {
         align-items: flex-start;
         flex-direction: column;
     }

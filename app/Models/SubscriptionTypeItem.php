@@ -28,11 +28,12 @@ final class SubscriptionTypeItem extends Model
         'source_type',
         'source_id',
         'sort_order',
+        'is_free',
     ];
 
     protected function casts(): array
     {
-        return ['sort_order' => 'integer', 'source_id' => 'integer'];
+        return ['sort_order' => 'integer', 'source_id' => 'integer', 'is_free' => 'boolean'];
     }
 
     public function subscriptionType(): BelongsTo

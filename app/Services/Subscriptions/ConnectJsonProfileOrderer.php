@@ -27,11 +27,15 @@ final class ConnectJsonProfileOrderer
         ?array $customConfigIds = null,
         ?array $customConfigSortOrderById = null,
         bool $includePaidCustomConfigs = true,
+        array $freeCustomConfigIds = [],
+        bool $includeConfigGroup = false,
     ): SubscriptionBuildResult {
         $customConfigs = XrayCustomConfig::query()
             ->active()
             ->when($customConfigIds !== null, fn ($query) => $query->whereIn('id', $customConfigIds))
-            ->when(! $includePaidCustomConfigs, fn ($query) => $query->where('is_free', true))
+            ->when(! $includePaidCustomConfigs, fn ($query) => $query->where(fn ($query) => $query
+                ->where('is_free', true)
+                ->orWhereIn('id', $freeCustomConfigIds)))
             ->when(! $user->is_health_check_user, fn ($query) => $query->where(function ($configQuery) use ($user): void {
                 $configQuery->where('is_public', true)
                     ->orWhereHas('userAssignments', fn ($assignmentQuery) => $assignmentQuery->where('user_id', $user->id));
@@ -40,7 +44,7 @@ final class ConnectJsonProfileOrderer
             ->with(['dnsSettings', 'geodata', 'clientGeodata', 'outboundGroups.fallbackGroup', 'routes', 'configGroups'])
             ->get();
 
-        $entries = collect($this->buildBaseProfileEntries($builder, $nodes, $subscriptionType))
+        $entries = collect($this->buildBaseProfileEntries($builder, $nodes, $subscriptionType, $includeConfigGroup))
             ->merge($customConfigs->map(fn (XrayCustomConfig $config): array => [
                 'type' => 'xray_custom_config',
                 'id' => (int) $config->id,
@@ -50,6 +54,7 @@ final class ConnectJsonProfileOrderer
                     $config,
                     $client,
                     $subscriptionType,
+                    $includeConfigGroup,
                 )->content),
             ]))
             ->filter(fn (array $entry): bool => is_array($entry['profiles']))
@@ -83,6 +88,7 @@ final class ConnectJsonProfileOrderer
         ConnectJsonBuilder $builder,
         array $nodes,
         string $subscriptionType,
+        bool $includeConfigGroup,
     ): array
     {
         return collect($nodes)
@@ -91,10 +97,10 @@ final class ConnectJsonProfileOrderer
                 : ($node->sourceType === 'external_subscription'
                     ? 'external_subscription:'.(int) ($node->meta['external_subscription_id'] ?? 0)
                     : 'server:'.$node->serverId))
-            ->map(function ($group) use ($builder, $subscriptionType): array {
+            ->map(function ($group) use ($builder, $subscriptionType, $includeConfigGroup): array {
                 $node = $group->first();
                 $profiles = json_decode(
-                    $builder->buildForSubscriptionType($group->all(), $subscriptionType)->content,
+                    $builder->buildForSubscriptionType($group->all(), $subscriptionType, $includeConfigGroup)->content,
                 );
 
                 return [

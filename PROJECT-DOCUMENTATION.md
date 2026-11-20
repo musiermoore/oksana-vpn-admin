@@ -358,6 +358,8 @@ Configs should be disabled when the user has no active subscription.
 
 Configs can be enabled when the user has an active subscription.
 
+Subscription type items can be marked Free for the public `/subscription/{slug}` link. The setting grants access to the selected external subscription or custom JSON profile under that type's source eligibility rules. User-specific server and proxy configs still require an enabled config for the user.
+
 ## Commands
 
 ### `configs:disable-overdue-debtors`

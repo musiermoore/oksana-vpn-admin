@@ -61,13 +61,13 @@ class UserSubscriptionService
         ?array $customConfigIds = null,
         ?array $customConfigSortOrderById = null,
         bool $includePaidCustomConfigs = true,
+        array $freeCustomConfigIds = [],
+        bool $includeConfigGroup = false,
     ): SubscriptionBuildResult
     {
         $builder = $this->builderFactory->make((string) $format);
 
         if ($builder instanceof ConnectJsonBuilder) {
-            $result = $builder->buildForSubscriptionType($nodes, $subscriptionType);
-
             if ($user !== null && in_array($subscriptionType, [
                 XrayRouting::SUBSCRIPTION_CONNECT,
                 XrayRouting::SUBSCRIPTION_CONNECT_V2,
@@ -82,10 +82,12 @@ class UserSubscriptionService
                     $customConfigIds,
                     $customConfigSortOrderById,
                     $includePaidCustomConfigs,
+                    $freeCustomConfigIds,
+                    $includeConfigGroup,
                 );
             }
 
-            return $result;
+            return $builder->buildForSubscriptionType($nodes, $subscriptionType, $includeConfigGroup);
         }
 
         if ($nodes === []) {
@@ -140,12 +142,18 @@ class UserSubscriptionService
         ?array $customConfigIds = null,
         ?array $customConfigSortOrderById = null,
         bool $includePaidCustomConfigs = true,
+        array $freeCustomConfigIds = [],
+        bool $includeConfigGroup = false,
     ): SubscriptionBuildResult
     {
-        $customNodes = [
+        $customNodes = $customConfigIds === [] ? [] : [
             ...$this->buildNamedNodes($user, VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM),
             ...$this->externalSubscriptions->getNamedNodesForUserByPurpose($user, $externalPurpose),
         ];
+        if ($customConfigIds !== null) {
+            $customNodes = collect($customNodes)->unique('id')->values()->all();
+        }
+
         return (new ConnectJsonProfileOrderer())->build(
             $this->connectJsonBuilder,
             $nodes,
@@ -156,6 +164,8 @@ class UserSubscriptionService
             $customConfigIds,
             $customConfigSortOrderById,
             $includePaidCustomConfigs,
+            $freeCustomConfigIds,
+            $includeConfigGroup,
         );
     }
 

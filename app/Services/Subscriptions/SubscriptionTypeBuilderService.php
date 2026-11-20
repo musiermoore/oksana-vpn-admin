@@ -23,90 +23,119 @@ final class SubscriptionTypeBuilderService
 
     public function build(User $user, SubscriptionType $type, ?string $client = null): SubscriptionBuildResult
     {
-        $hasActiveAccess = $user->hasActiveAccess() && ! $user->hasDebt();
+        return $this->buildOutput($user, $type, $this->collectOutputNodes($user, $type), $type->format, $client);
+    }
+
+    public function buildStatic(SubscriptionType $type, ?string $client = null): SubscriptionBuildResult
+    {
+        return $this->buildOutput(null, $type, $this->collectOutputNodes(null, $type), $type->format, $client);
+    }
+
+    /** @return array{result:SubscriptionBuildResult, profiles:array<int, array{name:string,category:?string,subtitle:?string}>, json:string} */
+    public function buildPreview(?User $user, SubscriptionType $type): array
+    {
+        $nodes = ConnectV2ConfigGroupAnnotator::annotate($this->collectNodes($user, $type));
+        $result = $this->buildOutput($user, $type, $nodes, $type->format);
+        $isJson = $type->format === SubscriptionType::FORMAT_JSON;
+        $json = str_starts_with($result->contentType, 'application/json')
+            ? $result->content
+            : $this->buildOutput($user, $type, $nodes, SubscriptionType::FORMAT_JSON)->content;
+
+        if ($isJson) {
+            $displayJson = $type->kind === SubscriptionType::KIND_CONNECT
+                ? $this->buildOutput($user, $type, $nodes, $type->format, includeConfigGroup: true)->content
+                : $json;
+            $profiles = array_map(static fn (array $profile): array => [
+                'name' => $profile['remarks'] ?? '',
+                'category' => $profile['group']['name'] ?? null,
+                'subtitle' => $profile['subtitle'] ?? null,
+            ], json_decode($displayJson, true, flags: JSON_THROW_ON_ERROR));
+        } else {
+            $profiles = array_map(static fn (NormalizedNode $node): array => [
+                'name' => $node->meta['name'] ?? $node->serverName,
+                'category' => $node->meta['config_group']['name'] ?? null,
+                'subtitle' => $node->meta['subtitle'] ?? null,
+            ], $nodes);
+        }
+
+        return ['result' => $result, 'profiles' => $profiles, 'json' => $json];
+    }
+
+    /** @return array<int, NormalizedNode> */
+    private function collectOutputNodes(?User $user, SubscriptionType $type): array
+    {
+        $nodes = $this->collectNodes($user, $type);
+
+        if ($type->format === SubscriptionType::FORMAT_JSON
+            && in_array($type->kind, [SubscriptionType::KIND_CONNECT_V2, SubscriptionType::KIND_CONNECT_FREE], true)) {
+            return ConnectV2ConfigGroupAnnotator::annotate($nodes);
+        }
+
+        return $nodes;
+    }
+
+    /** @return array<int, NormalizedNode> */
+    private function collectNodes(?User $user, SubscriptionType $type): array
+    {
         $items = $type->items;
-        $externalSubscriptionIds = $items
-            ->where('source_type', SubscriptionTypeItem::SOURCE_EXTERNAL_SUBSCRIPTION)
-            ->pluck('source_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->values()
-            ->all();
+        $externalItems = $items->where('source_type', SubscriptionTypeItem::SOURCE_EXTERNAL_SUBSCRIPTION);
         $externalNodes = collect($this->externalSubscriptions->getNamedNodesForSubscriptionIds(
             $user,
-            $externalSubscriptionIds,
-            $type->requires_user_token && $hasActiveAccess,
+            $externalItems->pluck('source_id')->all(),
+            $this->hasActiveAccess($user),
+            $externalItems->where('is_free', true)->pluck('source_id')->all(),
         ));
         $visibilityField = match ($type->kind) {
             SubscriptionType::KIND_CONNECT => 'is_visible_in_connect',
             SubscriptionType::KIND_CONNECT_V2 => 'is_visible_in_connect_v2',
             default => null,
         };
-        $availableNodes = collect($this->nodes->collect($user, $visibilityField));
+        $availableNodes = $user === null ? collect() : collect($this->nodes->collect($user, $visibilityField));
         $selectedNodes = $this->selectNodes($items, $availableNodes, $externalNodes);
-        if (
-            $type->format === SubscriptionType::FORMAT_JSON
-            && in_array($type->kind, [SubscriptionType::KIND_CONNECT_V2, SubscriptionType::KIND_CONNECT_FREE], true)
-        ) {
-            $selectedNodes = collect(ConnectV2ConfigGroupAnnotator::annotate($selectedNodes->all()));
-        }
-        $customItems = $items->where('source_type', SubscriptionTypeItem::SOURCE_XRAY_CUSTOM_CONFIG);
-        $customConfigIds = $customItems->pluck('source_id')->map(fn (mixed $id): int => (int) $id)->all();
-        $customConfigSortOrderById = $customItems->mapWithKeys(fn (SubscriptionTypeItem $item): array => [
-            (int) $item->source_id => (int) $item->sort_order,
-        ])->all();
 
-        if ($type->show_expired_placeholder && ! $hasActiveAccess) {
+        if ($user !== null && $type->show_expired_placeholder && ! $this->hasActiveAccess($user)) {
             $selectedNodes->prepend($this->expiredPlaceholder());
         }
 
+        return $selectedNodes->all();
+    }
+
+    /** @param array<int, NormalizedNode> $nodes */
+    private function buildOutput(
+        ?User $user,
+        SubscriptionType $type,
+        array $nodes,
+        string $format,
+        ?string $client = null,
+        bool $includeConfigGroup = false,
+    ): SubscriptionBuildResult {
+        $customItems = $user === null
+            ? collect()
+            : $type->items->where('source_type', SubscriptionTypeItem::SOURCE_XRAY_CUSTOM_CONFIG);
+        $customConfigSortOrderById = $customItems->mapWithKeys(fn (SubscriptionTypeItem $item): array => [
+            $item->source_id => $item->sort_order,
+        ])->all();
+
         return $this->subscriptions->buildFromNodes(
-            nodes: $selectedNodes->all(),
-            format: $type->format,
+            nodes: $nodes,
+            format: $format,
             subscriptionType: $type->kind,
             user: $user,
             customExternalPurpose: $type->kind === SubscriptionType::KIND_CONNECT_FREE
                 ? VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_FREE
                 : VlessExternalSubscriptionSyncService::PURPOSE_CUSTOM,
             client: $client,
-            customConfigIds: $customConfigIds,
+            customConfigIds: $customItems->pluck('source_id')->all(),
             customConfigSortOrderById: $customConfigSortOrderById,
-            includePaidCustomConfigs: $hasActiveAccess,
+            includePaidCustomConfigs: $this->hasActiveAccess($user),
+            freeCustomConfigIds: $customItems->where('is_free', true)->pluck('source_id')->all(),
+            includeConfigGroup: $includeConfigGroup,
         );
     }
 
-    public function buildStatic(SubscriptionType $type, ?string $client = null): SubscriptionBuildResult
+    private function hasActiveAccess(?User $user): bool
     {
-        $items = $type->items;
-        $externalSubscriptionIds = $items
-            ->where('source_type', SubscriptionTypeItem::SOURCE_EXTERNAL_SUBSCRIPTION)
-            ->pluck('source_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->values()
-            ->all();
-        $externalNodes = collect($this->externalSubscriptions->getNamedNodesForSubscriptionIds(
-            null,
-            $externalSubscriptionIds,
-            false,
-        ));
-        $selectedNodes = $this->selectNodes($items, collect(), $externalNodes);
-
-        if (
-            $type->format === SubscriptionType::FORMAT_JSON
-            && in_array($type->kind, [SubscriptionType::KIND_CONNECT_V2, SubscriptionType::KIND_CONNECT_FREE], true)
-        ) {
-            $selectedNodes = collect(ConnectV2ConfigGroupAnnotator::annotate($selectedNodes->all()));
-        }
-
-        return $this->subscriptions->buildFromNodes(
-            nodes: $selectedNodes->all(),
-            format: $type->format,
-            subscriptionType: $type->kind,
-            user: null,
-            customExternalPurpose: VlessExternalSubscriptionSyncService::PURPOSE_CONNECT_FREE,
-            client: $client,
-            customConfigIds: [],
-            customConfigSortOrderById: [],
-        );
+        return $user !== null && $user->hasActiveAccess() && ! $user->hasDebt();
     }
 
     /**

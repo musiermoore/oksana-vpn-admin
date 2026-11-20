@@ -9,7 +9,7 @@ use App\DTOs\Data;
 final class SubscriptionTypeData extends Data
 {
     /**
-     * @param array<int, array{source_type:string,source_id:int,sort_order:int}> $items
+     * @param array<int, array{source_type:string,source_id:int,sort_order:int,is_free?:bool}> $items
      */
     public function __construct(
         public string $name,

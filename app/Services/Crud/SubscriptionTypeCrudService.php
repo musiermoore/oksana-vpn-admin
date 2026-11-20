@@ -50,8 +50,8 @@ final class SubscriptionTypeCrudService
         $this->types->delete($type);
     }
 
-    /** @param array<int, array{source_type:string,source_id:int,sort_order:int}> $items
-     *  @return array<int, array{source_type:string,source_id:int,sort_order:int}>
+    /** @param array<int, array{source_type:string,source_id:int,sort_order:int,is_free?:bool}> $items
+     *  @return array<int, array{source_type:string,source_id:int,sort_order:int,is_free:bool}>
      */
     private function normalizeItems(array $items): array
     {
@@ -73,6 +73,7 @@ final class SubscriptionTypeCrudService
                     'source_type' => $sourceType,
                     'source_id' => $sourceId,
                     'sort_order' => (int) ($item['sort_order'] ?? $index),
+                    'is_free' => (bool) ($item['is_free'] ?? false),
                 ];
             })
             ->values()

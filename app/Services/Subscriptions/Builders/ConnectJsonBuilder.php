@@ -36,14 +36,17 @@ class ConnectJsonBuilder implements SubscriptionBuilder
     /**
      * @param  array<int, NormalizedNode>  $nodes
      */
-    public function buildForSubscriptionType(array $nodes, string $subscriptionType): SubscriptionBuildResult
-    {
+    public function buildForSubscriptionType(
+        array $nodes,
+        string $subscriptionType,
+        bool $includeConfigGroup = false,
+    ): SubscriptionBuildResult {
         $profiles = collect($nodes)
-            ->map(function (NormalizedNode $node) use ($subscriptionType): ?array {
+            ->map(function (NormalizedNode $node) use ($subscriptionType, $includeConfigGroup): ?array {
                 $profile = $this->buildProfile(
                     $node,
                     $this->routingTypeForNode($node, $subscriptionType),
-                    includeConfigGroup: in_array($subscriptionType, [
+                    includeConfigGroup: $includeConfigGroup || in_array($subscriptionType, [
                         XrayRouting::SUBSCRIPTION_CONNECT_V2,
                         XrayRouting::SUBSCRIPTION_CONNECT_FREE,
                     ], true),
@@ -78,37 +81,20 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         XrayCustomConfig $customConfig,
         ?string $client = null,
         string $subscriptionType = XrayRouting::SUBSCRIPTION_CONNECT,
+        bool $includeConfigGroup = false,
     ): SubscriptionBuildResult
     {
         if ($customConfig->relationLoaded('outboundGroups') && $customConfig->outboundGroups->isNotEmpty()) {
-            return $this->buildGroupedCustomConfig($nodes, $customConfig, $client, $subscriptionType);
+            return $this->buildGroupedCustomConfig($nodes, $customConfig, $client, $subscriptionType, $includeConfigGroup);
         }
 
-        $selectedInboundIds = array_map('intval', $customConfig->xray_inbound_ids ?? []);
-        $selectedExternalIds = array_map('intval', $customConfig->external_subscription_config_ids ?? []);
-        $selectedSubscriptionIds = array_map('intval', $customConfig->external_subscription_ids ?? []);
-        $selectedProxyIds = array_map('intval', $customConfig->proxy_ids ?? []);
-
-        $nodes = array_values(array_filter($nodes, function (NormalizedNode $node) use (
-            $selectedInboundIds,
-            $selectedExternalIds,
-            $selectedSubscriptionIds,
-            $selectedProxyIds,
-        ): bool {
-            $inboundId = isset($node->meta['xray_inbound_id']) ? (int) $node->meta['xray_inbound_id'] : null;
-            $externalId = isset($node->meta['external_subscription_config_id'])
-                ? (int) $node->meta['external_subscription_config_id']
-                : null;
-            $subscriptionId = isset($node->meta['external_subscription_id'])
-                ? (int) $node->meta['external_subscription_id']
-                : null;
-            $proxyId = isset($node->meta['proxy_id']) ? (int) $node->meta['proxy_id'] : null;
-
-            return ($inboundId !== null && in_array($inboundId, $selectedInboundIds, true))
-                || ($externalId !== null && in_array($externalId, $selectedExternalIds, true))
-                || ($subscriptionId !== null && in_array($subscriptionId, $selectedSubscriptionIds, true))
-                || ($proxyId !== null && in_array($proxyId, $selectedProxyIds, true));
-        }));
+        $nodes = $this->filterNodesForTargets(
+            $nodes,
+            $customConfig->xray_inbound_ids,
+            $customConfig->external_subscription_config_ids,
+            $customConfig->external_subscription_ids,
+            $customConfig->proxy_ids,
+        );
 
         $profiles = collect($nodes)
             ->map(fn (NormalizedNode $node) => $this->buildProfile(
@@ -116,7 +102,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
                 $this->routingTypeForNode($node, $subscriptionType),
                 $customConfig,
                 $client,
-                in_array($subscriptionType, [
+                $includeConfigGroup || in_array($subscriptionType, [
                     XrayRouting::SUBSCRIPTION_CONNECT_V2,
                     XrayRouting::SUBSCRIPTION_CONNECT_FREE,
                 ], true),
@@ -143,6 +129,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
         XrayCustomConfig $customConfig,
         ?string $client,
         string $subscriptionType,
+        bool $includeConfigGroup,
     ): SubscriptionBuildResult
     {
         $groups = $customConfig->outboundGroups->where('is_active', true)->values();
@@ -162,7 +149,7 @@ class ConnectJsonBuilder implements SubscriptionBuilder
 
         $this->appendGroupedObservatory($profile, $groups, $base);
         $this->appendGroupedGeodata($profile, $customConfig, $client);
-        if (in_array($subscriptionType, [
+        if ($includeConfigGroup || in_array($subscriptionType, [
             XrayRouting::SUBSCRIPTION_CONNECT_V2,
             XrayRouting::SUBSCRIPTION_CONNECT_FREE,
         ], true)) {

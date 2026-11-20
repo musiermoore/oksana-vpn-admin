@@ -17,6 +17,7 @@ trait ValidatesStaticSubscriptionSources
         }
 
         $externalIds = [];
+        $freeOverrides = [];
 
         foreach ($items as $index => $item) {
             if (! is_array($item) || ! isset($item['source_type'], $item['source_id'])) {
@@ -29,6 +30,7 @@ trait ValidatesStaticSubscriptionSources
             }
 
             $externalIds[$index] = (int) $item['source_id'];
+            $freeOverrides[$index] = (bool) ($item['is_free'] ?? false);
         }
 
         if ($externalIds === []) {
@@ -37,23 +39,16 @@ trait ValidatesStaticSubscriptionSources
             return;
         }
 
-        $freeIds = DB::table('vless_external_subscriptions')
+        $sourceFreeFlags = DB::table('vless_external_subscriptions')
             ->whereIn('id', array_values($externalIds))
-            ->where('is_free', true)
-            ->pluck('id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->flip();
+            ->pluck('is_free', 'id');
 
         foreach ($externalIds as $index => $sourceId) {
-            if ($freeIds->has($sourceId)) {
+            if ($sourceFreeFlags->has($sourceId) && ($sourceFreeFlags->get($sourceId) || $freeOverrides[$index])) {
                 continue;
             }
 
             $validator->errors()->add("items.{$index}.source_id", 'Статическая ссылка может содержать только бесплатные внешние подписки.');
-        }
-
-        if ($freeIds->isEmpty()) {
-            $validator->errors()->add('items', 'Для статической ссылки нужна хотя бы одна бесплатная внешняя подписка.');
         }
     }
 }

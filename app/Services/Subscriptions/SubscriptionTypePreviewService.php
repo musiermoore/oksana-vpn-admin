@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Subscriptions;
 
+use App\DTOs\Subscription\SubscriptionTypePreviewData;
 use App\Models\SubscriptionType;
 use App\Models\SubscriptionTypeItem;
 use App\Models\User;
@@ -15,40 +16,40 @@ final class SubscriptionTypePreviewService
     public function __construct(private readonly SubscriptionTypeBuilderService $builder) {}
 
     /** @return array<string, mixed> */
-    public function preview(array $data): array
+    public function preview(SubscriptionTypePreviewData $data): array
     {
-        $requiresUserToken = (bool) $data['requires_user_token'];
+        $requiresUserToken = $data->requiresUserToken;
         $user = $requiresUserToken
-            ? $this->resolveUser((string) $data['audience'], $data['user_id'] ?? null)
+            ? $this->resolveUser($data->audience ?? '', $data->userId)
             : null;
         $type = new SubscriptionType([
-            'kind' => $data['kind'],
-            'format' => $data['format'],
+            'kind' => $data->kind,
+            'format' => $data->format,
             'is_active' => true,
             'requires_user_token' => $requiresUserToken,
-            'show_expired_placeholder' => (bool) $data['show_expired_placeholder'],
+            'show_expired_placeholder' => $data->showExpiredPlaceholder,
         ]);
-        $items = collect($data['items'])->values()->map(fn (array $item, int $index): SubscriptionTypeItem => new SubscriptionTypeItem([
-            'id' => $index + 1,
+        $items = collect($data->items)->values()->map(fn (array $item): SubscriptionTypeItem => new SubscriptionTypeItem([
             'source_type' => $item['source_type'],
             'source_id' => (int) $item['source_id'],
             'sort_order' => (int) $item['sort_order'],
+            'is_free' => (bool) ($item['is_free'] ?? false),
         ]));
         $type->setRelation('items', $items);
 
-        $result = $user instanceof User
-            ? $this->builder->build($user, $type)
-            : $this->builder->buildStatic($type);
-        $readableContent = $data['format'] === SubscriptionType::FORMAT_URI
+        ['result' => $result, 'profiles' => $profiles, 'json' => $json] = $this->builder->buildPreview($user, $type);
+        $readableContent = $data->format === SubscriptionType::FORMAT_URI
             ? base64_decode($result->content, true)
             : false;
 
         return [
             'is_static' => ! $requiresUserToken,
             'user' => $user instanceof User ? $this->userSummary($user) : null,
-            'format' => $data['format'],
+            'format' => $data->format,
             'content_type' => $result->contentType,
             'content' => $result->content,
+            'profiles' => $profiles,
+            'json' => $json,
             'readable_content' => $readableContent === false ? $result->content : $readableContent,
         ];
     }
@@ -84,7 +85,7 @@ final class SubscriptionTypePreviewService
             ->all();
     }
 
-    private function resolveUser(string $audience, mixed $userId): User
+    private function resolveUser(string $audience, ?int $userId): User
     {
         $users = $this->eligibleUsers()->with('activeSubscription');
 

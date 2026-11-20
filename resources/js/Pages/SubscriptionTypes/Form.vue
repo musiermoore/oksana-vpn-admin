@@ -28,6 +28,7 @@ const saving = ref(false);
 const userUuid = ref('');
 const dragKey = ref(null);
 const previewAudience = ref('active');
+const previewVariant = ref('incy-happ');
 const previewUserSearch = ref('');
 const previewUsers = ref([]);
 const selectedPreviewUser = ref(null);
@@ -53,6 +54,11 @@ const formatOptions = [
     { value: 'clash', label: 'Clash / Mihomo' },
     { value: 'sing-box', label: 'sing-box' },
 ];
+const previewVariantOptions = [
+    { value: 'incy-happ', label: 'Incy / Happ' },
+    { value: 'oksana', label: 'Oksana Client' },
+    { value: 'json', label: 'JSON' },
+];
 const previewAudienceOptions = [
     { value: 'active', label: 'Активный пользователь' },
     { value: 'admin', label: 'Администратор' },
@@ -62,6 +68,9 @@ const previewAudienceOptions = [
 
 const pageTitle = computed(() => isEdit.value ? 'Редактирование типа подписки' : 'Новый тип подписки');
 const sourceKey = (item) => item.source_type + ':' + item.source_id;
+const orderedItemData = ({ source_type, source_id, is_free }, sort_order) => ({
+    source_type, source_id, sort_order, is_free: Boolean(is_free),
+});
 const sourceAccessBadge = (source) => {
     if (!['external_subscription', 'xray_custom_config'].includes(source.source_type)) return null;
     if (!source.is_free) return { label: 'Платная · нужен активный доступ', isFree: false };
@@ -89,7 +98,7 @@ const availableSources = computed(() => props.catalog.filter((source) => {
     const key = source.source_type + ':' + source.source_id;
     if (selectedSourceKeys.value.has(key)) return true;
     if (!localType.value.requires_user_token) {
-        return source.source_type === 'external_subscription' && source.is_free;
+        return source.source_type === 'external_subscription';
     }
 
     return source.source_type !== 'xray_custom_config' || localType.value.format === 'json';
@@ -114,7 +123,7 @@ const hasFormatConflict = computed(() => localType.value.format !== 'json'
     && selectedItems.value.some((item) => item.source_type === 'xray_custom_config'));
 const hasStaticSourceConflict = computed(() => !localType.value.requires_user_token
     && (selectedItems.value.length === 0 || selectedItems.value.some((item) =>
-        item.source_type !== 'external_subscription' || item.source?.is_free !== true)));
+        item.source_type !== 'external_subscription' || (!item.is_free && item.source?.is_free !== true))));
 const outputUrl = computed(() => localType.value.requires_user_token
     ? '/subscription/' + localType.value.slug + '?token=' + (userUuid.value || '{user_uuid}')
     : '/subscription/' + localType.value.slug);
@@ -149,6 +158,7 @@ function syncSourceSelection(values) {
             source_type: source.source_type,
             source_id: Number(source.source_id),
             sort_order: localType.value.items.length,
+            is_free: false,
         });
         existing.add(key);
     });
@@ -161,11 +171,11 @@ const removeSource = (item) => {
 };
 
 const reorderItems = (fromIndex, toIndex) => {
-    const items = selectedItems.value.map(({ source_type, source_id }) => ({ source_type, source_id }));
+    const items = selectedItems.value.slice();
     if (fromIndex < 0 || fromIndex >= items.length || toIndex < 0 || toIndex >= items.length || fromIndex === toIndex) return;
     const [moving] = items.splice(fromIndex, 1);
     items.splice(toIndex, 0, moving);
-    localType.value.items = items.map((item, sort_order) => ({ ...item, sort_order }));
+    localType.value.items = items.map(orderedItemData);
 };
 
 const moveItem = (index, offset) => reorderItems(index, index + offset);
@@ -189,11 +199,12 @@ const dropOn = (targetKey) => {
 };
 
 function normalizeOrder() {
-    localType.value.items = selectedItems.value.map(({ source_type, source_id }, sort_order) => ({
-        source_type,
-        source_id,
-        sort_order,
-    }));
+    localType.value.items = selectedItems.value.map(orderedItemData);
+}
+
+function setItemFree(key, isFree) {
+    const item = localType.value.items.find((source) => sourceKey(source) === key);
+    if (item) item.is_free = isFree;
 }
 
 const saveType = () => {
@@ -207,7 +218,7 @@ const saveType = () => {
         is_active: Boolean(localType.value.is_active),
         requires_user_token: Boolean(localType.value.requires_user_token),
         show_expired_placeholder: Boolean(localType.value.show_expired_placeholder),
-        items: selectedItems.value.map(({ source_type, source_id }, sort_order) => ({ source_type, source_id, sort_order })),
+        items: selectedItems.value.map(orderedItemData),
     };
     saving.value = true;
     const options = { preserveScroll: true, onFinish: () => { saving.value = false; } };
@@ -227,12 +238,13 @@ const deleteType = () => {
     }
 };
 
-watch(() => JSON.stringify(localType.value), () => {
-    previewResult.value = null;
-    previewError.value = '';
-});
+const previewContext = computed(() => JSON.stringify([
+    localType.value,
+    previewAudience.value,
+    selectedPreviewUser.value?.id,
+]));
 
-watch(previewAudience, () => {
+watch(previewContext, () => {
     previewResult.value = null;
     previewError.value = '';
 });
@@ -240,13 +252,6 @@ watch(previewAudience, () => {
 watch(previewUserSearch, () => {
     previewUsers.value = [];
     selectedPreviewUser.value = null;
-    previewResult.value = null;
-    previewError.value = '';
-});
-
-watch(selectedPreviewUser, () => {
-    previewResult.value = null;
-    previewError.value = '';
 });
 
 const searchPreviewUsers = async () => {
@@ -269,8 +274,9 @@ const searchPreviewUsers = async () => {
 };
 
 const runPreview = async () => {
-    if (previewAudience.value === 'user' && !selectedPreviewUser.value) return;
+    if (localType.value.requires_user_token && previewAudience.value === 'user' && !selectedPreviewUser.value) return;
 
+    const context = previewContext.value;
     previewLoading.value = true;
     previewError.value = '';
     previewResult.value = null;
@@ -279,7 +285,7 @@ const runPreview = async () => {
         format: localType.value.format,
         requires_user_token: Boolean(localType.value.requires_user_token),
         show_expired_placeholder: Boolean(localType.value.show_expired_placeholder),
-        items: selectedItems.value.map(({ source_type, source_id }, sort_order) => ({ source_type, source_id, sort_order })),
+        items: selectedItems.value.map(orderedItemData),
     };
     if (localType.value.requires_user_token) {
         payload.audience = previewAudience.value;
@@ -291,8 +297,9 @@ const runPreview = async () => {
         : '/subscription-types/preview';
     try {
         const { data } = await window.axios.post(endpoint, payload);
-        previewResult.value = data;
+        if (context === previewContext.value) previewResult.value = data;
     } catch (error) {
+        if (context !== previewContext.value) return;
         previewError.value = error.response?.data?.errors?.audience?.[0]
             ?? error.response?.data?.message
             ?? 'Не удалось собрать предпросмотр.';
@@ -412,7 +419,7 @@ const runPreview = async () => {
                 placeholder="Выберите один или несколько источников"
             />
         </label>
-        <p v-if="!localType.requires_user_token" class="hint">Статические ссылки поддерживают только бесплатные внешние подписки.</p>
+        <p v-if="!localType.requires_user_token" class="hint">Для статической ссылки выберите бесплатную внешнюю подписку или отметьте источник как Free.</p>
         <p v-if="hasStaticSourceConflict" class="form-error">Удалите локальные, платные или пользовательские источники, чтобы сделать ссылку статической.</p>
 
         <div class="subscription-source-list">
@@ -443,16 +450,20 @@ const runPreview = async () => {
                     <span class="source-copy-title">
                         <strong>{{ item.source?.name ?? item.source_type + ' #' + item.source_id }}</strong>
                         <span
-                            v-if="item.source && sourceAccessBadge(item.source)"
+                            v-if="item.is_free || (item.source && sourceAccessBadge(item.source))"
                             class="source-badge"
-                            :class="{ 'source-badge--free': sourceAccessBadge(item.source).isFree }"
-                        >{{ sourceAccessBadge(item.source).label }}</span>
+                            :class="{ 'source-badge--free': item.is_free || sourceAccessBadge(item.source)?.isFree }"
+                        >{{ item.is_free ? 'Бесплатная в этой подписке' : sourceAccessBadge(item.source).label }}</span>
                     </span>
                     <small>{{ item.source?.group ?? item.source_type }}<template v-if="item.source?.detail"> · {{ item.source.detail }}</template></small>
                 </span>
                 <span v-if="item.source && !item.source.active" class="source-state">Источник выключен</span>
                 <span v-else-if="item.source?.source_type === 'external_subscription' && item.source.ready === false" class="source-state">Источник не готов: доступен только администратору</span>
                 <div class="source-actions">
+                    <label class="type-toggle source-free" title="Бесплатный доступ к источнику в этой подписке">
+                        <AppCheckbox :model-value="Boolean(item.is_free)" @update:model-value="setItemFree(item.key, $event)" />
+                        <span>Free</span>
+                    </label>
                     <AppButton v-if="item.source?.edit_url" variant="secondary" :href="item.source.edit_url" target="_blank">Настроить</AppButton>
                     <AppButton variant="secondary" :disabled="index === 0" title="Переместить вверх" @click="moveItem(index, -1)">↑</AppButton>
                     <AppButton variant="secondary" :disabled="index === selectedItems.length - 1" title="Переместить вниз" @click="moveItem(index, 1)">↓</AppButton>
@@ -541,16 +552,32 @@ const runPreview = async () => {
                 <span>Доступ по текущим правилам: {{ previewResult.user.has_active_access ? 'есть' : 'нет' }}</span>
                 <span>Долг: {{ previewResult.user.has_debt ? previewResult.user.debt_amount : 'нет' }}</span>
             </div>
-            <div class="page-header">
-                <div>
-                    <h3>Содержимое конфигурации</h3>
-                    <small>{{ previewResult.format }} · {{ previewResult.content_type }}</small>
-                </div>
-            </div>
-            <pre class="preview-content">{{ previewResult.readable_content }}</pre>
+            <label class="field preview-variant">
+                <span>Вид предпросмотра</span>
+                <AppSelect v-model="previewVariant" :options="previewVariantOptions" />
+            </label>
+            <template v-if="previewVariant === 'json'">
+                <p v-if="!previewResult.content_type.startsWith('application/json')" class="hint">Предпросмотр в формате Xray JSON.</p>
+                <pre class="preview-content">{{ previewResult.json }}</pre>
+            </template>
+            <ol v-else-if="previewResult.profiles.length" class="preview-profiles">
+                <li v-for="(profile, index) in previewResult.profiles" :key="index" class="preview-profile">
+                    <strong>{{ profile.name }}</strong>
+                    <template v-if="previewVariant === 'oksana'">
+                        <small v-if="profile.category" class="preview-category">{{ profile.category }}</small>
+                        <small v-if="profile.subtitle" class="preview-subtitle">{{ profile.subtitle }}</small>
+                    </template>
+                </li>
+            </ol>
+            <p v-else class="empty-state">Для выбранного пользователя нет конфигураций.</p>
             <details>
                 <summary>Точный ответ ссылки подписки</summary>
+                <small>{{ previewResult.format }} · {{ previewResult.content_type }}</small>
                 <pre class="preview-content preview-content--raw">{{ previewResult.content }}</pre>
+            </details>
+            <details v-if="previewResult.readable_content !== previewResult.content">
+                <summary>Декодированные ссылки</summary>
+                <pre class="preview-content preview-content--raw">{{ previewResult.readable_content }}</pre>
             </details>
         </div>
     </section>
@@ -634,7 +661,8 @@ const runPreview = async () => {
 .source-badge--free { background: rgba(5, 150, 105, .12); color: #087450; }
 .source-copy small, .hint { color: var(--muted, #687386); }
 .source-state { color: #a16449; font-size: .85rem; }
-.source-actions { display: flex; align-items: center; gap: 6px; }
+.source-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.source-free { gap: 6px; margin-right: 6px; }
 
 .preview-user-results {
     max-height: 300px;
@@ -664,7 +692,12 @@ const runPreview = async () => {
 .preview-result { padding-top: 14px; border-top: 1px solid rgba(148, 163, 184, .3); }
 .preview-user-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .preview-user-summary span { color: var(--muted, #687386); }
-.preview-result h3 { margin: 0; }
+.preview-variant { max-width: 300px; }
+.preview-profiles { display: grid; gap: 8px; margin: 0; padding-left: 30px; }
+.preview-profile { padding: 10px 12px; border: 1px solid rgba(148, 163, 184, .32); border-radius: 10px; }
+.preview-profile::marker { color: var(--muted, #687386); }
+.preview-category { display: inline-block; margin-left: 8px; color: var(--muted, #687386); }
+.preview-subtitle { display: block; margin-top: 3px; color: var(--muted, #687386); }
 .preview-content { max-height: 520px; overflow: auto; margin: 0; padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 10px; background: rgba(15, 23, 42, .06); font-size: .82rem; }
 .preview-content--raw { max-height: 300px; margin-top: 10px; }
 .preview-result details summary { cursor: pointer; color: var(--muted, #687386); }

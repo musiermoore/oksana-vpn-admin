@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Subscription;
 
+use App\DTOs\Subscription\SubscriptionTypePreviewData;
+use App\Http\Requests\DataFormRequest;
 use App\Http\Requests\Subscription\Concerns\ValidatesStaticSubscriptionSources;
 use App\Models\SubscriptionType;
 use App\Models\SubscriptionTypeItem;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-final class PreviewSubscriptionTypeRequest extends FormRequest
+final class PreviewSubscriptionTypeRequest extends DataFormRequest
 {
     use ValidatesStaticSubscriptionSources;
 
@@ -29,9 +30,10 @@ final class PreviewSubscriptionTypeRequest extends FormRequest
             'requires_user_token' => ['required', 'boolean'],
             'show_expired_placeholder' => ['required', 'boolean'],
             'items' => ['present', 'array', 'max:500'],
-            'items.*' => ['required', 'array:source_type,source_id,sort_order'],
+            'items.*' => ['required', 'array:source_type,source_id,sort_order,is_free'],
             'items.*.source_type' => ['required', 'string', Rule::in(SubscriptionTypeItem::SOURCES)],
             'items.*.source_id' => ['required', 'integer', 'min:1'],
+            'items.*.is_free' => ['sometimes', 'boolean'],
             'items.*.sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
             'audience' => [Rule::requiredIf(fn (): bool => $this->boolean('requires_user_token')), 'nullable', Rule::in(['active', 'admin', 'inactive', 'user'])],
             'user_id' => [
@@ -41,6 +43,11 @@ final class PreviewSubscriptionTypeRequest extends FormRequest
                 'min:1',
             ],
         ];
+    }
+
+    protected function laravelData(): string
+    {
+        return SubscriptionTypePreviewData::class;
     }
 
     public function withValidator(Validator $validator): void

@@ -101,14 +101,14 @@ final class SubscriptionTypeController extends Controller
         SubscriptionType $subscriptionType,
         SubscriptionTypePreviewService $previews,
     ): JsonResponse {
-        return response()->json($previews->preview($request->validated()));
+        return response()->json($previews->preview($request->toData()));
     }
 
     public function previewDraft(
         PreviewSubscriptionTypeRequest $request,
         SubscriptionTypePreviewService $previews,
     ): JsonResponse {
-        return response()->json($previews->preview($request->validated()));
+        return response()->json($previews->preview($request->toData()));
     }
 
     /** @return array<string, mixed> */
@@ -128,6 +128,7 @@ final class SubscriptionTypeController extends Controller
                 'source_type' => (string) $item->source_type,
                 'source_id' => (int) $item->source_id,
                 'sort_order' => (int) $item->sort_order,
+                'is_free' => (bool) $item->is_free,
             ])->values()->all(),
         ];
     }

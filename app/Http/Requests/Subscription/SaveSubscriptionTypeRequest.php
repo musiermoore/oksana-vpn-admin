@@ -39,9 +39,10 @@ final class SaveSubscriptionTypeRequest extends DataFormRequest
             'requires_user_token' => ['required', 'boolean'],
             'show_expired_placeholder' => ['required', 'boolean'],
             'items' => ['present', 'array', 'max:500'],
-            'items.*' => ['required', 'array:source_type,source_id,sort_order'],
+            'items.*' => ['required', 'array:source_type,source_id,sort_order,is_free'],
             'items.*.source_type' => ['required', 'string', Rule::in(SubscriptionTypeItem::SOURCES)],
             'items.*.source_id' => ['required', 'integer', 'min:1'],
+            'items.*.is_free' => ['sometimes', 'boolean'],
             'items.*.sort_order' => ['required', 'integer', 'min:0', 'max:1000000'],
         ];
 
